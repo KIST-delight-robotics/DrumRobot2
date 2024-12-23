@@ -310,8 +310,6 @@ void PathManager::generateTrajectory___()
     }
     n = (int)n;
 
-    // cout << "\n---------------------" << n << '\n';
-
     for (int i = 0; i < n; i++)
     {
         Position Pt;
