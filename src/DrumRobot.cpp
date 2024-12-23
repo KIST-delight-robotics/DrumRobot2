@@ -44,9 +44,9 @@ void DrumRobot::stateMachine()
         {
         case Main::SystemInit:
         {
-            initializeMotors();
+            initializeMotors(); //팔 T모터
             initializecanManager();
-            motorSettingCmd();
+            motorSettingCmd(); //손목
             canManager.setSocketNonBlock();
             usbio.USBIO_4761_init();
             fun.openCSVFile();
