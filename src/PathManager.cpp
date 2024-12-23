@@ -1,5 +1,5 @@
 #include "../include/managers/PathManager.hpp" // 적절한 경로로 변경하세요.
-
+//git 피날레
 // For Qt
 // #include "../managers/PathManager.hpp"
 PathManager::PathManager(State &stateRef,
