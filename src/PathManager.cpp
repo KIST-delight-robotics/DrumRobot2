@@ -177,7 +177,7 @@ void PathManager::generateTrajectory()
     // trajectory
     n = (t2 - t1) / dt;
 
-
+    // 위 n 궤적에서 한 칸씩, 반복문
     for (int i = 0; i < n; i++)
     {
         Position Pt;
@@ -203,12 +203,12 @@ void PathManager::generateTrajectory()
         fun.appendToCSV_DATA(fileName, t_L, s_L, delta_t_measure_L);
 
         // waist
-        if (i == 0)
+        if (i == 0) // 처음
         {
             VectorXd q_t1 = ikfun_final(Pt.pR, Pt.pL);
             q0_t1 = q_t1(0);
         }
-        else if (i + 1 >= n)
+        else if (i + 1 >= n) // 마지막
         {
             VectorXd q_t2 = ikfun_final(Pt.pR, Pt.pL);
             q0_t2 = q_t2(0);
@@ -240,10 +240,10 @@ void PathManager::generateTrajectory()
 
         b << q0_t1, q0_t2, 0, 0;
 
-        A_1 = A.inverse();
-        sol = A_1 * b;
-
-        qt.q0 = sol(0,0) + sol(1,0) * t + sol(2,0) * t * t + sol(3,0) * t * t * t;
+        A_1 = A.inverse(); //역행렬로 Ax=b값 해 구하기 위함
+        sol = A_1 * b; // 해, 행렬로 표현
+        // float t = dt * i;
+        qt.q0 = sol(0,0) + sol(1,0) * t + sol(2,0) * t * t + sol(3,0) * t * t * t; // 3차방정식으로
         
         // wrist & elbow
         HitParameter param;
