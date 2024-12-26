@@ -63,7 +63,7 @@ private:
     // Robot Parameters
     float part_length[6] = {0.250, 0.328, 0.250, 0.328, 0.325+0.048, 0.325+0.048};
     float s = 0.520;  ///< 허리 길이.
-    float z0 = 0.890-0.0605; ///< 바닥부터 허리까지의 높이.
+    float z0 = 1.020-0.0605; ///< 바닥부터 허리까지의 높이.
 
     /*For SendTestProcess*/
     int method = 0;
