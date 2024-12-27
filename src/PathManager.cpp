@@ -774,9 +774,9 @@ float PathManager::makeWristAngle(float t1, float t2, float t, int state, HitPar
 {
     float wrist_q = 0.0;
 
-    float t_contact = 0.2 * (t2 - t1);
-    float t_lift = 0.6 * (t2 - t1);
-    float t_stay = 0.5 * (t2 - t1);
+    float t_contact = param.wristContactTime;
+    float t_lift = param.wristLiftTime;
+    float t_stay = param.wristStayTime;
     float t_hit = t2 - t1;
 
     MatrixXd A;
@@ -936,8 +936,8 @@ float PathManager::makeElbowAngle(float t1, float t2, float t, int state, HitPar
 {
     float elbow_q = 0.0;
 
-    float t_lift = 0.5 * (t2 - t1);
-    float t_stay = 0.5 * (t2 - t1);
+    float t_lift = param.elbowLiftTime;
+    float t_stay = param.elbowStayTime;
     float t_hit = t2 - t1;
 
     MatrixXd A;
