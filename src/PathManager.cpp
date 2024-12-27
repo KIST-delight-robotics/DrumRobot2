@@ -1264,7 +1264,7 @@ VectorXd PathManager::makeProfile(VectorXd &q1, VectorXd &q2, VectorXd &Vmax, fl
         else if (Vmax(i) < 0)
         {
             // Vmax 값을 구하지 못했을 때 삼각형 프로파일 생성
-            float acc_tri = 4 * S / t2 / t2;
+            double acc_tri = 4 * S / t2 / t2;
 
             if (t < t2/2)
             {
