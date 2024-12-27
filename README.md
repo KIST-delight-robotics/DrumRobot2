@@ -35,8 +35,8 @@ This project is a unique endeavor that leverages CAN communication to control ni
 ## Screenshots and Demo
 Include some screenshots of your project in action, and/or links to demo videos.
 
-<img src="./image/Ready_Pos.jpg" width="750" alt="Screenshot Front Robot">
-<img src="./image/Ready_Pos2.jpg" width="750" alt="Screenshot Ready Position diagonal Robot">
+<img src="./image/Ready_Pos.jpg" width="750" alt="Front Robot">
+<img src="./image/Ready_Pos2.jpg" width="750" alt="Ready Position diagonal Robot">
 <img src="./image/Qt.png" width="750" alt="Screenshot for Qt GUI">
 
 ### 🎥 **Check out the drum robot video playlist here:** [**Drum Robot Video Playlist Link**](https://www.youtube.com/playlist?list=PLZbG63B7tdmLVjM_1uWHxAeesx-kkmfXY)
