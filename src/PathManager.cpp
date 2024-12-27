@@ -1,7 +1,7 @@
 #include "../include/managers/PathManager.hpp" // 적절한 경로로 변경하세요.
 //git 피날레
 // For Qt
-// #include "../managers/PathManager.hpp"
+// #include "../include/managers/PathManager.hpp"
 PathManager::PathManager(State &stateRef,
                          CanManager &canManagerRef,
                          std::map<std::string, std::shared_ptr<GenericMotor>> &motorsRef,
@@ -1300,14 +1300,8 @@ VectorXd PathManager::calVmax(VectorXd &q1, VectorXd &q2, float acc, float t2)
 
     for (int i = 0; i < 9; i++)
     {
-        float val;
-        float S = q2(i) - q1(i);
-
-        // 이동거리 양수로 변경
-        if (S < 0)
-        {
-            S = -1 * S;
-        }
+        double val;
+        double S = abs(q2(i) - q1(i)); //수정됨, overflow방지
 
         if (S > t2*t2*acc/4)
         {
@@ -1318,13 +1312,13 @@ VectorXd PathManager::calVmax(VectorXd &q1, VectorXd &q2, float acc, float t2)
         else
         {
             // 2차 방정식 계수
-            float A = 1/acc;
-            float B = -1*t2;
-            float C = S;
+            double A = 1/acc;
+            double B = -1*t2;
+            double C = S;
 
             // 2차 방정식 해
-            float sol1 = (-B+sqrt(B*B-4*A*C))/2/A;
-            float sol2 = (-B-sqrt(B*B-4*A*C))/2/A;
+            double sol1 = (-B+sqrt(B*B-4*A*C))/2/A;
+            double sol2 = (-B-sqrt(B*B-4*A*C))/2/A;
 
             if (sol1 >= 0 && sol1 <= acc*t2/2)
             {
