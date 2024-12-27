@@ -1239,7 +1239,7 @@ VectorXd PathManager::makeProfile(VectorXd &q1, VectorXd &q2, VectorXd &Vmax, fl
 
     for(int i = 0; i < 9; i++)
     {
-        float val, S;
+        double val, S;
         int sign;
 
         S = q2(i) - q1(i);
@@ -1247,15 +1247,14 @@ VectorXd PathManager::makeProfile(VectorXd &q1, VectorXd &q2, VectorXd &Vmax, fl
         // 부호 확인, 이동거리 양수로 변경
         if (S < 0)
         {
-            S = -1 * S;
+            S = abs(S);
             sign = -1;
         }
         else
         {
             sign = 1;
         }
-
-
+        
         // 궤적 생성
         if (S == 0)
         {
