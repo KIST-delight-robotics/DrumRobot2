@@ -62,19 +62,13 @@ public:
     
     /////////////////////////////////////////////////////////////////////////// Init
 
-    void GetDrumPositoin();
-    void SetReadyAngle();
-    void InitVal();
+    void getDrumPositoin();
+    void setReadyAngle();
     
     /////////////////////////////////////////////////////////////////////////// Play
-    
-    bool readMeasure(ifstream& inputFile, bool &BPMFlag, double &timeSum);
-    void parseMeasure(double &timeSum);
 
-    bool readMeasure___(ifstream& inputFile, bool &BPMFlag);
-
+    bool readMeasure(ifstream& inputFile, bool &BPMFlag);
     void generateTrajectory();
-    void generateTrajectory___();
     void solveIK();
 
     // 브레이크 상태 저장할 구조체
@@ -84,7 +78,6 @@ public:
     }Brake;
 
     queue<Brake> brake_buffer;
-    queue<vector<string>> Q; // 읽은 악보 저장한 큐
     int line = 0;  ///< 연주를 진행하고 있는 줄. 필요 없음
     MatrixXd measureMatrix;
 
@@ -150,23 +143,30 @@ private:
     MatrixXd right_drum_position;                               ///< 오른팔의 각 악기별 위치 좌표 벡터.
     MatrixXd left_drum_position;                                ///< 왼팔의 각 악기별 위치 좌표 벡터.
 
-    /////////////////////////////////////////////////////////////////////////// Read & Parse Measure
+    /////////////////////////////////////////////////////////////////////////// Play (read & parse measure)
+    void initVal();
     string trimWhitespace(const std::string &str);
 
+    void parseMeasure(MatrixXd &measureMatrix);
+    pair<VectorXd, VectorXd> parseOneArm(VectorXd t, VectorXd inst, VectorXd stateVector);
+
     float bpm = 0;         /// txt 악보의 BPM 정보.
-
-    double round_sum = 0;
     double threshold = 2.4;
-    double total_time = 0.0;
-    double detect_time_R = 0;
-    double detect_time_L = 0;
-    double current_time = 0;
-    double moving_start_R = 0;
-    double moving_start_L = 0;
-    int line_n = 0; 
-    vector<string> prev_col = { "0","0","1","1","0","0","0","0" };  // default 악기 위치로 맞추기
-
     double totalTime = 0.0;
+
+    // state
+    // 0 : 0 <- 0
+    // 1 : 0 <- 1
+    // 2 : 1 <- 0
+    // 3 : 1 <- 1
+    MatrixXd measureState = MatrixXd::Zero(2, 3); // [이전 시간, 이전 악기, 상태]
+
+    VectorXd inst_i = VectorXd::Zero(18);   // 전체 궤적에서 출발 악기
+    VectorXd inst_f = VectorXd::Zero(18);   // 전체 궤적에서 도착 악기
+
+    float t_i_R, t_f_R;       // 전체 궤적에서 출발 시간, 도착 시간
+    float t_i_L, t_f_L;
+    float t1, t2;           // 궤적 생성 시간
 
     /////////////////////////////////////////////////////////////////////////// Play (make trajectory)
     // x, y, z 저장할 구조체
@@ -189,51 +189,54 @@ private:
     queue<Position> P_buffer;
     queue<AddAngle> q_buffer;
 
-    void getInstrument();
     VectorXd getTargetPosition(VectorXd &inst_vector);
     float timeScaling(float ti, float tf, float t);
     VectorXd makePath(VectorXd Pi, VectorXd Pf, float s);
 
-    VectorXd pre_inst_R = VectorXd::Zero(9);
-    VectorXd pre_inst_L = VectorXd::Zero(9);      /// 연주 중 현재 위치하는 악기 저장
-
-    VectorXd inst_i = VectorXd::Zero(18);   // 전체 궤적에서 출발 악기
-    VectorXd inst_f = VectorXd::Zero(18);   // 전체 궤적에서 도착 악기
-
-    float t_i_R, t_f_R;       // 전체 궤적에서 출발 시간, 도착 시간
-    float t_i_L, t_f_L;
-    float t1, t2;           // 궤적 생성 시간
-
-    void parseMeasure___(MatrixXd &measureMatrix);
-    pair<VectorXd, VectorXd> parseOneArm___(VectorXd t, VectorXd inst, VectorXd stateVector);
-
-    // state
-    // 0 : 0 <- 0
-    // 1 : 0 <- 1
-    // 2 : 1 <- 0
-    // 3 : 1 <- 1
-
-    MatrixXd state___ = MatrixXd::Zero(2, 3); // [이전 시간, 이전 악기, 상태]
+    double round_sum = 0;
     
+    /////////////////////////////////////////////////////////////////////////// Play (wrist & elbow)
+    
+    // 0.5초 기준 각도
+    const float baseTime = 0.5;
+    const float wristStayBaseAngle = 10.0 * M_PI / 180.0;
+    const float wristContactBaseAngle = 5.0 * M_PI / 180.0;
+    const float wristLiftBaseAngle = 25.0 * M_PI / 180.0;
 
+    const float elbowStayBaseAngle = 5.0 * M_PI / 180.0;
+    const float elbowLiftBaseAngle = 10.0 * M_PI / 180.0;
+    
     // 타격 궤적 생성 파라미터
     typedef struct {
 
+        // 각도
         float wristStayAngle = 10.0 * M_PI / 180.0;
-        float wristContactAngle = -5.0 * M_PI / 180.0;
+        float wristContactAngle = 5.0 * M_PI / 180.0;
         float wristLiftAngle = 25.0 * M_PI / 180.0;
 
-        float elbowStayAngle = 3.0 * M_PI / 180.0;
-        float elbowLiftAngle = 6.0 * M_PI / 180.0;
+        float elbowStayAngle = 5.0 * M_PI / 180.0;
+        float elbowLiftAngle = 10.0 * M_PI / 180.0;
+
+        // 시간
+        float wristStayTime;
+        float wristContactTime;
+        float wristLiftTime;
+
+        float elbowStayTime;
+        float elbowLiftTime;
 
     }HitParameter;
 
-    VectorXd makeHitTrajetory(float t1, float t2, float t, VectorXd hitState, HitParameter param);
     float makeElbowAngle(float t1, float t2, float t, int state, HitParameter param);
     float makeWristAngle(float t1, float t2, float t, int state, HitParameter param);
+
+    HitParameter getHitParameter(float t1, float t2, int hitState, HitParameter preParam);
+    VectorXd makeHitTrajetory(float t1, float t2, float t, VectorXd hitState);
     
     VectorXd hit_state_R = VectorXd::Zero(2);
     VectorXd hit_state_L = VectorXd::Zero(2);
+
+    HitParameter pre_parameters_R, pre_parameters_L, pre_parameters_tmp;
 
     /////////////////////////////////////////////////////////////////////////// Play (solve IK)
     VectorXd ikFixedWaist(VectorXd &pR, VectorXd &pL, float theta0);
