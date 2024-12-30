@@ -54,7 +54,6 @@ void TestManager::SendTestProcess()
         {
             int userInput = 100;
             int ret = system("clear");
-            int status = 0;
             if (ret == -1)
                 std::cout << "system clear error" << endl;
 
@@ -92,173 +91,160 @@ void TestManager::SendTestProcess()
                 }
             }
             
-            do{
-                status = 0;
-                std::cout << "\nSelect Motor to Change Value (0-8) / Run (9) / Time (10) / Extra Time (11) / Repeat(12) / Brake (13) / initialize test (14) / Sin Profile (15) / break on off (16) / Exit (-1): ";  
-                std::cin >> userInput;
-                if (std::cin.fail()) {
-                    std::cin.clear(); 
-                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n'); 
-                    std::cout << "Invalid input. Please enter a valid number.\n";
-                    status = 1;
-                    continue;
-                }
+            std::cout << "\nSelect Motor to Change Value (0-8) / Run (9) / Time (10) / Extra Time (11) / Repeat(12) / Brake (13) / initialize test (14) / Sin Profile (15) / break on off (16) / Exit (-1): ";
+            std::cin >> userInput;
 
-                if (userInput == -1)
-                {
+            if (userInput == -1)
+            {
                 state.test = TestSub::SelectParamByUser;
-                }
-                else if (userInput < 9)
-                {
-                    float degree_angle;
+            }
+            else if (userInput < 9)
+            {
+                float degree_angle;
                 
-                    std::cout << "\nRange : " << joint_range_min[userInput] << "~" << joint_range_max[userInput] << "(Degree)\n";
-                    std::cout << "Enter q[" << userInput << "] Values (Degree) : ";
-                    std::cin >> degree_angle;
-                    q[userInput] = degree_angle * M_PI / 180.0;
-                }
-                else if (userInput == 9)
+                std::cout << "\nRange : " << joint_range_min[userInput] << "~" << joint_range_max[userInput] << "(Degree)\n";
+                std::cout << "Enter q[" << userInput << "] Values (Degree) : ";
+                std::cin >> degree_angle;
+                q[userInput] = degree_angle * M_PI / 180.0;
+            }
+            else if (userInput == 9)
+            {
+                for (auto &motor_pair : motors)
                 {
-                    for (auto &motor_pair : motors)
+                    if (std::shared_ptr<TMotor> tMotor = std::dynamic_pointer_cast<TMotor>(motor_pair.second))
                     {
-                        if (std::shared_ptr<TMotor> tMotor = std::dynamic_pointer_cast<TMotor>(motor_pair.second))
-                        {
-                            tMotor->clearCommandBuffer();
-                            tMotor->clearReceiveBuffer();
-                        }
-                        else if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motor_pair.second))
-                        {
-                            maxonMotor->clearCommandBuffer();
-                            maxonMotor->clearReceiveBuffer();
-                        }
+                        tMotor->clearCommandBuffer();
+                        tMotor->clearReceiveBuffer();
                     }
-                    state.test = TestSub::FillBuf;
-                    usleep(5000);
-                    UnfixedMotor();
-                }
-                else if (userInput == 10)
-                {
-                    std::cout << "time : ";
-                    std::cin >> t;
-                }
-                else if (userInput == 11)
-                {   
-                    std::cout << "extra time : ";
-                    std::cin >> extra_time;
-                }
-                else if (userInput == 12)
-                {
-                    std::cout << "number of repeat : ";
-                    std::cin >> n_repeat;
-                }
-                else if (userInput == 13)
-                {
-                    int input_brake;
-                    std::cout << "Select joint : ";
-                    std::cin >> input_brake;
-
-                    if(input_brake < 7)
+                    else if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motor_pair.second))
                     {
-                        if(brake_flag[input_brake])
-                        {
-                            brake_flag[input_brake] = false;
-                        }
-                        else
-                        {
-                            brake_flag[input_brake] = true;
-
-                            std::cout << "brake start time (0~" << t+extra_time << ") : ";
-                            std::cin >> brake_start_time[input_brake];
-
-                            std::cout << "brake end time (" << brake_start_time[input_brake] << "~" << t+extra_time << ") : ";
-                            std::cin >> brake_end_time[input_brake];
-                        }
+                        maxonMotor->clearCommandBuffer();
+                        maxonMotor->clearReceiveBuffer();
                     }
-                }      
-                else if (userInput == 14)
+                }
+                state.test = TestSub::FillBuf;
+                usleep(5000);
+                UnfixedMotor();
+            }
+            else if (userInput == 10)
+            {
+                std::cout << "time : ";
+                std::cin >> t;
+            }
+            else if (userInput == 11)
+            {
+                std::cout << "extra time : ";
+                std::cin >> extra_time;
+            }
+            else if (userInput == 12)
+            {
+                std::cout << "number of repeat : ";
+                std::cin >> n_repeat;
+            }
+            else if (userInput == 13)
+            {
+                int input_brake;
+                std::cout << "Select joint : ";
+                std::cin >> input_brake;
+
+                if(input_brake < 7)
                 {
-                    for (int i = 0; i <= 6; ++i)
+                    if(brake_flag[input_brake])
                     {
-                        brake_flag[i] = false;
-                        float degree_angle;
+                        brake_flag[input_brake] = false;
+                    }
+                    else
+                    {
+                        brake_flag[input_brake] = true;
+
+                        std::cout << "brake start time (0~" << t+extra_time << ") : ";
+                        std::cin >> brake_start_time[input_brake];
+
+                        std::cout << "brake end time (" << brake_start_time[input_brake] << "~" << t+extra_time << ") : ";
+                        std::cin >> brake_end_time[input_brake];
+                    }
+                }
+            }
+            else if (userInput == 14)
+            {
+                for (int i = 0; i <= 6; ++i)
+                {
+                    brake_flag[i] = false;
+                    float degree_angle;
                     
-                        // 1과 2는 90도, 나머지는 0도로 설정
-                        if (i == 1 || i == 2) {
-                            degree_angle = 90.0;
-                        } else {
-                            degree_angle = 0.0;
-                        }
-                    
-                        std::cout << "\nRange : " << joint_range_min[i] << "~" << joint_range_max[i] << "(Degree)\n";
-                        std::cout << "Enter q[" << i << "] Values (Degree) : " << degree_angle << "\n";
-
-                        // degree 값을 radian으로 변환하여 q 배열에 저장
-                        q[i] = degree_angle * M_PI / 180.0;
+                    // 1과 2는 90도, 나머지는 0도로 설정
+                    if (i == 1 || i == 2) {
+                        degree_angle = 90.0;
+                    } else {
+                        degree_angle = 0.0;
                     }
-                    t = 4.0;
-                    extra_time = 1.0;
-                    n_repeat = 1;
+                    
+                    std::cout << "\nRange : " << joint_range_min[i] << "~" << joint_range_max[i] << "(Degree)\n";
+                    std::cout << "Enter q[" << i << "] Values (Degree) : " << degree_angle << "\n";
+                    
+                    // degree 값을 radian으로 변환하여 q 배열에 저장
+                    q[i] = degree_angle * M_PI / 180.0;
+                }
+                t = 4.0;
+                extra_time = 1.0;
+                n_repeat = 1;
+                sin_flag = false;
+
+                state.test = TestSub::FillBuf;
+                usleep(5000);
+                UnfixedMotor();
+
+            }
+
+            else if (userInput == 15)
+            {
+                if(sin_flag)
+                {
                     sin_flag = false;
-
-                    state.test = TestSub::FillBuf;
-                    usleep(5000);
-                    UnfixedMotor();
-
-                }   
-
-                else if (userInput == 15)
+                    extra_time = 1.0;
+                }
+                else
                 {
-                    if(sin_flag)
-                    {
-                        sin_flag = false;
-                        extra_time = 1.0;
-                    }
-                    else
-                    {
-                        sin_flag = true;
-                        extra_time = 0.0;
-                    }   
+                    sin_flag = true;
+                    extra_time = 0.0;
                 }
+            }
 
-                else if (userInput == 16)
+            else if (userInput == 16)
+            {
+                bool usbio_output = false;
+
+                std::cout << "Current brake states:" << std::endl;
+                for (int i = 0; i < 7; i++)
                 {
-                    bool usbio_output = false;
-
-                    std::cout << "Current brake states:" << std::endl;
-                    for (int i = 0; i < 7; i++)
-                    {
-                        std::cout << "Brake " << i << ": " << (single_brake_flag[i] ? "Active" : "Inactive") << std::endl;
-                    }
-
-                    int break_num;
-                    cin >> break_num;
-
-                    if(!single_brake_flag[break_num])
-                    {
-                        usbio.USBIO_4761_set(break_num % 7, true);
-                        usbio_output = usbio.USBIO_4761_output();
-                        single_brake_flag[break_num] = true;
-                    }   
-                    else
-                    {
-                        usbio.USBIO_4761_set(break_num % 7, false);
-                        usbio_output = usbio.USBIO_4761_output();
-                        single_brake_flag[break_num] = false;
-                    }
-
-                    if(!usbio_output)
-                    {
-                        std::cout << "OUTPUT Error" << endl;
-                        usleep(5000000);
-                        break;
-                    }   
-
+                    std::cout << "Brake " << i << ": " << (single_brake_flag[i] ? "Active" : "Inactive") << std::endl;
                 }
-                else{
-                    std::cout << "\nInvalid input. Please enter a valid number" << std::endl;
-                    status = 1;
+
+                int break_num;
+                cin >> break_num;
+
+                if(!single_brake_flag[break_num])
+                {
+                    usbio.USBIO_4761_set(break_num % 7, true);
+                    usbio_output = usbio.USBIO_4761_output();
+                    single_brake_flag[break_num] = true;
                 }
-            }while(status);
+                else
+                {
+                    usbio.USBIO_4761_set(break_num % 7, false);
+                    usbio_output = usbio.USBIO_4761_output();
+                    single_brake_flag[break_num] = false;
+                }
+
+                if(!usbio_output)
+                {
+                    std::cout << "OUTPUT Error" << endl;
+                    usleep(5000000);
+                    break;
+                }
+
+            }
+            break;
         }
         case TestSub::SetXYZ:
         {
