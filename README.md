@@ -46,3 +46,203 @@ Include some screenshots of your project in action, and/or links to demo videos.
 ## License
 State the license under which the project is available. Example: This project is licensed under the MIT License - see the LICENSE.md file for details.
 >>>>>>> feature : Reinitialized repository
+
+
+Drum Robot2
+├── DataPlot
+│   └── dataplot.py
+├── Doxyfile
+├── Doxyfile_shy
+├── DrumRobot
+│   ├── DataPlot
+│   │   └── dataplot.py
+│   ├── Doxyfile
+│   ├── Doxyfile_shy
+│   ├── LICENSE
+│   ├── Makefile
+│   ├── Qt.txt
+│   ├── README.md
+│   ├── SW Manual.pdf
+│   ├── bin
+│   │   ├── main.out
+│   │   └── test_0625.csv
+│   ├── guitest
+│   │   ├── client
+│   │   ├── client.cpp
+│   │   ├── protocol.h
+│   │   ├── server
+│   │   └── server.cpp
+│   ├── image
+│   │   ├── Qt.png
+│   │   ├── Ready_Pos.jpg
+│   │   └── Ready_Pos2.jpg
+│   ├── include
+│   │   ├── USBIO_advantech
+│   │   │   ├── Automation.BDaq.jar
+│   │   │   ├── USBIO_advantech.hpp
+│   │   │   ├── bdaqctrl.h
+│   │   │   └── compatibility.h
+│   │   ├── codes
+│   │   │   ├── codeBC_0.txt
+│   │   │   ├── codeBC_1.txt
+│   │   │   ├── codeEDET_0.txt
+│   │   │   ├── codeEDET_1.txt
+│   │   │   ├── codeMOY1_0.txt
+│   │   │   ├── codeMOY1_1.txt
+│   │   │   ├── codeMOY2_0.txt
+│   │   │   └── codeMOY2_1.txt
+│   │   ├── eigen-3.4.0
+│   │   │   └── ...
+│   │   ├── managers
+│   │   │   ├── CanManager.hpp
+│   │   │   ├── GuiManager.hpp
+│   │   │   ├── PathManager.hpp
+│   │   │   ├── TestManager.hpp
+│   │   │   └── rT.txt
+│   │   ├── motors
+│   │   │   ├── CommandParser.hpp
+│   │   │   └── Motor.hpp
+│   │   ├── tasks
+│   │   │   ├── DrumRobot.hpp
+│   │   │   ├── Functions.hpp
+│   │   │   └── SystemState.hpp
+│   │   └── usbio
+│   │       ├── Global.hpp
+│   │       ├── ICPDAS_USBIO.hpp
+│   │       ├── ThreadFun.hpp
+│   │       ├── Timer.hpp
+│   │       ├── USBIO_Comm.hpp
+│   │       ├── USBIO_Device.hpp
+│   │       └── USBIO_Object_Layout.hpp
+│   ├── lib
+│   │   ├── libUSBIO_32.a
+│   │   ├── libUSBIO_32.so.1.0
+│   │   ├── libUSBIO_64.a
+│   │   ├── libUSBIO_64.so.1.0
+│   │   ├── libUSBIO_arm.a
+│   │   ├── libUSBIO_arm.so.1.0
+│   │   ├── libUSBIO_arm64.a
+│   │   └── libUSBIO_arm64.so.1.0
+│   ├── obj
+│   │   ├── CanManager.o
+│   │   ├── CommandParser.o
+│   │   ├── DrumRobot.o
+│   │   ├── Functions.o
+│   │   ├── GuiManager.o
+│   │   ├── Motor.o
+│   │   ├── PathManager.o
+│   │   ├── TestManager.o
+│   │   ├── USBIO_advantech.o
+│   │   └── main.o
+│   ├── scripts
+│   │   ├── CANControllerSetup.sh
+│   │   ├── insmod_module_platform.sh
+│   │   ├── ipdown_RDCCAN.sh
+│   │   ├── ipup_RDCCAN_06.sh
+│   │   ├── rmmod_module_platform.sh
+│   │   └── sudo-gdb.sh
+│   └── src
+│       ├── CanManager.cpp
+│       ├── CommandParser.cpp
+│       ├── DrumRobot.cpp
+│       ├── Functions.cpp
+│       ├── GuiManager.cpp
+│       ├── Motor.cpp
+│       ├── PathManager.cpp
+│       ├── TestManager.cpp
+│       ├── USBIO_advantech.cpp
+│       └── main.cpp
+├── LICENSE
+├── Makefile
+├── Qt.txt
+├── README.md
+├── SW Manual.pdf
+├── bin
+│   └── main.out
+├── guitest
+│   ├── client
+│   ├── client.cpp
+│   ├── protocol.h
+│   ├── server
+│   └── server.cpp
+├── image
+│   ├── Qt.png
+│   ├── Ready_Pos.jpg
+│   └── Ready_Pos2.jpg
+├── include
+│   ├── USBIO_advantech
+│   │   ├── Automation.BDaq.jar
+│   │   ├── USBIO_advantech.hpp
+│   │   ├── bdaqctrl.h
+│   │   └── compatibility.h
+│   ├── codes
+│   │   ├── codeBC_0.txt
+│   │   ├── codeBC_1.txt
+│   │   ├── codeEDET_0.txt
+│   │   ├── codeEDET_1.txt
+│   │   ├── codeEDET__0 .txt
+│   │   ├── codeMOY1_0.txt
+│   │   ├── codeMOY1_1.txt
+│   │   ├── codeMOY2_0.txt
+│   │   └── codeMOY2_1.txt
+│   ├── eigen-3.4.0
+│   │   └── ...
+│   ├── managers
+│   │   ├── CanManager.hpp
+│   │   ├── GuiManager.hpp
+│   │   ├── PathManager.hpp
+│   │   ├── TestManager.hpp
+│   │   └── rT.txt
+│   ├── motors
+│   │   ├── CommandParser.hpp
+│   │   └── Motor.hpp
+│   ├── tasks
+│   │   ├── DrumRobot.hpp
+│   │   ├── Functions.hpp
+│   │   └── SystemState.hpp
+│   └── usbio
+│       ├── Global.hpp
+│       ├── ICPDAS_USBIO.hpp
+│       ├── ThreadFun.hpp
+│       ├── Timer.hpp
+│       ├── USBIO_Comm.hpp
+│       ├── USBIO_Device.hpp
+│       └── USBIO_Object_Layout.hpp
+├── lib
+│   ├── libUSBIO_32.a
+│   ├── libUSBIO_32.so.1.0
+│   ├── libUSBIO_64.a
+│   ├── libUSBIO_64.so.1.0
+│   ├── libUSBIO_arm.a
+│   ├── libUSBIO_arm.so.1.0
+│   ├── libUSBIO_arm64.a
+│   └── libUSBIO_arm64.so.1.0
+├── obj
+│   ├── CanManager.o
+│   ├── CommandParser.o
+│   ├── DrumRobot.o
+│   ├── Functions.o
+│   ├── GuiManager.o
+│   ├── Motor.o
+│   ├── PathManager.o
+│   ├── TestManager.o
+│   ├── USBIO_advantech.o
+│   └── main.o
+├── scripts
+│   ├── CANControllerSetup.sh
+│   ├── insmod_module_platform.sh
+│   ├── ipdown_RDCCAN.sh
+│   ├── ipup_RDCCAN_06.sh
+│   ├── rmmod_module_platform.sh
+│   └── sudo-gdb.sh
+└── src
+    ├── CanManager.cpp
+    ├── CommandParser.cpp
+    ├── DrumRobot.cpp
+    ├── Functions.cpp
+    ├── GuiManager.cpp
+    ├── Motor.cpp
+    ├── PathManager.cpp
+    ├── TestManager.cpp
+    ├── USBIO_advantech.cpp
+    └── main.cpp
