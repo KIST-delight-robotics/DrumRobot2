@@ -48,6 +48,7 @@ State the license under which the project is available. Example: This project is
 >>>>>>> feature : Reinitialized repository
 
 '''
+
 Drum Robot2
 ├── DataPlot
 │   └── dataplot.py
@@ -245,4 +246,3 @@ Drum Robot2
     ├── TestManager.cpp
     ├── USBIO_advantech.cpp
     └── main.cpp
-'''
