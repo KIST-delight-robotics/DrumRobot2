@@ -45,7 +45,6 @@ Include some screenshots of your project in action, and/or links to demo videos.
 
 ## License
 State the license under which the project is available. Example: This project is licensed under the MIT License - see the LICENSE.md file for details.
->>>>>>> feature : Reinitialized repository
 
 
 <pre>
