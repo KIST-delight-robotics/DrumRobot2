@@ -228,6 +228,7 @@ private:
         // 시간
         float wristStayTime;
         float wristContactTime;
+        float wristReleaseTime;
         float wristLiftTime;
 
         float elbowStayTime;
