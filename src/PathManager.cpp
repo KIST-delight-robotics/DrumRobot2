@@ -773,14 +773,8 @@ PathManager::HitParameter PathManager::getHitParameter(float t1, float t2, int h
     param.elbowLiftTime = std::max(0.5*(t2-t1), t2-t1-0.2);
 
     // param.wristStayTime = std::max(0.5*(t2-t1), t2-t1-0.2);
-<<<<<<< HEAD
     // param.wristLiftTime = std::max(0.5*(t2-t1), t2-t1-0.2);
     param.wristContactTime = std::min(0.2*(t2-t1), 0.08);
-=======
-    param.wristStayTime = 0.47 * (t2 - t1) - 0.06;
-    param.wristLiftTime = std::max(0.6*(t2-t1), t2-t1-0.2);
-    param.wristContactTime = std::min(0.1*(t2-t1), 0.05); // 0.08 -> 0.05
->>>>>>> 1612955bbf9ab77afa501844a0261eca205d7114
 
     // stay time 수정
     // t2 - t1 - 0.4 < 0 ? param.wristStayTime = 0 : param.wristStayTime = t2 - t1 - 0.4;
@@ -1051,7 +1045,7 @@ float PathManager::makeWristAngle(float t1, float t2, float t, int state, HitPar
                 1, t_lift, t_lift*t_lift, t_lift*t_lift*t_lift,
                 0, 1, 0, 0,
                 0, 1, 2*t_lift, 3*t_lift*t_lift;
-            */
+            
             A << 1, t_stay, t_stay*t_stay, t_stay*t_stay*t_stay,
                 1, t_lift, t_lift*t_lift, t_lift*t_lift*t_lift,
                 0, 1, 2*t_stay, 3*t_stay*t_stay,
