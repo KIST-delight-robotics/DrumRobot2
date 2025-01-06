@@ -164,6 +164,8 @@ private:
     VectorXd inst_i = VectorXd::Zero(18);   // 전체 궤적에서 출발 악기
     VectorXd inst_f = VectorXd::Zero(18);   // 전체 궤적에서 도착 악기
 
+    // vector<Pos_i> pos(3); // 미래상태 3개를 저장
+
     float t_i_R, t_f_R;       // 전체 궤적에서 출발 시간, 도착 시간
     float t_i_L, t_f_L;
     float t1, t2;           // 궤적 생성 시간
@@ -176,6 +178,12 @@ private:
         // 왼팔 좌표
         VectorXd pL; // 0: x, 1: y, 2: z
     }Position;
+
+    typedef struct{
+        float x;
+        float y;
+        float z;
+    }Pos_i;
 
     // 허리 각도와 손목, 팔꿈치 각도 저장할 구조체
     typedef struct {
