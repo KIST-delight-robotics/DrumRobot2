@@ -244,3 +244,5 @@ State the license under which the project is available. Example: This project is
  ┣ 📜README.md
  ┗ 📜SW Manual.pdf
 </pre>
+
+---
