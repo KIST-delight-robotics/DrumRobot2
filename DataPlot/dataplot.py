@@ -85,8 +85,10 @@ def main():
     # 데이터 로드
     df = load_txt(file_path)
 
-    # CAN ID별로 그래프 그리기
-    for can_id in df['CAN ID'].unique():
+    # CAN ID별로 데이터를 저장
+    can_ids = df['CAN ID'].unique()
+
+    for can_id in can_ids:
         # CAN ID별로 데이터 분리
         can_id_df = df[df['CAN ID'] == can_id]
         receive_df = can_id_df[can_id_df['타입'] == 'Receive']
