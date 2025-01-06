@@ -1,107 +1,52 @@
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
 
-# Define t_contact and t_lift as functions of T
-def t_contact(T):
-    return min(0.1 * T, 0.05)
+def plot_graph(T_values, y_function, y_label, title, highlight_T=None):
+    """
+    Plots a graph based on the given T values and a y_function.
 
-def t_lift(T):
-    return max(0.6 * T, T - 0.2)
+    Parameters:
+        T_values (numpy.ndarray): Array of T values.
+        y_function (function): A function to calculate y values based on T.
+        y_label (str): Label for the y-axis.
+        title (str): Title of the graph.
+        highlight_T (float or None): A specific T value to highlight on the graph (optional).
+    """
+    # Calculate y values using the provided function
+    y_values = y_function(T_values)
 
-def contact_angle(T):
-    return -1.0 * min(T * 5 / 0.5, 5)
-
-def stay_angle(T):
-    return min(T * 10 / 0.5, 10)
-
-def lift_angle(T):
-    return np.where(T <= 0.5, -100 * (T - 0.5)**2 + 25, 25)
-
-# Solve for wrist_q
-def calculate_wrist_q(T, t):
-    A = np.array([
-        [1, t_contact(T), t_contact(T)**2, t_contact(T)**3],
-        [1, t_lift(T), t_lift(T)**2, t_lift(T)**3],
-        [0, 1, 2 * t_contact(T), 3 * t_contact(T)**2],
-        [0, 1, 2 * t_lift(T), 3 * t_lift(T)**2]
-    ])
-    b = np.array([contact_angle(T), lift_angle(T), 0, 0])
-    sol = np.linalg.solve(A, b)
-    wrist_q = sol[0] + sol[1] * t + sol[2] * t**2 + sol[3] * t**3
-    return wrist_q, sol
-
-# Derivative of wrist_q
-def wrist_q_derivative(sol, t):
-    return sol[1] + 2 * sol[2] * t + 3 * sol[3] * t**2
-
-# Find t and slope where wrist_q matches stay_angle
-def find_t_and_slope(T):
-    t_values = np.linspace(0, 1, 200)
-    for t in t_values:
-        if stop_flag == 1:
-            break
-        wrist_q, sol = calculate_wrist_q(T, t)
-        stay_q = stay_angle(T)
-        if np.isclose(wrist_q, stay_q, atol=0.05):
-            stop_flag = 1
-            slope = wrist_q_derivative(sol, t)
-            return t, slope 
-    return None, None
-
-# Define cubic function with zero slope at boundaries
-def cubic_function(T, T_start, T_end, y_start, y_end, slope_target):
-    delta_T = T_end - T_start
-    a = 2 * (y_start - y_end) / (delta_T**3)
-    b = 3 * (y_end - y_start) / (delta_T**2)
-    c = slope_target / delta_T
-    return a * (T - T_start)**3 + b * (T - T_start)**2 + c * (T - T_start) + y_start
-
-# Generate and plot the cubic function
-def plot_cubic_function():
-    T_values = np.linspace(0.1, 1, 200)  # Divide T into 200 parts
-    t_matches = []
-    slopes_at_t = []
-
-    # Find t_match and slope for each T
-    for T in T_values:
-        t_match, slope_at_t = find_t_and_slope(T)
-        if t_match is not None:
-            t_matches.append(T)
-            slopes_at_t.append(slope_at_t)
-
-    # If no valid T found
-    if not t_matches:
-        print("No valid T values found where wrist_q matches stay_angle.")
-        return
-
-    # Define cubic function parameters
-    T_start = t_matches[0]
-    T_end = t_matches[-1]
-    y_start = slopes_at_t[0]
-    y_end = slopes_at_t[-1]
-    slope_target = slopes_at_t[len(slopes_at_t) // 2]  # Example slope in the middle
-
-    # Generate cubic values
-    cubic_values = cubic_function(T_values, T_start, T_end, y_start, y_end, slope_target)
-
-    # Plot results
+    # Plot the graph
     plt.figure(figsize=(10, 6))
-    plt.plot(T_values, cubic_values, label="Cubic Function", color="green", linewidth=2)
-    plt.scatter(t_matches, slopes_at_t, color="red", label="t_match points", zorder=5)
-    plt.axvline(T_start, color="gray", linestyle="--", label=f"T_start = {T_start:.2f}")
-    plt.axvline(T_end, color="red", linestyle="--", label=f"T_end = {T_end:.2f}")
-    plt.axhline(y_start, color="blue", linestyle="--", label=f"y_start = {y_start:.2f}")
-    plt.axhline(y_end, color="orange", linestyle="--", label=f"y_end = {y_end:.2f}")
+    plt.plot(T_values, y_values, label=f"{y_label} vs T", linewidth=2)
+    
+    # Highlight a specific T value if provided
+    if highlight_T is not None:
+        highlight_y = y_function(highlight_T)
+        plt.scatter([highlight_T], [highlight_y], color='red', label=f"T = {highlight_T}, y = {highlight_y:.2f}", zorder=5)
+
+    # Add labels and title
     plt.xlabel("T")
-    plt.ylabel("Angle (degrees)")
-    plt.title("Cubic Function with Matching Slope")
+    plt.ylabel(y_label)
+    plt.title(title)
+    plt.axhline(0, color='gray', linewidth=0.8, linestyle='--')
+    plt.axvline(0, color='gray', linewidth=0.8, linestyle='--')
     plt.legend()
     plt.grid(alpha=0.5)
     plt.show()
 
-    # Return t_match values
-    return t_matches
+# Example of usage
+if __name__ == "__main__":
+    # Define a range of T values
+    T = np.linspace(0, 1, 200)
 
-# Run the plotting function and return t_match values
-t_matches = plot_cubic_function()
-print("t_matches:", t_matches)
+    # Define a sample function for y
+    def sample_function(T):
+        return np.where(T <= 0.5, 0.2 * T, 0.1)
+
+
+    # Call the plot_graph function
+    plot_graph(T_values=T, 
+               y_function=sample_function, 
+               y_label="t_contact", 
+               title="Sample Graph", 
+               highlight_T=0.5)
