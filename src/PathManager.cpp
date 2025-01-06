@@ -775,6 +775,7 @@ PathManager::HitParameter PathManager::getHitParameter(float t1, float t2, int h
     param.wristStayTime = 0.47 * (t2 - t1) - 0.06;
     param.wristLiftTime = std::max(0.6*(t2-t1), t2-t1-0.2);
     param.wristContactTime = std::min(0.1*(t2-t1), 0.05); // 0.08 -> 0.05
+    param.wristReleaseTime = std::min(0.2*(t2-t1), 0.1);
 
     return param;
 }
@@ -785,6 +786,7 @@ float PathManager::makeWristAngle(float t1, float t2, float t, int state, HitPar
     float t_contact = param.wristContactTime;
     float t_lift = param.wristLiftTime;
     float t_stay = param.wristStayTime;
+    float t_release = param.wristReleaseTime;
     float t_hit = t2 - t1;
     MatrixXd A;
     MatrixXd b;
@@ -810,14 +812,14 @@ float PathManager::makeWristAngle(float t1, float t2, float t, int state, HitPar
             sol = A_1 * b;
             wrist_q = sol(0,0) + sol(1,0) * t + sol(2,0) * t * t;
         }
-        else if (t < t_stay)
+        else if (t < t_release)
         {
             A.resize(4,4);
             b.resize(4,1);
             A << 1, t_contact, t_contact*t_contact, t_contact*t_contact*t_contact,
-                1, t_stay, t_stay*t_stay, t_stay*t_stay*t_stay,
+                1, t_release, t_release*t_release, t_release*t_release*t_release,
                 0, 1, 2*t_contact, 3*t_contact*t_contact,
-                0, 1, 2*t_stay, 3*t_stay*t_stay;
+                0, 1, 2*t_release, 3*t_release*t_release;
             b << param.wristContactAngle, param.wristStayAngle, 0, 0;
             A_1 = A.inverse();
             sol = A_1 * b;
@@ -881,15 +883,33 @@ float PathManager::makeWristAngle(float t1, float t2, float t, int state, HitPar
             sol = A_1 * b;
             wrist_q = sol(0,0) + sol(1,0) * t + sol(2,0) * t * t;
         }
-        else if (t < t_lift)
+        else if (t < t_release)
         {
             A.resize(4,4);
             b.resize(4,1);
             A << 1, t_contact, t_contact*t_contact, t_contact*t_contact*t_contact,
-                1, t_lift, t_lift*t_lift, t_lift*t_lift*t_lift,
+                1, t_release, t_release*t_release, t_release*t_release*t_release,
                 0, 1, 2*t_contact, 3*t_contact*t_contact,
+                0, 1, 2*t_release, 3*t_release*t_release;
+            b << param.wristContactAngle, param.wristStayAngle, 0, 0;
+            A_1 = A.inverse();
+            sol = A_1 * b;
+            wrist_q = sol(0,0) + sol(1,0) * t + sol(2,0) * t * t + sol(3,0) * t * t * t;
+        }
+        else if (t < t_stay)
+        {
+            // Stay
+            wrist_q = param.wristStayAngle;
+        }
+        else if (t < t_lift)
+        {
+            A.resize(4,4);
+            b.resize(4,1);
+            A << 1, t_stay, t_stay*t_stay, t_stay*t_stay*t_stay,
+                1, t_lift, t_lift*t_lift, t_lift*t_lift*t_lift,
+                0, 1, 2*t_stay, 3*t_stay*t_stay,
                 0, 1, 2*t_lift, 3*t_lift*t_lift;
-            b << param.wristContactAngle, param.wristLiftAngle, 0, 0;
+            b << param.wristStayAngle, param.wristLiftAngle, 0, 0;
             A_1 = A.inverse();
             sol = A_1 * b;
             wrist_q = sol(0,0) + sol(1,0) * t + sol(2,0) * t * t + sol(3,0) * t * t * t;
@@ -985,7 +1005,7 @@ float PathManager::makeWristAngle(float t1, float t2, float t, int state, HitPar
             A.resize(4,4);
             b.resize(4,1);
             // 앞에 stay가 생겨서 lift가 시작되는 시간이 0초가 아니라 t_stay 시간부터
-            /*  
+            
              A << 1, 0, 0, 0,
                 1, t_lift, t_lift*t_lift, t_lift*t_lift*t_lift,
                 0, 1, 0, 0,
