@@ -7,6 +7,7 @@
 #include "../include/tasks/SystemState.hpp"
 #include "../include/tasks/Functions.hpp"
 
+#include <iostream>
 #include <map>
 #include <memory>
 #include <string>
@@ -202,6 +203,8 @@ private:
     VectorXd makePath(VectorXd Pi, VectorXd Pf, float s);
 
     double round_sum = 0;
+
+    VectorXd waistRange(VectorXd &pR, VectorXd &pL);
     
     /////////////////////////////////////////////////////////////////////////// Play (wrist & elbow)
     
@@ -260,4 +263,15 @@ private:
 
     vector<float> c_MotorAngle = {0, 0, 0, 0, 0, 0, 0, 0, 0}; ///< 경로 생성 시 사용되는 현재 모터 위치 값
     
+    struct Node {
+        int x_idx;
+        double y_val;
+        double cost;
+        bool operator>(const Node &other) const {
+            return cost > other.cost;
+        }
+    };
+    int y_to_index(double y, double global_y_min, double step_size);
+    double select_top10_with_median(const vector<double>& y_vals, double current_y, double y_min, double y_max);
+    double dijkstra_top10_with_median(const vector<double>& x_values, const vector<pair<double, double>>& y_ranges, double start_y);
 };
