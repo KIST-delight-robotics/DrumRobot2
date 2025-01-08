@@ -816,7 +816,7 @@ float PathManager::makeWristAngle(float t1, float t2, float t, int state, HitPar
     float t_stay = param.wristStayTime;
     float t_release = param.wristReleaseTime;
     float t_hit = t2 - t1;
-    float intensityFactor = 0.2 * wristIntensity + 0.6;   // 1 : 약하게   2 : 기본    3 : 강하게
+    float intensityFactor = 0.4 * wristIntensity + 0.2;   // 1 : 약하게   2 : 기본    3 : 강하게
     float wristLiftAngle = param.wristLiftAngle * intensityFactor;
 
     MatrixXd A;
@@ -1995,7 +1995,7 @@ double PathManager::select_top10_with_median(const vector<double>& y_vals, doubl
         return distances[i] < distances[j];
     });
 
-    // 상위 30% 거리 추출
+    // 상위 n% 거리 추출
     int top_10_limit = max(1, static_cast<int>(ceil(sorted_idx.size() * 0.1)));
     vector<double> top_10_y_vals;
     for (int i = 0; i < top_10_limit; ++i) {
