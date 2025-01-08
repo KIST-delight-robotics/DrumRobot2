@@ -251,20 +251,22 @@ void PathManager::generateTrajectory()
         fileName = "S_L";
         fun.appendToCSV_DATA(fileName, t_L, s_L, delta_t_measure_L);
 
+
         // waist
-        double imin, imax, fmin, fmax;
+        //double imin_val = 0.0, imax_val = 0.0, fmin_val = 0.0, fmax_val = 0.0;
+        //double &imin = imin_val, &imax = imax_val, &fmin = fmin_val, &fmax = fmax_val;
+        Range range = {0.0, 0.0, 0.0, 0.0};
+        
         if(i == 0){
             VectorXd output = waistRange(Pt.pR, Pt.pL);
-            imin = output(1);
-            imax = output(0);
+            updateRange(output, range.imin, range.imax);
         }
         else if(i + 1 >= n){
             VectorXd output = waistRange(Pt.pR, Pt.pL);
-            fmin = output(1);
-            fmax = output(0);
+            updateRange(output, range.fmin, range.fmax);
         }
         vector<double> x_values = {t1, t2}; // 현재 x값과 다음 x값
-        vector<pair<double, double>> y_ranges = {{imin, imax}, {fmin, fmax}};
+        vector<pair<double, double>> y_ranges = {{range.imin, range.imax}, {range.fmin, range.fmax}};
         double start_y = q0_t1; // 현재에서의 y값
 
         try {
@@ -2078,3 +2080,7 @@ double PathManager::dijkstra_top10_with_median(const vector<double>& x_values, c
     return optimal_path.back().second;
 }
 
+void PathManager::updateRange(const VectorXd& output, double& min, double& max) {
+    min = output(1);
+    max = output(0);
+}
