@@ -267,6 +267,7 @@ private:
     struct Range {
         double imin, imax, fmin, fmax;
     };
+    double preq0_t1;
     void updateRange(const VectorXd& output, double& min, double& max);
     struct Node {
         int x_idx;

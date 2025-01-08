@@ -227,6 +227,9 @@ void PathManager::generateTrajectory()
     }
     n = (int)n;
 
+    // waist
+    Range range = {0.0, 0.0, 0.0, 0.0};
+
     for (int i = 0; i < n; i++)
     {
         Position Pt;
@@ -250,12 +253,6 @@ void PathManager::generateTrajectory()
         fun.appendToCSV_DATA(fileName, t_R, s_R, delta_t_measure_R);
         fileName = "S_L";
         fun.appendToCSV_DATA(fileName, t_L, s_L, delta_t_measure_L);
-
-
-        // waist
-        //double imin_val = 0.0, imax_val = 0.0, fmin_val = 0.0, fmax_val = 0.0;
-        //double &imin = imin_val, &imax = imax_val, &fmin = fmin_val, &fmax = fmax_val;
-        Range range = {0.0, 0.0, 0.0, 0.0};
         
         if(i == 0){
             VectorXd output = waistRange(Pt.pR, Pt.pL);
@@ -265,16 +262,22 @@ void PathManager::generateTrajectory()
             VectorXd output = waistRange(Pt.pR, Pt.pL);
             updateRange(output, range.fmin, range.fmax);
         }
-        vector<double> x_values = {t1, t2}; // 현재 x값과 다음 x값
-        vector<pair<double, double>> y_ranges = {{range.imin, range.imax}, {range.fmin, range.fmax}};
-        double start_y = q0_t1; // 현재에서의 y값
+    }
 
-        try {
-            q0_t2 = dijkstra_top10_with_median(x_values, y_ranges, start_y);
-            
-        } catch (const exception& e) {
-            cerr << e.what() << endl;
+    vector<double> x_values = {t1, t2}; // 현재 x값과 다음 x값
+    vector<pair<double, double>> y_ranges = {{range.imin, range.imax}, {range.fmin, range.fmax}};
+    
+    try {
+        if(line == 0){
+            q0_t1 = readyArr[0];
         }
+        else{
+            q0_t1 = preq0_t1;
+        }
+        q0_t2 = dijkstra_top10_with_median(x_values, y_ranges, q0_t1);
+        preq0_t1 = q0_t2;
+    } catch (const exception& e) {
+        cerr << e.what() << endl;
     }
 
     // waist, wrist & elbow
@@ -298,7 +301,6 @@ void PathManager::generateTrajectory()
             1, t21, t21*t21, t21*t21*t21,
             0, 1, 0, 0,
             0, 1, 2*t21, 3*t21*t21;
-
         b << q0_t1, q0_t2, 0, 0;
 
         A_1 = A.inverse();
@@ -1918,7 +1920,7 @@ VectorXd PathManager::waistRange(VectorXd &pR, VectorXd &pL)
     Qf(8) = 0.0;
 
     output(0) = Q_arr(0,0); // max
-    output(1) = Q_arr(0,j); // min
+    output(1) = Q_arr(0,j-1); // min
 
     return output;
 }
@@ -1977,7 +1979,7 @@ double PathManager::select_top10_with_median(const vector<double>& y_vals, doubl
         return distances[i] < distances[j];
     });
 
-    // 상위 10% 거리 추출
+    // 상위 30% 거리 추출
     int top_10_limit = max(1, static_cast<int>(ceil(sorted_idx.size() * 0.1)));
     vector<double> top_10_y_vals;
     for (int i = 0; i < top_10_limit; ++i) {
