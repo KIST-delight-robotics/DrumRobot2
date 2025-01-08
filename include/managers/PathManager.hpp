@@ -149,7 +149,7 @@ private:
     string trimWhitespace(const std::string &str);
 
     void parseMeasure(MatrixXd &measureMatrix);
-    pair<VectorXd, VectorXd> parseOneArm(VectorXd t, VectorXd inst, VectorXd stateVector);
+    pair<VectorXd, VectorXd> parseOneArm(VectorXd t, VectorXd inst, VectorXd intensity, char dir, VectorXd stateVector);
 
     float bpm = 0;         /// txt 악보의 BPM 정보.
     double threshold = 2.4;
@@ -216,6 +216,10 @@ private:
 
     const float elbowStayBaseAngle = 5.0 * M_PI / 180.0;
     const float elbowLiftBaseAngle = 10.0 * M_PI / 180.0;
+
+    // 세기
+    int wristIntensityR = 0;
+    int wristIntensityL = 0;
     
     // 타격 궤적 생성 파라미터
     typedef struct {
@@ -240,10 +244,10 @@ private:
     }HitParameter;
 
     float makeElbowAngle(float t1, float t2, float t, int state, HitParameter param);
-    float makeWristAngle(float t1, float t2, float t, int state, HitParameter param);
+    float makeWristAngle(float t1, float t2, float t, int state, HitParameter param, int wristIntesity);
 
     HitParameter getHitParameter(float t1, float t2, int hitState, HitParameter preParam);
-    VectorXd makeHitTrajetory(float t1, float t2, float t, VectorXd hitState);
+    VectorXd makeHitTrajetory(float t1, float t2, float t, VectorXd hitState, int wristIntesity);
     
     VectorXd hit_state_R = VectorXd::Zero(2);
     VectorXd hit_state_L = VectorXd::Zero(2);

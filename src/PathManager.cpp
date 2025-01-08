@@ -310,11 +310,11 @@ void PathManager::generateTrajectory()
         
         // wrist & elbow
         pre_parameters_tmp = pre_parameters_R;
-        qt.add_qR = makeHitTrajetory(t1, t2, t, hit_state_R);
+        qt.add_qR = makeHitTrajetory(t1, t2, t, hit_state_R, wristIntensityR);
         pre_parameters_R = pre_parameters_tmp;
 
         pre_parameters_tmp = pre_parameters_L;
-        qt.add_qL = makeHitTrajetory(t1, t2, t, hit_state_L);
+        qt.add_qL = makeHitTrajetory(t1, t2, t, hit_state_L, wristIntensityL);
         pre_parameters_L = pre_parameters_tmp;
 
         q_buffer.push(qt);
@@ -469,9 +469,11 @@ void PathManager::parseMeasure(MatrixXd &measureMatrix)
     VectorXd Measure_time = measureMatrix.col(8);
     VectorXd Measure_R = measureMatrix.col(2);
     VectorXd Measure_L = measureMatrix.col(3);
+    VectorXd MeasureIntensity_R =  measureMatrix.col(4);
+    VectorXd MeasureIntensity_L =  measureMatrix.col(5);
 
-    pair<VectorXd, VectorXd> R = parseOneArm(Measure_time, Measure_R, measureState.row(0));
-    pair<VectorXd, VectorXd> L = parseOneArm(Measure_time, Measure_L, measureState.row(1));
+    pair<VectorXd, VectorXd> R = parseOneArm(Measure_time, Measure_R, MeasureIntensity_R, 0, measureState.row(0));
+    pair<VectorXd, VectorXd> L = parseOneArm(Measure_time, Measure_L, MeasureIntensity_L, 1, measureState.row(1));
 
     // 데이터 저장
     inst_i << R.first.block(1,0,9,1), L.first.block(1,0,9,1);
@@ -484,6 +486,15 @@ void PathManager::parseMeasure(MatrixXd &measureMatrix)
 
     t1 = measureMatrix(0, 8);
     t2 = measureMatrix(1, 8);
+    // for (int i = 0; i < measureMatrix.rows(); i++)
+    // {
+    //     if(measureMatrix(i, 4) != 0 || measureMatrix(i, 5) != 0)
+    //     {
+    //         wristIntensityR = measureMatrix(i, 4);
+    //         wristIntensityL = measureMatrix(i, 5);
+    //         break;
+    //     }
+    // }
 
     hit_state_R.resize(2);
     hit_state_R << measureMatrix(0,2), measureMatrix(1,2);
@@ -511,7 +522,7 @@ void PathManager::parseMeasure(MatrixXd &measureMatrix)
     measureMatrix = tmp_matrix;
 }
 
-pair<VectorXd, VectorXd> PathManager::parseOneArm(VectorXd t, VectorXd inst, VectorXd stateVector)
+pair<VectorXd, VectorXd> PathManager::parseOneArm(VectorXd t, VectorXd inst, VectorXd intensity, char dir, VectorXd stateVector)
 {
     map<int, int> instrument_mapping = {
     {1, 2}, {2, 5}, {3, 6}, {4, 8}, {5, 3}, {6, 1}, {7, 0}, {8, 7}, {11, 2}, {51, 2}, {61, 2}, {71, 2}, {81, 2}, {91, 2}};
@@ -541,6 +552,7 @@ pair<VectorXd, VectorXd> PathManager::parseOneArm(VectorXd t, VectorXd inst, Vec
             detectHit = true;
             detectTime = t(i);
             detectInst = inst(i);
+            dir == 0 ? wristIntensityR = intensity(i) : wristIntensityL = intensity(i);
 
             break;
         }
@@ -728,7 +740,7 @@ VectorXd PathManager::makePath(VectorXd Pi, VectorXd Pf, float s)
     return Ps;
 }
 
-VectorXd PathManager::makeHitTrajetory(float t1, float t2, float t, VectorXd hitState)
+VectorXd PathManager::makeHitTrajetory(float t1, float t2, float t, VectorXd hitState, int wristIntensity)
 {
     VectorXd addAngle;
     int state;
@@ -758,7 +770,7 @@ VectorXd PathManager::makeHitTrajetory(float t1, float t2, float t, VectorXd hit
     pre_parameters_tmp = param;
 
     addAngle.resize(2);    // wrist, elbow
-    addAngle(0) = makeWristAngle(t1, t2, t, state, param);
+    addAngle(0) = makeWristAngle(t1, t2, t, state, param, wristIntensity);
     addAngle(1) = makeElbowAngle(t1, t2, t, state, param);
    
     return addAngle;
@@ -782,12 +794,13 @@ PathManager::HitParameter PathManager::getHitParameter(float t1, float t2, int h
     param.elbowLiftAngle = std::min((t2-t1)*elbowLiftBaseAngle/baseTime, elbowLiftBaseAngle);
     param.wristContactAngle = -1.0 * std::min((t2-t1)*wristContactBaseAngle/baseTime, wristContactBaseAngle);
     //param.wristLiftAngle = std::min((t2-t1)*wristLiftBaseAngle/baseTime, wristLiftBaseAngle);
-    t2 - t1 < 0.5 ? param.wristLiftAngle = (-100 * ((t2 - t1) - 0.5) * ((t2 - t1) - 0.5) + 25) * M_PI / 180.0 : param.wristLiftAngle = 25 * M_PI / 180.0;
+
+    t2 - t1 < 0.5 ? param.wristLiftAngle = (-100 * ((t2 - t1) - 0.5) * ((t2 - t1) - 0.5) + 25) * M_PI / 180.0 : param.wristLiftAngle = 25  * M_PI / 180.0;
 
     param.elbowStayTime = std::max(0.5*(t2-t1), t2-t1-0.2);
     param.elbowLiftTime = std::max(0.5*(t2-t1), t2-t1-0.2);
 
-    param.wristStayTime = 0.47 * (t2 - t1) - 0.06;
+    param.wristStayTime = 0.47 * (t2 - t1) - 0.05;
     param.wristLiftTime = std::max(0.6*(t2-t1), t2-t1-0.2);
     param.wristContactTime = std::min(0.1*(t2-t1), 0.05); // 0.08 -> 0.05
     param.wristReleaseTime = std::min(0.2*(t2-t1), 0.1);
@@ -795,7 +808,7 @@ PathManager::HitParameter PathManager::getHitParameter(float t1, float t2, int h
     return param;
 }
 
-float PathManager::makeWristAngle(float t1, float t2, float t, int state, HitParameter param)
+float PathManager::makeWristAngle(float t1, float t2, float t, int state, HitParameter param, int wristIntensity)
 {
     float wrist_q = 0.0;
     float t_contact = param.wristContactTime;
@@ -803,6 +816,9 @@ float PathManager::makeWristAngle(float t1, float t2, float t, int state, HitPar
     float t_stay = param.wristStayTime;
     float t_release = param.wristReleaseTime;
     float t_hit = t2 - t1;
+    float intensityFactor = 0.2 * wristIntensity + 0.6;   // 1 : 약하게   2 : 기본    3 : 강하게
+    float wristLiftAngle = param.wristLiftAngle * intensityFactor;
+
     MatrixXd A;
     MatrixXd b;
     MatrixXd A_1;
@@ -827,7 +843,7 @@ float PathManager::makeWristAngle(float t1, float t2, float t, int state, HitPar
             sol = A_1 * b;
             wrist_q = sol(0,0) + sol(1,0) * t + sol(2,0) * t * t;
         }
-        else if (t < t_release)
+        else if (t <= t_release)
         {
             A.resize(4,4);
             b.resize(4,1);
@@ -861,7 +877,7 @@ float PathManager::makeWristAngle(float t1, float t2, float t, int state, HitPar
                 1, t_lift, t_lift*t_lift, t_lift*t_lift*t_lift,
                 0, 1, 2*t_stay, 3*t_stay*t_stay,
                 0, 1, 2*t_lift, 3*t_lift*t_lift;
-            b << param.wristStayAngle, param.wristLiftAngle, 0, 0;
+            b << param.wristStayAngle, wristLiftAngle, 0, 0;
             A_1 = A.inverse();
             sol = A_1 * b;
             wrist_q = sol(0,0) + sol(1,0) * t + sol(2,0) * t * t + sol(3,0) * t * t * t;
@@ -873,7 +889,7 @@ float PathManager::makeWristAngle(float t1, float t2, float t, int state, HitPar
             A << 1, t_lift, t_lift*t_lift,
                 1, t_hit, t_hit*t_hit,
                 0, 1, 2*t_lift;
-            b << param.wristLiftAngle, 0, 0;
+            b << wristLiftAngle, 0, 0;
             A_1 = A.inverse();
             sol = A_1 * b;
             wrist_q = sol(0,0) + sol(1,0) * t + sol(2,0) * t * t;
@@ -924,7 +940,7 @@ float PathManager::makeWristAngle(float t1, float t2, float t, int state, HitPar
                 1, t_lift, t_lift*t_lift, t_lift*t_lift*t_lift,
                 0, 1, 2*t_stay, 3*t_stay*t_stay,
                 0, 1, 2*t_lift, 3*t_lift*t_lift;
-            b << param.wristStayAngle, param.wristLiftAngle, 0, 0;
+            b << param.wristStayAngle, wristLiftAngle, 0, 0;
             A_1 = A.inverse();
             sol = A_1 * b;
             wrist_q = sol(0,0) + sol(1,0) * t + sol(2,0) * t * t + sol(3,0) * t * t * t;
@@ -936,7 +952,7 @@ float PathManager::makeWristAngle(float t1, float t2, float t, int state, HitPar
             A << 1, t_lift, t_lift*t_lift,
                 1, t_hit, t_hit*t_hit,
                 0, 1, 2*t_lift;
-            b << param.wristLiftAngle, 0, 0;
+            b << wristLiftAngle, 0, 0;
             A_1 = A.inverse();
             sol = A_1 * b;
             wrist_q = sol(0,0) + sol(1,0) * t + sol(2,0) * t * t;
@@ -1907,7 +1923,7 @@ VectorXd PathManager::waistRange(VectorXd &pR, VectorXd &pL)
     else
     {
         m = j/2;
-        // std::cout << "j = " << j << ", m = " << m << std::endl;
+        std::cout << "j = " << j << ", m = " << m << std::endl;
         for (int i = 0; i < 7; i++)
         {
             Qf(i) = Q_arr(i,m);

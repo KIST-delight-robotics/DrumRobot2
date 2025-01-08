@@ -32,14 +32,15 @@ def plot_from_txt(file1, file2=None):
     plt.ylabel("Angle (radians)")
     plt.title("Angle vs Time")
     plt.grid(alpha=0.5)
-    plt.legend()
+    plt.legend(loc="upper center", bbox_to_anchor=(0.5, 1.15), ncol=2)  # Move legend above the plot
+    plt.tight_layout()
     plt.show()
 
 
 # Example usage
 if __name__ == "__main__":
     # Path to txt files
-    file1_path = '../DrumRobot_data/solveIK_q7.txt' # Replace with your file path
+    file1_path = '../DrumRobot_data/solveIK_q7.txt'  # Replace with your file path
     file2_path = '../DrumRobot_data/solveIK_q8.txt'  # Replace with your file path (or None for single plot)
 
     # Call the function with one or two files
