@@ -228,7 +228,11 @@ void PathManager::generateTrajectory()
     n = (int)n;
 
     // waist
-    Range range = {0.0, 0.0, 0.0, 0.0};
+    imin =0.0;
+    imax =0.0;
+    fmin =0.0;
+    fmax =0.0;
+
 
     for (int i = 0; i < n; i++)
     {
@@ -256,16 +260,20 @@ void PathManager::generateTrajectory()
         
         if(i == 0){
             VectorXd output = waistRange(Pt.pR, Pt.pL);
-            updateRange(output, range.imin, range.imax);
+            // updateRange(output, range.imin, range.imax);
+            imin = output(1);
+            imax = output(0);
         }
         else if(i + 1 >= n){
             VectorXd output = waistRange(Pt.pR, Pt.pL);
-            updateRange(output, range.fmin, range.fmax);
+            // updateRange(output, range.fmin, range.fmax);
+            fmin = output(1);
+            fmax = output(0);
         }
     }
 
     vector<double> x_values = {t1, t2}; // 현재 x값과 다음 x값
-    vector<pair<double, double>> y_ranges = {{range.imin, range.imax}, {range.fmin, range.fmax}};
+    vector<pair<double, double>> y_ranges = {{imin, imax}, {fmin, fmax}};
     
     try {
         if(line == 0){

@@ -268,9 +268,10 @@ private:
     vector<float> c_MotorAngle = {0, 0, 0, 0, 0, 0, 0, 0, 0}; ///< 경로 생성 시 사용되는 현재 모터 위치 값
     
 
-    struct Range {
-        double imin, imax, fmin, fmax;
-    };
+    // struct Range {
+    //     double imin, imax, fmin, fmax;
+    // };
+    double imin, imax, fmin, fmax;
     double preq0_t1;
     void updateRange(const VectorXd& output, double& min, double& max);
     struct Node {
