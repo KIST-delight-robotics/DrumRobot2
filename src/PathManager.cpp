@@ -769,7 +769,7 @@ VectorXd PathManager::makeHitTrajetory(float t1, float t2, float t, VectorXd hit
 
     addAngle.resize(2);    // wrist, elbow
     addAngle(0) = makeWristAngle(t1, t2, t, state, param, wristIntensity);
-    addAngle(1) = makeElbowAngle(t1, t2, t, state, param);
+    addAngle(1) = makeElbowAngle(t1, t2, t, state, param, wristIntensity);
    
     return addAngle;
 }
@@ -806,7 +806,7 @@ PathManager::HitParameter PathManager::getHitParameter(float t1, float t2, int h
     return param;
 }
 
-float PathManager::makeWristAngle(float t1, float t2, float t, int state, HitParameter param, int wristIntensity)
+float PathManager::makeWristAngle(float t1, float t2, float t, int state, HitParameter param, int intensity)
 {
     float wrist_q = 0.0;
     float t_contact = param.wristContactTime;
@@ -814,7 +814,7 @@ float PathManager::makeWristAngle(float t1, float t2, float t, int state, HitPar
     float t_stay = param.wristStayTime;
     float t_release = param.wristReleaseTime;
     float t_hit = t2 - t1;
-    float intensityFactor = 0.2 * wristIntensity + 0.6;   // 1 : 약하게   2 : 기본    3 : 강하게
+    float intensityFactor = 0.4 * intensity + 0.2;   // 1 : 약하게   2 : 기본    3 : 강하게
     float wristLiftAngle = param.wristLiftAngle * intensityFactor;
 
     MatrixXd A;
@@ -1183,13 +1183,15 @@ float PathManager::makeWristAngle(float t1, float t2, float t, int state, HitPar
     return wrist_q;
 }
 */
-float PathManager::makeElbowAngle(float t1, float t2, float t, int state, HitParameter param)
+float PathManager::makeElbowAngle(float t1, float t2, float t, int state, HitParameter param, int intensity)
 {
     float elbow_q = 0.0;
 
     float t_lift = param.elbowLiftTime;
     float t_stay = param.elbowStayTime;
     float t_hit = t2 - t1;
+    float intensityFactor = 0.4 * intensity + 0.2;   // 1 : 약하게   2 : 기본    3 : 강하게
+    float elbowLiftAngle = param.elbowLiftAngle * intensityFactor;
 
     MatrixXd A;
     MatrixXd b;
@@ -1243,7 +1245,7 @@ float PathManager::makeElbowAngle(float t1, float t2, float t, int state, HitPar
                 0, 1, 0, 0,
                 0, 1, 2*t_lift, 3*t_lift*t_lift;
 
-            b << param.elbowStayAngle, param.elbowLiftAngle, 0, 0;
+            b << param.elbowStayAngle, elbowLiftAngle, 0, 0;
 
             A_1 = A.inverse();
             sol = A_1 * b;
@@ -1260,7 +1262,7 @@ float PathManager::makeElbowAngle(float t1, float t2, float t, int state, HitPar
                 0, 1, 2*t_lift, 3*t_lift*t_lift,
                 0, 1, 2*t_hit, 3*t_hit*t_hit;
 
-            b << param.elbowLiftAngle, 0, 0, 0;
+            b << elbowLiftAngle, 0, 0, 0;
 
             A_1 = A.inverse();
             sol = A_1 * b;
@@ -1285,7 +1287,7 @@ float PathManager::makeElbowAngle(float t1, float t2, float t, int state, HitPar
                 0, 1, 0, 0,
                 0, 1, 2*t_lift, 3*t_lift*t_lift;
 
-            b << 0, param.elbowLiftAngle, 0, 0;
+            b << 0, elbowLiftAngle, 0, 0;
 
             A_1 = A.inverse();
             sol = A_1 * b;
@@ -1302,7 +1304,7 @@ float PathManager::makeElbowAngle(float t1, float t2, float t, int state, HitPar
                 0, 1, 2*t_lift, 3*t_lift*t_lift,
                 0, 1, 2*t_hit, 3*t_hit*t_hit;
 
-            b << param.elbowLiftAngle, 0, 0, 0;
+            b << elbowLiftAngle, 0, 0, 0;
 
             A_1 = A.inverse();
             sol = A_1 * b;
