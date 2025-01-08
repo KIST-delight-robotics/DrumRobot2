@@ -513,7 +513,13 @@ void PathManager::parseMeasure(MatrixXd &measureMatrix)
     {
         t1 = measureMatrix(0, 9);
         t2 = measureMatrix(1, 9);
-        wristIntensity = measureMatrix(1, 8);
+        for (int i = 0; i < Measure_time.rows(); i++)
+        {
+            if (Measure_L(i) != 0 || Measure_R(i) != 0)
+            {
+                wristIntensity = measureMatrix(i, 9);
+            }
+        }
     }
 
     hit_state_R.resize(2);
