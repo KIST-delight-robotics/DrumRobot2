@@ -151,31 +151,6 @@ bool PathManager::readMeasure(ifstream& inputFile, bool &BPMFlag)
 
             initVal();
         }
-        else if (items.size() == 9)
-        {
-            measureMatrix.conservativeResize(measureMatrix.rows() + 1, measureMatrix.cols());
-            for (int i = 0; i < 9; i++)
-            {
-                measureMatrix(measureMatrix.rows() - 1, i) = stod(items[i]);
-            }
-
-            // total time 누적
-            totalTime += measureMatrix(measureMatrix.rows() - 1, 1);
-            measureMatrix(measureMatrix.rows() - 1, 9) = totalTime * 100.0 / bpm;
-
-            // timeSum 누적
-            timeSum += measureMatrix(measureMatrix.rows() - 1, 1);
-
-            // timeSum이 threshold를 넘으면 true 반환
-            if (timeSum >= threshold)
-            {
-                std::cout << "\n//////////////////////////////// line : " << line + 1 << "\n";
-                std::cout << measureMatrix;
-                // std::cout << "\n ////////////// time sum : " << timeSum << "\n";
-
-                return true;
-            }
-        }
         else
         {
             measureMatrix.conservativeResize(measureMatrix.rows() + 1, measureMatrix.cols());
@@ -276,20 +251,22 @@ void PathManager::generateTrajectory()
         fileName = "S_L";
         fun.appendToCSV_DATA(fileName, t_L, s_L, delta_t_measure_L);
 
+
         // waist
-        double imin, imax, fmin, fmax;
+        //double imin_val = 0.0, imax_val = 0.0, fmin_val = 0.0, fmax_val = 0.0;
+        //double &imin = imin_val, &imax = imax_val, &fmin = fmin_val, &fmax = fmax_val;
+        Range range = {0.0, 0.0, 0.0, 0.0};
+        
         if(i == 0){
             VectorXd output = waistRange(Pt.pR, Pt.pL);
-            imin = output(1);
-            imax = output(0);
+            updateRange(output, range.imin, range.imax);
         }
         else if(i + 1 >= n){
             VectorXd output = waistRange(Pt.pR, Pt.pL);
-            fmin = output(1);
-            fmax = output(0);
+            updateRange(output, range.fmin, range.fmax);
         }
         vector<double> x_values = {t1, t2}; // 현재 x값과 다음 x값
-        vector<pair<double, double>> y_ranges = {{imin, imax}, {fmin, fmax}};
+        vector<pair<double, double>> y_ranges = {{range.imin, range.imax}, {range.fmin, range.fmax}};
         double start_y = q0_t1; // 현재에서의 y값
 
         try {
@@ -331,11 +308,11 @@ void PathManager::generateTrajectory()
         
         // wrist & elbow
         pre_parameters_tmp = pre_parameters_R;
-        qt.add_qR = makeHitTrajetory(t1, t2, t, hit_state_R);
+        qt.add_qR = makeHitTrajetory(t1, t2, t, hit_state_R, wristIntensityR);
         pre_parameters_R = pre_parameters_tmp;
 
         pre_parameters_tmp = pre_parameters_L;
-        qt.add_qL = makeHitTrajetory(t1, t2, t, hit_state_L);
+        qt.add_qL = makeHitTrajetory(t1, t2, t, hit_state_L, wristIntensityL);
         pre_parameters_L = pre_parameters_tmp;
 
         q_buffer.push(qt);
@@ -471,8 +448,8 @@ string PathManager::trimWhitespace(const std::string &str)
 
 void PathManager::initVal()
 {
-    measureMatrix.resize(1, 10);
-    measureMatrix = MatrixXd::Zero(1, 10);
+    measureMatrix.resize(1, 9);
+    measureMatrix = MatrixXd::Zero(1, 9);
 
     measureState.resize(2, 3);
     measureState = MatrixXd::Zero(2, 3);
@@ -487,12 +464,14 @@ void PathManager::initVal()
 
 void PathManager::parseMeasure(MatrixXd &measureMatrix)
 {
-    VectorXd Measure_time = measureMatrix.col(9);
+    VectorXd Measure_time = measureMatrix.col(8);
     VectorXd Measure_R = measureMatrix.col(2);
     VectorXd Measure_L = measureMatrix.col(3);
+    VectorXd MeasureIntensity_R =  measureMatrix.col(4);
+    VectorXd MeasureIntensity_L =  measureMatrix.col(5);
 
-    pair<VectorXd, VectorXd> R = parseOneArm(Measure_time, Measure_R, measureState.row(0));
-    pair<VectorXd, VectorXd> L = parseOneArm(Measure_time, Measure_L, measureState.row(1));
+    pair<VectorXd, VectorXd> R = parseOneArm(Measure_time, Measure_R, MeasureIntensity_R, 0, measureState.row(0));
+    pair<VectorXd, VectorXd> L = parseOneArm(Measure_time, Measure_L, MeasureIntensity_L, 1, measureState.row(1));
 
     // 데이터 저장
     inst_i << R.first.block(1,0,9,1), L.first.block(1,0,9,1);
@@ -503,24 +482,17 @@ void PathManager::parseMeasure(MatrixXd &measureMatrix)
     t_f_R = R.first(10);
     t_f_L = L.first(10);
 
-    if (measureMatrix.row(0).size() == 8)
-    {
-        t1 = measureMatrix(0, 8);
-        t2 = measureMatrix(1, 8);
-        wristIntensity = 2;
-    }
-    else
-    {
-        t1 = measureMatrix(0, 9);
-        t2 = measureMatrix(1, 9);
-        for (int i = 0; i < Measure_time.rows(); i++)
-        {
-            if (Measure_L(i) != 0 || Measure_R(i) != 0)
-            {
-                wristIntensity = measureMatrix(i, 9);
-            }
-        }
-    }
+    t1 = measureMatrix(0, 8);
+    t2 = measureMatrix(1, 8);
+    // for (int i = 0; i < measureMatrix.rows(); i++)
+    // {
+    //     if(measureMatrix(i, 4) != 0 || measureMatrix(i, 5) != 0)
+    //     {
+    //         wristIntensityR = measureMatrix(i, 4);
+    //         wristIntensityL = measureMatrix(i, 5);
+    //         break;
+    //     }
+    // }
 
     hit_state_R.resize(2);
     hit_state_R << measureMatrix(0,2), measureMatrix(1,2);
@@ -548,7 +520,7 @@ void PathManager::parseMeasure(MatrixXd &measureMatrix)
     measureMatrix = tmp_matrix;
 }
 
-pair<VectorXd, VectorXd> PathManager::parseOneArm(VectorXd t, VectorXd inst, VectorXd stateVector)
+pair<VectorXd, VectorXd> PathManager::parseOneArm(VectorXd t, VectorXd inst, VectorXd intensity, char dir, VectorXd stateVector)
 {
     map<int, int> instrument_mapping = {
     {1, 2}, {2, 5}, {3, 6}, {4, 8}, {5, 3}, {6, 1}, {7, 0}, {8, 7}, {11, 2}, {51, 2}, {61, 2}, {71, 2}, {81, 2}, {91, 2}};
@@ -578,6 +550,7 @@ pair<VectorXd, VectorXd> PathManager::parseOneArm(VectorXd t, VectorXd inst, Vec
             detectHit = true;
             detectTime = t(i);
             detectInst = inst(i);
+            dir == 0 ? wristIntensityR = intensity(i) : wristIntensityL = intensity(i);
 
             break;
         }
@@ -765,7 +738,7 @@ VectorXd PathManager::makePath(VectorXd Pi, VectorXd Pf, float s)
     return Ps;
 }
 
-VectorXd PathManager::makeHitTrajetory(float t1, float t2, float t, VectorXd hitState)
+VectorXd PathManager::makeHitTrajetory(float t1, float t2, float t, VectorXd hitState, int wristIntensity)
 {
     VectorXd addAngle;
     int state;
@@ -795,7 +768,7 @@ VectorXd PathManager::makeHitTrajetory(float t1, float t2, float t, VectorXd hit
     pre_parameters_tmp = param;
 
     addAngle.resize(2);    // wrist, elbow
-    addAngle(0) = makeWristAngle(t1, t2, t, state, param);
+    addAngle(0) = makeWristAngle(t1, t2, t, state, param, wristIntensity);
     addAngle(1) = makeElbowAngle(t1, t2, t, state, param);
    
     return addAngle;
@@ -820,8 +793,7 @@ PathManager::HitParameter PathManager::getHitParameter(float t1, float t2, int h
     param.wristContactAngle = -1.0 * std::min((t2-t1)*wristContactBaseAngle/baseTime, wristContactBaseAngle);
     //param.wristLiftAngle = std::min((t2-t1)*wristLiftBaseAngle/baseTime, wristLiftBaseAngle);
 
-    float intensityFactor = 0.2 * wristIntensity + 0.6;   // 1 : 약하게   2 : 기본    3 : 강하게
-    t2 - t1 < 0.5 ? param.wristLiftAngle = (-100 * ((t2 - t1) - 0.5) * ((t2 - t1) - 0.5) + (25 * intensityFactor)) * M_PI / 180.0 : param.wristLiftAngle = (25 * intensityFactor) * M_PI / 180.0;
+    t2 - t1 < 0.5 ? param.wristLiftAngle = (-100 * ((t2 - t1) - 0.5) * ((t2 - t1) - 0.5) + 25) * M_PI / 180.0 : param.wristLiftAngle = 25  * M_PI / 180.0;
 
     param.elbowStayTime = std::max(0.5*(t2-t1), t2-t1-0.2);
     param.elbowLiftTime = std::max(0.5*(t2-t1), t2-t1-0.2);
@@ -834,7 +806,7 @@ PathManager::HitParameter PathManager::getHitParameter(float t1, float t2, int h
     return param;
 }
 
-float PathManager::makeWristAngle(float t1, float t2, float t, int state, HitParameter param)
+float PathManager::makeWristAngle(float t1, float t2, float t, int state, HitParameter param, int wristIntensity)
 {
     float wrist_q = 0.0;
     float t_contact = param.wristContactTime;
@@ -842,6 +814,9 @@ float PathManager::makeWristAngle(float t1, float t2, float t, int state, HitPar
     float t_stay = param.wristStayTime;
     float t_release = param.wristReleaseTime;
     float t_hit = t2 - t1;
+    float intensityFactor = 0.2 * wristIntensity + 0.6;   // 1 : 약하게   2 : 기본    3 : 강하게
+    float wristLiftAngle = param.wristLiftAngle * intensityFactor;
+
     MatrixXd A;
     MatrixXd b;
     MatrixXd A_1;
@@ -900,7 +875,7 @@ float PathManager::makeWristAngle(float t1, float t2, float t, int state, HitPar
                 1, t_lift, t_lift*t_lift, t_lift*t_lift*t_lift,
                 0, 1, 2*t_stay, 3*t_stay*t_stay,
                 0, 1, 2*t_lift, 3*t_lift*t_lift;
-            b << param.wristStayAngle, param.wristLiftAngle, 0, 0;
+            b << param.wristStayAngle, wristLiftAngle, 0, 0;
             A_1 = A.inverse();
             sol = A_1 * b;
             wrist_q = sol(0,0) + sol(1,0) * t + sol(2,0) * t * t + sol(3,0) * t * t * t;
@@ -912,7 +887,7 @@ float PathManager::makeWristAngle(float t1, float t2, float t, int state, HitPar
             A << 1, t_lift, t_lift*t_lift,
                 1, t_hit, t_hit*t_hit,
                 0, 1, 2*t_lift;
-            b << param.wristLiftAngle, 0, 0;
+            b << wristLiftAngle, 0, 0;
             A_1 = A.inverse();
             sol = A_1 * b;
             wrist_q = sol(0,0) + sol(1,0) * t + sol(2,0) * t * t;
@@ -963,7 +938,7 @@ float PathManager::makeWristAngle(float t1, float t2, float t, int state, HitPar
                 1, t_lift, t_lift*t_lift, t_lift*t_lift*t_lift,
                 0, 1, 2*t_stay, 3*t_stay*t_stay,
                 0, 1, 2*t_lift, 3*t_lift*t_lift;
-            b << param.wristStayAngle, param.wristLiftAngle, 0, 0;
+            b << param.wristStayAngle, wristLiftAngle, 0, 0;
             A_1 = A.inverse();
             sol = A_1 * b;
             wrist_q = sol(0,0) + sol(1,0) * t + sol(2,0) * t * t + sol(3,0) * t * t * t;
@@ -975,7 +950,7 @@ float PathManager::makeWristAngle(float t1, float t2, float t, int state, HitPar
             A << 1, t_lift, t_lift*t_lift,
                 1, t_hit, t_hit*t_hit,
                 0, 1, 2*t_lift;
-            b << param.wristLiftAngle, 0, 0;
+            b << wristLiftAngle, 0, 0;
             A_1 = A.inverse();
             sol = A_1 * b;
             wrist_q = sol(0,0) + sol(1,0) * t + sol(2,0) * t * t;
@@ -1946,7 +1921,7 @@ VectorXd PathManager::waistRange(VectorXd &pR, VectorXd &pL)
     else
     {
         m = j/2;
-        // std::cout << "j = " << j << ", m = " << m << std::endl;
+        std::cout << "j = " << j << ", m = " << m << std::endl;
         for (int i = 0; i < 7; i++)
         {
             Qf(i) = Q_arr(i,m);
@@ -1959,7 +1934,7 @@ VectorXd PathManager::waistRange(VectorXd &pR, VectorXd &pL)
     Qf(8) = 0.0;
 
     output(0) = Q_arr(0,0); // max
-    output(1) = Q_arr(0,j); // min
+    output(1) = Q_arr(0,j-1); // min
 
     return output;
 }
@@ -2121,3 +2096,7 @@ double PathManager::dijkstra_top10_with_median(const vector<double>& x_values, c
     return optimal_path.back().second;
 }
 
+void PathManager::updateRange(const VectorXd& output, double& min, double& max) {
+    min = output(1);
+    max = output(0);
+}
