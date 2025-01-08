@@ -220,7 +220,7 @@ void PathManager::generateTrajectory()
     float dt = canManager.deltaT;
 
     // waist
-    float q0_t1 = 0.0, q0_t2 = 0.0;
+    double q0_t1 = 0.0, q0_t2 = 0.0;
 
     // parse
     parseMeasure(measureMatrix);
@@ -277,15 +277,26 @@ void PathManager::generateTrajectory()
         fun.appendToCSV_DATA(fileName, t_L, s_L, delta_t_measure_L);
 
         // waist
-        if (i == 0)
-        {
-            VectorXd q_t1 = ikfun_final(Pt.pR, Pt.pL);
-            q0_t1 = q_t1(0);
+        double imin, imax, fmin, fmax;
+        if(i == 0){
+            VectorXd output = waistRange(Pt.pR, Pt.pL);
+            imin = output(1);
+            imax = output(0);
         }
-        else if (i + 1 >= n)
-        {
-            VectorXd q_t2 = ikfun_final(Pt.pR, Pt.pL);
-            q0_t2 = q_t2(0);
+        else if(i + 1 >= n){
+            VectorXd output = waistRange(Pt.pR, Pt.pL);
+            fmin = output(1);
+            fmax = output(0);
+        }
+        vector<double> x_values = {t1, t2}; // 현재 x값과 다음 x값
+        vector<pair<double, double>> y_ranges = {{imin, imax}, {fmin, fmax}};
+        double start_y = q0_t1; // 현재에서의 y값
+
+        try {
+            q0_t2 = dijkstra_top10_with_median(x_values, y_ranges, start_y);
+            
+        } catch (const exception& e) {
+            cerr << e.what() << endl;
         }
     }
 
@@ -1790,6 +1801,163 @@ VectorXd PathManager::ikfun_final(VectorXd &pR, VectorXd &pL)
     return Qf;
 }
 
+VectorXd PathManager::waistRange(VectorXd &pR, VectorXd &pL)
+{
+    // float direction = 0.0 * M_PI;
+    PartLength part_length;
+
+    float X1 = pR(0), Y1 = pR(1), z1 = pR(2);
+    float X2 = pL(0), Y2 = pL(1), z2 = pL(2);
+    float r1 = part_length.upperArm;
+    float r2 = part_length.lowerArm + part_length.stick;
+    float L1 = part_length.upperArm;
+    float L2 = part_length.lowerArm + part_length.stick;
+    float s = part_length.waist;
+    float z0 = part_length.height;
+
+    int j = 0, m = 0;
+    float the3[1351];
+    float zeta = z0 - z2;
+    VectorXd Qf(9);
+    VectorXd output(2);
+    MatrixXd Q_arr(7,1);
+    // float the0_f = 0;
+
+    // the3 배열 초기화
+    for (int i = 0; i < 1351; ++i)
+        the3[i] = -M_PI / 4.0 + i * M_PI / 1350.0 * (3.0 / 4.0); // the3 범위 : -45deg ~ 90deg
+
+    for (int i = 0; i < 1351; ++i)
+    {
+        float det_the4 = (z0 - z1 - r1 * cos(the3[i])) / r2;
+
+        if (det_the4 < 1 && det_the4 > -1)
+        {
+            float the34 = acos((z0 - z1 - r1 * cos(the3[i])) / r2);
+            float the4 = the34 - the3[i];
+
+            if (the4 >= 0 && the4 < 120.0 * M_PI / 180.0) // the4 범위 : 0deg ~ 120deg
+            {
+                float r = r1 * sin(the3[i]) + r2 * sin(the34);
+                float det_the1 = (X1 * X1 + Y1 * Y1 - r * r - s * s / 4.0) / (s * r);
+
+                if (det_the1 < 1 && det_the1 > -1)
+                {
+                    float the1 = acos(det_the1);
+                    if (the1 > 0 && the1 < 150.0 * M_PI / 180.0) // the1 범위 : 0deg ~ 150deg
+                    {
+                        float alpha = asin(X1 / sqrt(X1 * X1 + Y1 * Y1));
+                        float det_the0 = (s / 4.0 + (X1 * X1 + Y1 * Y1 - r * r) / s) / sqrt(X1 * X1 + Y1 * Y1);
+
+                        if (det_the0 < 1 && det_the0 > -1)
+                        {
+                            float the0 = asin(det_the0) - alpha;
+                            if (the0 > -M_PI / 3.0 && the0 < M_PI / 3.0) // the0 범위 : -60deg ~ 60deg
+                            {
+                                float L = sqrt((X2 - 0.5 * s * cos(the0 + M_PI)) * (X2 - 0.5 * s * cos(the0 + M_PI)) + (Y2 - 0.5 * s * sin(the0 + M_PI)) * (Y2 - 0.5 * s * sin(the0 + M_PI)));
+                                float det_the2 = (X2 - 0.5 * s * cos(the0 + M_PI)) / L;
+
+                                if (det_the2 < 1 && det_the2 > -1)
+                                {
+                                    float the2 = acos(det_the2) - the0;
+                                    if (the2 > 30 * M_PI / 180.0 && the2 < M_PI) // the2 범위 : 30deg ~ 180deg
+                                    {
+                                        float Lp = sqrt(L * L + zeta * zeta);
+                                        float det_the6 = (Lp * Lp - L1 * L1 - L2 * L2) / (2 * L1 * L2);
+
+                                        if (det_the6 < 1 && det_the6 > -1)
+                                        {
+                                            float the6 = acos(det_the6);
+                                            if (the6 >= 0 && the6 < 120.0 * M_PI / 180.0) // the6 범위 : 0deg ~ 120deg
+                                            {
+                                                float T = (zeta * zeta + L * L + L1 * L1 - L2 * L2) / (L1 * 2);
+                                                float det_the5 = L * L + zeta * zeta - T * T;
+
+                                                if (det_the5 > 0)
+                                                {
+                                                    float sol = T * L - zeta * sqrt(L * L + zeta * zeta - T * T);
+                                                    sol /= (L * L + zeta * zeta);
+                                                    float the5 = asin(sol);
+                                                    if (the5 > -M_PI / 4 && the5 < M_PI / 2) // the5 범위 : -45deg ~ 90deg
+                                                    {
+                                                        // if (j == 0 || fabs(the0 - direction) < fabs(the0_f - direction))
+                                                        // {
+                                                        //     Qf(0) = the0;
+                                                        //     Qf(1) = the1;
+                                                        //     Qf(2) = the2;
+                                                        //     Qf(3) = the3[i];
+                                                        //     Qf(4) = the4;
+                                                        //     Qf(5) = the5;
+                                                        //     Qf(6) = the6;
+                                                        //     the0_f = the0;
+                                                        //     j = 1;
+                                                        // }
+                                                        if (j == 0)
+                                                        {
+                                                            Q_arr(0,0) = the0;
+                                                            Q_arr(1,0) = the1;
+                                                            Q_arr(2,0) = the2;
+                                                            Q_arr(3,0) = the3[i];
+                                                            Q_arr(4,0) = the4;
+                                                            Q_arr(5,0) = the5;
+                                                            Q_arr(6,0) = the6;
+
+                                                            j = 1;
+                                                        }
+                                                        else
+                                                        {
+                                                            Q_arr.conservativeResize(Q_arr.rows(), Q_arr.cols() + 1);
+
+                                                            Q_arr(0,j) = the0;
+                                                            Q_arr(1,j) = the1;
+                                                            Q_arr(2,j) = the2;
+                                                            Q_arr(3,j) = the3[i];
+                                                            Q_arr(4,j) = the4;
+                                                            Q_arr(5,j) = the5;
+                                                            Q_arr(6,j) = the6;
+
+                                                            j++;
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if (j == 0)
+    {
+        cout << "IKFUN is not solved!!\n";
+        state.main = Main::Error;
+    }
+    else
+    {
+        m = j/2;
+        // std::cout << "j = " << j << ", m = " << m << std::endl;
+        for (int i = 0; i < 7; i++)
+        {
+            Qf(i) = Q_arr(i,m);
+
+            // std::cout << "Q(" << i << ") = " << Qf(i) << std::endl;
+        }
+    }
+
+    Qf(7) = 0.0;
+    Qf(8) = 0.0;
+
+    output(0) = Q_arr(0,0); // max
+    output(1) = Q_arr(0,j); // min
+
+    return output;
+}
+
 vector<float> PathManager::fkfun()
 {
     getMotorPos();
@@ -1824,3 +1992,126 @@ vector<float> PathManager::fkfun()
 
     return P;
 }
+
+
+int PathManager::y_to_index(double y, double global_y_min, double step_size) {
+    return static_cast<int>(round((y - global_y_min) / step_size));
+}
+
+
+double PathManager::select_top10_with_median(const vector<double>& y_vals, double current_y, double y_min, double y_max) {
+    vector<double> distances;
+    for (double y : y_vals) {
+        distances.push_back(abs(y - current_y));
+    }
+
+    // 거리 정렬 및 인덱스 추적
+    vector<int> sorted_idx(y_vals.size());
+    iota(sorted_idx.begin(), sorted_idx.end(), 0);
+    sort(sorted_idx.begin(), sorted_idx.end(), [&](int i, int j) {
+        return distances[i] < distances[j];
+    });
+
+    // 상위 10% 거리 추출
+    int top_10_limit = max(1, static_cast<int>(ceil(sorted_idx.size() * 0.1)));
+    vector<double> top_10_y_vals;
+    for (int i = 0; i < top_10_limit; ++i) {
+        top_10_y_vals.push_back(y_vals[sorted_idx[i]]);
+    }
+
+    // y 범위 중앙값 계산
+    double y_mid = (y_min + y_max) / 2;
+
+    // 중앙값과 가장 가까운 값을 선택
+    auto closest = min_element(top_10_y_vals.begin(), top_10_y_vals.end(), [&](double a, double b) {
+        return abs(a - y_mid) < abs(b - y_mid);
+    });
+
+    return *closest;
+}
+
+double PathManager::dijkstra_top10_with_median(const vector<double>& x_values, const vector<pair<double, double>>& y_ranges, double start_y) {
+    int n = x_values.size(); // x 값의 개수
+    double step_size = 0.01; // y 값 간격
+
+    // y 범위의 전역 최소 및 최대값
+    double global_y_min = y_ranges[0].first;
+    double global_y_max = y_ranges[0].second;
+    for (const auto& range : y_ranges) {
+        global_y_min = min(global_y_min, range.first);
+        global_y_max = max(global_y_max, range.second);
+    }
+
+    int max_steps = ceil((global_y_max - global_y_min) / step_size) + 1;
+
+    // 초기값 유효성 확인
+    if (start_y < y_ranges[0].first || start_y > y_ranges[0].second) {
+        throw runtime_error("초기값이 유효하지 않습니다. 시작 범위는 [" + to_string(y_ranges[0].first) + ", " + to_string(y_ranges[0].second) + "]입니다.");
+    }
+
+    // 거리 및 이전 노드 저장
+    vector<vector<double>> dist(n, vector<double>(max_steps, INFINITY));
+    vector<vector<pair<int, double>>> prev(n, vector<pair<int, double>>(max_steps, {-1, -1}));
+
+    // 시작 노드 초기화
+    dist[0][y_to_index(start_y, global_y_min, step_size)] = 0;
+
+    // 우선순위 큐
+    priority_queue<Node, vector<Node>, greater<Node>> pq;
+    pq.push(Node{0, start_y, 0});
+
+    // 다익스트라 알고리즘 실행
+    while (!pq.empty()) {
+        Node current = pq.top();
+        pq.pop();
+
+        int x_idx = current.x_idx;
+        double y_val = current.y_val;
+        double current_cost = current.cost;
+
+        if (x_idx == n - 1) {
+            continue; // 마지막 x 값에서는 경로 갱신만 수행
+        }
+
+        // 다음 x 값의 y 범위 확인
+        int next_x_idx = x_idx + 1;
+        double y_min_next = y_ranges[next_x_idx].first;
+        double y_max_next = y_ranges[next_x_idx].second;
+
+        vector<double> next_y_vals;
+        for (double next_y = y_min_next; next_y <= y_max_next; next_y += step_size) {
+            next_y_vals.push_back(next_y);
+        }
+
+        // 상위 10% 거리와 중앙값 근처의 y 값을 선택
+        double selected_y = select_top10_with_median(next_y_vals, y_val, y_min_next, y_max_next);
+        double next_cost = current_cost + abs(selected_y - y_val);
+        int next_y_idx = y_to_index(selected_y, global_y_min, step_size);
+
+        if (dist[next_x_idx][next_y_idx] > next_cost) {
+            dist[next_x_idx][next_y_idx] = next_cost;
+            prev[next_x_idx][next_y_idx] = {x_idx, y_val};
+            pq.push(Node{next_x_idx, selected_y, next_cost});
+        }
+    }
+
+    // 최적 경로 역추적
+    vector<pair<double, double>> optimal_path;
+    int best_y_idx = min_element(dist[n - 1].begin(), dist[n - 1].end()) - dist[n - 1].begin();
+    double current_y = global_y_min + (best_y_idx * step_size);
+    int current_x = n - 1;
+
+    while (current_x >= 0) {
+        optimal_path.push_back({x_values[current_x], current_y});
+        auto prev_node = prev[current_x][y_to_index(current_y, global_y_min, step_size)];
+        if (prev_node.first == -1) {
+            break;
+        }
+        current_x = prev_node.first;
+        current_y = prev_node.second;
+    }
+
+    reverse(optimal_path.begin(), optimal_path.end());
+    return optimal_path.back().second;
+}
+
