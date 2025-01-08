@@ -213,6 +213,9 @@ private:
 
     const float elbowStayBaseAngle = 5.0 * M_PI / 180.0;
     const float elbowLiftBaseAngle = 10.0 * M_PI / 180.0;
+
+    // 세기
+    int wristIntensity = 0;
     
     // 타격 궤적 생성 파라미터
     typedef struct {

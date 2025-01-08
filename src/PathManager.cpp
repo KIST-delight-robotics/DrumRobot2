@@ -151,6 +151,31 @@ bool PathManager::readMeasure(ifstream& inputFile, bool &BPMFlag)
 
             initVal();
         }
+        else if (items.size() == 9)
+        {
+            measureMatrix.conservativeResize(measureMatrix.rows() + 1, measureMatrix.cols());
+            for (int i = 0; i < 9; i++)
+            {
+                measureMatrix(measureMatrix.rows() - 1, i) = stod(items[i]);
+            }
+
+            // total time 누적
+            totalTime += measureMatrix(measureMatrix.rows() - 1, 1);
+            measureMatrix(measureMatrix.rows() - 1, 9) = totalTime * 100.0 / bpm;
+
+            // timeSum 누적
+            timeSum += measureMatrix(measureMatrix.rows() - 1, 1);
+
+            // timeSum이 threshold를 넘으면 true 반환
+            if (timeSum >= threshold)
+            {
+                std::cout << "\n//////////////////////////////// line : " << line + 1 << "\n";
+                std::cout << measureMatrix;
+                // std::cout << "\n ////////////// time sum : " << timeSum << "\n";
+
+                return true;
+            }
+        }
         else
         {
             measureMatrix.conservativeResize(measureMatrix.rows() + 1, measureMatrix.cols());
@@ -435,8 +460,8 @@ string PathManager::trimWhitespace(const std::string &str)
 
 void PathManager::initVal()
 {
-    measureMatrix.resize(1, 9);
-    measureMatrix = MatrixXd::Zero(1, 9);
+    measureMatrix.resize(1, 10);
+    measureMatrix = MatrixXd::Zero(1, 10);
 
     measureState.resize(2, 3);
     measureState = MatrixXd::Zero(2, 3);
@@ -451,7 +476,7 @@ void PathManager::initVal()
 
 void PathManager::parseMeasure(MatrixXd &measureMatrix)
 {
-    VectorXd Measure_time = measureMatrix.col(8);
+    VectorXd Measure_time = measureMatrix.col(9);
     VectorXd Measure_R = measureMatrix.col(2);
     VectorXd Measure_L = measureMatrix.col(3);
 
@@ -467,8 +492,18 @@ void PathManager::parseMeasure(MatrixXd &measureMatrix)
     t_f_R = R.first(10);
     t_f_L = L.first(10);
 
-    t1 = measureMatrix(0, 8);
-    t2 = measureMatrix(1, 8);
+    if (measureMatrix.row(0).size() == 8)
+    {
+        t1 = measureMatrix(0, 8);
+        t2 = measureMatrix(1, 8);
+        wristIntensity = 2;
+    }
+    else
+    {
+        t1 = measureMatrix(0, 9);
+        t2 = measureMatrix(1, 9);
+        wristIntensity = measureMatrix(1, 8);
+    }
 
     hit_state_R.resize(2);
     hit_state_R << measureMatrix(0,2), measureMatrix(1,2);
@@ -767,12 +802,14 @@ PathManager::HitParameter PathManager::getHitParameter(float t1, float t2, int h
     param.elbowLiftAngle = std::min((t2-t1)*elbowLiftBaseAngle/baseTime, elbowLiftBaseAngle);
     param.wristContactAngle = -1.0 * std::min((t2-t1)*wristContactBaseAngle/baseTime, wristContactBaseAngle);
     //param.wristLiftAngle = std::min((t2-t1)*wristLiftBaseAngle/baseTime, wristLiftBaseAngle);
-    t2 - t1 < 0.5 ? param.wristLiftAngle = (-100 * ((t2 - t1) - 0.5) * ((t2 - t1) - 0.5) + 25) * M_PI / 180.0 : param.wristLiftAngle = 25 * M_PI / 180.0;
+
+    float intensityFactor = 0.2 * wristIntensity + 0.6;   // 1 : 약하게   2 : 기본    3 : 강하게
+    t2 - t1 < 0.5 ? param.wristLiftAngle = (-100 * ((t2 - t1) - 0.5) * ((t2 - t1) - 0.5) + (25 * intensityFactor)) * M_PI / 180.0 : param.wristLiftAngle = (25 * intensityFactor) * M_PI / 180.0;
 
     param.elbowStayTime = std::max(0.5*(t2-t1), t2-t1-0.2);
     param.elbowLiftTime = std::max(0.5*(t2-t1), t2-t1-0.2);
 
-    param.wristStayTime = 0.47 * (t2 - t1) - 0.06;
+    param.wristStayTime = 0.47 * (t2 - t1) - 0.05;
     param.wristLiftTime = std::max(0.6*(t2-t1), t2-t1-0.2);
     param.wristContactTime = std::min(0.1*(t2-t1), 0.05); // 0.08 -> 0.05
     param.wristReleaseTime = std::min(0.2*(t2-t1), 0.1);
@@ -812,7 +849,7 @@ float PathManager::makeWristAngle(float t1, float t2, float t, int state, HitPar
             sol = A_1 * b;
             wrist_q = sol(0,0) + sol(1,0) * t + sol(2,0) * t * t;
         }
-        else if (t < t_release)
+        else if (t <= t_release)
         {
             A.resize(4,4);
             b.resize(4,1);
