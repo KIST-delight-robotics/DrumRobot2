@@ -65,7 +65,7 @@ struct State
     std::atomic<TestSub> test;
 
     State() : main(Main::SystemInit),
-              play(PlaySub::TimeCheck),
+              play(PlaySub::ReadMusicSheet),
               addstance(AddStanceSub::CheckCommand),
               read(ReadSub::TimeCheck),
               test(TestSub::SelectParamByUser)
