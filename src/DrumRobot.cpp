@@ -331,8 +331,6 @@ void DrumRobot::SendPlayProcess(int periodMicroSec, string musicName)
                     }
                     else
                     {
-                        std::cout << "\n Trajectory Over \n";
-
                         state.play = PlaySub::SolveIK;
                         break;
                     }
