@@ -183,13 +183,13 @@ private:
 
     // 한 줄 데이터 저장할 Matrix
     // [n min max state_hit_R state_hit_L]
-    MatrixXd lineDate;
+    MatrixXd lineData;
 
     VectorXd getTargetPosition(VectorXd &inst_vector);
     float timeScaling(float ti, float tf, float t);
     VectorXd makePath(VectorXd Pi, VectorXd Pf, float s);
     VectorXd waistRange(VectorXd &pR, VectorXd &pL);
-    void saveLineData(int n, VectorXd minmax);
+    void saveLineData(int n, VectorXd minmax, int stateR, int stateL);
 
     /////////////////////////////////////////////////////////////////////////// Play (solve IK)
     int i_solveIK = 0;
@@ -242,7 +242,8 @@ private:
     float makeWristAngle(float t1, float t2, float t, int state, HitParameter param, int intensity);
 
     HitParameter getHitParameter(float t1, float t2, int hitState, HitParameter preParam, int intensity);
-    VectorXd makeHitTrajetory(float t1, float t2, float t, VectorXd hitState, int wristIntesity);
+    VectorXd makeHitTrajetory(float t1, float t2, float t, int hitState, int wristIntesity);
+    int makeState(VectorXd hitState);
 
     HitParameter pre_parameters_R, pre_parameters_L, pre_parameters_tmp;
 
