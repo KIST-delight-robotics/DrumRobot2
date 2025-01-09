@@ -68,25 +68,32 @@ public:
     
     /////////////////////////////////////////////////////////////////////////// Play
 
-    bool readMeasure(ifstream& inputFile, bool &BPMFlag);
-    void generateTrajectory();
-    void solveIK();
-
-    // 브레이크 상태 저장할 구조체
-    typedef struct {
-        // 브레이크
-        bool state[8];
-    }Brake;
-
-    queue<Brake> brake_buffer;
-    int line = 0;  ///< 연주를 진행하고 있는 줄. 필요 없음
+    int line = 0;  ///< 연주를 진행하고 있는 줄
     MatrixXd measureMatrix;
 
+    // 궤적 저장할 구조체
+    typedef struct {
+        // 오른팔 좌표
+        VectorXd pR; // 0: x, 1: y, 2: z
+        // 왼팔 좌표
+        VectorXd pL; // 0: x, 1: y, 2: z
+    }Position;
+    queue<Position> P_buffer;
+
+    bool readMeasure(ifstream& inputFile, bool &BPMFlag);
+    void generateTrajectory();
+    bool solveIKandPushConmmand();
+
+
+    // // 브레이크 상태 저장할 구조체
+    // typedef struct {
+    //     // 브레이크
+    //     bool state[8];
+    // }Brake;
+
+    // queue<Brake> brake_buffer;
+    
     /////////////////////////////////////////////////////////////////////////// AddStance
-
-    void GetArr(vector<float> &arr);
-
-    vector<float> makeHomeArr(int cnt);
 
     //   Ready Pos Array   :  waist         , R_arm1        , L_arm1        , R_arm2        , R_arm3        , L_arm2        , L_arm3        , R_wrist       , L_wrist
     //                       { 0            , 90            , 90            , 45            , 75            , 45            , 75            , 30            , 30         } [deg]
@@ -100,9 +107,11 @@ public:
     //                      { 0         , 135           , 45            , 0         , 0         , 0         , 0         , 90            , 90         } [deg]
     vector<float> backArr = { 0         ,M_PI * 0.75    , M_PI * 0.25   , 0         , 0         , 0         , 0         , M_PI / 2.0    , M_PI / 2.0 };
 
+    void GetArr(vector<float> &arr);
+    vector<float> makeHomeArr(int cnt);
+
     /////////////////////////////////////////////////////////////////////////// 기타
 
-    VectorXd ikfun_final(VectorXd &pR, VectorXd &pL);
     vector<float> fkfun();
 
 private:
@@ -138,73 +147,63 @@ private:
     }PartLength;
 
     /////////////////////////////////////////////////////////////////////////// Init
-    
     VectorXd default_right; /// 오른팔 시작 위치
     VectorXd default_left;  /// 왼팔 시작 위치
     MatrixXd right_drum_position;                               ///< 오른팔의 각 악기별 위치 좌표 벡터.
     MatrixXd left_drum_position;                                ///< 왼팔의 각 악기별 위치 좌표 벡터.
 
-    /////////////////////////////////////////////////////////////////////////// Play (read & parse measure)
-    void initVal();
-    string trimWhitespace(const std::string &str);
+    VectorXd ikfun_final(VectorXd &pR, VectorXd &pL);
 
-    void parseMeasure(MatrixXd &measureMatrix);
-    pair<VectorXd, VectorXd> parseOneArm(VectorXd t, VectorXd inst, VectorXd intensity, char dir, VectorXd stateVector);
-
+    /////////////////////////////////////////////////////////////////////////// Play (read measure)
     float bpm = 0;         /// txt 악보의 BPM 정보.
     double threshold = 2.4;
     double totalTime = 0.0;
 
-    // state
-    // 0 : 0 <- 0
-    // 1 : 0 <- 1
-    // 2 : 1 <- 0
-    // 3 : 1 <- 1
-    MatrixXd measureState = MatrixXd::Zero(2, 3); // [이전 시간, 이전 악기, 상태]
+    void initVal();
+    string trimWhitespace(const std::string &str);
 
+    /////////////////////////////////////////////////////////////////////////// Play (parse measure)
     VectorXd inst_i = VectorXd::Zero(18);   // 전체 궤적에서 출발 악기
     VectorXd inst_f = VectorXd::Zero(18);   // 전체 궤적에서 도착 악기
-
-    // vector<Pos_i> pos(3); // 미래상태 3개를 저장
 
     float t_i_R, t_f_R;       // 전체 궤적에서 출발 시간, 도착 시간
     float t_i_L, t_f_L;
     float t1, t2;           // 궤적 생성 시간
 
+    MatrixXd measureState = MatrixXd::Zero(2, 3); // [이전 시간, 이전 악기, 상태] // state
+                                                                                // 0 : 0 <- 0
+                                                                                // 1 : 0 <- 1
+                                                                                // 2 : 1 <- 0
+                                                                                // 3 : 1 <- 1
+
+    VectorXd hit_state_R = VectorXd::Zero(2);
+    VectorXd hit_state_L = VectorXd::Zero(2);
+
+    void parseMeasure(MatrixXd &measureMatrix);
+    pair<VectorXd, VectorXd> parseOneArm(VectorXd t, VectorXd inst, VectorXd intensity, char dir, VectorXd stateVector);
+
     /////////////////////////////////////////////////////////////////////////// Play (make trajectory)
-    // x, y, z 저장할 구조체
-    typedef struct {
-        // 오른팔 좌표
-        VectorXd pR; // 0: x, 1: y, 2: z
-        // 왼팔 좌표
-        VectorXd pL; // 0: x, 1: y, 2: z
-    }Position;
+    double round_sum = 0;
 
-    typedef struct{
-        float x;
-        float y;
-        float z;
-    }Pos_i;
-
-    // 허리 각도와 손목, 팔꿈치 각도 저장할 구조체
-    typedef struct {
-        // 허리 각도
-        float q0;
-        // 손목 각도, 팔꿈치 추가 각도
-        VectorXd add_qR;
-        VectorXd add_qL;
-    }AddAngle;
-
-    queue<Position> P_buffer;
-    queue<AddAngle> q_buffer;
+    // 한 줄 데이터 저장할 Matrix
+    // [n min max state_hit_R state_hit_L]
+    MatrixXd lineDate;
 
     VectorXd getTargetPosition(VectorXd &inst_vector);
     float timeScaling(float ti, float tf, float t);
     VectorXd makePath(VectorXd Pi, VectorXd Pf, float s);
-
-    double round_sum = 0;
-
     VectorXd waistRange(VectorXd &pR, VectorXd &pL);
+    void saveLineData(int n, VectorXd minmax);
+
+    /////////////////////////////////////////////////////////////////////////// Play (solve IK)
+    int i_solveIK = 0;
+    MatrixXd waistCoefficient;
+    
+    void solveIK(VectorXd &q, double q0);
+    VectorXd ikFixedWaist(VectorXd &pR, VectorXd &pL, double theta0);
+    void getWaistCoefficient();
+    double getWaistAngle(int i);
+    void pushConmmandBuffer(VectorXd &Qi);
     
     /////////////////////////////////////////////////////////////////////////// Play (wrist & elbow)
     
@@ -248,29 +247,22 @@ private:
 
     HitParameter getHitParameter(float t1, float t2, int hitState, HitParameter preParam);
     VectorXd makeHitTrajetory(float t1, float t2, float t, VectorXd hitState, int wristIntesity);
-    
-    VectorXd hit_state_R = VectorXd::Zero(2);
-    VectorXd hit_state_L = VectorXd::Zero(2);
 
     HitParameter pre_parameters_R, pre_parameters_L, pre_parameters_tmp;
 
-    /////////////////////////////////////////////////////////////////////////// Play (solve IK)
-    VectorXd ikFixedWaist(VectorXd &pR, VectorXd &pL, float theta0);
-    void pushConmmandBuffer(VectorXd &Qi);
+    /////////////////////////////////////////////////////////////////////////// Play (waist trajectory)
+    // 허리 각도와 손목, 팔꿈치 각도 저장할 구조체
+    typedef struct {
+        // 허리 각도
+        float q0;
+        // 손목 각도, 팔꿈치 추가 각도
+        VectorXd add_qR;
+        VectorXd add_qL;
+    }AddAngle;
 
-    /////////////////////////////////////////////////////////////////////////// AddStance
-    // q1[rad], q2[rad], acc[rad/s^2], t2[s]
-    VectorXd calVmax(VectorXd &q1, VectorXd &q2, float acc, float t2);
-    // q1[rad], q2[rad], Vmax[rad/s], acc[rad/s^2], t[s], t2[s]
-    VectorXd makeProfile(VectorXd &q1, VectorXd &q2, VectorXd &Vmax, float acc, float t, float t2);
-    void getMotorPos();
+    queue<AddAngle> q_buffer;
 
-    vector<float> c_MotorAngle = {0, 0, 0, 0, 0, 0, 0, 0, 0}; ///< 경로 생성 시 사용되는 현재 모터 위치 값
-    
-
-    // struct Range {
-    //     double imin, imax, fmin, fmax;
-    // };
+    // dijkstra
     double imin, imax, fmin, fmax;
     double preq0_t1;
     void updateRange(const VectorXd& output, double& min, double& max);
@@ -285,4 +277,14 @@ private:
     int y_to_index(double y, double global_y_min, double step_size);
     double select_top10_with_median(const vector<double>& y_vals, double current_y, double y_min, double y_max);
     double dijkstra_top10_with_median(const vector<double>& x_values, const vector<pair<double, double>>& y_ranges, double start_y);
+
+    /////////////////////////////////////////////////////////////////////////// AddStance
+    vector<float> c_MotorAngle = {0, 0, 0, 0, 0, 0, 0, 0, 0}; ///< 경로 생성 시 사용되는 현재 모터 위치 값
+
+    // q1[rad], q2[rad], acc[rad/s^2], t2[s]
+    VectorXd calVmax(VectorXd &q1, VectorXd &q2, float acc, float t2);
+    // q1[rad], q2[rad], Vmax[rad/s], acc[rad/s^2], t[s], t2[s]
+    VectorXd makeProfile(VectorXd &q1, VectorXd &q2, VectorXd &Vmax, float acc, float t, float t2);
+    void getMotorPos();
+    
 };

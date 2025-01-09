@@ -159,6 +159,6 @@ private:
     double timeSum = 0.0;
     bool openFlag;
     std::ifstream inputFile; 
-    
+    int preCreatedLine = 3; // 미리 궤적을 생성할 줄
     
 };

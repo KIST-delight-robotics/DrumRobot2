@@ -169,8 +169,8 @@ bool PathManager::readMeasure(ifstream& inputFile, bool &BPMFlag)
             // timeSum이 threshold를 넘으면 true 반환
             if (timeSum >= threshold)
             {
-                std::cout << "\n//////////////////////////////// line : " << line + 1 << "\n";
-                std::cout << measureMatrix;
+                // std::cout << "\n//////////////////////////////// line : " << line + 1 << "\n";
+                // std::cout << measureMatrix;
                 // std::cout << "\n ////////////// time sum : " << timeSum << "\n";
 
                 return true;
@@ -188,21 +188,23 @@ void PathManager::generateTrajectory()
     VectorXd Pi_L(3);
     VectorXd Pf_R(3);
     VectorXd Pf_L(3);
+    VectorXd minmax;
 
     float n, s_R, s_L;
-    float delta_t_measure_R;
-    float delta_t_measure_L;
     float dt = canManager.deltaT;
-
-    // waist
-    double q0_t1 = 0.0, q0_t2 = 0.0;
 
     // parse
     parseMeasure(measureMatrix);
 
-    // time
-    delta_t_measure_R = t_f_R - t_i_R;
-    delta_t_measure_L = t_f_L - t_i_L;
+    // 한 줄의 데이터 개수
+    n = (t2 - t1) / dt;
+    round_sum += (int)(n * 1000) % 1000;
+    if (round_sum >= 1000)
+    {
+        round_sum -= 1000;
+        n++;
+    }
+    n = (int)n;
 
     // position
     Pi = getTargetPosition(inst_i);
@@ -213,26 +215,8 @@ void PathManager::generateTrajectory()
     Pf_R << Pf(0), Pf(1), Pf(2);
     Pf_L << Pf(3), Pf(4), Pf(5);
 
-    std::cout << "\nR : Pi_R -> Pf_R\n(" << Pi_R.transpose() << ") -> (" << Pf_R.transpose() << ")";
-    std::cout << "\nL : Pi_L -> Pf_L\n(" << Pi_L.transpose() << ") -> (" << Pf_L.transpose() << ")" << std::endl;
-
-    // trajectory
-    n = (t2 - t1) / dt;
-
-    round_sum += (int)(n * 1000) % 1000;
-    if (round_sum >= 1000)
-    {
-        round_sum -= 1000;
-        n++;
-    }
-    n = (int)n;
-
-    // waist
-    imin =0.0;
-    imax =0.0;
-    fmin =0.0;
-    fmax =0.0;
-
+    // std::cout << "\nR : Pi_R -> Pf_R\n(" << Pi_R.transpose() << ") -> (" << Pf_R.transpose() << ")";
+    // std::cout << "\nL : Pi_L -> Pf_L\n(" << Pi_L.transpose() << ") -> (" << Pf_L.transpose() << ")" << std::endl;
 
     for (int i = 0; i < n; i++)
     {
@@ -240,8 +224,8 @@ void PathManager::generateTrajectory()
         float t_R = dt * i + t1 - t_i_R;
         float t_L = dt * i + t1 - t_i_L;
         
-        s_R = timeScaling(0.0f, delta_t_measure_R, t_R);
-        s_L = timeScaling(0.0f, delta_t_measure_L, t_L);
+        s_R = timeScaling(0.0f, t_f_R - t_i_R, t_R);
+        s_L = timeScaling(0.0f, t_f_L - t_i_L, t_L);
 
         Pt.pR = makePath(Pi_R, Pf_R, s_R);
         Pt.pL = makePath(Pi_L, Pf_L, s_L);
@@ -253,116 +237,211 @@ void PathManager::generateTrajectory()
         fun.appendToCSV_DATA(fileName, Pt.pR[0], Pt.pR[1], Pt.pR[2]);
         fileName = "Trajectory_L";
         fun.appendToCSV_DATA(fileName, Pt.pL[0], Pt.pL[1], Pt.pL[2]);
-        fileName = "S_R";
-        fun.appendToCSV_DATA(fileName, t_R, s_R, delta_t_measure_R);
-        fileName = "S_L";
-        fun.appendToCSV_DATA(fileName, t_L, s_L, delta_t_measure_L);
-        
-        if(i == 0){
-            VectorXd output = waistRange(Pt.pR, Pt.pL);
-            // updateRange(output, range.imin, range.imax);
-            imin = output(1);
-            imax = output(0);
-        }
-        else if(i + 1 >= n){
-            VectorXd output = waistRange(Pt.pR, Pt.pL);
-            // updateRange(output, range.fmin, range.fmax);
-            fmin = output(1);
-            fmax = output(0);
-        }
-    }
+        // fileName = "S_R";
+        // fun.appendToCSV_DATA(fileName, t_R, s_R, t_f_R - t_i_R);
+        // fileName = "S_L";
+        // fun.appendToCSV_DATA(fileName, t_L, s_L, t_f_L - t_i_L);
 
-    vector<double> x_values = {t1, t2}; // 현재 x값과 다음 x값
-    vector<pair<double, double>> y_ranges = {{imin, imax}, {fmin, fmax}};
-    
-    try {
-        if(line == 0){
-            q0_t1 = readyArr[0];
-        }
-        else{
-            q0_t1 = preq0_t1;
-        }
-        q0_t2 = dijkstra_top10_with_median(x_values, y_ranges, q0_t1);
-        preq0_t1 = q0_t2;
-    } catch (const exception& e) {
-        cerr << e.what() << endl;
-    }
-
-    // waist, wrist & elbow
-    for (int i = 0; i < n; i++)
-    {
-        AddAngle qt;
-        float t = dt * i;
-        
-        // waist
-        MatrixXd A;
-        MatrixXd b;
-        MatrixXd A_1;
-        MatrixXd sol;
-
-        float t21 = t2 - t1;
-
-        A.resize(4,4);
-        b.resize(4,1);
-
-        A << 1, 0, 0, 0,
-            1, t21, t21*t21, t21*t21*t21,
-            0, 1, 0, 0,
-            0, 1, 2*t21, 3*t21*t21;
-        b << q0_t1, q0_t2, 0, 0;
-
-        A_1 = A.inverse();
-        sol = A_1 * b;
-
-        qt.q0 = sol(0,0) + sol(1,0) * t + sol(2,0) * t * t + sol(3,0) * t * t * t;
-        
-        // wrist & elbow
-        pre_parameters_tmp = pre_parameters_R;
-        qt.add_qR = makeHitTrajetory(t1, t2, t, hit_state_R, wristIntensityR);
-        pre_parameters_R = pre_parameters_tmp;
-
-        pre_parameters_tmp = pre_parameters_L;
-        qt.add_qL = makeHitTrajetory(t1, t2, t, hit_state_L, wristIntensityL);
-        pre_parameters_L = pre_parameters_tmp;
-
-        q_buffer.push(qt);
-    }
-
-    // brake
-    for (int i = 0; i < n; i++)
-    {
-        Brake brake_t;
-        
-
-        for (int j = 0; j < 8; j++)
+        if(i == 0)
         {
-            brake_t.state[j] = false;
+            minmax = waistRange(Pt.pR, Pt.pL);
         }
-
-        brake_buffer.push(brake_t);
     }
+
+    saveLineData(n, minmax);
+
+    // // position
+    // VectorXd Pi(6), Pf(6);
+    // VectorXd Pi_R(3);
+    // VectorXd Pi_L(3);
+    // VectorXd Pf_R(3);
+    // VectorXd Pf_L(3);
+
+    // float n, s_R, s_L;
+    // float delta_t_measure_R;
+    // float delta_t_measure_L;
+    // float dt = canManager.deltaT;
+
+    // // waist
+    // double q0_t1 = 0.0, q0_t2 = 0.0;
+
+    // // 한 줄의 데이터 개수
+    // n = (t2 - t1) / dt;
+
+    // round_sum += (int)(n * 1000) % 1000;
+    // if (round_sum >= 1000)
+    // {
+    //     round_sum -= 1000;
+    //     n++;
+    // }
+    // n = (int)n;
+
+    // // parse
+    // parseMeasure(measureMatrix);
+
+    // // time
+    // delta_t_measure_R = t_f_R - t_i_R;
+    // delta_t_measure_L = t_f_L - t_i_L;
+
+    // // position
+    // Pi = getTargetPosition(inst_i);
+    // Pf = getTargetPosition(inst_f);
+
+    // Pi_R << Pi(0), Pi(1), Pi(2);
+    // Pi_L << Pi(3), Pi(4), Pi(5);
+    // Pf_R << Pf(0), Pf(1), Pf(2);
+    // Pf_L << Pf(3), Pf(4), Pf(5);
+
+    // std::cout << "\nR : Pi_R -> Pf_R\n(" << Pi_R.transpose() << ") -> (" << Pf_R.transpose() << ")";
+    // std::cout << "\nL : Pi_L -> Pf_L\n(" << Pi_L.transpose() << ") -> (" << Pf_L.transpose() << ")" << std::endl;
+
+    // // waist
+    // imin =0.0;
+    // imax =0.0;
+    // fmin =0.0;
+    // fmax =0.0;
+
+
+    // for (int i = 0; i < n; i++)
+    // {
+    //     Position Pt;
+    //     float t_R = dt * i + t1 - t_i_R;
+    //     float t_L = dt * i + t1 - t_i_L;
+        
+    //     s_R = timeScaling(0.0f, delta_t_measure_R, t_R);
+    //     s_L = timeScaling(0.0f, delta_t_measure_L, t_L);
+
+    //     Pt.pR = makePath(Pi_R, Pf_R, s_R);
+    //     Pt.pL = makePath(Pi_L, Pf_L, s_L);
+        
+    //     P_buffer.push(Pt);
+
+    //     std::string fileName;
+    //     fileName = "Trajectory_R";
+    //     fun.appendToCSV_DATA(fileName, Pt.pR[0], Pt.pR[1], Pt.pR[2]);
+    //     fileName = "Trajectory_L";
+    //     fun.appendToCSV_DATA(fileName, Pt.pL[0], Pt.pL[1], Pt.pL[2]);
+    //     fileName = "S_R";
+    //     fun.appendToCSV_DATA(fileName, t_R, s_R, delta_t_measure_R);
+    //     fileName = "S_L";
+    //     fun.appendToCSV_DATA(fileName, t_L, s_L, delta_t_measure_L);
+        
+    //     if(i == 0){
+    //         VectorXd output = waistRange(Pt.pR, Pt.pL);
+    //         // updateRange(output, range.imin, range.imax);
+    //         imin = output(1);
+    //         imax = output(0);
+    //     }
+    //     else if(i + 1 >= n){
+    //         VectorXd output = waistRange(Pt.pR, Pt.pL);
+    //         // updateRange(output, range.fmin, range.fmax);
+    //         fmin = output(1);
+    //         fmax = output(0);
+    //     }
+    // }
+
+    // vector<double> x_values = {t1, t2}; // 현재 x값과 다음 x값
+    // vector<pair<double, double>> y_ranges = {{imin, imax}, {fmin, fmax}};
+    
+    // try {
+    //     if(line == 1){
+    //         q0_t1 = readyArr[0];
+    //     }
+    //     else{
+    //         q0_t1 = preq0_t1;
+    //     }
+    //     q0_t2 = dijkstra_top10_with_median(x_values, y_ranges, q0_t1);
+    //     preq0_t1 = q0_t2;
+    // } catch (const exception& e) {
+    //     cerr << e.what() << endl;
+    // }
+
+    // // waist, wrist & elbow
+    // for (int i = 0; i < n; i++)
+    // {
+    //     AddAngle qt;
+    //     float t = dt * i;
+        
+    //     // waist
+    //     MatrixXd A;
+    //     MatrixXd b;
+    //     MatrixXd A_1;
+    //     MatrixXd sol;
+
+    //     float t21 = t2 - t1;
+
+    //     A.resize(4,4);
+    //     b.resize(4,1);
+
+    //     A << 1, 0, 0, 0,
+    //         1, t21, t21*t21, t21*t21*t21,
+    //         0, 1, 0, 0,
+    //         0, 1, 2*t21, 3*t21*t21;
+    //     b << q0_t1, q0_t2, 0, 0;
+
+    //     A_1 = A.inverse();
+    //     sol = A_1 * b;
+
+    //     qt.q0 = sol(0,0) + sol(1,0) * t + sol(2,0) * t * t + sol(3,0) * t * t * t;
+        
+    //     // wrist & elbow
+    //     pre_parameters_tmp = pre_parameters_R;
+    //     qt.add_qR = makeHitTrajetory(t1, t2, t, hit_state_R, wristIntensityR);
+    //     pre_parameters_R = pre_parameters_tmp;
+
+    //     pre_parameters_tmp = pre_parameters_L;
+    //     qt.add_qL = makeHitTrajetory(t1, t2, t, hit_state_L, wristIntensityL);
+    //     pre_parameters_L = pre_parameters_tmp;
+
+    //     q_buffer.push(qt);
+    // }
 }
 
-void PathManager::solveIK()
+bool PathManager::solveIKandPushConmmand()
 {
     VectorXd q;
-    Position nextP;
-    AddAngle nextQ;
 
-    nextP = P_buffer.front();
-    P_buffer.pop();
+    // 정해진 개수만큼 커맨드 생성
+    if (i_solveIK >= lineDate(0,0))
+    {
+        i_solveIK = 0;
 
-    nextQ = q_buffer.front();
-    q_buffer.pop();
+        // 커맨드 생성 후 삭제
+        if (lineDate.rows() >= 1)
+        {
+            MatrixXd tmp_matrix(lineDate.rows() - 1, lineDate.cols());
+            tmp_matrix = lineDate.block(1, 0, tmp_matrix.rows(), tmp_matrix.cols());
+            lineDate.resize(tmp_matrix.rows(), tmp_matrix.cols());
+            lineDate = tmp_matrix;
+        }
+        
+        std::cout << "\n lineDate Over \n";
 
-    q = ikFixedWaist(nextP.pR, nextP.pL, nextQ.q0);
+        return false;
+    }
+    else
+    {
+        if (i_solveIK == 0)
+        {
+            // 허리 계수 구하기
+            getWaistCoefficient();
 
-    q(4) += nextQ.add_qR(1);
-    q(6) += nextQ.add_qL(1);
+            std::cout << "\n lineDate Start : \n";
+            std::cout << lineDate;
+        }
+        i_solveIK++;
+    }
 
-    q(7) = nextQ.add_qR(0);
-    q(8) = nextQ.add_qL(0);
+    // waist
+    double q0 = getWaistAngle(i_solveIK);
 
+    // solve IK
+    solveIK(q, q0);
+
+    // wrist, elbow
+    //
+
+    // push motor obj
     pushConmmandBuffer(q);
 
     // 데이터 기록
@@ -371,6 +450,80 @@ void PathManager::solveIK()
         std::string fileName = "solveIK_q" + to_string(m);
         fun.appendToCSV_DATA(fileName, m, q(m), 0);
     }
+
+    return true;
+}
+
+void PathManager::saveLineData(int n, VectorXd minmax)
+{
+    if(line == 1)
+    {
+        lineDate(0, 0) = n;
+        lineDate(0, 1) = minmax(1);
+        lineDate(0, 2) = minmax(0);
+        lineDate(0, 3) = 0;
+        lineDate(0, 4) = 0;
+    }
+    else
+    {
+        lineDate.conservativeResize(lineDate.rows() + 1, lineDate.cols());
+        lineDate(lineDate.rows() - 1, 0) = n;
+        lineDate(lineDate.rows() - 1, 1) = minmax(1);
+        lineDate(lineDate.rows() - 1, 2) = minmax(0);
+        lineDate(lineDate.rows() - 1, 3) = 0;
+        lineDate(lineDate.rows() - 1, 4) = 0;
+    }
+}
+
+void PathManager::solveIK(VectorXd &q, double q0)
+{
+    Position nextP;
+
+    nextP = P_buffer.front();
+    P_buffer.pop();
+
+    q = ikFixedWaist(nextP.pR, nextP.pL, q0);
+}
+
+double PathManager::getWaistAngle(int i)
+{
+    double dt = canManager.deltaT;
+    double t = dt * i;
+
+    return waistCoefficient(0,0) + waistCoefficient(1,0) * t + waistCoefficient(2,0) * t * t + waistCoefficient(3,0) * t * t * t;
+}
+
+void PathManager::getWaistCoefficient()
+{
+    MatrixXd A;
+    MatrixXd b;
+    MatrixXd A_1;
+
+    double dt = canManager.deltaT;
+    double t21 = lineDate(0,0) * dt;
+    double q0_t1 = 0.5*(lineDate(0,1) + lineDate(0,2));
+    double q0_t2;
+
+    if (lineDate.rows() == 1)
+    {
+        q0_t2 = q0_t1;
+    }
+    else
+    {
+        q0_t2 = 0.5*(lineDate(1,1) + lineDate(1,2));
+    }
+
+    A.resize(4,4);
+    b.resize(4,1);
+
+    A << 1, 0, 0, 0,
+        1, t21, t21*t21, t21*t21*t21,
+        0, 1, 0, 0,
+        0, 1, 2*t21, 3*t21*t21;
+    b << q0_t1, q0_t2, 0, 0;
+
+    A_1 = A.inverse();
+    waistCoefficient = A_1 * b;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -466,6 +619,9 @@ void PathManager::initVal()
     measureState(0, 1) = 1.0;
     measureState(1, 1) = 1.0;
 
+    lineDate.resize(1, 5);
+    lineDate = MatrixXd::Zero(1, 5);
+
     line = 0;
     threshold = 2.4;
     round_sum = 0.0;
@@ -512,13 +668,13 @@ void PathManager::parseMeasure(MatrixXd &measureMatrix)
     measureState.block(0,0,1,3) = R.second.transpose();
     measureState.block(1,0,1,3) = L.second.transpose();
 
-    std::cout << "\n /// t1 -> t2 : " << t1 << " -> " << t2 << "\n";
+    // std::cout << "\n /// t1 -> t2 : " << t1 << " -> " << t2 << "\n";
 
-    std::cout << "\nR : " << inst_i.block(0,0,9,1).transpose() << " -> " << inst_f.block(0,0,9,1).transpose();
-    std::cout << "\n /// ti -> tf : " << t_i_R << " -> " << t_f_R;
+    // std::cout << "\nR : " << inst_i.block(0,0,9,1).transpose() << " -> " << inst_f.block(0,0,9,1).transpose();
+    // std::cout << "\n /// ti -> tf : " << t_i_R << " -> " << t_f_R;
     
-    std::cout << "\nL : " << inst_i.block(9,0,9,1).transpose() << " -> " << inst_f.block(9,0,9,1).transpose();
-    std::cout << "\n /// ti -> tf : " << t_i_L << " -> " << t_f_L << std::endl;
+    // std::cout << "\nL : " << inst_i.block(9,0,9,1).transpose() << " -> " << inst_f.block(9,0,9,1).transpose();
+    // std::cout << "\n /// ti -> tf : " << t_i_L << " -> " << t_f_L << std::endl;
 
     // std::cout << "\n ////////////// state\n";
     // std::cout << measureState << std::endl;
@@ -1337,7 +1493,7 @@ float PathManager::makeElbowAngle(float t1, float t2, float t, int state, HitPar
 /*                                Solve IK                                    */
 ////////////////////////////////////////////////////////////////////////////////
 
-VectorXd PathManager::ikFixedWaist(VectorXd &pR, VectorXd &pL, float theta0)
+VectorXd PathManager::ikFixedWaist(VectorXd &pR, VectorXd &pL, double theta0)
 {
     VectorXd Qf;
     PartLength part_length;
@@ -1936,7 +2092,7 @@ VectorXd PathManager::waistRange(VectorXd &pR, VectorXd &pL)
     else
     {
         m = j/2;
-        std::cout << "j = " << j << ", m = " << m << std::endl;
+        // std::cout << "j = " << j << ", m = " << m << std::endl;
         for (int i = 0; i < 7; i++)
         {
             Qf(i) = Q_arr(i,m);
@@ -1993,7 +2149,6 @@ vector<float> PathManager::fkfun()
 int PathManager::y_to_index(double y, double global_y_min, double step_size) {
     return static_cast<int>(round((y - global_y_min) / step_size));
 }
-
 
 double PathManager::select_top10_with_median(const vector<double>& y_vals, double current_y, double y_min, double y_max) {
     vector<double> distances;
