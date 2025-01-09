@@ -170,8 +170,8 @@ bool PathManager::readMeasure(ifstream& inputFile, bool &BPMFlag)
             // timeSum이 threshold를 넘으면 true 반환
             if (timeSum >= threshold)
             {
-                // std::cout << "\n//////////////////////////////// line : " << line + 1 << "\n";
-                // std::cout << measureMatrix;
+                std::cout << "\n//////////////////////////////// line : " << line + 1 << "\n";
+                std::cout << measureMatrix;
                 // std::cout << "\n ////////////// time sum : " << timeSum << "\n";
 
                 return true;
@@ -217,8 +217,8 @@ void PathManager::generateTrajectory()
     Pf_R << Pf(0), Pf(1), Pf(2);
     Pf_L << Pf(3), Pf(4), Pf(5);
 
-    // std::cout << "\nR : Pi_R -> Pf_R\n(" << Pi_R.transpose() << ") -> (" << Pf_R.transpose() << ")";
-    // std::cout << "\nL : Pi_L -> Pf_L\n(" << Pi_L.transpose() << ") -> (" << Pf_L.transpose() << ")" << std::endl;
+    std::cout << "\nR : Pi_R -> Pf_R\n(" << Pi_R.transpose() << ") -> (" << Pf_R.transpose() << ")";
+    std::cout << "\nL : Pi_L -> Pf_L\n(" << Pi_L.transpose() << ") -> (" << Pf_L.transpose() << ")" << std::endl;
 
     for (int i = 0; i < n; i++)
     {
@@ -433,7 +433,7 @@ bool PathManager::solveIKandPushConmmand()
             lineData = tmp_matrix;
         }
         
-        std::cout << "\n lineDate Over \n";
+        // std::cout << "\n lineData Over \n";
 
         return false;
     }
@@ -444,8 +444,8 @@ bool PathManager::solveIKandPushConmmand()
             // 허리 계수 구하기
             getWaistCoefficient();
 
-            std::cout << "\n lineDate Start : \n";
-            std::cout << lineData;
+            // std::cout << "\n lineData Start : \n";
+            // std::cout << lineData;
         }
         i_solveIK++;
     }
@@ -624,13 +624,13 @@ void PathManager::parseMeasure(MatrixXd &measureMatrix)
     measureState.block(0,0,1,3) = R.second.transpose();
     measureState.block(1,0,1,3) = L.second.transpose();
 
-    // std::cout << "\n /// t1 -> t2 : " << t1 << " -> " << t2 << "\n";
+    std::cout << "\n /// t1 -> t2 : " << t1 << " -> " << t2 << "\n";
 
-    // std::cout << "\nR : " << inst_i.block(0,0,9,1).transpose() << " -> " << inst_f.block(0,0,9,1).transpose();
-    // std::cout << "\n /// ti -> tf : " << t_i_R << " -> " << t_f_R;
+    std::cout << "\nR : " << inst_i.block(0,0,9,1).transpose() << " -> " << inst_f.block(0,0,9,1).transpose();
+    std::cout << "\n /// ti -> tf : " << t_i_R << " -> " << t_f_R;
     
-    // std::cout << "\nL : " << inst_i.block(9,0,9,1).transpose() << " -> " << inst_f.block(9,0,9,1).transpose();
-    // std::cout << "\n /// ti -> tf : " << t_i_L << " -> " << t_f_L << std::endl;
+    std::cout << "\nL : " << inst_i.block(9,0,9,1).transpose() << " -> " << inst_f.block(9,0,9,1).transpose();
+    std::cout << "\n /// ti -> tf : " << t_i_L << " -> " << t_f_L << std::endl;
 
     // std::cout << "\n ////////////// state\n";
     // std::cout << measureState << std::endl;
