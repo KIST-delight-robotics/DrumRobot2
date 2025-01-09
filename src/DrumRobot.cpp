@@ -301,15 +301,6 @@ void DrumRobot::SendPlayProcess(int periodMicroSec, string musicName)
 
     switch (state.play.load())
     {
-    case PlaySub::TimeCheck:
-    {
-        if (elapsedTime.count() >= periodMicroSec)
-        {
-            state.play = PlaySub::ReadMusicSheet;   // 주기가 되면 GenerateTrajectory 상태로 진입
-            SendStandard = currentTime;             // 현재 시간으로 시간 객체 초기화
-        }
-        break;
-    }
     case PlaySub::ReadMusicSheet:
     {
         if (pathManager.brake_buffer.empty()) // brake_buffer 비어있음 -> P_buffer, q_buffer 비어있음 -> 새로 생성
@@ -334,7 +325,7 @@ void DrumRobot::SendPlayProcess(int periodMicroSec, string musicName)
                         // 악보 모두 읽음
                         std::cout << "Play is Over\n";
                         state.main = Main::AddStance;
-                        state.play = PlaySub::TimeCheck;
+                        state.play = PlaySub::ReadMusicSheet;
                         addStanceFlagSetting("goToHome");
                         usleep(500*1000);     // 0.5s
                         break; // 파일 열지 못했으므로 상태 변경 후 종료
@@ -389,8 +380,17 @@ void DrumRobot::SendPlayProcess(int periodMicroSec, string musicName)
             usbio.USBIO_4761_set(i, next_brake.state[i]);
         }
 
-        state.play = PlaySub::SetCANFrame;
+        state.play = PlaySub::TimeCheck;
 
+        break;
+    }
+    case PlaySub::TimeCheck:
+    {
+        if (elapsedTime.count() >= periodMicroSec)
+        {
+            state.play = PlaySub::SetCANFrame;   // 주기가 되면 SetCANFrame 상태로 진입
+            SendStandard = currentTime;             // 현재 시간으로 시간 객체 초기화
+        }
         break;
     }
     case PlaySub::SetCANFrame:
