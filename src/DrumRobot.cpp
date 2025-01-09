@@ -298,11 +298,11 @@ void DrumRobot::SendPlayProcess(int periodMicroSec, string musicName)
 {
     auto currentTime = chrono::system_clock::now();
     auto elapsedTime = chrono::duration_cast<chrono::microseconds>(currentTime - SendStandard);
-
     switch (state.play.load())
     {
     case PlaySub::ReadMusicSheet:
     {
+        
         if (pathManager.brake_buffer.empty()) // brake_buffer 비어있음 -> P_buffer, q_buffer 비어있음 -> 새로 생성
         {
             // 파일을 처음 열 때만

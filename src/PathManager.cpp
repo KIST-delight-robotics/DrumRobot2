@@ -788,16 +788,19 @@ PathManager::HitParameter PathManager::getHitParameter(float t1, float t2, int h
 {
     HitParameter param;
 
-    if (hitState == 0 || hitState == 2)
-    {
-        param.elbowStayAngle = preParam.elbowStayAngle;
-        param.wristStayAngle = preParam.wristStayAngle;
-    }
-    else
-    {
-        param.elbowStayAngle = std::min((t2-t1)*elbowStayBaseAngle/baseTime, elbowStayBaseAngle);
-        param.wristStayAngle = std::min((t2-t1)*wristStayBaseAngle/baseTime, wristStayBaseAngle);
-    }
+    // if (hitState == 0 || hitState == 2)
+    // {
+    //     param.elbowStayAngle = preParam.elbowStayAngle;
+    //     param.wristStayAngle = preParam.wristStayAngle;
+    // }
+    // else
+    // {
+    //     param.elbowStayAngle = std::min((t2-t1)*elbowStayBaseAngle/baseTime, elbowStayBaseAngle);
+    //     param.wristStayAngle = std::min((t2-t1)*wristStayBaseAngle/baseTime, wristStayBaseAngle);
+    // }
+
+    param.elbowStayAngle = preParam.elbowStayAngle;
+    param.wristStayAngle = preParam.wristStayAngle;
 
     param.elbowLiftAngle = std::min((t2-t1)*elbowLiftBaseAngle/baseTime, elbowLiftBaseAngle);
     param.wristContactAngle = -1.0 * std::min((t2-t1)*wristContactBaseAngle/baseTime, wristContactBaseAngle);
