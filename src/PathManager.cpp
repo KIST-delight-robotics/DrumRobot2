@@ -192,6 +192,7 @@ void PathManager::generateTrajectory()
 
     float n, s_R, s_L;
     float dt = canManager.deltaT;
+    int stateR, stateL;
 
     // parse
     parseMeasure(measureMatrix);
@@ -248,7 +249,10 @@ void PathManager::generateTrajectory()
         }
     }
 
-    saveLineData(n, minmax);
+    stateR = makeState(hit_state_R);
+    stateL = makeState(hit_state_L);
+
+    saveLineData(n, minmax, stateR, stateL);
 
     // // position
     // VectorXd Pi(6), Pf(6);
@@ -400,19 +404,26 @@ void PathManager::generateTrajectory()
 bool PathManager::solveIKandPushConmmand()
 {
     VectorXd q;
+    VectorXd add_qR;
+    VectorXd add_qL;
+
+    int stateR = lineData(0,3);
+    int stateL = lineData(0,4);
+    float n = lineData(0,0);
+    float t = i_solveIK * 0.005;
 
     // 정해진 개수만큼 커맨드 생성
-    if (i_solveIK >= lineDate(0,0))
+    if (i_solveIK >= lineData(0,0))
     {
         i_solveIK = 0;
 
         // 커맨드 생성 후 삭제
-        if (lineDate.rows() >= 1)
+        if (lineData.rows() >= 1)
         {
-            MatrixXd tmp_matrix(lineDate.rows() - 1, lineDate.cols());
-            tmp_matrix = lineDate.block(1, 0, tmp_matrix.rows(), tmp_matrix.cols());
-            lineDate.resize(tmp_matrix.rows(), tmp_matrix.cols());
-            lineDate = tmp_matrix;
+            MatrixXd tmp_matrix(lineData.rows() - 1, lineData.cols());
+            tmp_matrix = lineData.block(1, 0, tmp_matrix.rows(), tmp_matrix.cols());
+            lineData.resize(tmp_matrix.rows(), tmp_matrix.cols());
+            lineData = tmp_matrix;
         }
         
         std::cout << "\n lineDate Over \n";
@@ -427,7 +438,7 @@ bool PathManager::solveIKandPushConmmand()
             getWaistCoefficient();
 
             std::cout << "\n lineDate Start : \n";
-            std::cout << lineDate;
+            std::cout << lineData;
         }
         i_solveIK++;
     }
@@ -439,7 +450,21 @@ bool PathManager::solveIKandPushConmmand()
     solveIK(q, q0);
 
     // wrist, elbow
-    //
+    add_qR.resize(2);
+    add_qL.resize(2);
+
+    pre_parameters_tmp = pre_parameters_R;
+    add_qR = makeHitTrajetory(0, n, t, stateR, wristIntensityR);
+    pre_parameters_R = pre_parameters_tmp;
+
+    pre_parameters_tmp = pre_parameters_L;
+    add_qL = makeHitTrajetory(0, n, t, stateL, wristIntensityL);
+    pre_parameters_L = pre_parameters_tmp;
+
+    q(5) += add_qR(1);
+    q(6) += add_qL(1);
+    q(7) += add_qR(0);
+    q(8) += add_qL(0);
 
     // push motor obj
     pushConmmandBuffer(q);
@@ -454,24 +479,24 @@ bool PathManager::solveIKandPushConmmand()
     return true;
 }
 
-void PathManager::saveLineData(int n, VectorXd minmax)
+void PathManager::saveLineData(int n, VectorXd minmax, int stateR, int stateL)
 {
     if(line == 1)
     {
-        lineDate(0, 0) = n;
-        lineDate(0, 1) = minmax(1);
-        lineDate(0, 2) = minmax(0);
-        lineDate(0, 3) = 0;
-        lineDate(0, 4) = 0;
+        lineData(0, 0) = n;
+        lineData(0, 1) = minmax(1);
+        lineData(0, 2) = minmax(0);
+        lineData(0, 3) = stateR;
+        lineData(0, 4) = stateL;
     }
     else
     {
-        lineDate.conservativeResize(lineDate.rows() + 1, lineDate.cols());
-        lineDate(lineDate.rows() - 1, 0) = n;
-        lineDate(lineDate.rows() - 1, 1) = minmax(1);
-        lineDate(lineDate.rows() - 1, 2) = minmax(0);
-        lineDate(lineDate.rows() - 1, 3) = 0;
-        lineDate(lineDate.rows() - 1, 4) = 0;
+        lineData.conservativeResize(lineData.rows() + 1, lineData.cols());
+        lineData(lineData.rows() - 1, 0) = n;
+        lineData(lineData.rows() - 1, 1) = minmax(1);
+        lineData(lineData.rows() - 1, 2) = minmax(0);
+        lineData(lineData.rows() - 1, 3) = stateR;
+        lineData(lineData.rows() - 1, 4) = stateL;
     }
 }
 
@@ -500,17 +525,17 @@ void PathManager::getWaistCoefficient()
     MatrixXd A_1;
 
     double dt = canManager.deltaT;
-    double t21 = lineDate(0,0) * dt;
-    double q0_t1 = 0.5*(lineDate(0,1) + lineDate(0,2));
+    double t21 = lineData(0,0) * dt;
+    double q0_t1 = 0.5*(lineData(0,1) + lineData(0,2));
     double q0_t2;
 
-    if (lineDate.rows() == 1)
+    if (lineData.rows() == 1)
     {
         q0_t2 = q0_t1;
     }
     else
     {
-        q0_t2 = 0.5*(lineDate(1,1) + lineDate(1,2));
+        q0_t2 = 0.5*(lineData(1,1) + lineData(1,2));
     }
 
     A.resize(4,4);
@@ -619,8 +644,8 @@ void PathManager::initVal()
     measureState(0, 1) = 1.0;
     measureState(1, 1) = 1.0;
 
-    lineDate.resize(1, 5);
-    lineDate = MatrixXd::Zero(1, 5);
+    lineData.resize(1, 5);
+    lineData = MatrixXd::Zero(1, 5);
 
     line = 0;
     threshold = 2.4;
@@ -904,9 +929,8 @@ VectorXd PathManager::makePath(VectorXd Pi, VectorXd Pf, float s)
     return Ps;
 }
 
-VectorXd PathManager::makeHitTrajetory(float t1, float t2, float t, VectorXd hitState, int wristIntensity)
+int PathManager:: makeState(VectorXd hitState)
 {
-    VectorXd addAngle;
     int state;
 
     if (hitState(0) == 0 && hitState(1) == 0)
@@ -929,6 +953,13 @@ VectorXd PathManager::makeHitTrajetory(float t1, float t2, float t, VectorXd hit
         // Contact - Lift - Hit
         state = 3;
     }
+
+    return state;
+}
+
+VectorXd PathManager::makeHitTrajetory(float t1, float t2, float t, int state, int wristIntensity)
+{
+    VectorXd addAngle;
 
     HitParameter param = getHitParameter(t1, t2, state, pre_parameters_tmp, wristIntensity);
     pre_parameters_tmp = param;
