@@ -5,6 +5,7 @@
 #include "../include/motors/CommandParser.hpp"
 #include "../include/motors/Motor.hpp"
 #include "../include/tasks/SystemState.hpp"
+#include "../include/USBIO_advantech/USBIO_advantech.hpp"
 #include "../include/tasks/Functions.hpp"
 
 #include <iostream>
@@ -58,6 +59,7 @@ public:
     PathManager(State &stateRef,
                 CanManager &canManagerRef,
                 std::map<std::string, std::shared_ptr<GenericMotor>> &motorsRef,
+                USBIO &usbioRef,
                 Functions &funRef);
 
     
@@ -77,21 +79,14 @@ public:
         VectorXd pR; // 0: x, 1: y, 2: z
         // 왼팔 좌표
         VectorXd pL; // 0: x, 1: y, 2: z
+        // 브레이크
+        bool brake_state[8];
     }Position;
     queue<Position> P_buffer;
 
     bool readMeasure(ifstream& inputFile, bool &BPMFlag);
     void generateTrajectory();
     bool solveIKandPushConmmand();
-
-
-    // // 브레이크 상태 저장할 구조체
-    // typedef struct {
-    //     // 브레이크
-    //     bool state[8];
-    // }Brake;
-
-    // queue<Brake> brake_buffer;
     
     /////////////////////////////////////////////////////////////////////////// AddStance
 
@@ -121,6 +116,7 @@ private:
     State &state;                                                 ///< 시스템의 현재 상태입니다.
     CanManager &canManager;                                       ///< CAN 통신을 통한 모터 제어를 담당합니다.
     std::map<std::string, std::shared_ptr<GenericMotor>> &motors; ///< 연결된 모터들의 정보입니다.
+    USBIO &usbio;
     Functions &fun;
 
     map<std::string, int> motor_mapping = { ///< 각 관절에 해당하는 열 정보.
@@ -250,19 +246,7 @@ private:
 
     HitParameter pre_parameters_R, pre_parameters_L, pre_parameters_tmp;
 
-    /////////////////////////////////////////////////////////////////////////// Play (waist trajectory)
-    // 허리 각도와 손목, 팔꿈치 각도 저장할 구조체
-    typedef struct {
-        // 허리 각도
-        float q0;
-        // 손목 각도, 팔꿈치 추가 각도
-        VectorXd add_qR;
-        VectorXd add_qL;
-    }AddAngle;
-
-    queue<AddAngle> q_buffer;
-
-    // dijkstra
+    /////////////////////////////////////////////////////////////////////////// Play (dijkstra)
     double imin, imax, fmin, fmax;
     double preq0_t1;
     void updateRange(const VectorXd& output, double& min, double& max);
@@ -286,5 +270,14 @@ private:
     // q1[rad], q2[rad], Vmax[rad/s], acc[rad/s^2], t[s], t2[s]
     VectorXd makeProfile(VectorXd &q1, VectorXd &q2, VectorXd &Vmax, float acc, float t, float t2);
     void getMotorPos();
+
+    /////////////////////////////////////////////////////////////////////////// brake
+    // // 브레이크 상태 저장할 구조체
+    // typedef struct {
+    //     // 브레이크
+    //     bool state[8];
+    // }Brake;
+
+    // queue<Brake> brake_buffer;
     
 };

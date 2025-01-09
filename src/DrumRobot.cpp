@@ -302,9 +302,6 @@ void DrumRobot::SendPlayProcess(int periodMicroSec, string musicName)
     {
     case PlaySub::ReadMusicSheet:
     {
-        // if (pathManager.brake_buffer.empty()) // brake_buffer 비어있음 -> P_buffer, q_buffer 비어있음 -> 새로 생성
-        // {
-
         // 파일을 처음 열 때만
         if (openFlag == 1)
         {
@@ -359,8 +356,6 @@ void DrumRobot::SendPlayProcess(int periodMicroSec, string musicName)
             break;
         }
 
-        // }
-
         state.play = PlaySub::SolveIK;
 
         break;
@@ -384,16 +379,6 @@ void DrumRobot::SendPlayProcess(int periodMicroSec, string musicName)
     }
     case PlaySub::SolveIK:
     {
-        // // brake
-        // PathManager::Brake next_brake;
-        // next_brake = pathManager.brake_buffer.front();
-        // pathManager.brake_buffer.pop();
-
-        // for (int i = 0; i < 8; i++)
-        // {
-        //     usbio.USBIO_4761_set(i, next_brake.state[i]);
-        // }
-
         // 정해진 개수만큼 커맨드 생성
         if (pathManager.solveIKandPushConmmand())
         {
@@ -455,18 +440,18 @@ void DrumRobot::SendPlayProcess(int periodMicroSec, string musicName)
             state.play = PlaySub::SolveIK;
         }
 
-        // // brake
-        // if (usbio.useUSBIO)
-        // {
-        //     int cnt = 0;
-        //     while(!usbio.USBIO_4761_output())
-        //     {
-        //         cout << "brake Error\n";
-        //         usbio.USBIO_4761_init();
-        //         cnt++;
-        //         if (cnt >= 5) break;
-        //     }
-        // }
+        // brake
+        if (usbio.useUSBIO)
+        {
+            int cnt = 0;
+            while(!usbio.USBIO_4761_output())
+            {
+                cout << "brake Error\n";
+                usbio.USBIO_4761_init();
+                cnt++;
+                if (cnt >= 5) break;
+            }
+        }
 
         break;
     }

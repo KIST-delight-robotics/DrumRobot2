@@ -42,7 +42,7 @@ int main(int argc, char *argv[])
 
     Functions fun(motors);
     CanManager canManager(motors, fun);
-    PathManager pathManager(state, canManager, motors, fun);
+    PathManager pathManager(state, canManager, motors, usbio, fun);
     TestManager testManager(state, canManager, motors, usbio, fun);
 
     DrumRobot drumRobot(state, canManager, pathManager, testManager, motors, usbio, fun);
