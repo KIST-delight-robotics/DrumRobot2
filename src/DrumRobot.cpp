@@ -452,7 +452,7 @@ void DrumRobot::SendPlayProcess(int periodMicroSec, string musicName)
         }
         else
         {
-            state.play = PlaySub::ReadMusicSheet;
+            state.play = PlaySub::SolveIK;
         }
 
         // // brake
