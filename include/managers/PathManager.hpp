@@ -246,7 +246,7 @@ private:
     float makeElbowAngle(float t1, float t2, float t, int state, HitParameter param, int intensity);
     float makeWristAngle(float t1, float t2, float t, int state, HitParameter param, int intensity);
 
-    HitParameter getHitParameter(float t1, float t2, int hitState, HitParameter preParam);
+    HitParameter getHitParameter(float t1, float t2, int hitState, HitParameter preParam, int intensity);
     VectorXd makeHitTrajetory(float t1, float t2, float t, VectorXd hitState, int wristIntesity);
     
     VectorXd hit_state_R = VectorXd::Zero(2);

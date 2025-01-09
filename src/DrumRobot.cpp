@@ -430,7 +430,7 @@ void DrumRobot::SendPlayProcess(int periodMicroSec, string musicName)
         }
         else
         {
-            state.play = PlaySub::TimeCheck;
+            state.play = PlaySub::ReadMusicSheet;
         }
 
         // brake

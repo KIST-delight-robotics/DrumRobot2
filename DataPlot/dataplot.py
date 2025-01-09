@@ -57,8 +57,6 @@ def plot_pos_by_can_id(receive_df, send_df, can_id):
     # 클릭 이벤트 연결
     fig.canvas.mpl_connect('button_press_event', lambda event: on_click(event, receive_df.append(send_df).reset_index()))
 
-    plt.show()
-
 # CAN ID별 Error 그래프 그리기 함수 (점만 표시)
 def plot_error_by_can_id(send_df, can_id):
     fig, ax = plt.subplots(figsize=(10, 6))
@@ -74,8 +72,6 @@ def plot_error_by_can_id(send_df, can_id):
 
     # 클릭 이벤트 연결
     fig.canvas.mpl_connect('button_press_event', lambda event: on_click(event, send_df.reset_index()))
-
-    plt.show()
 
 # 메인 함수
 def main():
@@ -99,6 +95,9 @@ def main():
 
         # Error 그래프 (Send의 Error만 그리기) - 점만 표시
         plot_error_by_can_id(send_df, can_id)
+
+    # 모든 그래프를 한 번에 표시
+    plt.show()
 
 if __name__ == '__main__':
     main()
