@@ -719,163 +719,6 @@ VectorXd PathManager::makePath(VectorXd Pi, VectorXd Pf, float s)
     return Ps;
 }
 
-VectorXd PathManager::waistRange(VectorXd &pR, VectorXd &pL)
-{
-    // float direction = 0.0 * M_PI;
-    PartLength part_length;
-
-    float X1 = pR(0), Y1 = pR(1), z1 = pR(2);
-    float X2 = pL(0), Y2 = pL(1), z2 = pL(2);
-    float r1 = part_length.upperArm;
-    float r2 = part_length.lowerArm + part_length.stick;
-    float L1 = part_length.upperArm;
-    float L2 = part_length.lowerArm + part_length.stick;
-    float s = part_length.waist;
-    float z0 = part_length.height;
-
-    int j = 0, m = 0;
-    float the3[1351];
-    float zeta = z0 - z2;
-    VectorXd Qf(9);
-    VectorXd output(2);
-    MatrixXd Q_arr(7,1);
-    // float the0_f = 0;
-
-    // the3 배열 초기화
-    for (int i = 0; i < 1351; ++i)
-        the3[i] = -M_PI / 4.0 + i * M_PI / 1350.0 * (3.0 / 4.0); // the3 범위 : -45deg ~ 90deg
-
-    for (int i = 0; i < 1351; ++i)
-    {
-        float det_the4 = (z0 - z1 - r1 * cos(the3[i])) / r2;
-
-        if (det_the4 < 1 && det_the4 > -1)
-        {
-            float the34 = acos((z0 - z1 - r1 * cos(the3[i])) / r2);
-            float the4 = the34 - the3[i];
-
-            if (the4 >= 0 && the4 < 120.0 * M_PI / 180.0) // the4 범위 : 0deg ~ 120deg
-            {
-                float r = r1 * sin(the3[i]) + r2 * sin(the34);
-                float det_the1 = (X1 * X1 + Y1 * Y1 - r * r - s * s / 4.0) / (s * r);
-
-                if (det_the1 < 1 && det_the1 > -1)
-                {
-                    float the1 = acos(det_the1);
-                    if (the1 > 0 && the1 < 150.0 * M_PI / 180.0) // the1 범위 : 0deg ~ 150deg
-                    {
-                        float alpha = asin(X1 / sqrt(X1 * X1 + Y1 * Y1));
-                        float det_the0 = (s / 4.0 + (X1 * X1 + Y1 * Y1 - r * r) / s) / sqrt(X1 * X1 + Y1 * Y1);
-
-                        if (det_the0 < 1 && det_the0 > -1)
-                        {
-                            float the0 = asin(det_the0) - alpha;
-                            if (the0 > -M_PI / 3.0 && the0 < M_PI / 3.0) // the0 범위 : -60deg ~ 60deg
-                            {
-                                float L = sqrt((X2 - 0.5 * s * cos(the0 + M_PI)) * (X2 - 0.5 * s * cos(the0 + M_PI)) + (Y2 - 0.5 * s * sin(the0 + M_PI)) * (Y2 - 0.5 * s * sin(the0 + M_PI)));
-                                float det_the2 = (X2 - 0.5 * s * cos(the0 + M_PI)) / L;
-
-                                if (det_the2 < 1 && det_the2 > -1)
-                                {
-                                    float the2 = acos(det_the2) - the0;
-                                    if (the2 > 30 * M_PI / 180.0 && the2 < M_PI) // the2 범위 : 30deg ~ 180deg
-                                    {
-                                        float Lp = sqrt(L * L + zeta * zeta);
-                                        float det_the6 = (Lp * Lp - L1 * L1 - L2 * L2) / (2 * L1 * L2);
-
-                                        if (det_the6 < 1 && det_the6 > -1)
-                                        {
-                                            float the6 = acos(det_the6);
-                                            if (the6 >= 0 && the6 < 120.0 * M_PI / 180.0) // the6 범위 : 0deg ~ 120deg
-                                            {
-                                                float T = (zeta * zeta + L * L + L1 * L1 - L2 * L2) / (L1 * 2);
-                                                float det_the5 = L * L + zeta * zeta - T * T;
-
-                                                if (det_the5 > 0)
-                                                {
-                                                    float sol = T * L - zeta * sqrt(L * L + zeta * zeta - T * T);
-                                                    sol /= (L * L + zeta * zeta);
-                                                    float the5 = asin(sol);
-                                                    if (the5 > -M_PI / 4 && the5 < M_PI / 2) // the5 범위 : -45deg ~ 90deg
-                                                    {
-                                                        // if (j == 0 || fabs(the0 - direction) < fabs(the0_f - direction))
-                                                        // {
-                                                        //     Qf(0) = the0;
-                                                        //     Qf(1) = the1;
-                                                        //     Qf(2) = the2;
-                                                        //     Qf(3) = the3[i];
-                                                        //     Qf(4) = the4;
-                                                        //     Qf(5) = the5;
-                                                        //     Qf(6) = the6;
-                                                        //     the0_f = the0;
-                                                        //     j = 1;
-                                                        // }
-                                                        if (j == 0)
-                                                        {
-                                                            Q_arr(0,0) = the0;
-                                                            Q_arr(1,0) = the1;
-                                                            Q_arr(2,0) = the2;
-                                                            Q_arr(3,0) = the3[i];
-                                                            Q_arr(4,0) = the4;
-                                                            Q_arr(5,0) = the5;
-                                                            Q_arr(6,0) = the6;
-
-                                                            j = 1;
-                                                        }
-                                                        else
-                                                        {
-                                                            Q_arr.conservativeResize(Q_arr.rows(), Q_arr.cols() + 1);
-
-                                                            Q_arr(0,j) = the0;
-                                                            Q_arr(1,j) = the1;
-                                                            Q_arr(2,j) = the2;
-                                                            Q_arr(3,j) = the3[i];
-                                                            Q_arr(4,j) = the4;
-                                                            Q_arr(5,j) = the5;
-                                                            Q_arr(6,j) = the6;
-
-                                                            j++;
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    if (j == 0)
-    {
-        cout << "IKFUN is not solved!!\n";
-        state.main = Main::Error;
-    }
-    else
-    {
-        m = j/2;
-        // std::cout << "j = " << j << ", m = " << m << std::endl;
-        for (int i = 0; i < 7; i++)
-        {
-            Qf(i) = Q_arr(i,m);
-
-            // std::cout << "Q(" << i << ") = " << Qf(i) << std::endl;
-        }
-    }
-
-    Qf(7) = 0.0;
-    Qf(8) = 0.0;
-
-    output(0) = Q_arr(0,0); // max
-    output(1) = Q_arr(0,j-1); // min
-
-    return output;
-}
-
 void PathManager::saveLineData(int n, VectorXd minmax, int stateR, int stateL)
 {
     if(line == 1)
@@ -1596,47 +1439,6 @@ VectorXd PathManager::ikFixedWaist(VectorXd &pR, VectorXd &pL, double theta0)
     return Qf;
 }
 
-void PathManager::getWaistCoefficient()
-{
-    MatrixXd A;
-    MatrixXd b;
-    MatrixXd A_1;
-
-    double dt = canManager.deltaT;
-    double t21 = lineData(0,0) * dt;
-    double q0_t1 = 0.5*(lineData(0,1) + lineData(0,2));
-    double q0_t2;
-
-    if (lineData.rows() == 1)
-    {
-        q0_t2 = q0_t1;
-    }
-    else
-    {
-        q0_t2 = 0.5*(lineData(1,1) + lineData(1,2));
-    }
-
-    A.resize(4,4);
-    b.resize(4,1);
-
-    A << 1, 0, 0, 0,
-        1, t21, t21*t21, t21*t21*t21,
-        0, 1, 0, 0,
-        0, 1, 2*t21, 3*t21*t21;
-    b << q0_t1, q0_t2, 0, 0;
-
-    A_1 = A.inverse();
-    waistCoefficient = A_1 * b;
-}
-
-double PathManager::getWaistAngle(int i)
-{
-    double dt = canManager.deltaT;
-    double t = dt * i;
-
-    return waistCoefficient(0,0) + waistCoefficient(1,0) * t + waistCoefficient(2,0) * t * t + waistCoefficient(3,0) * t * t * t;
-}
-
 void PathManager::pushConmmandBuffer(VectorXd &Qi)
 {
     for (auto &entry : motors)
@@ -1657,6 +1459,243 @@ void PathManager::pushConmmandBuffer(VectorXd &Qi)
             maxonMotor->commandBuffer.push(newData);
         }
     }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/*                                Solve IK                                    */
+////////////////////////////////////////////////////////////////////////////////
+
+VectorXd PathManager::waistRange(VectorXd &pR, VectorXd &pL)
+{
+    // float direction = 0.0 * M_PI;
+    PartLength part_length;
+
+    float X1 = pR(0), Y1 = pR(1), z1 = pR(2);
+    float X2 = pL(0), Y2 = pL(1), z2 = pL(2);
+    float r1 = part_length.upperArm;
+    float r2 = part_length.lowerArm + part_length.stick;
+    float L1 = part_length.upperArm;
+    float L2 = part_length.lowerArm + part_length.stick;
+    float s = part_length.waist;
+    float z0 = part_length.height;
+
+    int j = 0, m = 0;
+    float the3[1351];
+    float zeta = z0 - z2;
+    VectorXd Qf(9);
+    VectorXd output(2);
+    MatrixXd Q_arr(7,1);
+    // float the0_f = 0;
+
+    // the3 배열 초기화
+    for (int i = 0; i < 1351; ++i)
+        the3[i] = -M_PI / 4.0 + i * M_PI / 1350.0 * (3.0 / 4.0); // the3 범위 : -45deg ~ 90deg
+
+    for (int i = 0; i < 1351; ++i)
+    {
+        float det_the4 = (z0 - z1 - r1 * cos(the3[i])) / r2;
+
+        if (det_the4 < 1 && det_the4 > -1)
+        {
+            float the34 = acos((z0 - z1 - r1 * cos(the3[i])) / r2);
+            float the4 = the34 - the3[i];
+
+            if (the4 >= 0 && the4 < 120.0 * M_PI / 180.0) // the4 범위 : 0deg ~ 120deg
+            {
+                float r = r1 * sin(the3[i]) + r2 * sin(the34);
+                float det_the1 = (X1 * X1 + Y1 * Y1 - r * r - s * s / 4.0) / (s * r);
+
+                if (det_the1 < 1 && det_the1 > -1)
+                {
+                    float the1 = acos(det_the1);
+                    if (the1 > 0 && the1 < 150.0 * M_PI / 180.0) // the1 범위 : 0deg ~ 150deg
+                    {
+                        float alpha = asin(X1 / sqrt(X1 * X1 + Y1 * Y1));
+                        float det_the0 = (s / 4.0 + (X1 * X1 + Y1 * Y1 - r * r) / s) / sqrt(X1 * X1 + Y1 * Y1);
+
+                        if (det_the0 < 1 && det_the0 > -1)
+                        {
+                            float the0 = asin(det_the0) - alpha;
+                            if (the0 > -M_PI / 3.0 && the0 < M_PI / 3.0) // the0 범위 : -60deg ~ 60deg
+                            {
+                                float L = sqrt((X2 - 0.5 * s * cos(the0 + M_PI)) * (X2 - 0.5 * s * cos(the0 + M_PI)) + (Y2 - 0.5 * s * sin(the0 + M_PI)) * (Y2 - 0.5 * s * sin(the0 + M_PI)));
+                                float det_the2 = (X2 - 0.5 * s * cos(the0 + M_PI)) / L;
+
+                                if (det_the2 < 1 && det_the2 > -1)
+                                {
+                                    float the2 = acos(det_the2) - the0;
+                                    if (the2 > 30 * M_PI / 180.0 && the2 < M_PI) // the2 범위 : 30deg ~ 180deg
+                                    {
+                                        float Lp = sqrt(L * L + zeta * zeta);
+                                        float det_the6 = (Lp * Lp - L1 * L1 - L2 * L2) / (2 * L1 * L2);
+
+                                        if (det_the6 < 1 && det_the6 > -1)
+                                        {
+                                            float the6 = acos(det_the6);
+                                            if (the6 >= 0 && the6 < 120.0 * M_PI / 180.0) // the6 범위 : 0deg ~ 120deg
+                                            {
+                                                float T = (zeta * zeta + L * L + L1 * L1 - L2 * L2) / (L1 * 2);
+                                                float det_the5 = L * L + zeta * zeta - T * T;
+
+                                                if (det_the5 > 0)
+                                                {
+                                                    float sol = T * L - zeta * sqrt(L * L + zeta * zeta - T * T);
+                                                    sol /= (L * L + zeta * zeta);
+                                                    float the5 = asin(sol);
+                                                    if (the5 > -M_PI / 4 && the5 < M_PI / 2) // the5 범위 : -45deg ~ 90deg
+                                                    {
+                                                        // if (j == 0 || fabs(the0 - direction) < fabs(the0_f - direction))
+                                                        // {
+                                                        //     Qf(0) = the0;
+                                                        //     Qf(1) = the1;
+                                                        //     Qf(2) = the2;
+                                                        //     Qf(3) = the3[i];
+                                                        //     Qf(4) = the4;
+                                                        //     Qf(5) = the5;
+                                                        //     Qf(6) = the6;
+                                                        //     the0_f = the0;
+                                                        //     j = 1;
+                                                        // }
+                                                        if (j == 0)
+                                                        {
+                                                            Q_arr(0,0) = the0;
+                                                            Q_arr(1,0) = the1;
+                                                            Q_arr(2,0) = the2;
+                                                            Q_arr(3,0) = the3[i];
+                                                            Q_arr(4,0) = the4;
+                                                            Q_arr(5,0) = the5;
+                                                            Q_arr(6,0) = the6;
+
+                                                            j = 1;
+                                                        }
+                                                        else
+                                                        {
+                                                            Q_arr.conservativeResize(Q_arr.rows(), Q_arr.cols() + 1);
+
+                                                            Q_arr(0,j) = the0;
+                                                            Q_arr(1,j) = the1;
+                                                            Q_arr(2,j) = the2;
+                                                            Q_arr(3,j) = the3[i];
+                                                            Q_arr(4,j) = the4;
+                                                            Q_arr(5,j) = the5;
+                                                            Q_arr(6,j) = the6;
+
+                                                            j++;
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if (j == 0)
+    {
+        cout << "IKFUN is not solved!!\n";
+        state.main = Main::Error;
+    }
+    else
+    {
+        m = j/2;
+        // std::cout << "j = " << j << ", m = " << m << std::endl;
+        for (int i = 0; i < 7; i++)
+        {
+            Qf(i) = Q_arr(i,m);
+
+            // std::cout << "Q(" << i << ") = " << Qf(i) << std::endl;
+        }
+    }
+
+    Qf(7) = 0.0;
+    Qf(8) = 0.0;
+
+    output(0) = Q_arr(0,0); // max
+    output(1) = Q_arr(0,j-1); // min
+
+    return output;
+}
+
+double PathManager::getQ0t2(int mode)
+{
+    double q0_t2;
+
+    switch(mode)
+    {
+        case 0:
+        {
+            // 중앙값
+            q0_t2 = 0.5*(lineData(1,1) + lineData(1,2));
+            break;
+        }
+        case 1:
+        {
+            // 다익스트라
+            break;
+        }
+        case 2:
+        {
+            // 기울기 평균
+            break;
+        }
+        case 3:
+        {
+            // 최적화
+            break;
+        }
+    }
+
+    return q0_t2;
+}
+
+void PathManager::getWaistCoefficient()
+{
+    static double q0_t1 = readyArr[0];
+    double q0_t2;
+
+    MatrixXd A;
+    MatrixXd b;
+    MatrixXd A_1;
+
+    double dt = canManager.deltaT;
+    double t21 = lineData(0,0) * dt;
+
+    if (lineData.rows() == 1)
+    {
+        q0_t2 = q0_t1;
+    }
+    else
+    {
+        q0_t2 = getQ0t2(0);
+    }
+
+    A.resize(4,4);
+    b.resize(4,1);
+
+    A << 1, 0, 0, 0,
+        1, t21, t21*t21, t21*t21*t21,
+        0, 1, 0, 0,
+        0, 1, 2*t21, 3*t21*t21;
+    b << q0_t1, q0_t2, 0, 0;
+
+    A_1 = A.inverse();
+    waistCoefficient = A_1 * b;
+
+    q0_t1 = q0_t2;
+}
+
+double PathManager::getWaistAngle(int i)
+{
+    double dt = canManager.deltaT;
+    double t = dt * i;
+
+    return waistCoefficient(0,0) + waistCoefficient(1,0) * t + waistCoefficient(2,0) * t * t + waistCoefficient(3,0) * t * t * t;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

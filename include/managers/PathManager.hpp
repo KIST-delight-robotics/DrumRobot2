@@ -188,18 +188,22 @@ private:
     VectorXd getTargetPosition(VectorXd &inst_vector);
     float timeScaling(float ti, float tf, float t);
     VectorXd makePath(VectorXd Pi, VectorXd Pf, float s);
-    VectorXd waistRange(VectorXd &pR, VectorXd &pL);
     void saveLineData(int n, VectorXd minmax, int stateR, int stateL);
 
     /////////////////////////////////////////////////////////////////////////// Play (solve IK)
     int i_solveIK = 0;
-    MatrixXd waistCoefficient;
     
     void solveIK(VectorXd &q, double q0);
     VectorXd ikFixedWaist(VectorXd &pR, VectorXd &pL, double theta0);
+    void pushConmmandBuffer(VectorXd &Qi);
+
+    /////////////////////////////////////////////////////////////////////////// Play (waist)
+    MatrixXd waistCoefficient;
+
+    VectorXd waistRange(VectorXd &pR, VectorXd &pL);
+    double getQ0t2(int mode);
     void getWaistCoefficient();
     double getWaistAngle(int i);
-    void pushConmmandBuffer(VectorXd &Qi);
     
     /////////////////////////////////////////////////////////////////////////// Play (wrist & elbow)
     
@@ -239,7 +243,6 @@ private:
     }HitParameter;
 
     int makeState(VectorXd hitState);
-    MatrixXd getHitAngle(int i);
 
     float makeElbowAngle(float t1, float t2, float t, int state, HitParameter param, int intensity);
     float makeWristAngle(float t1, float t2, float t, int state, HitParameter param, int intensity);
@@ -273,14 +276,5 @@ private:
     // q1[rad], q2[rad], Vmax[rad/s], acc[rad/s^2], t[s], t2[s]
     VectorXd makeProfile(VectorXd &q1, VectorXd &q2, VectorXd &Vmax, float acc, float t, float t2);
     void getMotorPos();
-
-    /////////////////////////////////////////////////////////////////////////// brake
-    // // 브레이크 상태 저장할 구조체
-    // typedef struct {
-    //     // 브레이크
-    //     bool state[8];
-    // }Brake;
-
-    // queue<Brake> brake_buffer;
     
 };
