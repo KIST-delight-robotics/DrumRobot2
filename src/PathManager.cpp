@@ -114,7 +114,7 @@ void PathManager::setReadyAngle()
     readyArr[4] += param.elbowStayAngle;
     readyArr[6] += param.elbowStayAngle;
     readyArr[7] = param.wristStayAngle;
-    readyArr[8] = param.wristStayAngle;
+    readyArr[8] = param.wristStayAngle;    
 }
 
 ////////////////////////////////////////////////////////////////////////////////    
@@ -323,7 +323,7 @@ bool PathManager::solveIKandPushConmmand()
     add_qL = makeHitTrajetory(0, t, i_solveIK * dt, stateL, wristIntensityL);
     pre_parameters_L = pre_parameters_tmp;
 
-    q(5) += add_qR(1);
+    q(4) += add_qR(1);
     q(6) += add_qL(1);
     q(7) += add_qR(0);
     q(8) += add_qL(0);
@@ -437,6 +437,7 @@ void PathManager::initVal()
     threshold = 2.4;
     round_sum = 0.0;
     totalTime = 0.0;
+    q0_t1 = readyArr[0];
 }
 
 void PathManager::parseMeasure(MatrixXd &measureMatrix)
@@ -1624,7 +1625,7 @@ VectorXd PathManager::waistRange(VectorXd &pR, VectorXd &pL)
 
 double PathManager::getQ0t2(int mode)
 {
-    double q0_t2;
+    double q0_t2 = 0.0;
 
     switch(mode)
     {
@@ -1637,6 +1638,21 @@ double PathManager::getQ0t2(int mode)
         case 1:
         {
             // 다익스트라
+            vector<double> x_values = {t1, t2}; // 현재 x값과 다음 x값
+            vector<pair<double, double>> y_ranges = {{lineData(0,1), lineData(0,2)}, {lineData(1,1), lineData(1,2)}};
+            
+            try {
+                if(line == 0){
+                    q0_t1 = readyArr[0];
+                }
+                else{
+                    q0_t1 = preq0_t1;
+                }
+                q0_t2 = dijkstra_top10_with_median(x_values, y_ranges, q0_t1);
+                preq0_t1 = q0_t2;
+            } catch (const exception& e) {
+                cerr << e.what() << endl;
+            }
             break;
         }
         case 2:
@@ -1656,7 +1672,6 @@ double PathManager::getQ0t2(int mode)
 
 void PathManager::getWaistCoefficient()
 {
-    static double q0_t1 = readyArr[0];
     double q0_t2;
 
     MatrixXd A;
