@@ -199,6 +199,7 @@ private:
 
     /////////////////////////////////////////////////////////////////////////// Play (waist)
     MatrixXd waistCoefficient;
+    double q0_t1;
 
     VectorXd waistRange(VectorXd &pR, VectorXd &pL);
     double getQ0t2(int mode);
