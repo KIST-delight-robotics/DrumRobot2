@@ -1642,14 +1642,23 @@ double PathManager::getQ0t2(int mode)
             vector<pair<double, double>> y_ranges = {{lineData(0,1), lineData(0,2)}, {lineData(1,1), lineData(1,2)}};
             
             try {
-                if(line == 0){
-                    q0_t1 = readyArr[0];
-                }
-                else{
-                    q0_t1 = preq0_t1;
+                if(status == 1){
+                    q0_t1 = nextq0_t1;
                 }
                 q0_t2 = dijkstra_top10_with_median(x_values, y_ranges, q0_t1);
-                preq0_t1 = q0_t2;
+                if(abs(q0_t2 - q0_t1) <= qthreshold){
+                    if(q0_t1 > lineData(1,1) && q0_t1 < lineData(1,2)){
+                        status = 0;
+                    }
+                    else{
+                        nextq0_t1 = q0_t1;
+                        status = 1;
+                    }
+                }
+                else{
+                    status = 0;
+                }
+
             } catch (const exception& e) {
                 cerr << e.what() << endl;
             }
@@ -1687,7 +1696,7 @@ void PathManager::getWaistCoefficient()
     }
     else
     {
-        q0_t2 = getQ0t2(0);
+        q0_t2 = getQ0t2(1);
     }
 
     A.resize(4,4);
@@ -2132,6 +2141,7 @@ double PathManager::select_top10_with_median(const vector<double>& y_vals, doubl
 
     return *closest;
 }
+
 
 double PathManager::dijkstra_top10_with_median(const vector<double>& x_values, const vector<pair<double, double>>& y_ranges, double start_y) {
     int n = x_values.size(); // x 값의 개수
