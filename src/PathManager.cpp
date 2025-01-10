@@ -271,7 +271,8 @@ bool PathManager::solveIKandPushConmmand()
     int stateR = lineData(0,3);
     int stateL = lineData(0,4);
     float n = lineData(0,0);
-    float t = i_solveIK * 0.005;
+    float dt = canManager.deltaT;
+    float t = n * dt;
 
     // 정해진 개수만큼 커맨드 생성
     if (i_solveIK >= lineData(0,0))
@@ -315,11 +316,11 @@ bool PathManager::solveIKandPushConmmand()
     add_qL.resize(2);
 
     pre_parameters_tmp = pre_parameters_R;
-    add_qR = makeHitTrajetory(0, n, t, stateR, wristIntensityR);
+    add_qR = makeHitTrajetory(0, t, i_solveIK * dt, stateR, wristIntensityR);
     pre_parameters_R = pre_parameters_tmp;
 
     pre_parameters_tmp = pre_parameters_L;
-    add_qL = makeHitTrajetory(0, n, t, stateL, wristIntensityL);
+    add_qL = makeHitTrajetory(0, t, i_solveIK * dt, stateL, wristIntensityL);
     pre_parameters_L = pre_parameters_tmp;
 
     q(5) += add_qR(1);
