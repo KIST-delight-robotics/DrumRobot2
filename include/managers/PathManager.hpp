@@ -176,7 +176,7 @@ private:
     VectorXd hit_state_L = VectorXd::Zero(2);
 
     void parseMeasure(MatrixXd &measureMatrix);
-    pair<VectorXd, VectorXd> parseOneArm(VectorXd t, VectorXd inst, VectorXd intensity, char dir, VectorXd stateVector);
+    pair<VectorXd, VectorXd> parseOneArm(VectorXd t, VectorXd inst, VectorXd stateVector);
 
     /////////////////////////////////////////////////////////////////////////// Play (make trajectory)
     double round_sum = 0;
@@ -188,7 +188,7 @@ private:
     VectorXd getTargetPosition(VectorXd &inst_vector);
     float timeScaling(float ti, float tf, float t);
     VectorXd makePath(VectorXd Pi, VectorXd Pf, float s);
-    void saveLineData(int n, VectorXd minmax, int stateR, int stateL);
+    void saveLineData(int n, VectorXd minmax, int stateR, int stateL, VectorXd intesity);
 
     /////////////////////////////////////////////////////////////////////////// Play (solve IK)
     int i_solveIK = 0;
@@ -219,10 +219,6 @@ private:
 
     const float elbowStayBaseAngle = 5.0 * M_PI / 180.0;
     const float elbowLiftBaseAngle = 10.0 * M_PI / 180.0;
-
-    // 세기
-    int wristIntensityR = 0;
-    int wristIntensityL = 0;
     
     // 타격 궤적 생성 파라미터
     typedef struct {

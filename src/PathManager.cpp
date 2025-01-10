@@ -190,6 +190,7 @@ void PathManager::generateTrajectory()
     VectorXd Pf_R(3);
     VectorXd Pf_L(3);
     VectorXd minmax;
+    VectorXd intensity(2);
 
     float n, s_R, s_L;
     float dt = canManager.deltaT;
@@ -197,6 +198,8 @@ void PathManager::generateTrajectory()
 
     // parse
     parseMeasure(measureMatrix);
+    intensity(0) = measureMatrix(0,4);
+    intensity(1) = measureMatrix(0,5);
 
     // 한 줄의 데이터 개수
     n = (t2 - t1) / dt;
@@ -259,7 +262,7 @@ void PathManager::generateTrajectory()
     stateR = makeState(hit_state_R);
     stateL = makeState(hit_state_L);
 
-    saveLineData(n, minmax, stateR, stateL);
+    saveLineData(n, minmax, stateR, stateL, intensity);
 }
 
 bool PathManager::solveIKandPushConmmand()
@@ -316,11 +319,11 @@ bool PathManager::solveIKandPushConmmand()
     add_qL.resize(2);
 
     pre_parameters_tmp = pre_parameters_R;
-    add_qR = makeHitTrajetory(0, t, i_solveIK * dt, stateR, wristIntensityR);
+    add_qR = makeHitTrajetory(0, t, i_solveIK * dt, stateR, lineData(0,5));
     pre_parameters_R = pre_parameters_tmp;
 
     pre_parameters_tmp = pre_parameters_L;
-    add_qL = makeHitTrajetory(0, t, i_solveIK * dt, stateL, wristIntensityL);
+    add_qL = makeHitTrajetory(0, t, i_solveIK * dt, stateL, lineData(0,6));
     pre_parameters_L = pre_parameters_tmp;
 
     q(4) += add_qR(1);
@@ -431,7 +434,7 @@ void PathManager::initVal()
     measureState(1, 1) = 1.0;
 
     lineData.resize(1, 5);
-    lineData = MatrixXd::Zero(1, 5);
+    lineData = MatrixXd::Zero(1, 7);
 
     line = 0;
     threshold = 2.4;
@@ -448,8 +451,8 @@ void PathManager::parseMeasure(MatrixXd &measureMatrix)
     VectorXd MeasureIntensity_R =  measureMatrix.col(4);
     VectorXd MeasureIntensity_L =  measureMatrix.col(5);
 
-    pair<VectorXd, VectorXd> R = parseOneArm(Measure_time, Measure_R, MeasureIntensity_R, 0, measureState.row(0));
-    pair<VectorXd, VectorXd> L = parseOneArm(Measure_time, Measure_L, MeasureIntensity_L, 1, measureState.row(1));
+    pair<VectorXd, VectorXd> R = parseOneArm(Measure_time, Measure_R, measureState.row(0));
+    pair<VectorXd, VectorXd> L = parseOneArm(Measure_time, Measure_L, measureState.row(1));
 
     // 데이터 저장
     inst_i << R.first.block(1,0,9,1), L.first.block(1,0,9,1);
@@ -498,7 +501,7 @@ void PathManager::parseMeasure(MatrixXd &measureMatrix)
     measureMatrix = tmp_matrix;
 }
 
-pair<VectorXd, VectorXd> PathManager::parseOneArm(VectorXd t, VectorXd inst, VectorXd intensity, char dir, VectorXd stateVector)
+pair<VectorXd, VectorXd> PathManager::parseOneArm(VectorXd t, VectorXd inst, VectorXd stateVector)
 {
     map<int, int> instrument_mapping = {
     {1, 2}, {2, 5}, {3, 6}, {4, 8}, {5, 3}, {6, 1}, {7, 0}, {8, 7}, {11, 2}, {51, 2}, {61, 2}, {71, 2}, {81, 2}, {91, 2}};
@@ -528,7 +531,6 @@ pair<VectorXd, VectorXd> PathManager::parseOneArm(VectorXd t, VectorXd inst, Vec
             detectHit = true;
             detectTime = t(i);
             detectInst = inst(i);
-            dir == 0 ? wristIntensityR = intensity(i) : wristIntensityL = intensity(i);
 
             break;
         }
@@ -720,7 +722,7 @@ VectorXd PathManager::makePath(VectorXd Pi, VectorXd Pf, float s)
     return Ps;
 }
 
-void PathManager::saveLineData(int n, VectorXd minmax, int stateR, int stateL)
+void PathManager::saveLineData(int n, VectorXd minmax, int stateR, int stateL, VectorXd intensity)
 {
     if(line == 1)
     {
@@ -729,6 +731,8 @@ void PathManager::saveLineData(int n, VectorXd minmax, int stateR, int stateL)
         lineData(0, 2) = minmax(0);
         lineData(0, 3) = stateR;
         lineData(0, 4) = stateL;
+        lineData(0, 5) = intensity(0);
+        lineData(0, 6) = intensity(1);
     }
     else
     {
@@ -738,6 +742,8 @@ void PathManager::saveLineData(int n, VectorXd minmax, int stateR, int stateL)
         lineData(lineData.rows() - 1, 2) = minmax(0);
         lineData(lineData.rows() - 1, 3) = stateR;
         lineData(lineData.rows() - 1, 4) = stateL;
+        lineData(lineData.rows() - 1, 5) = intensity(0);
+        lineData(lineData.rows() - 1, 6) = intensity(1);
     }
 }
 
