@@ -1673,6 +1673,14 @@ double PathManager::getQ0t2(int mode)
         case 2:
         {
             // 기울기 평균
+            // double q0_t3, q0_t4;
+            // q0_t2 = 0.5*(lineData(1,1) + lineData(1,2));
+            // double a0 = (q0_t2-q0_t1) / (t2 - t1);
+            // double a1 = (q0_t3-q0_t1) / (t3 - t1);
+            // double a2 = (q0_t4-q0_t1) / (t4 - t1);
+            // double k0, k1, k2; // 가중치
+            // double a_avg = (k0 * a0 + k1 * a1 + k2 * a2) / 3;
+
             break;
         }
         case 3:
@@ -1714,8 +1722,25 @@ void PathManager::getWaistCoefficient()
         0, 1, 2*t21, 3*t21*t21;
     b << q0_t1, q0_t2, 0, 0;
 
+    // q0_tset.push_back(q0_t2);
+    // vector<double> path_x, path_y;
+    // for (const auto& p : optimal_path) {
+    //     path_x.push_back(p.first);
+    //     path_y.push_back(p.second);
+    // }
+    // vector<SplineSet> spline_coeffs = cubic_spline(path_x, path_y);  // 스플라인 계산
+
+    // // 각 구간 계수를 b 벡터에 적용
+    // for (int i = 0; i < spline_coeffs.size(); i++) {
+    //     b << spline_coeffs[i].a, spline_coeffs[i].b, spline_coeffs[i].c, spline_coeffs[i].d;
+
+    //     A_1 = A.inverse();
+    //     waistCoefficient = A_1 * b;
+    // }
+
     A_1 = A.inverse();
     waistCoefficient = A_1 * b;
+
 
     q0_t1 = q0_t2;
 }
@@ -2147,7 +2172,6 @@ double PathManager::select_top10_with_median(const vector<double>& y_vals, doubl
 
     return *closest;
 }
-
 
 double PathManager::dijkstra_top10_with_median(const vector<double>& x_values, const vector<pair<double, double>>& y_ranges, double start_y) {
     int n = x_values.size(); // x 값의 개수
