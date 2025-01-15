@@ -103,7 +103,9 @@ void PathManager::setReadyAngle()
 
     VectorXd pR = VectorXd::Map(p.data(), 3, 1);
     VectorXd pL = VectorXd::Map(p.data() + 3, 3, 1);
-    VectorXd qk = ikfun_final(pR, pL);
+
+    VectorXd minmax = waistRange(pR, pL);
+    VectorXd qk = ikFixedWaist(pR, pL, 0.5 * minmax.sum(), 30 * M_PI / 180, 30 * M_PI / 180);
 
     for (int i = 0; i < qk.size(); ++i)
     {
@@ -113,8 +115,8 @@ void PathManager::setReadyAngle()
     HitParameter param;
     readyArr[4] += param.elbowStayAngle;
     readyArr[6] += param.elbowStayAngle;
-    readyArr[7] = param.wristStayAngle;
-    readyArr[8] = param.wristStayAngle;    
+    readyArr[7] += param.wristStayAngle;
+    readyArr[8] += param.wristStayAngle;    
 }
 
 ////////////////////////////////////////////////////////////////////////////////    
