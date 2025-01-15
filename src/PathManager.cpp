@@ -1667,26 +1667,25 @@ double PathManager::getQ0t2(int mode)
             }
             break;
         }
-        case 2:
+        case 2: // 미완
         {
             whatcase = 2;
             // 기울기 평균
 
             break;
         }
-        case 3:
+        case 3: // 미완
         {
             whatcase = 3;
             // 최적화
             break;
         }
-        case 4:
+        case 4: // 미완
         {
             whatcase = 4;
             // 다익스트라 평균 (다음, 다다음, 다다다음 값까지 봄)
+            double q0_t1t = lineData(0,1);
             double t3, t4; // 3번째 4번째 시간 값 정의 필요
-            t3 = lineData(2, 1);
-            t4 = lineData(3, 1);
 
             vector<double> x_values1 = {t1, t2}; // 현재 x값과 다음 x값
             vector<pair<double, double>> y_ranges1 = {{lineData(0,1), lineData(0,2)}, {lineData(1,1), lineData(1,2)}};
@@ -1717,6 +1716,11 @@ double PathManager::getQ0t2(int mode)
                 
                 if(next_qy >= lineData(1,1) && next_qy <= lineData(1,2)){ // 다익스트라 평균 값이 다음 y범위 내에 존재 하는 경우
                     q0_t2 = next_qy;
+                    // Interpolation, q0_t0(1)는 이전 값, q0_t0(2)가 다음 값
+                    vector<double> q = {q0_t1, q0_t2, q0_t3, q0_t4};
+                    vector<double> t = {q0_t1t, t2, t3, t4};
+                    vector<double> m_interpolation = f_SI_interpolation(q, t);
+                    m = m_interpolation;
                 }
                 else{ // 범위 밖이라면, 다음 허리 값을 평균말고 다익스트라만 적용
                     q0_t2 = dijkstra_top10_with_median(x_values1, y_ranges1, q0_t1);
@@ -1742,39 +1746,39 @@ double PathManager::getQ0t2(int mode)
         }
         case 5: // 기울기 평균 + interpolation
         {
-            // whatcase = 5;
-            // double pq1 = q0_t1;
-            // double q0_t0[2] = {pq1, lineData(0, 1)}; // q0_t1[현재 값, 현재 시간 값] 정의 필요
-            // q0_t1 = q0_t2; // 다음 값임
-            // q0_t2 = 0.0; // 다다음 값임.
-            // q0_t3 = 0.0; // 다다음값 정의 필요
+            whatcase = 5;
+            q0_t1t = lineData(0, 1);
+            
 
-            // // t1 -> t2
-            // m.assign(3, 0.0);
-            // for (int i = 0; i < 3; ++i) {
-            //     m[i] = (0.5 * (lineData[i + 1][3] + lineData[i + 1][4]) - q0_t1) / (lineData[i + 1][1] - lineData[0][1]);
-            // }
-            // q0_t2 = (accumulate(m.begin(), m.end(), 0.0) / 3.0) * (lineData[0][2] - lineData[0][1]) + q0_t1; // (accumulate(m.begin(), m.end(), 0.0) / 3.0) = sum(m)/3 이다. 평균연산 간소화
-            // if (q0_t2 < lineData[1][3] || q0_t2 > lineData[1][4]) {
-            //     q0_t2 = 0.5 * (lineData[1][3] + lineData[1][4]);
-            // }
+            // q0_t2;
 
-            // // t2 -> t3
-            // m.assign(3, 0.0);
-            // for (int i = 0; i < 3; ++i) {
-            //     m[i] = (0.5 * (lineData[i + 2][3] + lineData[i + 2][4]) - q0_t2) / (lineData[i + 2][1] - lineData[1][1]);
-            // }
-            // q0_t3 = (std::accumulate(m.begin(), m.end(), 0.0) / 3.0) * (lineData[1][2] - lineData[1][1]) + q0_t2; // (accumulate(m.begin(), m.end(), 0.0) / 3.0) = sum(m)/3 이다. 평균연산 간소화
 
-            // if (q0_t3 < lineData[2][3] || q0_t3 > lineData[2][4]) {
-            //     q0_t3 = 0.5 * (lineData[2][3] + lineData[2][4]);
-            // }
+            // t1 -> t2
+            m.assign(3, 0.0);
+            for (int i = 0; i < 3; ++i) {
+                m[i] = (0.5 * (lineData(i + 1, 3) + lineData(i + 1, 4)) - q0_t2) / (lineData(i + 1, 1) - lineData(0, 1));
+            }
+            q0_t3 = (accumulate(m.begin(), m.end(), 0.0) / 3.0) * (lineData(0, 2) - lineData(0, 1)) + q0_t2; // (accumulate(m.begin(), m.end(), 0.0) / 3.0) == sum(m)/3 이다. 평균연산 간소화
+            if (q0_t3 < lineData(1, 3) || q0_t3 > lineData(1, 4)) {
+                q0_t3 = 0.5 * (lineData(1, 3) + lineData(1, 4));
+            }
 
-            // // Interpolation, q0_t0(1)는 이전 값, q0_t0(2)가 다음 값
-            // vector<double> q = {q0_t0[0], q0_t1, q0_t2, q0_t3};
-            // vector<double> t = {q0_t0[1], lineData[0][1], lineData[1][1], lineData[2][1]};
-            // vector<double> m_interpolation = f_SI_interpolation(q, t);
-            // m = m_interpolation;
+            // t2 -> t3
+            m.assign(3, 0.0);
+            for (int i = 0; i < 3; ++i) {
+                m[i] = (0.5 * (lineData(i + 2, 3) + lineData(i + 2, 4)) - q0_t3) / (lineData(i + 2, 1) - lineData(1, 1));
+            }
+            q0_t4 = (std::accumulate(m.begin(), m.end(), 0.0) / 3.0) * (lineData(1, 2) - lineData(1, 1)) + q0_t3; // (accumulate(m.begin(), m.end(), 0.0) / 3.0) == sum(m)/3 이다. 평균연산 간소화
+
+            if (q0_t4 < lineData(2, 3) || q0_t4 > lineData(2, 4)) {
+                q0_t4 = 0.5 * (lineData(2, 3) + lineData(2, 4));
+            }
+
+            // Interpolation, q0_t0(1)는 이전 값, q0_t0(2)가 다음 값
+            vector<double> q = {q0_t1, q0_t2, q0_t3, q0_t4};
+            vector<double> t = {q0_t1t, lineData(0, 1), lineData(1, 1), lineData(2, 1)};
+            vector<double> m_interpolation = f_SI_interpolation(q, t);
+            m = m_interpolation;
             break;
         }
     }
@@ -1799,7 +1803,7 @@ void PathManager::getWaistCoefficient()
     }
     else
     {
-        q0_t2 = getQ0t2(1);
+        q0_t2 = getQ0t2(5);
     }
 
     A.resize(4,4);
@@ -1814,8 +1818,7 @@ void PathManager::getWaistCoefficient()
     A_1 = A.inverse();
     waistCoefficient = A_1 * b;
     if(whatcase == 5){
-        q0_t0[0] = q0_t1;
-        q0_t0[1] = lineData(0, 1);
+        q0_t1t = lineData(0, 1);
         q0_t2 = q0_t3;
     }
     q0_t1 = q0_t2;
