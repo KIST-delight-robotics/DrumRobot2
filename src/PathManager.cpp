@@ -1803,7 +1803,7 @@ void PathManager::getWaistCoefficient()
     }
     else
     {
-        q0_t2 = getQ0t2(5);
+        q0_t2 = getQ0t2(1);
     }
 
     A.resize(4,4);
