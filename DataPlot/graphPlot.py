@@ -1,52 +1,133 @@
-import matplotlib.pyplot as plt
 import numpy as np
+import matplotlib.pyplot as plt
 
-def plot_graph(T_values, y_function, y_label, title, highlight_T=None):
-    """
-    Plots a graph based on the given T values and a y_function.
+def make_wrist_angle(t1, t2, t, state, param, intensity):
+    t_contact = param['wristContactTime']
+    t_lift = param['wristLiftTime']
+    t_stay = param['wristStayTime']
+    t_release = param['wristReleaseTime']
+    t_hit = t2 - t1
 
-    Parameters:
-        T_values (numpy.ndarray): Array of T values.
-        y_function (function): A function to calculate y values based on T.
-        y_label (str): Label for the y-axis.
-        title (str): Title of the graph.
-        highlight_T (float or None): A specific T value to highlight on the graph (optional).
-    """
-    # Calculate y values using the provided function
-    y_values = y_function(T_values)
+    intensity_factor = 0.4 * intensity + 0.2
+    wrist_lift_angle = param['wristLiftAngle'] * intensity_factor
 
-    # Plot the graph
-    plt.figure(figsize=(10, 6))
-    plt.plot(T_values, y_values, label=f"{y_label} vs T", linewidth=2)
-    
-    # Highlight a specific T value if provided
-    if highlight_T is not None:
-        highlight_y = y_function(highlight_T)
-        plt.scatter([highlight_T], [highlight_y], color='red', label=f"T = {highlight_T}, y = {highlight_y:.2f}", zorder=5)
+    wrist_q = 0.0
 
-    # Add labels and title
-    plt.xlabel("T")
-    plt.ylabel(y_label)
-    plt.title(title)
-    plt.axhline(0, color='gray', linewidth=0.8, linestyle='--')
-    plt.axvline(0, color='gray', linewidth=0.8, linestyle='--')
-    plt.legend()
-    plt.grid(alpha=0.5)
-    plt.show()
+    if state == 0:
+        wrist_q = param['wristStayAngle']
 
-# Example of usage
-if __name__ == "__main__":
-    # Define a range of T values
-    T = np.linspace(0, 1, 200)
+    elif state == 1:
+        if t < t_contact:
+            A = np.array([[1, 0, 0],
+                          [1, t_contact, t_contact**2],
+                          [0, 1, 2*t_contact]])
+            b = np.array([0, param['wristContactAngle'], 0])
+            sol = np.linalg.solve(A, b)
+            wrist_q = sol[0] + sol[1]*t + sol[2]*t**2
 
-    # Define a sample function for y
-    def sample_function(T):
-        return np.where(T <= 0.5, 0.7 * T, T - 0.15)
+        elif t <= t_release:
+            A = np.array([[1, t_contact, t_contact**2, t_contact**3],
+                          [1, t_release, t_release**2, t_release**3],
+                          [0, 1, 2*t_contact, 3*t_contact**2],
+                          [0, 1, 2*t_release, 3*t_release**2]])
+            b = np.array([param['wristContactAngle'], param['wristStayAngle'], 0, 0])
+            sol = np.linalg.solve(A, b)
+            wrist_q = sol[0] + sol[1]*t + sol[2]*t**2 + sol[3]*t**3
 
+        else:
+            wrist_q = param['wristStayAngle']
 
-    # Call the plot_graph function
-    plot_graph(T_values=T, 
-               y_function=sample_function, 
-               y_label="t_max", 
-               title="Sample Graph", 
-               highlight_T=0.5)
+    elif state == 2:
+        if t < t_stay:
+            wrist_q = param['wristStayAngle']
+
+        elif t < t_lift:
+            A = np.array([[1, t_stay, t_stay**2, t_stay**3],
+                          [1, t_lift, t_lift**2, t_lift**3],
+                          [0, 1, 2*t_stay, 3*t_stay**2],
+                          [0, 1, 2*t_lift, 3*t_lift**2]])
+            b = np.array([param['wristStayAngle'], wrist_lift_angle, 0, 0])
+            sol = np.linalg.solve(A, b)
+            wrist_q = sol[0] + sol[1]*t + sol[2]*t**2 + sol[3]*t**3
+
+        elif t <= t_hit:
+            A = np.array([[1, t_lift, t_lift**2],
+                          [1, t_hit, t_hit**2],
+                          [0, 1, 2*t_lift]])
+            b = np.array([wrist_lift_angle, 0, 0])
+            sol = np.linalg.solve(A, b)
+            wrist_q = sol[0] + sol[1]*t + sol[2]*t**2
+
+        else:
+            wrist_q = 0.0
+
+    elif state == 3:
+        if t < t_contact:
+            A = np.array([[1, 0, 0],
+                          [1, t_contact, t_contact**2],
+                          [0, 1, 2*t_contact]])
+            b = np.array([0, param['wristContactAngle'], 0])
+            sol = np.linalg.solve(A, b)
+            wrist_q = sol[0] + sol[1]*t + sol[2]*t**2
+
+        elif t < t_release:
+            A = np.array([[1, t_contact, t_contact**2, t_contact**3],
+                          [1, t_release, t_release**2, t_release**3],
+                          [0, 1, 2*t_contact, 3*t_contact**2],
+                          [0, 1, 2*t_release, 3*t_release**2]])
+            b = np.array([param['wristContactAngle'], param['wristStayAngle'], 0, 0])
+            sol = np.linalg.solve(A, b)
+            wrist_q = sol[0] + sol[1]*t + sol[2]*t**2 + sol[3]*t**3
+
+        elif t < t_stay:
+            wrist_q = param['wristStayAngle']
+
+        elif t < t_lift:
+            A = np.array([[1, t_stay, t_stay**2, t_stay**3],
+                            [1, t_lift, t_lift**2, t_lift**3],
+                            [0, 1, 2*t_stay, 3*t_stay**2],
+                            [0, 1, 2*t_lift, 3*t_lift**2]])
+            b = np.array([param['wristStayAngle'], wrist_lift_angle, 0, 0])
+            sol = np.linalg.solve(A, b)
+            wrist_q = sol[0] + sol[1]*t + sol[2]*t**2 + sol[3]*t**3
+
+        elif t <= t_hit:
+            A = np.array([[1, t_lift, t_lift**2],
+                          [1, t_hit, t_hit**2],
+                          [0, 1, 2*t_lift]])
+            b = np.array([wrist_lift_angle, 0, 0])
+            sol = np.linalg.solve(A, b)
+            wrist_q = sol[0] + sol[1]*t + sol[2]*t**2
+
+        else:
+            wrist_q = 0.0
+
+    return wrist_q
+
+# Parameters for testing
+param = {
+    'wristContactTime': 0.1,
+    'wristLiftTime': 0.8,
+    'wristStayTime': 0.6,
+    'wristReleaseTime': 0.2,
+    'wristContactAngle': -5,
+    'wristStayAngle': 10,
+    'wristLiftAngle': 25
+}
+
+# Generate the plot
+t1 = 0.0
+t2 = 1.0
+t_values = np.linspace(t1, t2, 100)
+state = 3
+intensity = 2
+
+angles = [make_wrist_angle(t1, t2, t, state, param, intensity) for t in t_values]
+
+plt.plot(t_values, angles, label=f"State {state}, Intensity {intensity}")
+plt.xlabel("Time (s)")
+plt.ylabel("Wrist Angle (degrees)")
+plt.title("Wrist Angle vs Time")
+plt.legend()
+plt.grid()
+plt.show()

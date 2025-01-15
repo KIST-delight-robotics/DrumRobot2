@@ -20,12 +20,12 @@ def plot_from_txt(file1, file2=None):
 
     # Plot the first file
     plt.figure(figsize=(12, 6))
-    plt.plot(data1["Time"], data1["Angle"], label=f"File 1: {file1}", linewidth=1.5)
+    plt.plot(data1["Time"], data1["Angle"], 'o', label=f"File 1: {file1}", linewidth=1.5)
 
     # If the second file is provided, load and plot it
     if file2:
         data2 = load_data(file2)
-        plt.plot(data2["Time"], data2["Angle"], label=f"File 2: {file2}", linewidth=1.5)
+        plt.plot(data2["Time"], data2["Angle"], 'o', label=f"File 2: {file2}", linewidth=1.5)
 
     # Customize the plot
     plt.xlabel("Time (s)")

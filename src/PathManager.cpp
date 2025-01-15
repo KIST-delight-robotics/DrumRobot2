@@ -240,6 +240,10 @@ void PathManager::generateTrajectory()
         {
             Pt.brake_state[j] = false;
         }
+
+        // wrist angle
+        Pt.thetaR = getWristRAngle(inst_i, inst_f, t_f_R - t_i_R, t_R) * M_PI / 180;
+        Pt.thetaL = getWristLAngle(inst_i, inst_f, t_f_L - t_i_L, t_L) * M_PI / 180;
         
         P_buffer.push(Pt);
 
@@ -256,8 +260,13 @@ void PathManager::generateTrajectory()
         if(i == 0)
         {
             minmax = waistRange(Pt.pR, Pt.pL);
+
+            cout << "\n\nline : " << line << "\nminmax : " << minmax << "\n\n";
+            cout << "\n\nPt.pR : " << Pt.pR << "\nPt.pL : " << Pt.pL << "\n\n";
         }
     }
+
+    
 
     stateR = makeState(hit_state_R);
     stateL = makeState(hit_state_L);
@@ -274,6 +283,7 @@ bool PathManager::solveIKandPushConmmand()
     int stateR = lineData(0,3);
     int stateL = lineData(0,4);
     float n = lineData(0,0);
+    float next_n = lineData(1,0);
     float dt = canManager.deltaT;
     float t = n * dt;
 
@@ -291,19 +301,19 @@ bool PathManager::solveIKandPushConmmand()
             lineData = tmp_matrix;
         }
         
-        // std::cout << "\n lineData Over \n";
+        std::cout << "\n lineData Over \n";
 
         return false;
     }
     else
     {
-        if (i_solveIK == 0)
+        if (i_solveIK == 0) // 시작
         {
             // 허리 계수 구하기
             getWaistCoefficient();
 
-            // std::cout << "\n lineData Start : \n";
-            // std::cout << lineData;
+            std::cout << "\n lineData Start : \n";
+            std::cout << lineData;
         }
         i_solveIK++;
     }
@@ -315,16 +325,131 @@ bool PathManager::solveIKandPushConmmand()
     solveIK(q, q0);
 
     // wrist, elbow
+
+    if (i_wristR >= nnR)
+    {
+        i_wristR = 0;
+        if(readyRflag) readyRflag = 0;
+    }
+    else if (readyRflag)
+    {
+        i_wristR++;
+    }
+    if (i_wristL >= nnL)
+    {
+        i_wristL = 0;
+        if(readyLflag) readyLflag = 0;
+    }
+    else if (readyLflag)
+    {
+        i_wristL++;
+    }
+
     add_qR.resize(2);
     add_qL.resize(2);
 
-    pre_parameters_tmp = pre_parameters_R;
-    add_qR = makeHitTrajetory(0, t, i_solveIK * dt, stateR, lineData(0,5));
-    pre_parameters_R = pre_parameters_tmp;
+    if (n * dt <= 0.2)
+    {
+        if (lineData(0,3) == 1 && !readyRflag)
+        {
+            nnR = n + next_n;
+            ntR = nnR * dt;
+            readyRflag = 1;
+            if(lineData(1,3) == 0)
+            {
+                next_stateR = lineData(0,3);
+                next_intensityR = lineData(0,5);
+            }
+            else if (lineData(1,3) == 2)
+            {
+                next_stateR = 3;
+                next_intensityR = lineData(1,5);
+            }
+        }
+        if (lineData(0,4) == 1 && !readyLflag)
+        {
+            nnL = n + next_n;
+            ntL = nnL * dt;
+            readyLflag = 1;
+            if(lineData(1,4) == 0)
+            {
+                next_stateL = lineData(0,4);
+                next_intensityL = lineData(0,6);
+            }
+            else if (lineData(1,4) == 2)
+            {
+                next_stateL = 3;
+                next_intensityL = lineData(1,6);
+            }
+        }
+    }
 
-    pre_parameters_tmp = pre_parameters_L;
-    add_qL = makeHitTrajetory(0, t, i_solveIK * dt, stateL, lineData(0,6));
-    pre_parameters_L = pre_parameters_tmp;
+    if (next_n * dt <= 0.2)
+    {
+
+        if(lineData(1,3) == 2 && !readyRflag)
+        {
+            nnR = n + next_n;
+            ntR = nnR * dt;
+            readyRflag = 1;
+            if(lineData(0,3) == 0)
+            {
+                next_stateR = lineData(1,3);
+                next_intensityR = lineData(1,5);
+            }
+            else if(lineData(0,3) == 1)
+            {
+                next_stateR = 3;
+                next_intensityR = lineData(1,5);
+            }
+
+        }
+
+        if(lineData(1,4) == 2 && !readyLflag)
+        {
+            nnL = n + next_n;
+            ntL = nnL * dt;
+            readyLflag = 1;
+            if(lineData(0,4) == 0)
+            {
+                next_stateL = lineData(1,4);
+                next_intensityL = lineData(1,6);
+            }
+            else if(lineData(0,4) == 1)
+            {
+                next_stateL = 3;
+                next_intensityL = lineData(1,6);
+            }
+        }
+    }
+
+    
+
+    if (readyRflag)
+    {
+        pre_parameters_tmp = pre_parameters_R;
+        add_qR = makeHitTrajetory(0, ntR, i_wristR * dt, next_stateR, next_intensityR);
+        pre_parameters_R = pre_parameters_tmp;
+    }
+    else
+    {
+        pre_parameters_tmp = pre_parameters_R;
+        add_qR = makeHitTrajetory(0, t, i_solveIK * dt, stateR, lineData(0,5));
+        pre_parameters_R = pre_parameters_tmp;
+    }
+
+    if (readyLflag)
+    {
+        pre_parameters_tmp = pre_parameters_L;
+        add_qL = makeHitTrajetory(0, ntL, i_wristL * dt, next_stateL, next_intensityL);
+        pre_parameters_L = pre_parameters_tmp;
+    }
+    else
+    {
+        pre_parameters_tmp = pre_parameters_L;
+        add_qL = makeHitTrajetory(0, t, i_solveIK * dt, stateL, lineData(0,6));
+        pre_parameters_L = pre_parameters_tmp;
+    }
 
     q(4) += add_qR(1);
     q(6) += add_qL(1);
@@ -750,6 +875,73 @@ void PathManager::saveLineData(int n, VectorXd minmax, int stateR, int stateL, V
 ////////////////////////////////////////////////////////////////////////////////
 /*                              Wrist & Elbow                                 */
 ////////////////////////////////////////////////////////////////////////////////
+float PathManager::getWristRAngle(VectorXd inst_i, VectorXd inst_f, float T, float t)
+{
+    int inst_iNum = 0;
+    int inst_fNum = 0;
+
+    VectorXd inst_iR = inst_i.segment(0, 9).array();
+    VectorXd inst_fR = inst_f.segment(0, 9).array();
+
+    // 오른 손목 각도 파싱
+    for (int i = 0; i < 9; i++)
+    {
+        if (inst_iR(i) == 1)
+            {
+                inst_iNum = i;
+            }
+    }
+
+    for (int i = 0; i < 9; i++)
+    {
+        if (inst_fR(i) == 1)
+            {
+                inst_fNum = i;
+            }
+    }
+
+    float startR = instrument_mapping[inst_iNum ];
+    float endR = instrument_mapping[inst_fNum];
+
+    float thetaR = ((endR - startR) / T) * t + startR;
+
+    return thetaR;
+
+}
+
+float PathManager::getWristLAngle(VectorXd inst_i, VectorXd inst_f, float T, float t)
+{
+    int inst_iNum;
+    int inst_fNum;
+
+    ArrayXd inst_iL = inst_i.segment(9, 9).array();
+    ArrayXd inst_fL = inst_f.segment(9, 9).array();
+
+    // 왼 손목 각도 파싱
+    for (int i = 0; i < 9; i++)
+    {
+        if (inst_iL(i) == 1)
+            {
+                inst_iNum = i;
+            }
+    }
+
+    for (int i = 0; i < 9; i++)
+    {
+        if (inst_fL(i) == 1)
+            {
+                inst_fNum = i;
+            }
+    }
+
+    float startL = instrument_mapping[inst_iNum ];
+    float endL = instrument_mapping[inst_fNum ];
+
+    float thetaL = (endL - startL) / T * t + startL;
+
+    return thetaL;
+
+}
 
 int PathManager:: makeState(VectorXd hitState)
 {
@@ -820,7 +1012,7 @@ PathManager::HitParameter PathManager::getHitParameter(float t1, float t2, int h
     param.elbowStayTime = std::max(0.5*(t2-t1), t2-t1-0.2);
     param.elbowLiftTime = std::max(0.5*(t2-t1), t2-t1-0.2);
 
-    param.wristStayTime = 0.47 * (t2 - t1) - 0.05;
+    t2 - t1 < 0.15 ? param.wristStayTime = 0.45 * (t2 - t1): param.wristStayTime = 0.47 * (t2 - t1) - 0.05;
     if(intensity == 1)
         param.wristLiftTime = std::max(0.5*(t2-t1), t2-t1-0.25);
     else if(intensity == 2)
@@ -1338,6 +1530,31 @@ float PathManager::makeElbowAngle(float t1, float t2, float t, int state, HitPar
 /*                                Solve IK                                    */
 ////////////////////////////////////////////////////////////////////////////////
 
+float PathManager::solveWrist(double theta)
+{
+    PartLength part_length;
+    double l1 = part_length.lowerArm;
+    double l2 = part_length.stick;
+
+    double l3 = l1 + l2 * cos(theta);
+
+    double l4 = sqrt(l3*l3 + ((l2 * sin(theta)) * (l2 * sin(theta))));
+
+    return l4;
+}
+
+double PathManager::solve46(float l1, double theta)
+{
+    PartLength part_length;
+
+    float l2 = part_length.lowerArm + part_length.stick * cos(theta);
+
+    double theta_m = acos(l2 / l1);
+
+    return theta_m;
+
+}
+
 void PathManager::solveIK(VectorXd &q, double q0)
 {
     Position nextP;
@@ -1345,7 +1562,7 @@ void PathManager::solveIK(VectorXd &q, double q0)
     nextP = P_buffer.front();
     P_buffer.pop();
 
-    q = ikFixedWaist(nextP.pR, nextP.pL, q0);
+    q = ikFixedWaist(nextP.pR, nextP.pL, q0, nextP.thetaR, nextP.thetaL);
 
     // brake
     for (int i = 0; i < 8; i++)
@@ -1354,17 +1571,21 @@ void PathManager::solveIK(VectorXd &q, double q0)
     }
 }
 
-VectorXd PathManager::ikFixedWaist(VectorXd &pR, VectorXd &pL, double theta0)
+VectorXd PathManager::ikFixedWaist(VectorXd &pR, VectorXd &pL, double theta0, double theta7, double theta8)
 {
     VectorXd Qf;
     PartLength part_length;
 
     float XR = pR(0), YR = pR(1), ZR = pR(2);
     float XL = pL(0), YL = pL(1), ZL = pL(2);
+    // float R1 = part_length.upperArm;
+    // float R2 = part_length.lowerArm + part_length.stick;
+    // float L1 = part_length.upperArm;
+    // float L2 = part_length.lowerArm + part_length.stick;
     float R1 = part_length.upperArm;
-    float R2 = part_length.lowerArm + part_length.stick;
+    float R2 = solveWrist(theta7);
     float L1 = part_length.upperArm;
-    float L2 = part_length.lowerArm + part_length.stick;
+    float L2 = solveWrist(theta8);
     float s = part_length.waist;
     float z0 = part_length.height;
 
@@ -1440,8 +1661,11 @@ VectorXd PathManager::ikFixedWaist(VectorXd &pR, VectorXd &pL, double theta0)
         state.main = Main::Error;
     }
 
+    theta4 -= solve46(R2, theta7);
+    theta6 -= solve46(L2, theta8);
+
     Qf.resize(9);
-    Qf << theta0, theta1, theta2, theta3, theta4, theta5, theta6, 0.0, 0.0;
+    Qf << theta0, theta1, theta2, theta3, theta4, theta5, theta6, theta7, theta8;
 
     return Qf;
 }

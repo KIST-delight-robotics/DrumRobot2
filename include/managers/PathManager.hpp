@@ -81,6 +81,9 @@ public:
         VectorXd pL; // 0: x, 1: y, 2: z
         // 브레이크
         bool brake_state[8];
+        // 손목 각도
+        double thetaR; 
+        double thetaL;
     }Position;
     queue<Position> P_buffer;
 
@@ -192,9 +195,11 @@ private:
 
     /////////////////////////////////////////////////////////////////////////// Play (solve IK)
     int i_solveIK = 0;
-    
+
+    float solveWrist(double theta);
+    double solve46(float l1, double theta);
     void solveIK(VectorXd &q, double q0);
-    VectorXd ikFixedWaist(VectorXd &pR, VectorXd &pL, double theta0);
+    VectorXd ikFixedWaist(VectorXd &pR, VectorXd &pL, double theta0, double theta7, double theta8);
     void pushConmmandBuffer(VectorXd &Qi);
 
     /////////////////////////////////////////////////////////////////////////// Play (waist)
@@ -210,6 +215,10 @@ private:
     double getWaistAngle(int i);
     
     /////////////////////////////////////////////////////////////////////////// Play (wrist & elbow)
+
+    map<int, float> instrument_mapping = {
+        {2, 30}, {5, 30}, {6, 15}, {8, 15}, {3, 0}, {1, 30}, {0, 0}, {7, 0}};
+    //   SN      FT      MT      HT      HH      R       RC      LC
     
     // 0.5초 기준 각도
     const float baseTime = 0.5;
@@ -243,6 +252,8 @@ private:
     }HitParameter;
 
     int makeState(VectorXd hitState);
+    float getWristRAngle(VectorXd inst_i, VectorXd inst_f, float T, float t);
+    float getWristLAngle(VectorXd inst_i, VectorXd inst_f, float T, float t);
 
     float makeElbowAngle(float t1, float t2, float t, int state, HitParameter param, int intensity);
     float makeWristAngle(float t1, float t2, float t, int state, HitParameter param, int intensity);
@@ -251,6 +262,13 @@ private:
     VectorXd makeHitTrajetory(float t1, float t2, float t, int hitState, int wristIntesity);
 
     HitParameter pre_parameters_R, pre_parameters_L, pre_parameters_tmp;
+
+    float nnR, ntR, nnL, ntL; // 1박 타격 시간이 짧은 경우 2박 시간 사용하기 위한 변수 (nextn, nextt)
+    bool readyRflag = 0;
+    bool readyLflag = 0; // 미리 시작하는 경우 플래그 
+    int next_stateR, next_stateL;
+    int next_intensityR, next_intensityL;
+    int i_wristR, i_wristL = 0; 
 
     /////////////////////////////////////////////////////////////////////////// Play (dijkstra)
     double imin, imax, fmin, fmax;
