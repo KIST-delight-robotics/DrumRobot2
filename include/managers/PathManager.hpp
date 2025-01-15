@@ -205,9 +205,13 @@ private:
     /////////////////////////////////////////////////////////////////////////// Play (waist)
     MatrixXd waistCoefficient;
     double q0_t1;
+    double q0_t1t;
     double nextq0_t1;
+    double q0_t3, q0_t4;
     int status = 0;
+    int whatcase = 0;
     double qthreshold = 0.05;
+    vector<double> m = {0.0, 0.0, 0.0};
 
     VectorXd waistRange(VectorXd &pR, VectorXd &pL);
     double getQ0t2(int mode);
@@ -295,4 +299,6 @@ private:
     VectorXd makeProfile(VectorXd &q1, VectorXd &q2, VectorXd &Vmax, float acc, float t, float t2);
     void getMotorPos();
     
+
+    vector<double> f_SI_interpolation(const vector<double>& q, const vector<double>& t);
 };
