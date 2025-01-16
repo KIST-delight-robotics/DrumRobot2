@@ -1650,15 +1650,15 @@ std::pair<double, vector<double>> PathManager::getQ0t2(int mode)
                 vector<pair<double, double>> y_ranges1 = {{lineData(0,1), lineData(0,2)}, {lineData(1,1), lineData(1,2)}};
                 q0_t2 = dijkstra_top10_with_median(x_values1, y_ranges1, q0_t1);
 
-                vector<double> x_values2 = {t2, t3}; // 현재 x값과 다음 x값
+                vector<double> x_values2 = {t2, t3}; // 다음 x값과 다다음 x값
                 vector<pair<double, double>> y_ranges2 = {{lineData(1,1), lineData(1,2)}, {lineData(2,1), lineData(2,2)}};
                 q0_t3 = dijkstra_top10_with_median(x_values2, y_ranges2, q0_t2);
 
-                vector<double> x_values3 = {t3, t4}; // 현재 x값과 다음 x값
+                vector<double> x_values3 = {t3, t4}; // 다다음 x값과 다다다음 x값
                 vector<pair<double, double>> y_ranges3 = {{lineData(2,1), lineData(2,2)}, {lineData(3,1), lineData(3,2)}};
                 q0_t4 = dijkstra_top10_with_median(x_values3, y_ranges3, q0_t3);
                 
-                // Interpolation, q0_t0(1)는 이전 값, q0_t0(2)가 다음 값
+                // Interpolation
                 vector<double> q = {q0_t1, q0_t2, q0_t3, q0_t4};
                 vector<double> t = {t1, t2, t3, t4};
                 m = f_SI_interpolation(q, t);
@@ -1698,8 +1698,7 @@ std::pair<double, vector<double>> PathManager::getQ0t2(int mode)
         // Interpolation, q0_t0(1)는 이전 값, q0_t0(2)가 다음 값
         vector<double> q = {q0_t1, q0_t2, q0_t3, q0_t4};
         vector<double> t = {t1, t2, t3, t4};
-        vector<double> m_interpolation = f_SI_interpolation(q, t);
-        m = m_interpolation;
+        m = f_SI_interpolation(q, t);
         break;
     }
     }
