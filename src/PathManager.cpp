@@ -1,7 +1,7 @@
 #include "../include/managers/PathManager.hpp" // 적절한 경로로 변경하세요.
-//git 피날레
-// For Qt
-// #include "../include/managers/PathManager.hpp"
+// git 피날레
+//  For Qt
+//  #include "../include/managers/PathManager.hpp"
 PathManager::PathManager(State &stateRef,
                          CanManager &canManagerRef,
                          std::map<std::string, std::shared_ptr<GenericMotor>> &motorsRef,
@@ -116,14 +116,14 @@ void PathManager::setReadyAngle()
     readyArr[4] += param.elbowStayAngle;
     readyArr[6] += param.elbowStayAngle;
     readyArr[7] += param.wristStayAngle;
-    readyArr[8] += param.wristStayAngle;    
+    readyArr[8] += param.wristStayAngle;
 }
 
-////////////////////////////////////////////////////////////////////////////////    
+////////////////////////////////////////////////////////////////////////////////
 /*                                  Play                                      */
 ////////////////////////////////////////////////////////////////////////////////
 
-bool PathManager::readMeasure(ifstream& inputFile, bool &BPMFlag)
+bool PathManager::readMeasure(ifstream &inputFile, bool &BPMFlag)
 {
     string row;
     double timeSum = 0.0;
@@ -133,7 +133,7 @@ bool PathManager::readMeasure(ifstream& inputFile, bool &BPMFlag)
         timeSum += measureMatrix(i, 1);
     }
 
-    while(getline(inputFile, row))
+    while (getline(inputFile, row))
     {
         istringstream iss(row);
         string item;
@@ -199,10 +199,10 @@ void PathManager::generateTrajectory()
 
     // parse
     parseMeasure(measureMatrix);
-    
-    intensity(0) = measureMatrix(0,4);
-    intensity(1) = measureMatrix(0,5);
-    
+
+    intensity(0) = measureMatrix(0, 4);
+    intensity(1) = measureMatrix(0, 5);
+
     // 한 줄의 데이터 개수
     n = (t2 - t1) / dt;
     round_sum += (int)(n * 1000) % 1000;
@@ -230,7 +230,7 @@ void PathManager::generateTrajectory()
         Position Pt;
         float t_R = dt * i + t1 - t_i_R;
         float t_L = dt * i + t1 - t_i_L;
-        
+
         s_R = timeScaling(0.0f, t_f_R - t_i_R, t_R);
         s_L = timeScaling(0.0f, t_f_L - t_i_L, t_L);
 
@@ -246,7 +246,7 @@ void PathManager::generateTrajectory()
         // wrist angle
         Pt.thetaR = getWristRAngle(inst_i, inst_f, t_f_R - t_i_R, t_R) * M_PI / 180;
         Pt.thetaL = getWristLAngle(inst_i, inst_f, t_f_L - t_i_L, t_L) * M_PI / 180;
-        
+
         P_buffer.push(Pt);
 
         std::string fileName;
@@ -259,7 +259,7 @@ void PathManager::generateTrajectory()
         // fileName = "S_L";
         // fun.appendToCSV_DATA(fileName, t_L, s_L, t_f_L - t_i_L);
 
-        if(i == 0)
+        if (i == 0)
         {
             minmax = waistRange(Pt.pR, Pt.pL);
 
@@ -276,7 +276,7 @@ bool PathManager::solveIKandPushConmmand()
     VectorXd q;
 
     // 정해진 개수만큼 커맨드 생성
-    if (i_solveIK >= lineData(0,0))
+    if (i_solveIK >= lineData(0, 0))
     {
         i_solveIK = 0;
 
@@ -334,21 +334,21 @@ bool PathManager::solveIKandPushConmmand()
 
 void PathManager::GetArr(vector<float> &arr)
 {
-    const float acc_max = 100.0;    // rad/s^2
-    //vector<float> Qi;
-    //vector<float> Vmax;
+    const float acc_max = 100.0; // rad/s^2
+    // vector<float> Qi;
+    // vector<float> Vmax;
     VectorXd Q1 = VectorXd::Zero(9);
     VectorXd Q2 = VectorXd::Zero(9);
     VectorXd Qi = VectorXd::Zero(9);
     VectorXd Vmax = VectorXd::Zero(9);
 
-    float dt = canManager.deltaT;   // 0.005
-    float t = 2.0;                  // 3초동안 실행
-    float extra_time = 1.0;         // 추가 시간 1초
-    int n = (int)(t / dt);   
-    int n_p = (int)(extra_time / dt); 
+    float dt = canManager.deltaT; // 0.005
+    float t = 2.0;                // 3초동안 실행
+    float extra_time = 1.0;       // 추가 시간 1초
+    int n = (int)(t / dt);
+    int n_p = (int)(extra_time / dt);
 
-    getMotorPos(); 
+    getMotorPos();
 
     for (int i = 0; i < 9; i++)
     {
@@ -360,14 +360,14 @@ void PathManager::GetArr(vector<float> &arr)
 
     for (int k = 0; k < 9; k++)
     {
-        cout << "Q1[" << k << "] : " << Q1[k]*180.0/M_PI <<  " [deg] -> Q2[" << k << "] : " << Q2[k]*180.0/M_PI << " [deg]" << endl;
+        cout << "Q1[" << k << "] : " << Q1[k] * 180.0 / M_PI << " [deg] -> Q2[" << k << "] : " << Q2[k] * 180.0 / M_PI << " [deg]" << endl;
         cout << "Vmax[" << k << "] : " << Vmax(k) << "[rad/s]\n\n";
     }
 
     for (int k = 1; k <= n + n_p; ++k)
     {
         // Make Array
-        Qi = makeProfile(Q1, Q2, Vmax, acc_max, t*k/n, t);
+        Qi = makeProfile(Q1, Q2, Vmax, acc_max, t * k / n, t);
 
         // Send to Buffer
         for (auto &entry : motors)
@@ -432,15 +432,15 @@ void PathManager::parseMeasure(MatrixXd &measureMatrix)
     VectorXd Measure_time = measureMatrix.col(8);
     VectorXd Measure_R = measureMatrix.col(2);
     VectorXd Measure_L = measureMatrix.col(3);
-    VectorXd MeasureIntensity_R =  measureMatrix.col(4);
-    VectorXd MeasureIntensity_L =  measureMatrix.col(5);
+    VectorXd MeasureIntensity_R = measureMatrix.col(4);
+    VectorXd MeasureIntensity_L = measureMatrix.col(5);
 
     pair<VectorXd, VectorXd> R = parseOneArm(Measure_time, Measure_R, measureState.row(0));
     pair<VectorXd, VectorXd> L = parseOneArm(Measure_time, Measure_L, measureState.row(1));
 
     // 데이터 저장
-    inst_i << R.first.block(1,0,9,1), L.first.block(1,0,9,1);
-    inst_f << R.first.block(11,0,9,1), L.first.block(11,0,9,1);
+    inst_i << R.first.block(1, 0, 9, 1), L.first.block(1, 0, 9, 1);
+    inst_f << R.first.block(11, 0, 9, 1), L.first.block(11, 0, 9, 1);
 
     t_i_R = R.first(0);
     t_i_L = L.first(0);
@@ -453,14 +453,14 @@ void PathManager::parseMeasure(MatrixXd &measureMatrix)
     hitState.resize(2);
     hitState = makeState(measureMatrix);
 
-    measureState.block(0,0,1,3) = R.second.transpose();
-    measureState.block(1,0,1,3) = L.second.transpose();
+    measureState.block(0, 0, 1, 3) = R.second.transpose();
+    measureState.block(1, 0, 1, 3) = L.second.transpose();
 
     // std::cout << "\n /// t1 -> t2 : " << t1 << " -> " << t2 << "\n";
 
     // std::cout << "\nR : " << inst_i.block(0,0,9,1).transpose() << " -> " << inst_f.block(0,0,9,1).transpose();
     // std::cout << "\n /// ti -> tf : " << t_i_R << " -> " << t_f_R;
-    
+
     // std::cout << "\nL : " << inst_i.block(9,0,9,1).transpose() << " -> " << inst_f.block(9,0,9,1).transpose();
     // std::cout << "\n /// ti -> tf : " << t_i_L << " -> " << t_f_L << std::endl;
 
@@ -477,7 +477,7 @@ void PathManager::parseMeasure(MatrixXd &measureMatrix)
 pair<VectorXd, VectorXd> PathManager::parseOneArm(VectorXd t, VectorXd inst, VectorXd stateVector)
 {
     map<int, int> instrument_mapping = {
-    {1, 2}, {2, 5}, {3, 6}, {4, 8}, {5, 3}, {6, 1}, {7, 0}, {8, 7}, {11, 2}, {51, 2}, {61, 2}, {71, 2}, {81, 2}, {91, 2}};
+        {1, 2}, {2, 5}, {3, 6}, {4, 8}, {5, 3}, {6, 1}, {7, 0}, {8, 7}, {11, 2}, {51, 2}, {61, 2}, {71, 2}, {81, 2}, {91, 2}};
     // S      FT      MT      HT      HH      R       RC      LC       S        S        S        S        S        S
 
     VectorXd inst_i = VectorXd::Zero(9), inst_f = VectorXd::Zero(9);
@@ -489,12 +489,12 @@ pair<VectorXd, VectorXd> PathManager::parseOneArm(VectorXd t, VectorXd inst, Vec
     double detectTime = 0, t_i, t_f;
     int detectInst = 0, instNum_i, instNum_f;
     int preState, nextState;
-    double threshold = 1.2*100.0/bpm;   // 일단 이렇게 하면 1줄만 읽는 일 없음
-    
+    double threshold = 1.2 * 100.0 / bpm; // 일단 이렇게 하면 1줄만 읽는 일 없음
+
     // 타격 감지
     for (int i = 1; i < t.rows(); i++)
     {
-        if (round(10000*threshold) < round(10000*(t(i) - t(0))))
+        if (round(10000 * threshold) < round(10000 * (t(i) - t(0))))
         {
             break;
         }
@@ -538,7 +538,6 @@ pair<VectorXd, VectorXd> PathManager::parseOneArm(VectorXd t, VectorXd inst, Vec
 
                 t_i = t(0);
                 t_f = detectTime;
-
             }
             // 다음 타격 감지 못함
             else
@@ -574,7 +573,7 @@ pair<VectorXd, VectorXd> PathManager::parseOneArm(VectorXd t, VectorXd inst, Vec
 
             instNum_i = inst(0);
             instNum_f = inst(0);
-            
+
             t_i = t(0);
             t_f = t(1);
         }
@@ -594,19 +593,19 @@ VectorXd PathManager::makeState(MatrixXd measureMatrix)
 {
     VectorXd state(2);
 
-    for(int i = 0; i < 2; i++)
+    for (int i = 0; i < 2; i++)
     {
-        if (measureMatrix(0, i+2) == 0 && measureMatrix(1, i+2) == 0)
+        if (measureMatrix(0, i + 2) == 0 && measureMatrix(1, i + 2) == 0)
         {
             // Stay
             state(i) = 0;
         }
-        else if (measureMatrix(1, i+2) == 0)
+        else if (measureMatrix(1, i + 2) == 0)
         {
             // Contact - Stay
             state(i) = 1;
         }
-        else if (measureMatrix(0, i+2) == 0)
+        else if (measureMatrix(0, i + 2) == 0)
         {
             // Stay - Lift - Hit
             state(i) = 2;
@@ -660,20 +659,20 @@ float PathManager::timeScaling(float ti, float tf, float t)
     MatrixXd A_1;
     MatrixXd sol;
 
-    A.resize(4,4);
-    b.resize(4,1);
+    A.resize(4, 4);
+    b.resize(4, 1);
 
-    A << 1, ti, ti*ti, ti*ti*ti,
-    1, tf, tf*tf, tf*tf*tf,
-    0, 1, 2*ti, 3*ti*ti,
-    0, 1, 2*tf, 3*tf*tf;
+    A << 1, ti, ti * ti, ti * ti * ti,
+        1, tf, tf * tf, tf * tf * tf,
+        0, 1, 2 * ti, 3 * ti * ti,
+        0, 1, 2 * tf, 3 * tf * tf;
 
     b << 0, 1, 0, 0;
 
     A_1 = A.inverse();
     sol = A_1 * b;
 
-    s = sol(0,0) + sol(1,0) * t + sol(2,0) * t * t + sol(3,0) * t * t * t;
+    s = sol(0, 0) + sol(1, 0) * t + sol(2, 0) * t * t + sol(3, 0) * t * t * t;
 
     return s;
 }
@@ -685,15 +684,15 @@ VectorXd PathManager::makePath(VectorXd Pi, VectorXd Pf, float s)
     float xi = Pi(0), xf = Pf(0);
     float yi = Pi(1), yf = Pf(1);
     float zi = Pi(2), zf = Pf(2);
-    //vector<Pos_i> pos(3); // 미래상태 3개를 저장
+    // vector<Pos_i> pos(3); // 미래상태 3개를 저장
 
-    //for(int i = 0; i < pos.size(); i++){
-    //    for(int dim = 0; dim < 3; dim++){
-    //        pos[i].x = Pf(dim);
-    //        pos[i].y = Pf(dim);
-    //        pos[i].z = Pf(dim);
-    //    }
-    //}
+    // for(int i = 0; i < pos.size(); i++){
+    //     for(int dim = 0; dim < 3; dim++){
+    //         pos[i].x = Pf(dim);
+    //         pos[i].y = Pf(dim);
+    //         pos[i].z = Pf(dim);
+    //     }
+    // }
     VectorXd Ps;
     Ps.resize(3);
 
@@ -713,14 +712,14 @@ VectorXd PathManager::makePath(VectorXd Pi, VectorXd Pf, float s)
             float a = zf - zi;
             float b = zi;
 
-            Ps(2) = a*std::pow(s, degree) + b;
+            Ps(2) = a * std::pow(s, degree) + b;
         }
         else
         {
             float a = (zi - zf) * std::pow(-1, degree);
             float b = zf;
 
-            Ps(2) = a*std::pow(s-1, degree) + b;
+            Ps(2) = a * std::pow(s - 1, degree) + b;
         }
     }
 
@@ -729,7 +728,7 @@ VectorXd PathManager::makePath(VectorXd Pi, VectorXd Pf, float s)
 
 void PathManager::saveLineData(int n, VectorXd minmax, VectorXd intensity)
 {
-    if(line == 1)
+    if (line == 1)
     {
         lineData(0, 0) = n;
         lineData(0, 1) = minmax(1);
@@ -765,7 +764,7 @@ VectorXd PathManager::waistRange(VectorXd &pR, VectorXd &pL)
     float s = part_length.waist;
     float z0 = part_length.height;
 
-    MatrixXd Q_arr(7,1);
+    MatrixXd Q_arr(7, 1);
     VectorXd output(2);
     int j = 0;
 
@@ -789,50 +788,50 @@ VectorXd PathManager::waistRange(VectorXd &pR, VectorXd &pL)
             if (theta2 > 30 * M_PI / 180.0 && theta2 < M_PI) // the2 범위 : 30deg ~ 180deg
             {
                 float zeta = z0 - ZR;
-                float r2 = (YR - shoulderYR)*(YR - shoulderYR) + (XR - shoulderXR)*(XR - shoulderXR); // r^2
+                float r2 = (YR - shoulderYR) * (YR - shoulderYR) + (XR - shoulderXR) * (XR - shoulderXR); // r^2
 
-                float x = zeta*zeta + r2 - R1*R1 - R2*R2;
-                
-                if (4.0*R1*R1*R2*R2 - x*x > 0)
+                float x = zeta * zeta + r2 - R1 * R1 - R2 * R2;
+
+                if (4.0 * R1 * R1 * R2 * R2 - x * x > 0)
                 {
-                    float y = sqrt(4.0*R1*R1*R2*R2 - x*x);
+                    float y = sqrt(4.0 * R1 * R1 * R2 * R2 - x * x);
 
-                    float theta4 = atan2(y,x);
+                    float theta4 = atan2(y, x);
 
                     if (theta4 > 0 && theta4 < 140.0 * M_PI / 180.0) // the4 범위 : 0deg ~ 120deg
                     {
                         float theta34 = atan2(sqrt(r2), zeta);
-                        float theta3 = theta34 - atan2(R2*sin(theta4), R1 + R2*cos(theta4));
+                        float theta3 = theta34 - atan2(R2 * sin(theta4), R1 + R2 * cos(theta4));
 
                         if (theta3 > -45.0 * M_PI / 180.0 && theta3 < 90.0 * M_PI / 180.0) // the3 범위 : -45deg ~ 90deg
                         {
                             zeta = z0 - ZL;
-                            r2 = (YL - shoulderYL)*(YL - shoulderYL) + (XL - shoulderXL)*(XL - shoulderXL); // r^2
+                            r2 = (YL - shoulderYL) * (YL - shoulderYL) + (XL - shoulderXL) * (XL - shoulderXL); // r^2
 
-                            x = zeta*zeta + r2 - L1*L1 - L2*L2;
+                            x = zeta * zeta + r2 - L1 * L1 - L2 * L2;
 
-                            if (4.0*L1*L1*L2*L2 - x*x > 0)
+                            if (4.0 * L1 * L1 * L2 * L2 - x * x > 0)
                             {
-                                y = sqrt(4.0*L1*L1*L2*L2 - x*x);
+                                y = sqrt(4.0 * L1 * L1 * L2 * L2 - x * x);
 
-                                float theta6 = atan2(y,x);
+                                float theta6 = atan2(y, x);
 
                                 if (theta6 > 0 && theta6 < 140.0 * M_PI / 180.0) // the6 범위 : 0deg ~ 120deg
                                 {
                                     float theta56 = atan2(sqrt(r2), zeta);
-                                    float theta5 = theta56 - atan2(L2*sin(theta6), L1 + L2*cos(theta6));
+                                    float theta5 = theta56 - atan2(L2 * sin(theta6), L1 + L2 * cos(theta6));
 
                                     if (theta5 > -45.0 * M_PI / 180.0 && theta5 < 90.0 * M_PI / 180.0) // the5 범위 : -45deg ~ 90deg
                                     {
                                         if (j == 0)
                                         {
-                                            Q_arr(0,0) = theta0;
-                                            Q_arr(1,0) = theta1;
-                                            Q_arr(2,0) = theta2;
-                                            Q_arr(3,0) = theta3;
-                                            Q_arr(4,0) = theta4;
-                                            Q_arr(5,0) = theta5;
-                                            Q_arr(6,0) = theta6;
+                                            Q_arr(0, 0) = theta0;
+                                            Q_arr(1, 0) = theta1;
+                                            Q_arr(2, 0) = theta2;
+                                            Q_arr(3, 0) = theta3;
+                                            Q_arr(4, 0) = theta4;
+                                            Q_arr(5, 0) = theta5;
+                                            Q_arr(6, 0) = theta6;
 
                                             j = 1;
                                         }
@@ -840,13 +839,13 @@ VectorXd PathManager::waistRange(VectorXd &pR, VectorXd &pL)
                                         {
                                             Q_arr.conservativeResize(Q_arr.rows(), Q_arr.cols() + 1);
 
-                                            Q_arr(0,j) = theta0;
-                                            Q_arr(1,j) = theta1;
-                                            Q_arr(2,j) = theta2;
-                                            Q_arr(3,j) = theta3;
-                                            Q_arr(4,j) = theta4;
-                                            Q_arr(5,j) = theta5;
-                                            Q_arr(6,j) = theta6;
+                                            Q_arr(0, j) = theta0;
+                                            Q_arr(1, j) = theta1;
+                                            Q_arr(2, j) = theta2;
+                                            Q_arr(3, j) = theta3;
+                                            Q_arr(4, j) = theta4;
+                                            Q_arr(5, j) = theta5;
+                                            Q_arr(6, j) = theta6;
 
                                             j++;
                                         }
@@ -870,8 +869,8 @@ VectorXd PathManager::waistRange(VectorXd &pR, VectorXd &pL)
     }
     else
     {
-        output(1) = Q_arr(0,0);     // min
-        output(0) = Q_arr(0,j-1);   // max
+        output(1) = Q_arr(0, 0);     // min
+        output(0) = Q_arr(0, j - 1); // max
     }
 
     return output;
@@ -892,26 +891,25 @@ float PathManager::getWristRAngle(VectorXd inst_i, VectorXd inst_f, float T, flo
     for (int i = 0; i < 9; i++)
     {
         if (inst_iR(i) == 1)
-            {
-                inst_iNum = i;
-            }
+        {
+            inst_iNum = i;
+        }
     }
 
     for (int i = 0; i < 9; i++)
     {
         if (inst_fR(i) == 1)
-            {
-                inst_fNum = i;
-            }
+        {
+            inst_fNum = i;
+        }
     }
 
-    float startR = instrument_mapping[inst_iNum ];
+    float startR = instrument_mapping[inst_iNum];
     float endR = instrument_mapping[inst_fNum];
 
     float thetaR = ((endR - startR) / T) * t + startR;
 
     return thetaR;
-
 }
 
 float PathManager::getWristLAngle(VectorXd inst_i, VectorXd inst_f, float T, float t)
@@ -926,26 +924,25 @@ float PathManager::getWristLAngle(VectorXd inst_i, VectorXd inst_f, float T, flo
     for (int i = 0; i < 9; i++)
     {
         if (inst_iL(i) == 1)
-            {
-                inst_iNum = i;
-            }
+        {
+            inst_iNum = i;
+        }
     }
 
     for (int i = 0; i < 9; i++)
     {
         if (inst_fL(i) == 1)
-            {
-                inst_fNum = i;
-            }
+        {
+            inst_fNum = i;
+        }
     }
 
-    float startL = instrument_mapping[inst_iNum ];
-    float endL = instrument_mapping[inst_fNum ];
+    float startL = instrument_mapping[inst_iNum];
+    float endL = instrument_mapping[inst_fNum];
 
     float thetaL = (endL - startL) / T * t + startL;
 
     return thetaL;
-
 }
 
 VectorXd PathManager::makeHitTrajetory(float t1, float t2, float t, int state, int wristIntensity)
@@ -955,10 +952,10 @@ VectorXd PathManager::makeHitTrajetory(float t1, float t2, float t, int state, i
     HitParameter param = getHitParameter(t1, t2, state, pre_parameters_tmp, wristIntensity);
     pre_parameters_tmp = param;
 
-    addAngle.resize(2);    // wrist, elbow
+    addAngle.resize(2); // wrist, elbow
     addAngle(0) = makeWristAngle(t1, t2, t, state, param, wristIntensity);
     addAngle(1) = makeElbowAngle(t1, t2, t, state, param, wristIntensity);
-   
+
     return addAngle;
 }
 
@@ -980,24 +977,24 @@ PathManager::HitParameter PathManager::getHitParameter(float t1, float t2, int h
     param.elbowStayAngle = preParam.elbowStayAngle;
     param.wristStayAngle = preParam.wristStayAngle;
 
-    param.elbowLiftAngle = std::min((t2-t1)*elbowLiftBaseAngle/baseTime, elbowLiftBaseAngle);
-    param.wristContactAngle = -1.0 * std::min((t2-t1)*wristContactBaseAngle/baseTime, wristContactBaseAngle);
-    //param.wristLiftAngle = std::min((t2-t1)*wristLiftBaseAngle/baseTime, wristLiftBaseAngle);
+    param.elbowLiftAngle = std::min((t2 - t1) * elbowLiftBaseAngle / baseTime, elbowLiftBaseAngle);
+    param.wristContactAngle = -1.0 * std::min((t2 - t1) * wristContactBaseAngle / baseTime, wristContactBaseAngle);
+    // param.wristLiftAngle = std::min((t2-t1)*wristLiftBaseAngle/baseTime, wristLiftBaseAngle);
 
-    t2 - t1 < 0.5 ? param.wristLiftAngle = (-100 * ((t2 - t1) - 0.5) * ((t2 - t1) - 0.5) + 25) * M_PI / 180.0 : param.wristLiftAngle = 25  * M_PI / 180.0;
+    t2 - t1 < 0.5 ? param.wristLiftAngle = (-100 * ((t2 - t1) - 0.5) * ((t2 - t1) - 0.5) + 25) *M_PI / 180.0 : param.wristLiftAngle = 25 * M_PI / 180.0;
 
-    param.elbowStayTime = std::max(0.5*(t2-t1), t2-t1-0.2);
-    param.elbowLiftTime = std::max(0.5*(t2-t1), t2-t1-0.2);
+    param.elbowStayTime = std::max(0.5 * (t2 - t1), t2 - t1 - 0.2);
+    param.elbowLiftTime = std::max(0.5 * (t2 - t1), t2 - t1 - 0.2);
 
-    t2 - t1 < 0.15 ? param.wristStayTime = 0.45 * (t2 - t1): param.wristStayTime = 0.47 * (t2 - t1) - 0.05;
-    if(intensity == 1)
-        param.wristLiftTime = std::max(0.5*(t2-t1), t2-t1-0.25);
-    else if(intensity == 2)
-        param.wristLiftTime = std::max(0.6*(t2-t1), t2-t1-0.2);
+    t2 - t1 < 0.15 ? param.wristStayTime = 0.45 * (t2 - t1) : param.wristStayTime = 0.47 * (t2 - t1) - 0.05;
+    if (intensity == 1)
+        param.wristLiftTime = std::max(0.5 * (t2 - t1), t2 - t1 - 0.25);
+    else if (intensity == 2)
+        param.wristLiftTime = std::max(0.6 * (t2 - t1), t2 - t1 - 0.2);
     else
-        param.wristLiftTime = std::max(0.7*(t2-t1), t2-t1-0.15);
-    param.wristContactTime = std::min(0.1*(t2-t1), 0.05); // 0.08 -> 0.05
-    param.wristReleaseTime = std::min(0.2*(t2-t1), 0.1);
+        param.wristLiftTime = std::max(0.7 * (t2 - t1), t2 - t1 - 0.15);
+    param.wristContactTime = std::min(0.1 * (t2 - t1), 0.05); // 0.08 -> 0.05
+    param.wristReleaseTime = std::min(0.2 * (t2 - t1), 0.1);
 
     return param;
 }
@@ -1010,7 +1007,7 @@ float PathManager::makeWristAngle(float t1, float t2, float t, int state, HitPar
     float t_stay = param.wristStayTime;
     float t_release = param.wristReleaseTime;
     float t_hit = t2 - t1;
-    float intensityFactor = 0.4 * intensity + 0.2;   // 1 : 약하게   2 : 기본    3 : 강하게
+    float intensityFactor = 0.4 * intensity + 0.2; // 1 : 약하게   2 : 기본    3 : 강하게
     float wristLiftAngle = param.wristLiftAngle * intensityFactor;
 
     MatrixXd A;
@@ -1027,28 +1024,28 @@ float PathManager::makeWristAngle(float t1, float t2, float t, int state, HitPar
         // Contact - Stay
         if (t < t_contact)
         {
-            A.resize(3,3);
-            b.resize(3,1);
+            A.resize(3, 3);
+            b.resize(3, 1);
             A << 1, 0, 0,
-                1, t_contact, t_contact*t_contact,
-                0, 1, 2*t_contact;
+                1, t_contact, t_contact * t_contact,
+                0, 1, 2 * t_contact;
             b << 0, param.wristContactAngle, 0;
             A_1 = A.inverse();
             sol = A_1 * b;
-            wrist_q = sol(0,0) + sol(1,0) * t + sol(2,0) * t * t;
+            wrist_q = sol(0, 0) + sol(1, 0) * t + sol(2, 0) * t * t;
         }
         else if (t <= t_release)
         {
-            A.resize(4,4);
-            b.resize(4,1);
-            A << 1, t_contact, t_contact*t_contact, t_contact*t_contact*t_contact,
-                1, t_release, t_release*t_release, t_release*t_release*t_release,
-                0, 1, 2*t_contact, 3*t_contact*t_contact,
-                0, 1, 2*t_release, 3*t_release*t_release;
+            A.resize(4, 4);
+            b.resize(4, 1);
+            A << 1, t_contact, t_contact * t_contact, t_contact * t_contact * t_contact,
+                1, t_release, t_release * t_release, t_release * t_release * t_release,
+                0, 1, 2 * t_contact, 3 * t_contact * t_contact,
+                0, 1, 2 * t_release, 3 * t_release * t_release;
             b << param.wristContactAngle, param.wristStayAngle, 0, 0;
             A_1 = A.inverse();
             sol = A_1 * b;
-            wrist_q = sol(0,0) + sol(1,0) * t + sol(2,0) * t * t + sol(3,0) * t * t * t;
+            wrist_q = sol(0, 0) + sol(1, 0) * t + sol(2, 0) * t * t + sol(3, 0) * t * t * t;
         }
         else
         {
@@ -1065,28 +1062,28 @@ float PathManager::makeWristAngle(float t1, float t2, float t, int state, HitPar
         }
         else if (t < t_lift)
         {
-            A.resize(4,4);
-            b.resize(4,1);
-            A << 1, t_stay, t_stay*t_stay, t_stay*t_stay*t_stay,
-                1, t_lift, t_lift*t_lift, t_lift*t_lift*t_lift,
-                0, 1, 2*t_stay, 3*t_stay*t_stay,
-                0, 1, 2*t_lift, 3*t_lift*t_lift;
+            A.resize(4, 4);
+            b.resize(4, 1);
+            A << 1, t_stay, t_stay * t_stay, t_stay * t_stay * t_stay,
+                1, t_lift, t_lift * t_lift, t_lift * t_lift * t_lift,
+                0, 1, 2 * t_stay, 3 * t_stay * t_stay,
+                0, 1, 2 * t_lift, 3 * t_lift * t_lift;
             b << param.wristStayAngle, wristLiftAngle, 0, 0;
             A_1 = A.inverse();
             sol = A_1 * b;
-            wrist_q = sol(0,0) + sol(1,0) * t + sol(2,0) * t * t + sol(3,0) * t * t * t;
+            wrist_q = sol(0, 0) + sol(1, 0) * t + sol(2, 0) * t * t + sol(3, 0) * t * t * t;
         }
         else if (t <= t_hit)
         {
-            A.resize(3,3);
-            b.resize(3,1);
-            A << 1, t_lift, t_lift*t_lift,
-                1, t_hit, t_hit*t_hit,
-                0, 1, 2*t_lift;
+            A.resize(3, 3);
+            b.resize(3, 1);
+            A << 1, t_lift, t_lift * t_lift,
+                1, t_hit, t_hit * t_hit,
+                0, 1, 2 * t_lift;
             b << wristLiftAngle, 0, 0;
             A_1 = A.inverse();
             sol = A_1 * b;
-            wrist_q = sol(0,0) + sol(1,0) * t + sol(2,0) * t * t;
+            wrist_q = sol(0, 0) + sol(1, 0) * t + sol(2, 0) * t * t;
         }
         else
         {
@@ -1098,28 +1095,28 @@ float PathManager::makeWristAngle(float t1, float t2, float t, int state, HitPar
         // Contact - Lift - Hit
         if (t < t_contact)
         {
-            A.resize(3,3);
-            b.resize(3,1);
+            A.resize(3, 3);
+            b.resize(3, 1);
             A << 1, 0, 0,
-                1, t_contact, t_contact*t_contact,
-                0, 1, 2*t_contact;
+                1, t_contact, t_contact * t_contact,
+                0, 1, 2 * t_contact;
             b << 0, param.wristContactAngle, 0;
             A_1 = A.inverse();
             sol = A_1 * b;
-            wrist_q = sol(0,0) + sol(1,0) * t + sol(2,0) * t * t;
+            wrist_q = sol(0, 0) + sol(1, 0) * t + sol(2, 0) * t * t;
         }
         else if (t < t_stay)
         {
-            A.resize(4,4);
-            b.resize(4,1);
-            A << 1, t_contact, t_contact*t_contact, t_contact*t_contact*t_contact,
-                1, t_stay, t_stay*t_stay, t_stay*t_stay*t_stay,
-                0, 1, 2*t_contact, 3*t_contact*t_contact,
-                0, 1, 2*t_stay, 3*t_stay*t_stay;
+            A.resize(4, 4);
+            b.resize(4, 1);
+            A << 1, t_contact, t_contact * t_contact, t_contact * t_contact * t_contact,
+                1, t_stay, t_stay * t_stay, t_stay * t_stay * t_stay,
+                0, 1, 2 * t_contact, 3 * t_contact * t_contact,
+                0, 1, 2 * t_stay, 3 * t_stay * t_stay;
             b << param.wristContactAngle, wristLiftAngle, 0, 0;
             A_1 = A.inverse();
             sol = A_1 * b;
-            wrist_q = sol(0,0) + sol(1,0) * t + sol(2,0) * t * t + sol(3,0) * t * t * t;
+            wrist_q = sol(0, 0) + sol(1, 0) * t + sol(2, 0) * t * t + sol(3, 0) * t * t * t;
         }
         else if (t < t_lift)
         {
@@ -1128,15 +1125,15 @@ float PathManager::makeWristAngle(float t1, float t2, float t, int state, HitPar
         }
         else if (t <= t_hit)
         {
-            A.resize(3,3);
-            b.resize(3,1);
-            A << 1, t_lift, t_lift*t_lift,
-                1, t_hit, t_hit*t_hit,
-                0, 1, 2*t_lift;
+            A.resize(3, 3);
+            b.resize(3, 1);
+            A << 1, t_lift, t_lift * t_lift,
+                1, t_hit, t_hit * t_hit,
+                0, 1, 2 * t_lift;
             b << wristLiftAngle, 0, 0;
             A_1 = A.inverse();
             sol = A_1 * b;
-            wrist_q = sol(0,0) + sol(1,0) * t + sol(2,0) * t * t;
+            wrist_q = sol(0, 0) + sol(1, 0) * t + sol(2, 0) * t * t;
         }
         else
         {
@@ -1153,7 +1150,7 @@ float PathManager::makeElbowAngle(float t1, float t2, float t, int state, HitPar
     float t_lift = param.elbowLiftTime;
     float t_stay = param.elbowStayTime;
     float t_hit = t2 - t1;
-    float intensityFactor = 0.4 * intensity + 0.2;   // 1 : 약하게   2 : 기본    3 : 강하게
+    float intensityFactor = 0.4 * intensity + 0.2; // 1 : 약하게   2 : 기본    3 : 강하게
     float elbowLiftAngle = param.elbowLiftAngle * intensityFactor;
 
     MatrixXd A;
@@ -1168,27 +1165,27 @@ float PathManager::makeElbowAngle(float t1, float t2, float t, int state, HitPar
     }
     else if (state == 1)
     {
-        if(t < t_stay){
-
+        if (t < t_stay)
+        {
         }
 
         // Contact - Stay
         if (t < t_stay)
         {
-            A.resize(4,4);
-            b.resize(4,1);
+            A.resize(4, 4);
+            b.resize(4, 1);
 
             A << 1, 0, 0, 0,
-                1, t_stay, t_stay*t_stay, t_stay*t_stay*t_stay,
+                1, t_stay, t_stay * t_stay, t_stay * t_stay * t_stay,
                 0, 1, 0, 0,
-                0, 1, 2*t_stay, 3*t_stay*t_stay;
+                0, 1, 2 * t_stay, 3 * t_stay * t_stay;
 
             b << 0, param.elbowStayAngle, 0, 0;
 
             A_1 = A.inverse();
             sol = A_1 * b;
 
-            elbow_q = sol(0,0) + sol(1,0) * t + sol(2,0) * t * t + sol(3,0) * t * t * t;
+            elbow_q = sol(0, 0) + sol(1, 0) * t + sol(2, 0) * t * t + sol(3, 0) * t * t * t;
         }
         else
         {
@@ -1200,37 +1197,37 @@ float PathManager::makeElbowAngle(float t1, float t2, float t, int state, HitPar
         // Stay - Lift - Hit
         if (t < t_lift)
         {
-            A.resize(4,4);
-            b.resize(4,1);
+            A.resize(4, 4);
+            b.resize(4, 1);
 
             A << 1, 0, 0, 0,
-                1, t_lift, t_lift*t_lift, t_lift*t_lift*t_lift,
+                1, t_lift, t_lift * t_lift, t_lift * t_lift * t_lift,
                 0, 1, 0, 0,
-                0, 1, 2*t_lift, 3*t_lift*t_lift;
+                0, 1, 2 * t_lift, 3 * t_lift * t_lift;
 
             b << param.elbowStayAngle, elbowLiftAngle, 0, 0;
 
             A_1 = A.inverse();
             sol = A_1 * b;
 
-            elbow_q = sol(0,0) + sol(1,0) * t + sol(2,0) * t * t + sol(3,0) * t * t * t;
+            elbow_q = sol(0, 0) + sol(1, 0) * t + sol(2, 0) * t * t + sol(3, 0) * t * t * t;
         }
         else if (t < t_hit)
         {
-            A.resize(4,4);
-            b.resize(4,1);
+            A.resize(4, 4);
+            b.resize(4, 1);
 
-            A << 1, t_lift, t_lift*t_lift, t_lift*t_lift*t_lift,
-                1, t_hit, t_hit*t_hit, t_hit*t_hit*t_hit,
-                0, 1, 2*t_lift, 3*t_lift*t_lift,
-                0, 1, 2*t_hit, 3*t_hit*t_hit;
+            A << 1, t_lift, t_lift * t_lift, t_lift * t_lift * t_lift,
+                1, t_hit, t_hit * t_hit, t_hit * t_hit * t_hit,
+                0, 1, 2 * t_lift, 3 * t_lift * t_lift,
+                0, 1, 2 * t_hit, 3 * t_hit * t_hit;
 
             b << elbowLiftAngle, 0, 0, 0;
 
             A_1 = A.inverse();
             sol = A_1 * b;
 
-            elbow_q = sol(0,0) + sol(1,0) * t + sol(2,0) * t * t + sol(3,0) * t * t * t;
+            elbow_q = sol(0, 0) + sol(1, 0) * t + sol(2, 0) * t * t + sol(3, 0) * t * t * t;
         }
         else
         {
@@ -1242,37 +1239,37 @@ float PathManager::makeElbowAngle(float t1, float t2, float t, int state, HitPar
         // Contact - Lift - Hit
         if (t < t_lift)
         {
-            A.resize(4,4);
-            b.resize(4,1);
+            A.resize(4, 4);
+            b.resize(4, 1);
 
             A << 1, 0, 0, 0,
-                1, t_lift, t_lift*t_lift, t_lift*t_lift*t_lift,
+                1, t_lift, t_lift * t_lift, t_lift * t_lift * t_lift,
                 0, 1, 0, 0,
-                0, 1, 2*t_lift, 3*t_lift*t_lift;
+                0, 1, 2 * t_lift, 3 * t_lift * t_lift;
 
             b << 0, elbowLiftAngle, 0, 0;
 
             A_1 = A.inverse();
             sol = A_1 * b;
 
-            elbow_q = sol(0,0) + sol(1,0) * t + sol(2,0) * t * t + sol(3,0) * t * t * t;
+            elbow_q = sol(0, 0) + sol(1, 0) * t + sol(2, 0) * t * t + sol(3, 0) * t * t * t;
         }
         else if (t < t_hit)
         {
-            A.resize(4,4);
-            b.resize(4,1);
+            A.resize(4, 4);
+            b.resize(4, 1);
 
-            A << 1, t_lift, t_lift*t_lift, t_lift*t_lift*t_lift,
-                1, t_hit, t_hit*t_hit, t_hit*t_hit*t_hit,
-                0, 1, 2*t_lift, 3*t_lift*t_lift,
-                0, 1, 2*t_hit, 3*t_hit*t_hit;
+            A << 1, t_lift, t_lift * t_lift, t_lift * t_lift * t_lift,
+                1, t_hit, t_hit * t_hit, t_hit * t_hit * t_hit,
+                0, 1, 2 * t_lift, 3 * t_lift * t_lift,
+                0, 1, 2 * t_hit, 3 * t_hit * t_hit;
 
             b << elbowLiftAngle, 0, 0, 0;
 
             A_1 = A.inverse();
             sol = A_1 * b;
 
-            elbow_q = sol(0,0) + sol(1,0) * t + sol(2,0) * t * t + sol(3,0) * t * t * t;
+            elbow_q = sol(0, 0) + sol(1, 0) * t + sol(2, 0) * t * t + sol(3, 0) * t * t * t;
         }
         else
         {
@@ -1287,9 +1284,9 @@ void PathManager::getHitAngle(VectorXd &q, int index)
 {
     VectorXd add_qR;
     VectorXd add_qL;
-    int stateR = lineData(0,3);
-    int stateL = lineData(0,4);
-    float n = lineData(0,0);
+    int stateR = lineData(0, 3);
+    int stateL = lineData(0, 4);
+    float n = lineData(0, 0);
     float next_n = 0;
     float dt = canManager.deltaT;
     float t = n * dt;
@@ -1297,7 +1294,8 @@ void PathManager::getHitAngle(VectorXd &q, int index)
     if (i_wristR >= nnR)
     {
         i_wristR = 0;
-        if(readyRflag) readyRflag = 0;
+        if (readyRflag)
+            readyRflag = 0;
     }
     else if (readyRflag)
     {
@@ -1306,7 +1304,8 @@ void PathManager::getHitAngle(VectorXd &q, int index)
     if (i_wristL >= nnL)
     {
         i_wristL = 0;
-        if(readyLflag) readyLflag = 0;
+        if (readyLflag)
+            readyLflag = 0;
     }
     else if (readyLflag)
     {
@@ -1315,78 +1314,77 @@ void PathManager::getHitAngle(VectorXd &q, int index)
 
     if (lineData.rows() > 2)
     {
-        next_n = lineData(1,0);
+        next_n = lineData(1, 0);
 
         if (n * dt <= 0.2)
         {
-            if (lineData(0,3) == 1 && !readyRflag)
+            if (lineData(0, 3) == 1 && !readyRflag)
             {
                 nnR = n + next_n;
                 ntR = nnR * dt;
                 readyRflag = 1;
-                if(lineData(1,3) == 0)
+                if (lineData(1, 3) == 0)
                 {
-                    next_stateR = lineData(0,3);
-                    next_intensityR = lineData(0,5);
+                    next_stateR = lineData(0, 3);
+                    next_intensityR = lineData(0, 5);
                 }
-                else if (lineData(1,3) == 2)
+                else if (lineData(1, 3) == 2)
                 {
                     next_stateR = 3;
-                    next_intensityR = lineData(1,5);
+                    next_intensityR = lineData(1, 5);
                 }
             }
-            if (lineData(0,4) == 1 && !readyLflag)
+            if (lineData(0, 4) == 1 && !readyLflag)
             {
                 nnL = n + next_n;
                 ntL = nnL * dt;
                 readyLflag = 1;
-                if(lineData(1,4) == 0)
+                if (lineData(1, 4) == 0)
                 {
-                    next_stateL = lineData(0,4);
-                    next_intensityL = lineData(0,6);
+                    next_stateL = lineData(0, 4);
+                    next_intensityL = lineData(0, 6);
                 }
-                else if (lineData(1,4) == 2)
+                else if (lineData(1, 4) == 2)
                 {
                     next_stateL = 3;
-                    next_intensityL = lineData(1,6);
+                    next_intensityL = lineData(1, 6);
                 }
             }
         }
 
-    if (next_n * dt <= 0.2)
+        if (next_n * dt <= 0.2)
         {
-            if(lineData(1,3) == 2 && !readyRflag)
+            if (lineData(1, 3) == 2 && !readyRflag)
             {
                 nnR = n + next_n;
                 ntR = nnR * dt;
                 readyRflag = 1;
-                if(lineData(0,3) == 0)
+                if (lineData(0, 3) == 0)
                 {
-                    next_stateR = lineData(1,3);
-                    next_intensityR = lineData(1,5);
+                    next_stateR = lineData(1, 3);
+                    next_intensityR = lineData(1, 5);
                 }
-                else if(lineData(0,3) == 1)
+                else if (lineData(0, 3) == 1)
                 {
                     next_stateR = 3;
-                    next_intensityR = lineData(1,5);
+                    next_intensityR = lineData(1, 5);
                 }
-
             }
 
-            if(lineData(1,4) == 2 && !readyLflag)
+            if (lineData(1, 4) == 2 && !readyLflag)
             {
                 nnL = n + next_n;
                 ntL = nnL * dt;
                 readyLflag = 1;
-                if(lineData(0,4) == 0)
+                if (lineData(0, 4) == 0)
                 {
-                    next_stateL = lineData(1,4);
-                    next_intensityL = lineData(1,6);
+                    next_stateL = lineData(1, 4);
+                    next_intensityL = lineData(1, 6);
                 }
-                else if(lineData(0,4) == 1)
+                else if (lineData(0, 4) == 1)
                 {
                     next_stateL = 3;
-                    next_intensityL = lineData(1,6);
+                    next_intensityL = lineData(1, 6);
                 }
             }
         }
@@ -1401,7 +1399,7 @@ void PathManager::getHitAngle(VectorXd &q, int index)
     else
     {
         pre_parameters_tmp = pre_parameters_R;
-        add_qR = makeHitTrajetory(0, t, index * dt, stateR, lineData(0,5));
+        add_qR = makeHitTrajetory(0, t, index * dt, stateR, lineData(0, 5));
         pre_parameters_R = pre_parameters_tmp;
     }
 
@@ -1414,7 +1412,7 @@ void PathManager::getHitAngle(VectorXd &q, int index)
     else
     {
         pre_parameters_tmp = pre_parameters_L;
-        add_qL = makeHitTrajetory(0, t, index * dt, stateL, lineData(0,6));
+        add_qL = makeHitTrajetory(0, t, index * dt, stateL, lineData(0, 6));
         pre_parameters_L = pre_parameters_tmp;
     }
 
@@ -1436,7 +1434,7 @@ float PathManager::getLength(double theta)
 
     double l3 = l1 + l2 * cos(theta);
 
-    double l4 = sqrt(l3*l3 + ((l2 * sin(theta)) * (l2 * sin(theta))));
+    double l4 = sqrt(l3 * l3 + ((l2 * sin(theta)) * (l2 * sin(theta))));
 
     return l4;
 }
@@ -1450,7 +1448,6 @@ double PathManager::getTheta(float l1, double theta)
     double theta_m = acos(l2 / l1);
 
     return theta_m;
-
 }
 
 void PathManager::solveIK(VectorXd &q, double q0)
@@ -1511,12 +1508,12 @@ VectorXd PathManager::ikFixedWaist(VectorXd &pR, VectorXd &pL, double theta0, do
     }
 
     float zeta = z0 - ZR;
-    float r2 = (YR - shoulderYR)*(YR - shoulderYR) + (XR - shoulderXR)*(XR - shoulderXR); // r^2
+    float r2 = (YR - shoulderYR) * (YR - shoulderYR) + (XR - shoulderXR) * (XR - shoulderXR); // r^2
 
-    float x = zeta*zeta + r2 - R1*R1 - R2*R2;
-    float y = sqrt(4.0*R1*R1*R2*R2 - x*x);
+    float x = zeta * zeta + r2 - R1 * R1 - R2 * R2;
+    float y = sqrt(4.0 * R1 * R1 * R2 * R2 - x * x);
 
-    float theta4 = atan2(y,x);
+    float theta4 = atan2(y, x);
 
     if (theta4 < 0 || theta4 > 140.0 * M_PI / 180.0) // the4 범위 : 0deg ~ 120deg
     {
@@ -1525,7 +1522,7 @@ VectorXd PathManager::ikFixedWaist(VectorXd &pR, VectorXd &pL, double theta0, do
     }
 
     float theta34 = atan2(sqrt(r2), zeta);
-    float theta3 = theta34 - atan2(R2*sin(theta4), R1 + R2*cos(theta4));
+    float theta3 = theta34 - atan2(R2 * sin(theta4), R1 + R2 * cos(theta4));
 
     if (theta3 < -45.0 * M_PI / 180.0 || theta3 > 90.0 * M_PI / 180.0) // the3 범위 : -45deg ~ 90deg
     {
@@ -1534,12 +1531,12 @@ VectorXd PathManager::ikFixedWaist(VectorXd &pR, VectorXd &pL, double theta0, do
     }
 
     zeta = z0 - ZL;
-    r2 = (YL - shoulderYL)*(YL - shoulderYL) + (XL - shoulderXL)*(XL - shoulderXL); // r^2
+    r2 = (YL - shoulderYL) * (YL - shoulderYL) + (XL - shoulderXL) * (XL - shoulderXL); // r^2
 
-    x = zeta*zeta + r2 - L1*L1 - L2*L2;
-    y = sqrt(4.0*L1*L1*L2*L2 - x*x);
+    x = zeta * zeta + r2 - L1 * L1 - L2 * L2;
+    y = sqrt(4.0 * L1 * L1 * L2 * L2 - x * x);
 
-    float theta6 = atan2(y,x);
+    float theta6 = atan2(y, x);
 
     if (theta6 < 0 || theta6 > 140.0 * M_PI / 180.0) // the6 범위 : 0deg ~ 120deg
     {
@@ -1548,7 +1545,7 @@ VectorXd PathManager::ikFixedWaist(VectorXd &pR, VectorXd &pL, double theta0, do
     }
 
     float theta56 = atan2(sqrt(r2), zeta);
-    float theta5 = theta56 - atan2(L2*sin(theta6), L1 + L2*cos(theta6));
+    float theta5 = theta56 - atan2(L2 * sin(theta6), L1 + L2 * cos(theta6));
 
     if (theta5 < -45.0 * M_PI / 180.0 || theta5 > 90.0 * M_PI / 180.0) // the5 범위 : -45deg ~ 90deg
     {
@@ -1595,161 +1592,179 @@ double PathManager::getQ0t2(int mode)
 {
     double q0_t2 = 0.0;
 
-    switch(mode)
+    switch (mode)
     {
-        case 0:
+    case 0:
+    {
+        whatcase = 0;
+        // 중앙값
+        q0_t2 = 0.5 * (lineData(1, 1) + lineData(1, 2));
+        break;
+    }
+    case 1:
+    {
+        whatcase = 1;
+        // 다익스트라
+        vector<double> x_values = {t1, t2}; // 현재 x값과 다음 x값
+        vector<pair<double, double>> y_ranges = {{lineData(0, 1), lineData(0, 2)}, {lineData(1, 1), lineData(1, 2)}};
+
+        try
         {
-            whatcase = 0;
-            // 중앙값
-            q0_t2 = 0.5*(lineData(1,1) + lineData(1,2));
-            break;
-        }
-        case 1:
-        {
-            whatcase = 1;
-            // 다익스트라
-            vector<double> x_values = {t1, t2}; // 현재 x값과 다음 x값
-            vector<pair<double, double>> y_ranges = {{lineData(0,1), lineData(0,2)}, {lineData(1,1), lineData(1,2)}};
-            
-            try {
-                if(status == 1){
-                    q0_t1 = nextq0_t1;
+            if (status == 1)
+            {
+                q0_t1 = nextq0_t1;
+            }
+            q0_t2 = dijkstra_top10_with_median(x_values, y_ranges, q0_t1);
+
+            if (abs(q0_t2 - q0_t1) <= qthreshold)
+            { // qthreshold 이하라면 안 움직이고 이보다 큰 것들만 움직이게 함.
+                if (q0_t1 >= lineData(1, 1) && q0_t1 <= lineData(1, 2))
+                {
+                    nextq0_t1 = q0_t1;
+                    q0_t2 = q0_t1;
+                    status = 1;
                 }
-                q0_t2 = dijkstra_top10_with_median(x_values, y_ranges, q0_t1);
-                
-                if(abs(q0_t2 - q0_t1) <= qthreshold){ // qthreshold 이하라면 안 움직이고 이보다 큰 것들만 움직이게 함.
-                    if(q0_t1 >= lineData(1,1) && q0_t1 <= lineData(1,2)){
-                        nextq0_t1 = q0_t1;
-                        q0_t2 = q0_t1;
-                        status = 1;
-                    }
-                    else{
-                        status = 0;
-                    }
-                }
-                else{
+                else
+                {
                     status = 0;
                 }
-
-            } catch (const exception& e) {
-                cerr << e.what() << endl;
             }
-            break;
+            else
+            {
+                status = 0;
+            }
         }
-        case 2: // 미완
+        catch (const exception &e)
         {
-            whatcase = 2;
-            // 기울기 평균
-
-            break;
+            cerr << e.what() << endl;
         }
-        case 3: // 미완
+        break;
+    }
+    case 2: // 미완
+    {
+        whatcase = 2;
+        // 기울기 평균
+
+        break;
+    }
+    case 3: // 미완
+    {
+        whatcase = 3;
+        // 최적화
+        break;
+    }
+    case 4: // 미완
+    {
+        whatcase = 4;
+        // 다익스트라 평균 (다음, 다다음, 다다다음 값까지 봄)
+        double q0_t1t = lineData(0, 1);
+        double t3, t4; // 3번째 4번째 시간 값 정의 필요
+
+        vector<double> x_values1 = {t1, t2}; // 현재 x값과 다음 x값
+        vector<pair<double, double>> y_ranges1 = {{lineData(0, 1), lineData(0, 2)}, {lineData(1, 1), lineData(1, 2)}};
+
+        vector<double> x_values2 = {t1, t3}; // 현재 x값과 다음 x값
+        vector<pair<double, double>> y_ranges2 = {{lineData(0, 1), lineData(0, 2)}, {lineData(2, 1), lineData(2, 2)}};
+
+        vector<double> x_values3 = {t1, t4}; // 현재 x값과 다음 x값
+        vector<pair<double, double>> y_ranges3 = {{lineData(0, 1), lineData(0, 2)}, {lineData(3, 1), lineData(3, 2)}};
+
+        try
         {
-            whatcase = 3;
-            // 최적화
-            break;
-        }
-        case 4: // 미완
-        {
-            whatcase = 4;
-            // 다익스트라 평균 (다음, 다다음, 다다다음 값까지 봄)
-            double q0_t1t = lineData(0,1);
-            double t3, t4; // 3번째 4번째 시간 값 정의 필요
+            if (status == 1)
+            {
+                q0_t1 = nextq0_t1;
+            }
+            double q0_n2, q0_n3, q0_n4;
 
-            vector<double> x_values1 = {t1, t2}; // 현재 x값과 다음 x값
-            vector<pair<double, double>> y_ranges1 = {{lineData(0,1), lineData(0,2)}, {lineData(1,1), lineData(1,2)}};
-            
-            vector<double> x_values2 = {t1, t3}; // 현재 x값과 다음 x값
-            vector<pair<double, double>> y_ranges2 = {{lineData(0,1), lineData(0,2)}, {lineData(2,1), lineData(2,2)}};
-            
-            vector<double> x_values3 = {t1, t4}; // 현재 x값과 다음 x값
-            vector<pair<double, double>> y_ranges3 = {{lineData(0,1), lineData(0,2)}, {lineData(3,1), lineData(3,2)}};
-            
-            try {
-                if(status == 1){
-                    q0_t1 = nextq0_t1;
-                }
-                double q0_n2, q0_n3, q0_n4;
+            q0_n2 = dijkstra_top10_with_median(x_values1, y_ranges1, q0_t1);
+            double a1 = (q0_n2 - q0_t1) / (t2 - t1);
 
-                q0_n2 = dijkstra_top10_with_median(x_values1, y_ranges1, q0_t1);
-                double a1 = (q0_n2-q0_t1) / (t2 - t1);
+            q0_n3 = dijkstra_top10_with_median(x_values2, y_ranges2, q0_t1);
+            double a2 = (q0_n3 - q0_t1) / (t3 - t1);
 
-                q0_n3 = dijkstra_top10_with_median(x_values2, y_ranges2, q0_t1);
-                double a2 = (q0_n3-q0_t1) / (t3 - t1);
-                
-                q0_n4 = dijkstra_top10_with_median(x_values3, y_ranges3, q0_t1);
-                double a3 = (q0_n4-q0_t1) / (t4 - t1);
-                
-                double a_avg = (a1 + a2 + a3) / 3;
-                double next_qy = a_avg * (t2-t1);
-                
-                if(next_qy >= lineData(1,1) && next_qy <= lineData(1,2)){ // 다익스트라 평균 값이 다음 y범위 내에 존재 하는 경우
-                    q0_t2 = next_qy;
-                    // Interpolation, q0_t0(1)는 이전 값, q0_t0(2)가 다음 값
-                    vector<double> q = {q0_t1, q0_t2, q0_t3, q0_t4};
-                    vector<double> t = {q0_t1t, t2, t3, t4};
-                    vector<double> m_interpolation = f_SI_interpolation(q, t);
-                    m = m_interpolation;
-                }
-                else{ // 범위 밖이라면, 다음 허리 값을 평균말고 다익스트라만 적용
-                    q0_t2 = dijkstra_top10_with_median(x_values1, y_ranges1, q0_t1);
-                }
+            q0_n4 = dijkstra_top10_with_median(x_values3, y_ranges3, q0_t1);
+            double a3 = (q0_n4 - q0_t1) / (t4 - t1);
 
-                if(abs(q0_t2 - q0_t1) <= qthreshold){
-                    if(q0_t1 > lineData(1,1) && q0_t1 < lineData(1,2)){
-                        status = 0;
-                    }
-                    else{
-                        nextq0_t1 = q0_t1;
-                        status = 1;
-                    }
-                }
-                else{
+            double a_avg = (a1 + a2 + a3) / 3;
+            double next_qy = a_avg * (t2 - t1);
+
+            if (next_qy >= lineData(1, 1) && next_qy <= lineData(1, 2))
+            { // 다익스트라 평균 값이 다음 y범위 내에 존재 하는 경우
+                q0_t2 = next_qy;
+                // Interpolation, q0_t0(1)는 이전 값, q0_t0(2)가 다음 값
+                vector<double> q = {q0_t1, q0_t2, q0_t3, q0_t4};
+                vector<double> t = {q0_t1t, t2, t3, t4};
+                vector<double> m_interpolation = f_SI_interpolation(q, t);
+                m = m_interpolation;
+            }
+            else
+            { // 범위 밖이라면, 다음 허리 값을 평균말고 다익스트라만 적용
+                q0_t2 = dijkstra_top10_with_median(x_values1, y_ranges1, q0_t1);
+            }
+
+            if (abs(q0_t2 - q0_t1) <= qthreshold)
+            {
+                if (q0_t1 > lineData(1, 1) && q0_t1 < lineData(1, 2))
+                {
                     status = 0;
                 }
-
-            } catch (const exception& e) {
-                cerr << e.what() << endl;
+                else
+                {
+                    nextq0_t1 = q0_t1;
+                    status = 1;
+                }
             }
-            break;
+            else
+            {
+                status = 0;
+            }
         }
-        case 5: // 기울기 평균 + interpolation
+        catch (const exception &e)
         {
-            whatcase = 5;
-            q0_t1t = lineData(0, 1);
-            
-
-            // q0_t2;
-
-
-            // t1 -> t2
-            m.assign(3, 0.0);
-            for (int i = 0; i < 3; ++i) {
-                m[i] = (0.5 * (lineData(i + 1, 3) + lineData(i + 1, 4)) - q0_t2) / (lineData(i + 1, 1) - lineData(0, 1));
-            }
-            q0_t3 = (accumulate(m.begin(), m.end(), 0.0) / 3.0) * (lineData(0, 2) - lineData(0, 1)) + q0_t2; // (accumulate(m.begin(), m.end(), 0.0) / 3.0) == sum(m)/3 이다. 평균연산 간소화
-            if (q0_t3 < lineData(1, 3) || q0_t3 > lineData(1, 4)) {
-                q0_t3 = 0.5 * (lineData(1, 3) + lineData(1, 4));
-            }
-
-            // t2 -> t3
-            m.assign(3, 0.0);
-            for (int i = 0; i < 3; ++i) {
-                m[i] = (0.5 * (lineData(i + 2, 3) + lineData(i + 2, 4)) - q0_t3) / (lineData(i + 2, 1) - lineData(1, 1));
-            }
-            q0_t4 = (std::accumulate(m.begin(), m.end(), 0.0) / 3.0) * (lineData(1, 2) - lineData(1, 1)) + q0_t3; // (accumulate(m.begin(), m.end(), 0.0) / 3.0) == sum(m)/3 이다. 평균연산 간소화
-
-            if (q0_t4 < lineData(2, 3) || q0_t4 > lineData(2, 4)) {
-                q0_t4 = 0.5 * (lineData(2, 3) + lineData(2, 4));
-            }
-
-            // Interpolation, q0_t0(1)는 이전 값, q0_t0(2)가 다음 값
-            vector<double> q = {q0_t1, q0_t2, q0_t3, q0_t4};
-            vector<double> t = {q0_t1t, lineData(0, 1), lineData(1, 1), lineData(2, 1)};
-            vector<double> m_interpolation = f_SI_interpolation(q, t);
-            m = m_interpolation;
-            break;
+            cerr << e.what() << endl;
         }
+        break;
+    }
+    case 5: // 기울기 평균 + interpolation
+    {
+        whatcase = 5;
+        q0_t1t = lineData(0, 1);
+
+        // q0_t2;
+
+        // t1 -> t2
+        m.assign(3, 0.0);
+        for (int i = 0; i < 3; ++i)
+        {
+            m[i] = (0.5 * (lineData(i + 1, 3) + lineData(i + 1, 4)) - q0_t2) / (lineData(i + 1, 1) - lineData(0, 1));
+        }
+        q0_t3 = (accumulate(m.begin(), m.end(), 0.0) / 3.0) * (lineData(0, 2) - lineData(0, 1)) + q0_t2; // (accumulate(m.begin(), m.end(), 0.0) / 3.0) == sum(m)/3 이다. 평균연산 간소화
+        if (q0_t3 < lineData(1, 3) || q0_t3 > lineData(1, 4))
+        {
+            q0_t3 = 0.5 * (lineData(1, 3) + lineData(1, 4));
+        }
+
+        // t2 -> t3
+        m.assign(3, 0.0);
+        for (int i = 0; i < 3; ++i)
+        {
+            m[i] = (0.5 * (lineData(i + 2, 3) + lineData(i + 2, 4)) - q0_t3) / (lineData(i + 2, 1) - lineData(1, 1));
+        }
+        q0_t4 = (std::accumulate(m.begin(), m.end(), 0.0) / 3.0) * (lineData(1, 2) - lineData(1, 1)) + q0_t3; // (accumulate(m.begin(), m.end(), 0.0) / 3.0) == sum(m)/3 이다. 평균연산 간소화
+
+        if (q0_t4 < lineData(2, 3) || q0_t4 > lineData(2, 4))
+        {
+            q0_t4 = 0.5 * (lineData(2, 3) + lineData(2, 4));
+        }
+
+        // Interpolation, q0_t0(1)는 이전 값, q0_t0(2)가 다음 값
+        vector<double> q = {q0_t1, q0_t2, q0_t3, q0_t4};
+        vector<double> t = {q0_t1t, lineData(0, 1), lineData(1, 1), lineData(2, 1)};
+        vector<double> m_interpolation = f_SI_interpolation(q, t);
+        m = m_interpolation;
+        break;
+    }
     }
 
     return q0_t2;
@@ -1764,7 +1779,7 @@ void PathManager::getWaistCoefficient()
     MatrixXd A_1;
 
     double dt = canManager.deltaT;
-    double t21 = lineData(0,0) * dt;
+    double t21 = lineData(0, 0) * dt;
 
     if (lineData.rows() == 1)
     {
@@ -1775,18 +1790,19 @@ void PathManager::getWaistCoefficient()
         q0_t2 = getQ0t2(1);
     }
 
-    A.resize(4,4);
-    b.resize(4,1);
+    A.resize(4, 4);
+    b.resize(4, 1);
 
     A << 1, 0, 0, 0,
-        1, t21, t21*t21, t21*t21*t21,
+        1, t21, t21 * t21, t21 * t21 * t21,
         0, 1, 0, 0,
-        0, 1, 2*t21, 3*t21*t21;
+        0, 1, 2 * t21, 3 * t21 * t21;
     b << q0_t1, q0_t2, m[0], m[1];
 
     A_1 = A.inverse();
     waistCoefficient = A_1 * b;
-    if(whatcase == 5){
+    if (whatcase == 5)
+    {
         q0_t1t = lineData(0, 1);
         q0_t2 = q0_t3;
     }
@@ -1798,7 +1814,7 @@ double PathManager::getWaistAngle(int i)
     double dt = canManager.deltaT;
     double t = dt * i;
 
-    return waistCoefficient(0,0) + waistCoefficient(1,0) * t + waistCoefficient(2,0) * t * t + waistCoefficient(3,0) * t * t * t;
+    return waistCoefficient(0, 0) + waistCoefficient(1, 0) * t + waistCoefficient(2, 0) * t * t + waistCoefficient(3, 0) * t * t * t;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1812,9 +1828,9 @@ VectorXd PathManager::calVmax(VectorXd &q1, VectorXd &q2, float acc, float t2)
     for (int i = 0; i < 9; i++)
     {
         double val;
-        double S = abs(q2(i) - q1(i)); //수정됨, overflow방지
+        double S = abs(q2(i) - q1(i)); // 수정됨, overflow방지
 
-        if (S > t2*t2*acc/4)
+        if (S > t2 * t2 * acc / 4)
         {
             // 가속도로 도달 불가능
             // -1 반환
@@ -1823,19 +1839,19 @@ VectorXd PathManager::calVmax(VectorXd &q1, VectorXd &q2, float acc, float t2)
         else
         {
             // 2차 방정식 계수
-            double A = 1/acc;
-            double B = -1*t2;
+            double A = 1 / acc;
+            double B = -1 * t2;
             double C = S;
 
             // 2차 방정식 해
-            double sol1 = (-B+sqrt(B*B-4*A*C))/2/A;
-            double sol2 = (-B-sqrt(B*B-4*A*C))/2/A;
+            double sol1 = (-B + sqrt(B * B - 4 * A * C)) / 2 / A;
+            double sol2 = (-B - sqrt(B * B - 4 * A * C)) / 2 / A;
 
-            if (sol1 >= 0 && sol1 <= acc*t2/2)
+            if (sol1 >= 0 && sol1 <= acc * t2 / 2)
             {
                 val = sol1;
             }
-            else if (sol2 >= 0 && sol2 <= acc*t2/2)
+            else if (sol2 >= 0 && sol2 <= acc * t2 / 2)
             {
                 val = sol2;
             }
@@ -1857,13 +1873,13 @@ VectorXd PathManager::makeProfile(VectorXd &q1, VectorXd &q2, VectorXd &Vmax, fl
 {
     VectorXd Qi = VectorXd::Zero(9);
 
-    for(int i = 0; i < 9; i++)
+    for (int i = 0; i < 9; i++)
     {
         double val, S;
         int sign;
 
         S = q2(i) - q1(i);
-        
+
         // 부호 확인, 이동거리 양수로 변경
         if (S < 0)
         {
@@ -1874,7 +1890,7 @@ VectorXd PathManager::makeProfile(VectorXd &q1, VectorXd &q2, VectorXd &Vmax, fl
         {
             sign = 1;
         }
-        
+
         // 궤적 생성
         if (S == 0)
         {
@@ -1886,7 +1902,7 @@ VectorXd PathManager::makeProfile(VectorXd &q1, VectorXd &q2, VectorXd &Vmax, fl
             // Vmax 값을 구하지 못했을 때 삼각형 프로파일 생성
             double acc_tri = 4 * S / t2 / t2;
 
-            if (t < t2/2)
+            if (t < t2 / 2)
             {
                 val = q1(i) + sign * 0.5 * acc_tri * t * t;
             }
@@ -1910,23 +1926,23 @@ VectorXd PathManager::makeProfile(VectorXd &q1, VectorXd &q2, VectorXd &Vmax, fl
             else if (t < S / Vmax(i))
             {
                 // 등속
-                val = q1(i) + (sign * 0.5 * Vmax(i) * Vmax(i) / acc) + (sign * Vmax(i) * (t - Vmax(i) / acc));          
+                val = q1(i) + (sign * 0.5 * Vmax(i) * Vmax(i) / acc) + (sign * Vmax(i) * (t - Vmax(i) / acc));
             }
             else if (t < Vmax(i) / acc + S / Vmax(i))
             {
                 // 감속
-                val = q2(i) - sign * 0.5 * acc * (S / Vmax(i) + Vmax(i) / acc - t) * (S / Vmax(i) + Vmax(i) / acc - t);              
+                val = q2(i) - sign * 0.5 * acc * (S / Vmax(i) + Vmax(i) / acc - t) * (S / Vmax(i) + Vmax(i) / acc - t);
             }
-            else 
+            else
             {
-                val = q2(i);              
+                val = q2(i);
             }
         }
 
         Qi(i) = val;
     }
 
-    return  Qi;
+    return Qi;
 }
 
 void PathManager::getMotorPos()
@@ -2012,7 +2028,7 @@ VectorXd PathManager::ikfun_final(VectorXd &pR, VectorXd &pL)
     float the3[1351];
     float zeta = z0 - z2;
     VectorXd Qf(9);
-    MatrixXd Q_arr(7,1);
+    MatrixXd Q_arr(7, 1);
     // float the0_f = 0;
 
     // the3 배열 초기화
@@ -2086,13 +2102,13 @@ VectorXd PathManager::ikfun_final(VectorXd &pR, VectorXd &pL)
                                                         // }
                                                         if (j == 0)
                                                         {
-                                                            Q_arr(0,0) = the0;
-                                                            Q_arr(1,0) = the1;
-                                                            Q_arr(2,0) = the2;
-                                                            Q_arr(3,0) = the3[i];
-                                                            Q_arr(4,0) = the4;
-                                                            Q_arr(5,0) = the5;
-                                                            Q_arr(6,0) = the6;
+                                                            Q_arr(0, 0) = the0;
+                                                            Q_arr(1, 0) = the1;
+                                                            Q_arr(2, 0) = the2;
+                                                            Q_arr(3, 0) = the3[i];
+                                                            Q_arr(4, 0) = the4;
+                                                            Q_arr(5, 0) = the5;
+                                                            Q_arr(6, 0) = the6;
 
                                                             j = 1;
                                                         }
@@ -2100,13 +2116,13 @@ VectorXd PathManager::ikfun_final(VectorXd &pR, VectorXd &pL)
                                                         {
                                                             Q_arr.conservativeResize(Q_arr.rows(), Q_arr.cols() + 1);
 
-                                                            Q_arr(0,j) = the0;
-                                                            Q_arr(1,j) = the1;
-                                                            Q_arr(2,j) = the2;
-                                                            Q_arr(3,j) = the3[i];
-                                                            Q_arr(4,j) = the4;
-                                                            Q_arr(5,j) = the5;
-                                                            Q_arr(6,j) = the6;
+                                                            Q_arr(0, j) = the0;
+                                                            Q_arr(1, j) = the1;
+                                                            Q_arr(2, j) = the2;
+                                                            Q_arr(3, j) = the3[i];
+                                                            Q_arr(4, j) = the4;
+                                                            Q_arr(5, j) = the5;
+                                                            Q_arr(6, j) = the6;
 
                                                             j++;
                                                         }
@@ -2131,11 +2147,11 @@ VectorXd PathManager::ikfun_final(VectorXd &pR, VectorXd &pL)
     }
     else
     {
-        m = j/2;
+        m = j / 2;
         // std::cout << "j = " << j << ", m = " << m << std::endl;
         for (int i = 0; i < 7; i++)
         {
-            Qf(i) = Q_arr(i,m);
+            Qf(i) = Q_arr(i, m);
 
             // std::cout << "Q(" << i << ") = " << Qf(i) << std::endl;
         }
@@ -2186,27 +2202,30 @@ vector<float> PathManager::fkfun()
 /*                                DIJKSTRA                                    */
 ////////////////////////////////////////////////////////////////////////////////
 
-int PathManager::y_to_index(double y, double global_y_min, double step_size) {
+int PathManager::y_to_index(double y, double global_y_min, double step_size)
+{
     return static_cast<int>(round((y - global_y_min) / step_size));
 }
 
-double PathManager::select_top10_with_median(const vector<double>& y_vals, double current_y, double y_min, double y_max) {
+double PathManager::select_top10_with_median(const vector<double> &y_vals, double current_y, double y_min, double y_max)
+{
     vector<double> distances;
-    for (double y : y_vals) {
+    for (double y : y_vals)
+    {
         distances.push_back(abs(y - current_y));
     }
 
     // 거리 정렬 및 인덱스 추적
     vector<int> sorted_idx(y_vals.size());
     iota(sorted_idx.begin(), sorted_idx.end(), 0);
-    sort(sorted_idx.begin(), sorted_idx.end(), [&](int i, int j) {
-        return distances[i] < distances[j];
-    });
+    sort(sorted_idx.begin(), sorted_idx.end(), [&](int i, int j)
+         { return distances[i] < distances[j]; });
 
     // 상위 n% 거리 추출
     int top_10_limit = max(1, static_cast<int>(ceil(sorted_idx.size() * 0.1)));
     vector<double> top_10_y_vals;
-    for (int i = 0; i < top_10_limit; ++i) {
+    for (int i = 0; i < top_10_limit; ++i)
+    {
         top_10_y_vals.push_back(y_vals[sorted_idx[i]]);
     }
 
@@ -2214,21 +2233,22 @@ double PathManager::select_top10_with_median(const vector<double>& y_vals, doubl
     double y_mid = (y_min + y_max) / 2;
 
     // 중앙값과 가장 가까운 값을 선택
-    auto closest = min_element(top_10_y_vals.begin(), top_10_y_vals.end(), [&](double a, double b) {
-        return abs(a - y_mid) < abs(b - y_mid);
-    });
+    auto closest = min_element(top_10_y_vals.begin(), top_10_y_vals.end(), [&](double a, double b)
+                               { return abs(a - y_mid) < abs(b - y_mid); });
 
     return *closest;
 }
 
-double PathManager::dijkstra_top10_with_median(const vector<double>& x_values, const vector<pair<double, double>>& y_ranges, double start_y) {
+double PathManager::dijkstra_top10_with_median(const vector<double> &x_values, const vector<pair<double, double>> &y_ranges, double start_y)
+{
     int n = x_values.size(); // x 값의 개수
     double step_size = 0.01; // y 값 간격
 
     // y 범위의 전역 최소 및 최대값
     double global_y_min = y_ranges[0].first;
     double global_y_max = y_ranges[0].second;
-    for (const auto& range : y_ranges) {
+    for (const auto &range : y_ranges)
+    {
         global_y_min = min(global_y_min, range.first);
         global_y_max = max(global_y_max, range.second);
     }
@@ -2236,7 +2256,8 @@ double PathManager::dijkstra_top10_with_median(const vector<double>& x_values, c
     int max_steps = ceil((global_y_max - global_y_min) / step_size) + 1;
 
     // 초기값 유효성 확인
-    if (start_y < y_ranges[0].first || start_y > y_ranges[0].second) {
+    if (start_y < y_ranges[0].first || start_y > y_ranges[0].second)
+    {
         throw runtime_error("초기값이 유효하지 않습니다. 시작 범위는 [" + to_string(y_ranges[0].first) + ", " + to_string(y_ranges[0].second) + "]입니다.");
     }
 
@@ -2252,7 +2273,8 @@ double PathManager::dijkstra_top10_with_median(const vector<double>& x_values, c
     pq.push(Node{0, start_y, 0});
 
     // 다익스트라 알고리즘 실행
-    while (!pq.empty()) {
+    while (!pq.empty())
+    {
         Node current = pq.top();
         pq.pop();
 
@@ -2260,7 +2282,8 @@ double PathManager::dijkstra_top10_with_median(const vector<double>& x_values, c
         double y_val = current.y_val;
         double current_cost = current.cost;
 
-        if (x_idx == n - 1) {
+        if (x_idx == n - 1)
+        {
             continue; // 마지막 x 값에서는 경로 갱신만 수행
         }
 
@@ -2270,7 +2293,8 @@ double PathManager::dijkstra_top10_with_median(const vector<double>& x_values, c
         double y_max_next = y_ranges[next_x_idx].second;
 
         vector<double> next_y_vals;
-        for (double next_y = y_min_next; next_y <= y_max_next; next_y += step_size) {
+        for (double next_y = y_min_next; next_y <= y_max_next; next_y += step_size)
+        {
             next_y_vals.push_back(next_y);
         }
 
@@ -2279,7 +2303,8 @@ double PathManager::dijkstra_top10_with_median(const vector<double>& x_values, c
         double next_cost = current_cost + abs(selected_y - y_val);
         int next_y_idx = y_to_index(selected_y, global_y_min, step_size);
 
-        if (dist[next_x_idx][next_y_idx] > next_cost) {
+        if (dist[next_x_idx][next_y_idx] > next_cost)
+        {
             dist[next_x_idx][next_y_idx] = next_cost;
             prev[next_x_idx][next_y_idx] = {x_idx, y_val};
             pq.push(Node{next_x_idx, selected_y, next_cost});
@@ -2292,10 +2317,12 @@ double PathManager::dijkstra_top10_with_median(const vector<double>& x_values, c
     double current_y = global_y_min + (best_y_idx * step_size);
     int current_x = n - 1;
 
-    while (current_x >= 0) {
+    while (current_x >= 0)
+    {
         optimal_path.push_back({x_values[current_x], current_y});
         auto prev_node = prev[current_x][y_to_index(current_y, global_y_min, step_size)];
-        if (prev_node.first == -1) {
+        if (prev_node.first == -1)
+        {
             break;
         }
         current_x = prev_node.first;
@@ -2306,41 +2333,50 @@ double PathManager::dijkstra_top10_with_median(const vector<double>& x_values, c
     return optimal_path.back().second;
 }
 
-void PathManager::updateRange(const VectorXd& output, double& min, double& max) {
+void PathManager::updateRange(const VectorXd &output, double &min, double &max)
+{
     min = output(1);
     max = output(0);
 }
 
-vector<double> PathManager::f_SI_interpolation(const vector<double>& q, const vector<double>& t){
+vector<double> PathManager::f_SI_interpolation(const vector<double> &q, const vector<double> &t)
+{
     vector<double> a(3, 0.0);
 
-    for(int i = 0; i < 3; i++){
-        a[i] = (q[i+1] - q[i])/(t[i+1] - t[i]);
+    for (int i = 0; i < 3; i++)
+    {
+        a[i] = (q[i + 1] - q[i]) / (t[i + 1] - t[i]);
     }
     double m1 = 0.5 * (a[1] + a[2]);
     double m2 = 0.5 * (a[2] + a[3]);
     double alph, bet;
-    if(q[2] == q[3]){
+    if (q[2] == q[3])
+    {
         m1 = 0;
         m2 = 0;
-    }else if((q[1] == q[2]) || (a[1] * a[2] < 0)){
+    }
+    else if ((q[1] == q[2]) || (a[1] * a[2] < 0))
+    {
         m1 = 0;
         alph = m1 / (q[3] - q[2]);
         bet = m2 / (q[3] - q[2]);
 
         double e = std::sqrt(std::pow(alph, 2) + std::pow(bet, 2));
-        if(e > 3.0){
+        if (e > 3.0)
+        {
             m1 = (3 * m1) / e;
             m2 = (3 * m2) / e;
         }
     }
-    else if((q[3] == q[4]) || (a[2] * a[3] < 0)){
+    else if ((q[3] == q[4]) || (a[2] * a[3] < 0))
+    {
         m2 = 0;
         alph = m1 / (q[3] - q[2]);
         bet = m2 / (q[3] - q[2]);
 
         double e = std::sqrt(std::pow(alph, 2) + std::pow(bet, 2));
-        if(e > 3.0){
+        if (e > 3.0)
+        {
             m1 = (3 * m1) / e;
             m2 = (3 * m2) / e;
         }
