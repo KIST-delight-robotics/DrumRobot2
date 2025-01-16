@@ -206,7 +206,6 @@ private:
     /////////////////////////////////////////////////////////////////////////// Play (waist)
     MatrixXd waistCoefficient;
     double q0_t1;
-    double q0_t1t;
     double nextq0_t1;
     double q0_t2, q0_t3, q0_t4;
     int status = 0;

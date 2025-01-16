@@ -1645,29 +1645,23 @@ double PathManager::getQ0t2(int mode)
         case 4: // 미완
         {
             // 다익스트라 평균 (다음, 다다음, 다다다음 값까지 봄)
-
-            vector<double> x_values1 = {t1, t2}; // 현재 x값과 다음 x값
-            vector<pair<double, double>> y_ranges1 = {{lineData(0,1), lineData(0,2)}, {lineData(1,1), lineData(1,2)}};
-            
-            
-            
             try {
+                vector<double> x_values1 = {t1, t2}; // 현재 x값과 다음 x값
+                vector<pair<double, double>> y_ranges1 = {{lineData(0,1), lineData(0,2)}, {lineData(1,1), lineData(1,2)}};
                 q0_t2 = dijkstra_top10_with_median(x_values1, y_ranges1, q0_t1);
+
                 vector<double> x_values2 = {t2, t3}; // 현재 x값과 다음 x값
                 vector<pair<double, double>> y_ranges2 = {{lineData(1,1), lineData(1,2)}, {lineData(2,1), lineData(2,2)}};
+                q0_t3 = dijkstra_top10_with_median(x_values2, y_ranges2, q0_t2);
 
-                q0_t3 = dijkstra_top10_with_median(x_values2, y_ranges2, q0_t1);
                 vector<double> x_values3 = {t3, t4}; // 현재 x값과 다음 x값
                 vector<pair<double, double>> y_ranges3 = {{lineData(2,1), lineData(2,2)}, {lineData(3,1), lineData(3,2)}};
-                
-                q0_t4 = dijkstra_top10_with_median(x_values3, y_ranges3, q0_t1);
+                q0_t4 = dijkstra_top10_with_median(x_values3, y_ranges3, q0_t3);
                 
                 // Interpolation, q0_t0(1)는 이전 값, q0_t0(2)가 다음 값
                 vector<double> q = {q0_t1, q0_t2, q0_t3, q0_t4};
                 vector<double> t = {t1, t2, t3, t4};
-                vector<double> m_interpolation = f_SI_interpolation(q, t);
-                m = m_interpolation;
-
+                m = f_SI_interpolation(q, t);
             } catch (const exception& e) {
                 cerr << e.what() << endl;
             }
@@ -1703,7 +1697,7 @@ double PathManager::getQ0t2(int mode)
 
         // Interpolation, q0_t0(1)는 이전 값, q0_t0(2)가 다음 값
         vector<double> q = {q0_t1, q0_t2, q0_t3, q0_t4};
-        vector<double> t = {q0_t1t, lineData(0, 1), lineData(1, 1), lineData(2, 1)};
+        vector<double> t = {t1, t2, t3, t4};
         vector<double> m_interpolation = f_SI_interpolation(q, t);
         m = m_interpolation;
         break;
@@ -1715,8 +1709,6 @@ double PathManager::getQ0t2(int mode)
 
 void PathManager::getWaistCoefficient()
 {
-    // double q0_t2;
-
     MatrixXd A;
     MatrixXd b;
     MatrixXd A_1;
@@ -1730,7 +1722,7 @@ void PathManager::getWaistCoefficient()
     }
     else
     {
-        q0_t2 = getQ0t2(1);
+        q0_t2 = getQ0t2(1); // 0: 중앙값, 1: 다익스트라, 2: 기울기평균, 3: 최적화, 4: 다익스트라 + 보간법, 5. 기울기평균 + 보간법
     }
 
     A.resize(4, 4);
@@ -2281,7 +2273,7 @@ vector<double> PathManager::f_SI_interpolation(const vector<double> &q, const ve
 {
     vector<double> a(3, 0.0);
 
-    for (int i = 0; i < 3; i++)
+    for (int i = 0; i < a.size(); i++)
     {
         a[i] = (q[i + 1] - q[i]) / (t[i + 1] - t[i]);
     }
