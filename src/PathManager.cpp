@@ -172,8 +172,8 @@ bool PathManager::readMeasure(ifstream& inputFile, bool &BPMFlag)
             // timeSum이 threshold를 넘으면 true 반환
             if (timeSum >= threshold)
             {
-                std::cout << "\n//////////////////////////////// line : " << line + 1 << "\n";
-                std::cout << measureMatrix;
+                // std::cout << "\n//////////////////////////////// line : " << line + 1 << "\n";
+                // std::cout << measureMatrix;
                 // std::cout << "\n ////////////// time sum : " << timeSum << "\n";
 
                 return true;
@@ -198,11 +198,15 @@ void PathManager::generateTrajectory()
     float dt = canManager.deltaT;
     int stateR, stateL;
 
+    std::cout << "\n//////////////////////////////// line : " << line + 1 << "\n";
+    std::cout << measureMatrix;
+
     // parse
     parseMeasure(measureMatrix);
+    
     intensity(0) = measureMatrix(0,4);
     intensity(1) = measureMatrix(0,5);
-
+    
     // 한 줄의 데이터 개수
     n = (t2 - t1) / dt;
     round_sum += (int)(n * 1000) % 1000;
@@ -222,8 +226,8 @@ void PathManager::generateTrajectory()
     Pf_R << Pf(0), Pf(1), Pf(2);
     Pf_L << Pf(3), Pf(4), Pf(5);
 
-    std::cout << "\nR : Pi_R -> Pf_R\n(" << Pi_R.transpose() << ") -> (" << Pf_R.transpose() << ")";
-    std::cout << "\nL : Pi_L -> Pf_L\n(" << Pi_L.transpose() << ") -> (" << Pf_L.transpose() << ")" << std::endl;
+    // std::cout << "\nR : Pi_R -> Pf_R\n(" << Pi_R.transpose() << ") -> (" << Pf_R.transpose() << ")";
+    // std::cout << "\nL : Pi_L -> Pf_L\n(" << Pi_L.transpose() << ") -> (" << Pf_L.transpose() << ")" << std::endl;
 
     for (int i = 0; i < n; i++)
     {
@@ -263,8 +267,8 @@ void PathManager::generateTrajectory()
         {
             minmax = waistRange(Pt.pR, Pt.pL);
 
-            cout << "\n\nline : " << line << "\nminmax : " << minmax << "\n\n";
-            cout << "\n\nPt.pR : " << Pt.pR << "\nPt.pL : " << Pt.pL << "\n\n";
+            // cout << "\n\nline : " << line << "\nminmax : " << minmax << "\n\n";
+            // cout << "\n\nPt.pR : " << Pt.pR << "\nPt.pL : " << Pt.pL << "\n\n";
         }
     }
 
@@ -281,11 +285,10 @@ bool PathManager::solveIKandPushConmmand()
     VectorXd q;
     VectorXd add_qR;
     VectorXd add_qL;
-
     int stateR = lineData(0,3);
     int stateL = lineData(0,4);
     float n = lineData(0,0);
-    float next_n = lineData(1,0);
+    float next_n = 0;
     float dt = canManager.deltaT;
     float t = n * dt;
 
@@ -302,31 +305,23 @@ bool PathManager::solveIKandPushConmmand()
             lineData.resize(tmp_matrix.rows(), tmp_matrix.cols());
             lineData = tmp_matrix;
         }
-        
-        std::cout << "\n lineData Over \n";
+
+        std::cout << "\n lineDate Over \n";
 
         return false;
     }
     else
     {
-        if (i_solveIK == 0) // 시작
+        if (i_solveIK == 0)
         {
             // 허리 계수 구하기
             getWaistCoefficient();
 
-            std::cout << "\n lineData Start : \n";
+            std::cout << "\n lineDate Start : \n";
             std::cout << lineData;
         }
         i_solveIK++;
     }
-
-    // waist
-    double q0 = getWaistAngle(i_solveIK);
-
-    // solve IK
-    solveIK(q, q0);
-
-    // wrist, elbow
 
     if (i_wristR >= nnR)
     {
@@ -347,83 +342,92 @@ bool PathManager::solveIKandPushConmmand()
         i_wristL++;
     }
 
-    add_qR.resize(2);
-    add_qL.resize(2);
+    // waist
+    double q0 = getWaistAngle(i_solveIK);
 
-    if (n * dt <= 0.2)
+    // solve IK
+    solveIK(q, q0);
+
+    // wrist, elbow
+    if (lineData.rows() > 2)
     {
-        if (lineData(0,3) == 1 && !readyRflag)
+        next_n = lineData(1,0);
+
+        if (n * dt <= 0.2)
         {
-            nnR = n + next_n;
-            ntR = nnR * dt;
-            readyRflag = 1;
-            if(lineData(1,3) == 0)
+            if (lineData(0,3) == 1 && !readyRflag)
             {
-                next_stateR = lineData(0,3);
-                next_intensityR = lineData(0,5);
+                nnR = n + next_n;
+                ntR = nnR * dt;
+                readyRflag = 1;
+                if(lineData(1,3) == 0)
+                {
+                    next_stateR = lineData(0,3);
+                    next_intensityR = lineData(0,5);
+                }
+                else if (lineData(1,3) == 2)
+                {
+                    next_stateR = 3;
+                    next_intensityR = lineData(1,5);
+                }
             }
-            else if (lineData(1,3) == 2)
+            if (lineData(0,4) == 1 && !readyLflag)
             {
-                next_stateR = 3;
-                next_intensityR = lineData(1,5);
+                nnL = n + next_n;
+                ntL = nnL * dt;
+                readyLflag = 1;
+                if(lineData(1,4) == 0)
+                {
+                    next_stateL = lineData(0,4);
+                    next_intensityL = lineData(0,6);
+                }
+                else if (lineData(1,4) == 2)
+                {
+                    next_stateL = 3;
+                    next_intensityL = lineData(1,6);
+                }
             }
         }
-        if (lineData(0,4) == 1 && !readyLflag)
-        {
-            nnL = n + next_n;
-            ntL = nnL * dt;
-            readyLflag = 1;
-            if(lineData(1,4) == 0)
-            {
-                next_stateL = lineData(0,4);
-                next_intensityL = lineData(0,6);
-            }
-            else if (lineData(1,4) == 2)
-            {
-                next_stateL = 3;
-                next_intensityL = lineData(1,6);
-            }
-        }
-    }
 
     if (next_n * dt <= 0.2)
-    {
-
-        if(lineData(1,3) == 2 && !readyRflag)
         {
-            nnR = n + next_n;
-            ntR = nnR * dt;
-            readyRflag = 1;
-            if(lineData(0,3) == 0)
+            if(lineData(1,3) == 2 && !readyRflag)
             {
-                next_stateR = lineData(1,3);
-                next_intensityR = lineData(1,5);
-            }
-            else if(lineData(0,3) == 1)
-            {
-                next_stateR = 3;
-                next_intensityR = lineData(1,5);
+                nnR = n + next_n;
+                ntR = nnR * dt;
+                readyRflag = 1;
+                if(lineData(0,3) == 0)
+                {
+                    next_stateR = lineData(1,3);
+                    next_intensityR = lineData(1,5);
+                }
+                else if(lineData(0,3) == 1)
+                {
+                    next_stateR = 3;
+                    next_intensityR = lineData(1,5);
+                }
+
             }
 
-        }
-
-        if(lineData(1,4) == 2 && !readyLflag)
-        {
-            nnL = n + next_n;
-            ntL = nnL * dt;
-            readyLflag = 1;
-            if(lineData(0,4) == 0)
+            if(lineData(1,4) == 2 && !readyLflag)
             {
-                next_stateL = lineData(1,4);
-                next_intensityL = lineData(1,6);
-            }
-            else if(lineData(0,4) == 1)
-            {
-                next_stateL = 3;
-                next_intensityL = lineData(1,6);
+                nnL = n + next_n;
+                ntL = nnL * dt;
+                readyLflag = 1;
+                if(lineData(0,4) == 0)
+                {
+                    next_stateL = lineData(1,4);
+                    next_intensityL = lineData(1,6);
+                }
+                else if(lineData(0,4) == 1)
+                {
+                    next_stateL = 3;
+                    next_intensityL = lineData(1,6);
+                }
             }
         }
     }
+    
 
     
 
@@ -470,6 +474,7 @@ bool PathManager::solveIKandPushConmmand()
 
     return true;
 }
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /*                                AddStance                                   */
@@ -602,13 +607,13 @@ void PathManager::parseMeasure(MatrixXd &measureMatrix)
     measureState.block(0,0,1,3) = R.second.transpose();
     measureState.block(1,0,1,3) = L.second.transpose();
 
-    std::cout << "\n /// t1 -> t2 : " << t1 << " -> " << t2 << "\n";
+    // std::cout << "\n /// t1 -> t2 : " << t1 << " -> " << t2 << "\n";
 
-    std::cout << "\nR : " << inst_i.block(0,0,9,1).transpose() << " -> " << inst_f.block(0,0,9,1).transpose();
-    std::cout << "\n /// ti -> tf : " << t_i_R << " -> " << t_f_R;
+    // std::cout << "\nR : " << inst_i.block(0,0,9,1).transpose() << " -> " << inst_f.block(0,0,9,1).transpose();
+    // std::cout << "\n /// ti -> tf : " << t_i_R << " -> " << t_f_R;
     
-    std::cout << "\nL : " << inst_i.block(9,0,9,1).transpose() << " -> " << inst_f.block(9,0,9,1).transpose();
-    std::cout << "\n /// ti -> tf : " << t_i_L << " -> " << t_f_L << std::endl;
+    // std::cout << "\nL : " << inst_i.block(9,0,9,1).transpose() << " -> " << inst_f.block(9,0,9,1).transpose();
+    // std::cout << "\n /// ti -> tf : " << t_i_L << " -> " << t_f_L << std::endl;
 
     // std::cout << "\n ////////////// state\n";
     // std::cout << measureState << std::endl;
