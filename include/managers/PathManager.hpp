@@ -213,12 +213,11 @@ private:
     double nextq0_t1;
     double q0_t2, q0_t3, q0_t4;
     int status = 0;
-    int whatcase = 0;
     double qthreshold = 0.05;
     vector<double> m = {0.0, 0.0};
     double t3, t4;
 
-    double getQ0t2(int mode);
+    std::pair<double, vector<double>> getQ0t2(int mode);
     void getWaistCoefficient();
     double getWaistAngle(int i);
     

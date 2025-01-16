@@ -1591,10 +1591,10 @@ void PathManager::pushConmmandBuffer(VectorXd &Qi)
 /*                                Waist                                       */
 ////////////////////////////////////////////////////////////////////////////////
 
-double PathManager::getQ0t2(int mode)
+std::pair<double, vector<double>> PathManager::getQ0t2(int mode)
 {
     q0_t2 = 0.0;
-
+    m = {0.0, 0.0};
     switch (mode)
     {
         case 0:
@@ -1685,29 +1685,23 @@ double PathManager::getQ0t2(int mode)
         case 4: // 미완
         {
             // 다익스트라 평균 (다음, 다다음, 다다다음 값까지 봄)
-
-            vector<double> x_values1 = {t1, t2}; // 현재 x값과 다음 x값
-            vector<pair<double, double>> y_ranges1 = {{lineData(0,1), lineData(0,2)}, {lineData(1,1), lineData(1,2)}};
-            
-            
-            
             try {
+                vector<double> x_values1 = {t1, t2}; // 현재 x값과 다음 x값
+                vector<pair<double, double>> y_ranges1 = {{lineData(0,1), lineData(0,2)}, {lineData(1,1), lineData(1,2)}};
                 q0_t2 = dijkstra_top10_with_median(x_values1, y_ranges1, q0_t1);
-                vector<double> x_values2 = {t2, t3}; // 현재 x값과 다음 x값
-                vector<pair<double, double>> y_ranges2 = {{lineData(1,1), lineData(1,2)}, {lineData(2,1), lineData(2,2)}};
 
-                q0_t3 = dijkstra_top10_with_median(x_values2, y_ranges2, q0_t1);
-                vector<double> x_values3 = {t3, t4}; // 현재 x값과 다음 x값
+                vector<double> x_values2 = {t2, t3}; // 다음 x값과 다다음 x값
+                vector<pair<double, double>> y_ranges2 = {{lineData(1,1), lineData(1,2)}, {lineData(2,1), lineData(2,2)}};
+                q0_t3 = dijkstra_top10_with_median(x_values2, y_ranges2, q0_t2);
+
+                vector<double> x_values3 = {t3, t4}; // 다다음 x값과 다다다음 x값
                 vector<pair<double, double>> y_ranges3 = {{lineData(2,1), lineData(2,2)}, {lineData(3,1), lineData(3,2)}};
+                q0_t4 = dijkstra_top10_with_median(x_values3, y_ranges3, q0_t3);
                 
-                q0_t4 = dijkstra_top10_with_median(x_values3, y_ranges3, q0_t1);
-                
-                // Interpolation, q0_t0(1)는 이전 값, q0_t0(2)가 다음 값
+                // Interpolation
                 vector<double> q = {q0_t1, q0_t2, q0_t3, q0_t4};
                 vector<double> t = {t1, t2, t3, t4};
-                vector<double> m_interpolation = f_SI_interpolation(q, t);
-                m = m_interpolation;
-
+                m = f_SI_interpolation(q, t);
             } catch (const exception& e) {
                 cerr << e.what() << endl;
             }
@@ -1792,14 +1786,11 @@ double PathManager::getQ0t2(int mode)
             m = m_interpolation;
         }
     }
-
-    return q0_t2;
+    return {q0_t2, m};
 }
 
 void PathManager::getWaistCoefficient()
 {
-    // double q0_t2;
-
     MatrixXd A;
     MatrixXd b;
     MatrixXd A_1;
@@ -1813,7 +1804,7 @@ void PathManager::getWaistCoefficient()
     }
     else
     {
-        q0_t2 = getQ0t2(5);
+        auto [q0_t2, m] = getQ0t2(4); // 0: 중앙값, 1: 다익스트라, 2: 기울기평균, 3: 최적화, 4: 다익스트라 + 보간법, 5. 기울기평균 + 보간법
     }
 
     A.resize(4, 4);
