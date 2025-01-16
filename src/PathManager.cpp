@@ -1722,7 +1722,7 @@ void PathManager::getWaistCoefficient()
     }
     else
     {
-        q0_t2 = getQ0t2(1); // 0: 중앙값, 1: 다익스트라, 2: 기울기평균, 3: 최적화, 4: 다익스트라 + 보간법, 5. 기울기평균 + 보간법
+        q0_t2 = getQ0t2(4); // 0: 중앙값, 1: 다익스트라, 2: 기울기평균, 3: 최적화, 4: 다익스트라 + 보간법, 5. 기울기평균 + 보간법
     }
 
     A.resize(4, 4);
@@ -2311,7 +2311,7 @@ vector<double> PathManager::f_SI_interpolation(const vector<double> &q, const ve
             m2 = (3 * m2) / e;
         }
     }
-    m.push_back(m1);
-    m.push_back(m2);
+    m[0] = m1;
+    m[1] = m2;
     return m;
 }
