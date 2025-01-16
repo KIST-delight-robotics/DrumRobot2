@@ -592,6 +592,8 @@ void PathManager::parseMeasure(MatrixXd &measureMatrix)
 
     t1 = measureMatrix(0, 8);
     t2 = measureMatrix(1, 8);
+    t3 = measureMatrix(2, 8); // 추가
+    t4 = measureMatrix(3, 8); // 추가
 
 
     hit_state_R.resize(2);
@@ -602,7 +604,7 @@ void PathManager::parseMeasure(MatrixXd &measureMatrix)
     measureState.block(0,0,1,3) = R.second.transpose();
     measureState.block(1,0,1,3) = L.second.transpose();
 
-    std::cout << "\n /// t1 -> t2 : " << t1 << " -> " << t2 << "\n";
+    std::cout << "\n /// t1 -> t2 : " << t1 << " -> " << t2 << " \n";
 
     std::cout << "\nR : " << inst_i.block(0,0,9,1).transpose() << " -> " << inst_f.block(0,0,9,1).transpose();
     std::cout << "\n /// ti -> tf : " << t_i_R << " -> " << t_f_R;
@@ -1856,14 +1858,12 @@ double PathManager::getQ0t2(int mode)
     {
         case 0:
         {
-            whatcase = 0;
             // 중앙값
             q0_t2 = 0.5*(lineData(1,1) + lineData(1,2));
             break;
         }
         case 1:
         {
-            whatcase = 1;
             // 다익스트라
             vector<double> x_values = {t1, t2}; // 현재 x값과 다음 x값
             vector<pair<double, double>> y_ranges = {{lineData(0,1), lineData(0,2)}, {lineData(1,1), lineData(1,2)}};
@@ -1895,23 +1895,43 @@ double PathManager::getQ0t2(int mode)
         }
         case 2: // 미완
         {
-            whatcase = 2;
             // 기울기 평균
+            q0_t2 = 0.5*(lineData(1,1) + lineData(1,2));
+            double a1 = (q0_t2-q0_t1) / (t2 - t1);
 
+            q0_t3 = 0.5*(lineData(2,1) + lineData(2,2));
+            double a2 = (q0_t3-q0_t1) / (t3 - t1);
+            
+            q0_t4 = 0.5*(lineData(3,1) + lineData(3,2));
+            double a3 = (q0_t4-q0_t1) / (t4 - t1);
+            
+            double a_avg = (a1 + a2 + a3) / 3;
+            double next_qy = a_avg * (t2-t1);
+            
+            if(next_qy >= lineData(1,1) && next_qy <= lineData(1,2)){ // 다익스트라 평균 값이 다음 y범위 내에 존재 하는 경우
+                q0_t2 = next_qy;
+                // Interpolation, q0_t0(1)는 이전 값, q0_t0(2)가 다음 값
+                vector<double> q = {q0_t1, q0_t2, q0_t3, q0_t4};
+                vector<double> t = {t1, t2, t3, t4};
+
+                cout << q0_t1 << " " << q0_t2 << " " << q0_t3 << " " << q0_t4 << " \n";
+
+
+                vector<double> m_interpolation = f_SI_interpolation(q, t);
+                m = m_interpolation;
+            }
             break;
         }
         case 3: // 미완
         {
-            whatcase = 3;
             // 최적화
             break;
         }
         case 4: // 미완
         {
-            whatcase = 4;
             // 다익스트라 평균 (다음, 다다음, 다다다음 값까지 봄)
-            double q0_t1t = lineData(0,1);
-            double t3, t4; // 3번째 4번째 시간 값 정의 필요
+
+            // std::cout << "\n /// t1 -> t2 : " << t1 << " -> " << t2 << " ///  t3 -> t4 : " << t3 << " -> " << t4 <<" \n";
 
             vector<double> x_values1 = {t1, t2}; // 현재 x값과 다음 x값
             vector<pair<double, double>> y_ranges1 = {{lineData(0,1), lineData(0,2)}, {lineData(1,1), lineData(1,2)}};
@@ -1923,19 +1943,16 @@ double PathManager::getQ0t2(int mode)
             vector<pair<double, double>> y_ranges3 = {{lineData(0,1), lineData(0,2)}, {lineData(3,1), lineData(3,2)}};
             
             try {
-                if(status == 1){
-                    q0_t1 = nextq0_t1;
-                }
-                double q0_n2, q0_n3, q0_n4;
+                double q0_t2, q0_t3, q0_t4;
 
-                q0_n2 = dijkstra_top10_with_median(x_values1, y_ranges1, q0_t1);
-                double a1 = (q0_n2-q0_t1) / (t2 - t1);
+                q0_t2 = dijkstra_top10_with_median(x_values1, y_ranges1, q0_t1);
+                double a1 = (q0_t2-q0_t1) / (t2 - t1);
 
-                q0_n3 = dijkstra_top10_with_median(x_values2, y_ranges2, q0_t1);
-                double a2 = (q0_n3-q0_t1) / (t3 - t1);
+                q0_t3 = dijkstra_top10_with_median(x_values2, y_ranges2, q0_t1);
+                double a2 = (q0_t3-q0_t1) / (t3 - t1);
                 
-                q0_n4 = dijkstra_top10_with_median(x_values3, y_ranges3, q0_t1);
-                double a3 = (q0_n4-q0_t1) / (t4 - t1);
+                q0_t4 = dijkstra_top10_with_median(x_values3, y_ranges3, q0_t1);
+                double a3 = (q0_t4-q0_t1) / (t4 - t1);
                 
                 double a_avg = (a1 + a2 + a3) / 3;
                 double next_qy = a_avg * (t2-t1);
@@ -1944,27 +1961,14 @@ double PathManager::getQ0t2(int mode)
                     q0_t2 = next_qy;
                     // Interpolation, q0_t0(1)는 이전 값, q0_t0(2)가 다음 값
                     vector<double> q = {q0_t1, q0_t2, q0_t3, q0_t4};
-                    vector<double> t = {q0_t1t, t2, t3, t4};
+                    vector<double> t = {t1, t2, t3, t4};
+
+                    cout << q0_t1 << " " << q0_t2 << " " << q0_t3 << " " << q0_t4 << " \n";
+
+
                     vector<double> m_interpolation = f_SI_interpolation(q, t);
                     m = m_interpolation;
-                }
-                else{ // 범위 밖이라면, 다음 허리 값을 평균말고 다익스트라만 적용
-                    q0_t2 = dijkstra_top10_with_median(x_values1, y_ranges1, q0_t1);
-                }
-
-                if(abs(q0_t2 - q0_t1) <= qthreshold){
-                    if(q0_t1 > lineData(1,1) && q0_t1 < lineData(1,2)){
-                        status = 0;
-                    }
-                    else{
-                        nextq0_t1 = q0_t1;
-                        status = 1;
-                    }
-                }
-                else{
-                    status = 0;
-                }
-
+                } // 범위 밖이라면, 다음 허리 값을 평균말고 다익스트라만 적용
             } catch (const exception& e) {
                 cerr << e.what() << endl;
             }
@@ -1972,11 +1976,12 @@ double PathManager::getQ0t2(int mode)
         }
         case 5: // 기울기 평균 + interpolation
         {
-            whatcase = 5;
-            q0_t1t = lineData(0, 1);
+            q0_t1t = t1;
             
+            double dt = canManager.deltaT;
 
             // q0_t2;
+            VectorXd a(3);
 
 
             // t1 -> t2
@@ -2029,7 +2034,7 @@ void PathManager::getWaistCoefficient()
     }
     else
     {
-        q0_t2 = getQ0t2(1);
+        q0_t2 = getQ0t2(2);
     }
 
     A.resize(4,4);
@@ -2043,10 +2048,6 @@ void PathManager::getWaistCoefficient()
 
     A_1 = A.inverse();
     waistCoefficient = A_1 * b;
-    if(whatcase == 5){
-        q0_t1t = lineData(0, 1);
-        q0_t2 = q0_t3;
-    }
     q0_t1 = q0_t2;
 }
 
