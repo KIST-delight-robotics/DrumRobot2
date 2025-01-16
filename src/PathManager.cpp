@@ -1642,7 +1642,7 @@ std::pair<double, vector<double>> PathManager::getQ0t2(int mode)
             // 최적화
             break;
         }
-        case 4: // 미완
+        case 4:
         {
             // 다익스트라 평균 (다음, 다다음, 다다다음 값까지 봄)
             try {
@@ -2275,19 +2275,26 @@ vector<double> PathManager::f_SI_interpolation(const vector<double> &q, const ve
     {
         a[i] = (q[i + 1] - q[i]) / (t[i + 1] - t[i]);
     }
-    double m1 = 0.5 * (a[1] + a[2]);
-    double m2 = 0.5 * (a[2] + a[3]);
+    double m1 = 0.5 * (a[0] + a[1]);
+    double m2 = 0.5 * (a[1] + a[2]);
+
+    // cout << "\n ***** // m1: " << m1 << "// m2: " << m2 << endl;
+
     double alph, bet;
-    if (q[2] == q[3])
+    if (q[1] == q[2])
     {
         m1 = 0;
         m2 = 0;
     }
-    else if ((q[1] == q[2]) || (a[1] * a[2] < 0))
-    {
-        m1 = 0;
-        alph = m1 / (q[3] - q[2]);
-        bet = m2 / (q[3] - q[2]);
+    else{
+        if((q[0] == q[1]) || (a[0] * a[1] < 0)){
+            m1 = 0;
+        }
+        else if((q[2] == q[3]) || (a[1] * a[2] < 0)){
+            m2 = 0;
+        }
+        alph = m1 / (q[2] - q[1]);
+        bet = m2 / (q[2] - q[1]);
 
         double e = std::sqrt(std::pow(alph, 2) + std::pow(bet, 2));
         if (e > 3.0)
@@ -2296,19 +2303,10 @@ vector<double> PathManager::f_SI_interpolation(const vector<double> &q, const ve
             m2 = (3 * m2) / e;
         }
     }
-    else if ((q[3] == q[4]) || (a[2] * a[3] < 0))
-    {
-        m2 = 0;
-        alph = m1 / (q[3] - q[2]);
-        bet = m2 / (q[3] - q[2]);
+    // cout << "\n // m1: " << m1 << "// m2: " << m2 << endl;
+    // cout << "\n // q1: " << q[0] << "// q2: " << q[1] << endl;
+    // cout << "\n // q3: " << q[2] << "// q4: " << q[3] << endl;
 
-        double e = std::sqrt(std::pow(alph, 2) + std::pow(bet, 2));
-        if (e > 3.0)
-        {
-            m1 = (3 * m1) / e;
-            m2 = (3 * m2) / e;
-        }
-    }
     m[0] = m1;
     m[1] = m2;
     return m;
