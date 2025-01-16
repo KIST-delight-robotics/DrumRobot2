@@ -173,7 +173,7 @@ bool PathManager::readMeasure(ifstream &inputFile, bool &BPMFlag)
             if (timeSum >= threshold)
             {
                 std::cout << "\n//////////////////////////////// line : " << line + 1 << "\n";
-                std::cout << measureMatrix;
+                // std::cout << measureMatrix;
                 // std::cout << "\n ////////////// time sum : " << timeSum << "\n";
 
                 return true;
@@ -300,8 +300,8 @@ bool PathManager::solveIKandPushConmmand()
             // 허리 계수 구하기
             getWaistCoefficient();
 
-            std::cout << "\n lineDate Start : \n";
-            std::cout << lineData;
+            // std::cout << "\n lineDate Start : \n";
+            // std::cout << lineData;
         }
         i_solveIK++;
     }
@@ -425,6 +425,7 @@ void PathManager::initVal()
     round_sum = 0.0;
     totalTime = 0.0;
     q0_t1 = readyArr[0];
+    q0_t0 = readyArr[0];
     nextq0_t1 = readyArr[0];
 }
 
@@ -732,8 +733,8 @@ void PathManager::saveLineData(int n, VectorXd minmax, VectorXd intensity)
     if (line == 1)
     {
         lineData(0, 0) = n;
-        lineData(0, 1) = minmax(1);
-        lineData(0, 2) = minmax(0);
+        lineData(0, 1) = minmax(0);
+        lineData(0, 2) = minmax(1);
         lineData(0, 3) = hitState(0);
         lineData(0, 4) = hitState(1);
         lineData(0, 5) = intensity(0);
@@ -743,8 +744,8 @@ void PathManager::saveLineData(int n, VectorXd minmax, VectorXd intensity)
     {
         lineData.conservativeResize(lineData.rows() + 1, lineData.cols());
         lineData(lineData.rows() - 1, 0) = n;
-        lineData(lineData.rows() - 1, 1) = minmax(1);
-        lineData(lineData.rows() - 1, 2) = minmax(0);
+        lineData(lineData.rows() - 1, 1) = minmax(0);
+        lineData(lineData.rows() - 1, 2) = minmax(1);
         lineData(lineData.rows() - 1, 3) = hitState(0);
         lineData(lineData.rows() - 1, 4) = hitState(1);
         lineData(lineData.rows() - 1, 5) = intensity(0);
@@ -865,13 +866,13 @@ VectorXd PathManager::waistRange(VectorXd &pR, VectorXd &pL)
         cout << "IKFUN is not solved!! (Waist Range)\n";
         state.main = Main::Error;
 
-        output(1) = 0;
         output(0) = 0;
+        output(1) = 0;
     }
     else
     {
-        output(1) = Q_arr(0, 0);     // min
-        output(0) = Q_arr(0, j - 1); // max
+        output(0) = Q_arr(0, 0);     // min
+        output(1) = Q_arr(0, j - 1); // max
     }
 
     return output;
@@ -880,6 +881,7 @@ VectorXd PathManager::waistRange(VectorXd &pR, VectorXd &pL)
 ////////////////////////////////////////////////////////////////////////////////
 /*                              Wrist & Elbow                                 */
 ////////////////////////////////////////////////////////////////////////////////
+
 float PathManager::getWristRAngle(VectorXd inst_i, VectorXd inst_f, float T, float t)
 {
     int inst_iNum = 0;
@@ -1632,9 +1634,47 @@ std::pair<double, vector<double>> PathManager::getQ0t2(int mode)
             }
             break;
         }
-        case 2: // 미완
+        case 2:
         {
             // 기울기 평균
+            double dt = canManager.deltaT;
+            t_getQ0t2.resize(4);
+            for (int i = 0; i < 4; i++)
+            {
+                if (i == 0)
+                {
+                    t_getQ0t2(i) = 0;
+                }
+                else if (lineData.rows() >= i)
+                {
+                    t_getQ0t2(i) = t_getQ0t2(i-1) + lineData(i-1,0)*dt;
+                }
+                else
+                {
+                    t_getQ0t2(i) = t_getQ0t2(i-1) + 1;
+                }
+            }
+
+            VectorXd a(3);
+            for (int i = 0; i < 3; i++)
+            {
+                if (lineData.rows() > i+1)
+                {
+                    a(i) = (0.5*lineData(i+1,1) + 0.5*lineData(i+1,2) - q0_t1) / (t_getQ0t2(i+1)-t_getQ0t2(0));
+                }
+                else
+                {
+                    a(i) = (t_getQ0t2(i)-t_getQ0t2(0)) / (t_getQ0t2(i+1)-t_getQ0t2(0)) * a(i-1);
+                }
+            }
+
+            q0_t2 = a.sum()/3.0*(t_getQ0t2(1)-t_getQ0t2(0)) + q0_t1;
+
+            if (q0_t2 <= lineData(1,1) || q0_t2 >= lineData(1,2))
+            {
+                q0_t2 = 0.5*lineData(1,1) + 0.5*lineData(1,2);
+            }
+
             break;
         }
         case 3: // 미완
@@ -1667,40 +1707,84 @@ std::pair<double, vector<double>> PathManager::getQ0t2(int mode)
             }
             break;
         }
-        case 5: // 기울기 평균 + interpolation
+        case 5:
         {
+            // 기울기 평균 + interpolation
+            double dt = canManager.deltaT;
+            t_getQ0t2.resize(6);
+            for (int i = 0; i < 6; i++)
+            {
+                if (i == 0)
+                {
+                    t_getQ0t2(i) = t0;
+                }
+                else if (i == 1)
+                {
+                    t_getQ0t2(i) = 0;
+                }
+                else if (lineData.rows() >= i-1)
+                {
+                    t_getQ0t2(i) = t_getQ0t2(i-1) + lineData(i-2,0)*dt;
+                }
+                else
+                {
+                    t_getQ0t2(i) = t_getQ0t2(i-1) + 1;
+                }
+            }
 
-        // t1 -> t2
-        m.assign(3, 0.0);
-        for (int i = 0; i < 3; ++i)
-        {
-            m[i] = (0.5 * (lineData(i + 1, 3) + lineData(i + 1, 4)) - q0_t2) / (lineData(i + 1, 1) - lineData(0, 1));
-        }
-        q0_t3 = (accumulate(m.begin(), m.end(), 0.0) / 3.0) * (lineData(0, 2) - lineData(0, 1)) + q0_t2; // (accumulate(m.begin(), m.end(), 0.0) / 3.0) == sum(m)/3 이다. 평균연산 간소화
-        if (q0_t3 < lineData(1, 3) || q0_t3 > lineData(1, 4))
-        {
-            q0_t3 = 0.5 * (lineData(1, 3) + lineData(1, 4));
-        }
+            // t1 -> t2
+            VectorXd a(3);
+            for (int i = 0; i < 3; i++)
+            {
+                if (lineData.rows() > i+1)
+                {
+                    a(i) = (0.5*lineData(i+1,1) + 0.5*lineData(i+1,2) - q0_t1) / (t_getQ0t2(i+2)-t_getQ0t2(1));
+                }
+                else
+                {
+                    a(i) = (t_getQ0t2(i+1)-t_getQ0t2(1)) / (t_getQ0t2(i+2)-t_getQ0t2(1)) * a(i-1);
+                }
+            }
 
-        // t2 -> t3
-        m.assign(3, 0.0);
-        for (int i = 0; i < 3; ++i)
-        {
-            m[i] = (0.5 * (lineData(i + 2, 3) + lineData(i + 2, 4)) - q0_t3) / (lineData(i + 2, 1) - lineData(1, 1));
-        }
-        q0_t4 = (std::accumulate(m.begin(), m.end(), 0.0) / 3.0) * (lineData(1, 2) - lineData(1, 1)) + q0_t3; // (accumulate(m.begin(), m.end(), 0.0) / 3.0) == sum(m)/3 이다. 평균연산 간소화
+            q0_t2 = a.sum()/3.0*(t_getQ0t2(2)-t_getQ0t2(1)) + q0_t1;
 
-        if (q0_t4 < lineData(2, 3) || q0_t4 > lineData(2, 4))
-        {
-            q0_t4 = 0.5 * (lineData(2, 3) + lineData(2, 4));
-        }
+            if (q0_t2 <= lineData(1,1) || q0_t2 >= lineData(1,2))
+            {
+                q0_t2 = 0.5*lineData(1,1) + 0.5*lineData(1,2);
+            }
 
-        // Interpolation, q0_t0(1)는 이전 값, q0_t0(2)가 다음 값
-        vector<double> q = {q0_t1, q0_t2, q0_t3, q0_t4};
-        vector<double> t = {t1, t2, t3, t4};
-        m = f_SI_interpolation(q, t);
-        break;
-    }
+            // t2 -> t3
+            if (lineData.rows() == 2)
+            {
+                q0_t3 = q0_t2;
+            }
+            else
+            {
+                for (int i = 0; i < 3; i++)
+                {
+                    if (lineData.rows() > i+2)
+                    {
+                        a(i) = (0.5*lineData(i+2,1) + 0.5*lineData(i+2,2) - q0_t1) / (t_getQ0t2(i+3)-t_getQ0t2(2));
+                    }
+                    else
+                    {
+                        a(i) = (t_getQ0t2(i+2)-t_getQ0t2(2)) / (t_getQ0t2(i+3)-t_getQ0t2(2)) * a(i-1);
+                    }
+                }
+
+                q0_t3 = a.sum()/3.0*(t_getQ0t2(3)-t_getQ0t2(2)) + q0_t2;
+
+                if (q0_t3 <= lineData(2,1) || q0_t3 >= lineData(2,2))
+                {
+                    q0_t3 = 0.5*lineData(2,1) + 0.5*lineData(2,2);
+                }
+            }
+
+            vector<double> y = {q0_t0, q0_t1, q0_t2, q0_t3};
+            vector<double> x = {t_getQ0t2(0), t_getQ0t2(1), t_getQ0t2(2), t_getQ0t2(3)};
+            vector<double> m_interpolation = f_SI_interpolation(y, x);
+            m = m_interpolation;
+        }
     }
     return {q0_t2, m};
 }
@@ -1734,7 +1818,11 @@ void PathManager::getWaistCoefficient()
 
     A_1 = A.inverse();
     waistCoefficient = A_1 * b;
+
+    // 값 저장
+    q0_t0 = q0_t1;
     q0_t1 = q0_t2;
+    t0 = -1*t21;
 }
 
 double PathManager::getWaistAngle(int i)
@@ -2277,9 +2365,6 @@ vector<double> PathManager::f_SI_interpolation(const vector<double> &q, const ve
     }
     double m1 = 0.5 * (a[0] + a[1]);
     double m2 = 0.5 * (a[1] + a[2]);
-
-    // cout << "\n ***** // m1: " << m1 << "// m2: " << m2 << endl;
-
     double alph, bet;
     if (q[1] == q[2])
     {
@@ -2303,11 +2388,16 @@ vector<double> PathManager::f_SI_interpolation(const vector<double> &q, const ve
             m2 = (3 * m2) / e;
         }
     }
-    // cout << "\n // m1: " << m1 << "// m2: " << m2 << endl;
-    // cout << "\n // q1: " << q[0] << "// q2: " << q[1] << endl;
-    // cout << "\n // q3: " << q[2] << "// q4: " << q[3] << endl;
-
+    
     m[0] = m1;
     m[1] = m2;
+    
+    for (int i = 0; i < 4; i++)
+    {
+        std::cout << "\n q[" << i << "] = " << q[i] << ", t[" << i << "] = " << t[i] << endl;
+    }
+
+    std::cout << "\n m1 : " << m1 << "\tm2 : " << m2 << endl;
+    
     return m;
 }

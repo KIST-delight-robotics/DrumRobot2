@@ -167,7 +167,7 @@ private:
 
     float t_i_R, t_f_R;       // 전체 궤적에서 출발 시간, 도착 시간
     float t_i_L, t_f_L;
-    float t1, t2, t3, t4;           // 궤적 생성 시간
+    float t1, t2;           // 궤적 생성 시간
 
     MatrixXd measureState = MatrixXd::Zero(2, 3); // [이전 시간, 이전 악기, 상태] // state
                                                                                 // 0 : 0 <- 0
@@ -206,11 +206,16 @@ private:
     /////////////////////////////////////////////////////////////////////////// Play (waist)
     MatrixXd waistCoefficient;
     double q0_t1;
+    double q0_t0, t0 = -1;
+    VectorXd t_getQ0t2;
+
+    double q0_t1t;
     double nextq0_t1;
     double q0_t2, q0_t3, q0_t4;
     int status = 0;
     double qthreshold = 0.05;
     vector<double> m = {0.0, 0.0};
+    double t3, t4;
 
     std::pair<double, vector<double>> getQ0t2(int mode);
     void getWaistCoefficient();
