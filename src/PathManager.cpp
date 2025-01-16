@@ -425,6 +425,7 @@ void PathManager::initVal()
     round_sum = 0.0;
     totalTime = 0.0;
     q0_t1 = readyArr[0];
+    nextq0_t1 = readyArr[0];
 }
 
 void PathManager::parseMeasure(MatrixXd &measureMatrix)
@@ -981,7 +982,7 @@ PathManager::HitParameter PathManager::getHitParameter(float t1, float t2, int h
     param.wristContactAngle = -1.0 * std::min((t2 - t1) * wristContactBaseAngle / baseTime, wristContactBaseAngle);
     // param.wristLiftAngle = std::min((t2-t1)*wristLiftBaseAngle/baseTime, wristLiftBaseAngle);
 
-    t2 - t1 < 0.5 ? param.wristLiftAngle = (-100 * ((t2 - t1) - 0.5) * ((t2 - t1) - 0.5) + 25) *M_PI / 180.0 : param.wristLiftAngle = 25 * M_PI / 180.0;
+    t2 - t1 < 0.5 ? param.wristLiftAngle = (-100 * ((t2 - t1) - 0.5) * ((t2 - t1) - 0.5) + 30) * M_PI / 180.0 : param.wristLiftAngle = 30  * M_PI / 180.0;
 
     param.elbowStayTime = std::max(0.5 * (t2 - t1), t2 - t1 - 0.2);
     param.elbowLiftTime = std::max(0.5 * (t2 - t1), t2 - t1 - 0.2);
@@ -1590,148 +1591,90 @@ void PathManager::pushConmmandBuffer(VectorXd &Qi)
 
 double PathManager::getQ0t2(int mode)
 {
-    double q0_t2 = 0.0;
+    q0_t2 = 0.0;
 
     switch (mode)
     {
-    case 0:
-    {
-        whatcase = 0;
-        // 중앙값
-        q0_t2 = 0.5 * (lineData(1, 1) + lineData(1, 2));
-        break;
-    }
-    case 1:
-    {
-        whatcase = 1;
-        // 다익스트라
-        vector<double> x_values = {t1, t2}; // 현재 x값과 다음 x값
-        vector<pair<double, double>> y_ranges = {{lineData(0, 1), lineData(0, 2)}, {lineData(1, 1), lineData(1, 2)}};
-
-        try
+        case 0:
         {
-            if (status == 1)
-            {
-                q0_t1 = nextq0_t1;
-            }
-            q0_t2 = dijkstra_top10_with_median(x_values, y_ranges, q0_t1);
-
-            if (abs(q0_t2 - q0_t1) <= qthreshold)
-            { // qthreshold 이하라면 안 움직이고 이보다 큰 것들만 움직이게 함.
-                if (q0_t1 >= lineData(1, 1) && q0_t1 <= lineData(1, 2))
-                {
-                    nextq0_t1 = q0_t1;
-                    q0_t2 = q0_t1;
-                    status = 1;
+            // 중앙값
+            q0_t2 = 0.5*(lineData(1,1) + lineData(1,2));
+            break;
+        }
+        case 1:
+        {
+            // 다익스트라
+            vector<double> x_values = {t1, t2}; // 현재 x값과 다음 x값
+            vector<pair<double, double>> y_ranges = {{lineData(0,1), lineData(0,2)}, {lineData(1,1), lineData(1,2)}};
+            
+            try {
+                if(status == 1){
+                    q0_t1 = nextq0_t1;
                 }
-                else
-                {
+                q0_t2 = dijkstra_top10_with_median(x_values, y_ranges, q0_t1);
+                
+                if(abs(q0_t2 - q0_t1) <= qthreshold){ // qthreshold 이하라면 안 움직이고 이보다 큰 것들만 움직이게 함.
+                    if(q0_t1 >= lineData(1,1) && q0_t1 <= lineData(1,2)){
+                        nextq0_t1 = q0_t1;
+                        q0_t2 = q0_t1;
+                        status = 1;
+                    }
+                    else{
+                        status = 0;
+                    }
+                }
+                else{
                     status = 0;
                 }
+
+            } catch (const exception& e) {
+                cerr << e.what() << endl;
             }
-            else
-            {
-                status = 0;
-            }
+            break;
         }
-        catch (const exception &e)
+        case 2: // 미완
         {
-            cerr << e.what() << endl;
+            // 기울기 평균
+            break;
         }
-        break;
-    }
-    case 2: // 미완
-    {
-        whatcase = 2;
-        // 기울기 평균
-
-        break;
-    }
-    case 3: // 미완
-    {
-        whatcase = 3;
-        // 최적화
-        break;
-    }
-    case 4: // 미완
-    {
-        whatcase = 4;
-        // 다익스트라 평균 (다음, 다다음, 다다다음 값까지 봄)
-        double q0_t1t = lineData(0, 1);
-        double t3, t4; // 3번째 4번째 시간 값 정의 필요
-
-        vector<double> x_values1 = {t1, t2}; // 현재 x값과 다음 x값
-        vector<pair<double, double>> y_ranges1 = {{lineData(0, 1), lineData(0, 2)}, {lineData(1, 1), lineData(1, 2)}};
-
-        vector<double> x_values2 = {t1, t3}; // 현재 x값과 다음 x값
-        vector<pair<double, double>> y_ranges2 = {{lineData(0, 1), lineData(0, 2)}, {lineData(2, 1), lineData(2, 2)}};
-
-        vector<double> x_values3 = {t1, t4}; // 현재 x값과 다음 x값
-        vector<pair<double, double>> y_ranges3 = {{lineData(0, 1), lineData(0, 2)}, {lineData(3, 1), lineData(3, 2)}};
-
-        try
+        case 3: // 미완
         {
-            if (status == 1)
-            {
-                q0_t1 = nextq0_t1;
-            }
-            double q0_n2, q0_n3, q0_n4;
+            // 최적화
+            break;
+        }
+        case 4: // 미완
+        {
+            // 다익스트라 평균 (다음, 다다음, 다다다음 값까지 봄)
 
-            q0_n2 = dijkstra_top10_with_median(x_values1, y_ranges1, q0_t1);
-            double a1 = (q0_n2 - q0_t1) / (t2 - t1);
+            vector<double> x_values1 = {t1, t2}; // 현재 x값과 다음 x값
+            vector<pair<double, double>> y_ranges1 = {{lineData(0,1), lineData(0,2)}, {lineData(1,1), lineData(1,2)}};
+            
+            
+            
+            try {
+                q0_t2 = dijkstra_top10_with_median(x_values1, y_ranges1, q0_t1);
+                vector<double> x_values2 = {t2, t3}; // 현재 x값과 다음 x값
+                vector<pair<double, double>> y_ranges2 = {{lineData(1,1), lineData(1,2)}, {lineData(2,1), lineData(2,2)}};
 
-            q0_n3 = dijkstra_top10_with_median(x_values2, y_ranges2, q0_t1);
-            double a2 = (q0_n3 - q0_t1) / (t3 - t1);
-
-            q0_n4 = dijkstra_top10_with_median(x_values3, y_ranges3, q0_t1);
-            double a3 = (q0_n4 - q0_t1) / (t4 - t1);
-
-            double a_avg = (a1 + a2 + a3) / 3;
-            double next_qy = a_avg * (t2 - t1);
-
-            if (next_qy >= lineData(1, 1) && next_qy <= lineData(1, 2))
-            { // 다익스트라 평균 값이 다음 y범위 내에 존재 하는 경우
-                q0_t2 = next_qy;
+                q0_t3 = dijkstra_top10_with_median(x_values2, y_ranges2, q0_t1);
+                vector<double> x_values3 = {t3, t4}; // 현재 x값과 다음 x값
+                vector<pair<double, double>> y_ranges3 = {{lineData(2,1), lineData(2,2)}, {lineData(3,1), lineData(3,2)}};
+                
+                q0_t4 = dijkstra_top10_with_median(x_values3, y_ranges3, q0_t1);
+                
                 // Interpolation, q0_t0(1)는 이전 값, q0_t0(2)가 다음 값
                 vector<double> q = {q0_t1, q0_t2, q0_t3, q0_t4};
-                vector<double> t = {q0_t1t, t2, t3, t4};
+                vector<double> t = {t1, t2, t3, t4};
                 vector<double> m_interpolation = f_SI_interpolation(q, t);
                 m = m_interpolation;
-            }
-            else
-            { // 범위 밖이라면, 다음 허리 값을 평균말고 다익스트라만 적용
-                q0_t2 = dijkstra_top10_with_median(x_values1, y_ranges1, q0_t1);
-            }
 
-            if (abs(q0_t2 - q0_t1) <= qthreshold)
-            {
-                if (q0_t1 > lineData(1, 1) && q0_t1 < lineData(1, 2))
-                {
-                    status = 0;
-                }
-                else
-                {
-                    nextq0_t1 = q0_t1;
-                    status = 1;
-                }
+            } catch (const exception& e) {
+                cerr << e.what() << endl;
             }
-            else
-            {
-                status = 0;
-            }
+            break;
         }
-        catch (const exception &e)
+        case 5: // 기울기 평균 + interpolation
         {
-            cerr << e.what() << endl;
-        }
-        break;
-    }
-    case 5: // 기울기 평균 + interpolation
-    {
-        whatcase = 5;
-        q0_t1t = lineData(0, 1);
-
-        // q0_t2;
 
         // t1 -> t2
         m.assign(3, 0.0);
@@ -1772,7 +1715,7 @@ double PathManager::getQ0t2(int mode)
 
 void PathManager::getWaistCoefficient()
 {
-    double q0_t2;
+    // double q0_t2;
 
     MatrixXd A;
     MatrixXd b;
@@ -1801,11 +1744,6 @@ void PathManager::getWaistCoefficient()
 
     A_1 = A.inverse();
     waistCoefficient = A_1 * b;
-    if (whatcase == 5)
-    {
-        q0_t1t = lineData(0, 1);
-        q0_t2 = q0_t3;
-    }
     q0_t1 = q0_t2;
 }
 
