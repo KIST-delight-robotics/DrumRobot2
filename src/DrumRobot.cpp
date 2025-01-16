@@ -363,7 +363,6 @@ void DrumRobot::SendPlayProcess(int periodMicroSec, string musicName)
     {
         pathManager.line++;
         pathManager.generateTrajectory();
-        
         if (pathManager.line > preCreatedLine)
         {
             state.play = PlaySub::SolveIK;
