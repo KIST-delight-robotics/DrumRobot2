@@ -1589,10 +1589,10 @@ void PathManager::pushConmmandBuffer(VectorXd &Qi)
 /*                                Waist                                       */
 ////////////////////////////////////////////////////////////////////////////////
 
-double PathManager::getQ0t2(int mode)
+std::pair<double, vector<double>> PathManager::getQ0t2(int mode)
 {
     q0_t2 = 0.0;
-
+    m = {0.0, 0.0};
     switch (mode)
     {
         case 0:
@@ -1703,8 +1703,7 @@ double PathManager::getQ0t2(int mode)
         break;
     }
     }
-
-    return q0_t2;
+    return {q0_t2, m};
 }
 
 void PathManager::getWaistCoefficient()
@@ -1722,7 +1721,7 @@ void PathManager::getWaistCoefficient()
     }
     else
     {
-        q0_t2 = getQ0t2(1); // 0: 중앙값, 1: 다익스트라, 2: 기울기평균, 3: 최적화, 4: 다익스트라 + 보간법, 5. 기울기평균 + 보간법
+        auto [q0_t2, m] = getQ0t2(4); // 0: 중앙값, 1: 다익스트라, 2: 기울기평균, 3: 최적화, 4: 다익스트라 + 보간법, 5. 기울기평균 + 보간법
     }
 
     A.resize(4, 4);

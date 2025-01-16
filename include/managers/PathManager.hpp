@@ -212,7 +212,7 @@ private:
     double qthreshold = 0.05;
     vector<double> m = {0.0, 0.0};
 
-    double getQ0t2(int mode);
+    std::pair<double, vector<double>> getQ0t2(int mode);
     void getWaistCoefficient();
     double getWaistAngle(int i);
     
