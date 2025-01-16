@@ -175,11 +175,11 @@ private:
                                                                                 // 2 : 1 <- 0
                                                                                 // 3 : 1 <- 1
 
-    VectorXd hit_state_R = VectorXd::Zero(2);
-    VectorXd hit_state_L = VectorXd::Zero(2);
+    VectorXd hitState = VectorXd::Zero(2);
 
     void parseMeasure(MatrixXd &measureMatrix);
     pair<VectorXd, VectorXd> parseOneArm(VectorXd t, VectorXd inst, VectorXd stateVector);
+    VectorXd makeState(MatrixXd measureMatrix);
 
     /////////////////////////////////////////////////////////////////////////// Play (make trajectory)
     double round_sum = 0;
@@ -191,13 +191,14 @@ private:
     VectorXd getTargetPosition(VectorXd &inst_vector);
     float timeScaling(float ti, float tf, float t);
     VectorXd makePath(VectorXd Pi, VectorXd Pf, float s);
-    void saveLineData(int n, VectorXd minmax, int stateR, int stateL, VectorXd intesity);
+    void saveLineData(int n, VectorXd minmax, VectorXd intesity);
+    VectorXd waistRange(VectorXd &pR, VectorXd &pL);
 
     /////////////////////////////////////////////////////////////////////////// Play (solve IK)
     int i_solveIK = 0;
 
-    float solveWrist(double theta);
-    double solve46(float l1, double theta);
+    float getLength(double theta);
+    double getTheta(float l1, double theta);
     void solveIK(VectorXd &q, double q0);
     VectorXd ikFixedWaist(VectorXd &pR, VectorXd &pL, double theta0, double theta7, double theta8);
     void pushConmmandBuffer(VectorXd &Qi);
@@ -213,7 +214,6 @@ private:
     double qthreshold = 0.05;
     vector<double> m = {0.0, 0.0, 0.0};
 
-    VectorXd waistRange(VectorXd &pR, VectorXd &pL);
     double getQ0t2(int mode);
     void getWaistCoefficient();
     double getWaistAngle(int i);
@@ -255,7 +255,6 @@ private:
 
     }HitParameter;
 
-    int makeState(VectorXd hitState);
     float getWristRAngle(VectorXd inst_i, VectorXd inst_f, float T, float t);
     float getWristLAngle(VectorXd inst_i, VectorXd inst_f, float T, float t);
 
@@ -273,6 +272,8 @@ private:
     int next_stateR, next_stateL;
     int next_intensityR, next_intensityL;
     int i_wristR, i_wristL = 0; 
+
+    void getHitAngle(VectorXd &q, int index);
 
     /////////////////////////////////////////////////////////////////////////// Play (dijkstra)
     double imin, imax, fmin, fmax;
