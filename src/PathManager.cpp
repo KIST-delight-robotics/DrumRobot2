@@ -1722,7 +1722,7 @@ void PathManager::getWaistCoefficient()
     }
     else
     {
-        q0_t2 = getQ0t2(4); // 0: 중앙값, 1: 다익스트라, 2: 기울기평균, 3: 최적화, 4: 다익스트라 + 보간법, 5. 기울기평균 + 보간법
+        q0_t2 = getQ0t2(1); // 0: 중앙값, 1: 다익스트라, 2: 기울기평균, 3: 최적화, 4: 다익스트라 + 보간법, 5. 기울기평균 + 보간법
     }
 
     A.resize(4, 4);
@@ -2273,7 +2273,7 @@ vector<double> PathManager::f_SI_interpolation(const vector<double> &q, const ve
 {
     vector<double> a(3, 0.0);
 
-    for (int i = 0; i < a.size(); i++)
+    for (int i = 0; i < 3; i++)
     {
         a[i] = (q[i + 1] - q[i]) / (t[i + 1] - t[i]);
     }
