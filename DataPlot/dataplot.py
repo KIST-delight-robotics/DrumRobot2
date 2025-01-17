@@ -47,7 +47,7 @@ def plot_error_by_can_id(send_df, can_id, ax):
     ax.plot(send_df['시간'], send_df['Current_or_Error'], label=f'Error (Send) - ID {can_id}', color='purple', marker='o', markersize=3, linestyle='None')
 
 def main():
-    file_path = '../DrumRobot_data/data5.txt'
+    file_path = '../DrumRobot_data/data1.txt'
     df = load_txt(file_path)
 
     print("Choose mode:")

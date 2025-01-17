@@ -146,10 +146,11 @@ private:
     }PartLength;
 
     /////////////////////////////////////////////////////////////////////////// Init
-    VectorXd default_right; /// 오른팔 시작 위치
-    VectorXd default_left;  /// 왼팔 시작 위치
     MatrixXd right_drum_position;                               ///< 오른팔의 각 악기별 위치 좌표 벡터.
     MatrixXd left_drum_position;                                ///< 왼팔의 각 악기별 위치 좌표 벡터.
+
+    MatrixXd right_wrist_hit_angle;                               ///< 오른팔의 각 악기별 타격 시 손목 각도.
+    MatrixXd left_wrist_hit_angle;                                ///< 왼팔의 각 악기별 타격 시 손목 각도.
 
     VectorXd ikfun_final(VectorXd &pR, VectorXd &pL);
 
@@ -193,6 +194,7 @@ private:
     VectorXd makePath(VectorXd Pi, VectorXd Pf, float s);
     void saveLineData(int n, VectorXd minmax, VectorXd intesity);
     VectorXd waistRange(VectorXd &pR, VectorXd &pL);
+    VectorXd getWristHitAngle(VectorXd &inst_vector);
 
     /////////////////////////////////////////////////////////////////////////// Play (solve IK)
     int i_solveIK = 0;
@@ -219,11 +221,6 @@ private:
     double getWaistAngle(int i);
     
     /////////////////////////////////////////////////////////////////////////// Play (wrist & elbow)
-
-    map<int, float> instrument_mapping = {
-        {2, 25}, {5, 30}, {6, 15}, {8, 15}, {3, 10}, {1, 15}, {0, 0}, {7, 10}};
-    //   SN      FT      MT      HT      HH      R       RC      LC
-    
     // 0.5초 기준 각도
     const float baseTime = 0.5;
     const float wristStayBaseAngle = 10.0 * M_PI / 180.0;
