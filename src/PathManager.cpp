@@ -81,18 +81,29 @@ void PathManager::getDrumPositoin()
         left_LC(i) = inst_xyz(i + 3, 7);
     }
 
-    right_drum_position << right_RC, right_R, right_S, right_HH, right_HH, right_FT, right_MT, right_LC, right_HT;
-    left_drum_position << left_RC, left_R, left_S, left_HH, left_HH, left_FT, left_MT, left_LC, left_HT;
+    right_drum_position << right_S, right_FT, right_MT, right_HT, right_HH, right_R, right_RC, right_LC, right_LC;
+    left_drum_position << left_S, left_FT, left_MT, left_HT, left_HH, left_R, left_RC, left_LC, left_LC;
+
+    // 타격 시 손목 각도
+    right_wrist_hit_angle.resize(1, 9);
+    left_wrist_hit_angle.resize(1, 9);
+
+    //                              S                   FT                  MT                  HT                  HH                  R                   RC                  LC
+    right_wrist_hit_angle << 25.0*M_PI/180.0,   30.0*M_PI/180.0,    15.0*M_PI/180.0,    15.0*M_PI/180.0,    10.0*M_PI/180.0,    15.0*M_PI/180.0,    0.0*M_PI/180.0,    10.0*M_PI/180.0, 0;
+    left_wrist_hit_angle <<  25.0*M_PI/180.0,   30.0*M_PI/180.0,    15.0*M_PI/180.0,    15.0*M_PI/180.0,    10.0*M_PI/180.0,    15.0*M_PI/180.0,    0.0*M_PI/180.0,    10.0*M_PI/180.0, 0;
 }
 
 void PathManager::setReadyAngle()
 {
+    VectorXd default_right; /// 오른팔 시작 위치
+    VectorXd default_left;  /// 왼팔 시작 위치
+
     VectorXd inst_p(18);
 
     default_right.resize(9);
     default_left.resize(9);
-    default_right << 0, 0, 1, 0, 0, 0, 0, 0, 0;
-    default_left << 0, 0, 1, 0, 0, 0, 0, 0, 0;
+    default_right << 1, 0, 0, 0, 0, 0, 0, 0, 0; // S
+    default_left << 1, 0, 0, 0, 0, 0, 0, 0, 0;  // S
 
     inst_p << default_right,
         default_left;
@@ -104,8 +115,12 @@ void PathManager::setReadyAngle()
     VectorXd pR = VectorXd::Map(p.data(), 3, 1);
     VectorXd pL = VectorXd::Map(p.data() + 3, 3, 1);
 
+    combined.resize(2, 18);
+    combined << right_wrist_hit_angle, MatrixXd::Zero(1, 9), MatrixXd::Zero(1, 9), left_wrist_hit_angle;
+    MatrixXd default_angle = combined * inst_p;
+
     VectorXd minmax = waistRange(pR, pL);
-    VectorXd qk = ikFixedWaist(pR, pL, 0.5 * minmax.sum(), 25 * M_PI / 180, 25 * M_PI / 180);
+    VectorXd qk = ikFixedWaist(pR, pL, 0.5 * minmax.sum(), default_angle(0), default_angle(1));
 
     for (int i = 0; i < qk.size(); ++i)
     {
@@ -191,6 +206,8 @@ void PathManager::generateTrajectory()
     VectorXd Pi_L(3);
     VectorXd Pf_R(3);
     VectorXd Pf_L(3);
+    VectorXd wrist_hit_angle_i(2);
+    VectorXd wrist_hit_angle_f(2);
     VectorXd minmax;
     VectorXd intensity(2);
 
@@ -199,9 +216,6 @@ void PathManager::generateTrajectory()
 
     // parse
     parseMeasure(measureMatrix);
-
-    intensity(0) = measureMatrix(0, 4);
-    intensity(1) = measureMatrix(0, 5);
 
     // 한 줄의 데이터 개수
     n = (t2 - t1) / dt;
@@ -225,6 +239,10 @@ void PathManager::generateTrajectory()
     // std::cout << "\nR : Pi_R -> Pf_R\n(" << Pi_R.transpose() << ") -> (" << Pf_R.transpose() << ")";
     // std::cout << "\nL : Pi_L -> Pf_L\n(" << Pi_L.transpose() << ") -> (" << Pf_L.transpose() << ")" << std::endl;
 
+    // 타격 시 손목 각도
+    wrist_hit_angle_i = getWristHitAngle(inst_i);
+    wrist_hit_angle_f = getWristHitAngle(inst_f);
+
     for (int i = 0; i < n; i++)
     {
         Position Pt;
@@ -243,9 +261,9 @@ void PathManager::generateTrajectory()
             Pt.brake_state[j] = false;
         }
 
-        // wrist angle
-        Pt.thetaR = getWristRAngle(inst_i, inst_f, t_f_R - t_i_R, t_R) * M_PI / 180;
-        Pt.thetaL = getWristLAngle(inst_i, inst_f, t_f_L - t_i_L, t_L) * M_PI / 180;
+        // 타격 시 손목 각도
+        Pt.thetaR = t_R*(wrist_hit_angle_f(0) - wrist_hit_angle_i(0))/(t_f_R - t_i_R) + wrist_hit_angle_i(0);
+        Pt.thetaL = t_L*(wrist_hit_angle_f(1) - wrist_hit_angle_i(1))/(t_f_L - t_i_L) + wrist_hit_angle_i(1);
 
         P_buffer.push(Pt);
 
@@ -254,19 +272,16 @@ void PathManager::generateTrajectory()
         fun.appendToCSV_DATA(fileName, Pt.pR[0], Pt.pR[1], Pt.pR[2]);
         fileName = "Trajectory_L";
         fun.appendToCSV_DATA(fileName, Pt.pL[0], Pt.pL[1], Pt.pL[2]);
-        // fileName = "S_R";
-        // fun.appendToCSV_DATA(fileName, t_R, s_R, t_f_R - t_i_R);
-        // fileName = "S_L";
-        // fun.appendToCSV_DATA(fileName, t_L, s_L, t_f_L - t_i_L);
 
         if (i == 0)
         {
             minmax = waistRange(Pt.pR, Pt.pL);
-
-            // cout << "\n\nline : " << line << "\nminmax : " << minmax << "\n\n";
-            // cout << "\n\nPt.pR : " << Pt.pR << "\nPt.pL : " << Pt.pL << "\n\n";
         }
     }
+
+    // 다음 타격 세기 = 한 줄 삭제한 후 첫 줄
+    intensity(0) = measureMatrix(0, 4);
+    intensity(1) = measureMatrix(0, 5);
 
     saveLineData(n, minmax, intensity);
 }
@@ -479,8 +494,8 @@ void PathManager::parseMeasure(MatrixXd &measureMatrix)
 pair<VectorXd, VectorXd> PathManager::parseOneArm(VectorXd t, VectorXd inst, VectorXd stateVector)
 {
     map<int, int> instrument_mapping = {
-        {1, 2}, {2, 5}, {3, 6}, {4, 8}, {5, 3}, {6, 1}, {7, 0}, {8, 7}, {11, 2}, {51, 2}, {61, 2}, {71, 2}, {81, 2}, {91, 2}};
-    // S      FT      MT      HT      HH      R       RC      LC       S        S        S        S        S        S
+        {1, 0}, {2, 1}, {3, 2}, {4, 3}, {5, 4}, {6, 5}, {7, 6}, {8, 7}, {11, 0}, {51, 0}, {61, 0}, {71, 0}, {81, 0}, {91, 0}};
+    //    S       FT      MT      HT      HH       R      RC      LC       S        S        S        S        S        S
 
     VectorXd inst_i = VectorXd::Zero(9), inst_f = VectorXd::Zero(9);
     VectorXd outputVector = VectorXd::Zero(20); // 20 > 40 으로 변경
@@ -878,75 +893,35 @@ VectorXd PathManager::waistRange(VectorXd &pR, VectorXd &pL)
     return output;
 }
 
+VectorXd PathManager::getWristHitAngle(VectorXd &inst_vector)
+{
+    VectorXd inst_right = inst_vector.segment(0, 9);
+    VectorXd inst_left = inst_vector.segment(9, 9);
+
+    if (inst_right.sum() == 0)
+    {
+        std::cout << "Right Instrument Vector Error!!\n";
+    }
+
+    if (inst_left.sum() == 0)
+    {
+        std::cout << "Left Instrument Vector Error!!\n";
+    }
+
+    VectorXd inst_p(18);
+    inst_p << inst_right,
+        inst_left;
+
+    MatrixXd combined(2, 18);
+    combined << right_wrist_hit_angle, MatrixXd::Zero(1, 9), MatrixXd::Zero(1, 9), left_wrist_hit_angle;
+    MatrixXd angle = combined * inst_p;
+
+    return angle;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /*                              Wrist & Elbow                                 */
 ////////////////////////////////////////////////////////////////////////////////
-
-float PathManager::getWristRAngle(VectorXd inst_i, VectorXd inst_f, float T, float t)
-{
-    int inst_iNum = 0;
-    int inst_fNum = 0;
-
-    VectorXd inst_iR = inst_i.segment(0, 9).array();
-    VectorXd inst_fR = inst_f.segment(0, 9).array();
-
-    // 오른 손목 각도 파싱
-    for (int i = 0; i < 9; i++)
-    {
-        if (inst_iR(i) == 1)
-        {
-            inst_iNum = i;
-        }
-    }
-
-    for (int i = 0; i < 9; i++)
-    {
-        if (inst_fR(i) == 1)
-        {
-            inst_fNum = i;
-        }
-    }
-
-    float startR = instrument_mapping[inst_iNum];
-    float endR = instrument_mapping[inst_fNum];
-
-    float thetaR = ((endR - startR) / T) * t + startR;
-
-    return thetaR;
-}
-
-float PathManager::getWristLAngle(VectorXd inst_i, VectorXd inst_f, float T, float t)
-{
-    int inst_iNum;
-    int inst_fNum;
-
-    ArrayXd inst_iL = inst_i.segment(9, 9).array();
-    ArrayXd inst_fL = inst_f.segment(9, 9).array();
-
-    // 왼 손목 각도 파싱
-    for (int i = 0; i < 9; i++)
-    {
-        if (inst_iL(i) == 1)
-        {
-            inst_iNum = i;
-        }
-    }
-
-    for (int i = 0; i < 9; i++)
-    {
-        if (inst_fL(i) == 1)
-        {
-            inst_fNum = i;
-        }
-    }
-
-    float startL = instrument_mapping[inst_iNum];
-    float endL = instrument_mapping[inst_fNum];
-
-    float thetaL = (endL - startL) / T * t + startL;
-
-    return thetaL;
-}
 
 VectorXd PathManager::makeHitTrajetory(float t1, float t2, float t, int state, int wristIntensity)
 {
