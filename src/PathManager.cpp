@@ -1662,7 +1662,28 @@ std::pair<double, vector<double>> PathManager::getQ0t2(int mode)
         case 1:
         {
             // 다익스트라
-            vector<double> x_values = {0, lineData(0,0)*dt}; // 현재 x값과 다음 x값
+            double dt = canManager.deltaT;
+            t_getQ0t2.resize(6);
+            for (int i = 0; i < 6; i++)
+            {
+                if (i == 0)
+                {
+                    t_getQ0t2(i) = t0;
+                }
+                else if (i == 1)
+                {
+                    t_getQ0t2(i) = 0;
+                }
+                else if (lineData.rows() >= i-1)
+                {
+                    t_getQ0t2(i) = t_getQ0t2(i-1) + lineData(i-2,0)*dt;
+                }
+                else
+                {
+                    t_getQ0t2(i) = t_getQ0t2(i-1) + 1;
+                }
+            }
+            vector<double> x_values = {t_getQ0t2(0), t_getQ0t2(1)}; // 현재 x값과 다음 x값
             vector<pair<double, double>> y_ranges = {{lineData(0,1), lineData(0,2)}, {lineData(1,1), lineData(1,2)}};
             
             try {
