@@ -205,17 +205,15 @@ private:
 
     /////////////////////////////////////////////////////////////////////////// Play (waist)
     MatrixXd waistCoefficient;
-    double q0_t1;
-    double q0_t0, t0 = -1;
-    VectorXd t_getQ0t2;
+    double q0_t1;               // 시작 위치 저장
+    double q0_t0, t0 = -1;      // 이전 위치, 이전 시간 저장
 
-    double q0_t1t;
+    // threshold 관련 변수
     double nextq0_t1;
-    double q0_t2, q0_t3, q0_t4;
     int status = 0;
     double qthreshold = 0.05;
-    double t3, t4;
 
+    vector<double> cubicInterpolation(const vector<double>& q, const vector<double>& t);
     std::pair<double, vector<double>> getQ0t2(int mode);
     void getWaistCoefficient();
     double getWaistAngle(int i);
@@ -223,7 +221,7 @@ private:
     /////////////////////////////////////////////////////////////////////////// Play (wrist & elbow)
 
     map<int, float> instrument_mapping = {
-        {2, 30}, {5, 30}, {6, 15}, {8, 15}, {3, 0}, {1, 30}, {0, 0}, {7, 0}};
+        {2, 25}, {5, 30}, {6, 15}, {8, 15}, {3, 10}, {1, 15}, {0, 0}, {7, 10}};
     //   SN      FT      MT      HT      HH      R       RC      LC
     
     // 0.5초 기준 각도
@@ -233,7 +231,7 @@ private:
     const float wristLiftBaseAngle = 25.0 * M_PI / 180.0;
 
     const float elbowStayBaseAngle = 5.0 * M_PI / 180.0;
-    const float elbowLiftBaseAngle = 10.0 * M_PI / 180.0;
+    const float elbowLiftBaseAngle = 15.0 * M_PI / 180.0;
     
     // 타격 궤적 생성 파라미터
     typedef struct {
@@ -302,6 +300,4 @@ private:
     VectorXd makeProfile(VectorXd &q1, VectorXd &q2, VectorXd &Vmax, float acc, float t, float t2);
     void getMotorPos();
     
-
-    vector<double> f_SI_interpolation(const vector<double>& q, const vector<double>& t);
 };

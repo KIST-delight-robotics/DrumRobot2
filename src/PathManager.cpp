@@ -105,7 +105,7 @@ void PathManager::setReadyAngle()
     VectorXd pL = VectorXd::Map(p.data() + 3, 3, 1);
 
     VectorXd minmax = waistRange(pR, pL);
-    VectorXd qk = ikFixedWaist(pR, pL, 0.5 * minmax.sum(), 30 * M_PI / 180, 30 * M_PI / 180);
+    VectorXd qk = ikFixedWaist(pR, pL, 0.5 * minmax.sum(), 25 * M_PI / 180, 25 * M_PI / 180);
 
     for (int i = 0; i < qk.size(); ++i)
     {
@@ -1013,6 +1013,12 @@ float PathManager::makeWristAngle(float t1, float t2, float t, int state, HitPar
     float intensityFactor = 0.4 * intensity + 0.2; // 1 : 약하게   2 : 기본    3 : 강하게
     float wristLiftAngle = param.wristLiftAngle * intensityFactor;
 
+    if(intensity == 0)
+    {
+        if (state == 3) state = 1;
+        else if (state == 2) state = 0;
+    }
+
     MatrixXd A;
     MatrixXd b;
     MatrixXd A_1;
@@ -1591,10 +1597,59 @@ void PathManager::pushConmmandBuffer(VectorXd &Qi)
 /*                                Waist                                       */
 ////////////////////////////////////////////////////////////////////////////////
 
-std::pair<double, vector<double>> PathManager::getQ0t2(int mode)
+vector<double> PathManager::cubicInterpolation(const vector<double> &q, const vector<double> &t)
 {
     vector<double> m = {0.0, 0.0};
-    q0_t2 = 0.0;
+    vector<double> a(3, 0.0);
+
+    for (int i = 0; i < 3; i++)
+    {
+        a[i] = (q[i + 1] - q[i]) / (t[i + 1] - t[i]);
+    }
+    double m1 = 0.5 * (a[0] + a[1]);
+    double m2 = 0.5 * (a[1] + a[2]);
+    double alph, bet;
+    if (q[1] == q[2])
+    {
+        m1 = 0;
+        m2 = 0;
+    }
+    else{
+        if((q[0] == q[1]) || (a[0] * a[1] < 0)){
+            m1 = 0;
+        }
+        else if((q[2] == q[3]) || (a[1] * a[2] < 0)){
+            m2 = 0;
+        }
+        alph = m1 / (q[2] - q[1]);
+        bet = m2 / (q[2] - q[1]);
+
+        double e = std::sqrt(std::pow(alph, 2) + std::pow(bet, 2));
+        if (e > 3.0)
+        {
+            m1 = (3 * m1) / e;
+            m2 = (3 * m2) / e;
+        }
+    }
+    
+    m[0] = m1;
+    m[1] = m2;
+    
+    // for (int i = 0; i < 4; i++)
+    // {
+    //     std::cout << "\n q[" << i << "] = " << q[i] << ", t[" << i << "] = " << t[i] << endl;
+    // }
+    // std::cout << "\n m1 : " << m1 << "\tm2 : " << m2 << endl;
+    
+    return m;
+}
+
+std::pair<double, vector<double>> PathManager::getQ0t2(int mode)
+{
+    VectorXd t_getQ0t2;     // getQ0t2() 함수 안에서 사용할 시간 벡터
+    double dt = canManager.deltaT;
+    vector<double> m = {0.0, 0.0};
+    double q0_t2 = 0.0;
 
     switch (mode)
     {
@@ -1607,7 +1662,7 @@ std::pair<double, vector<double>> PathManager::getQ0t2(int mode)
         case 1:
         {
             // 다익스트라
-            vector<double> x_values = {t1, t2}; // 현재 x값과 다음 x값
+            vector<double> x_values = {0, lineData(0,0)*dt}; // 현재 x값과 다음 x값
             vector<pair<double, double>> y_ranges = {{lineData(0,1), lineData(0,2)}, {lineData(1,1), lineData(1,2)}};
             
             try {
@@ -1638,7 +1693,6 @@ std::pair<double, vector<double>> PathManager::getQ0t2(int mode)
         case 2:
         {
             // 기울기 평균
-            double dt = canManager.deltaT;
             t_getQ0t2.resize(4);
             for (int i = 0; i < 4; i++)
             {
@@ -1678,13 +1732,9 @@ std::pair<double, vector<double>> PathManager::getQ0t2(int mode)
 
             break;
         }
-        case 3: // 미완
+        case 3:
         {
-            // 최적화
-            break;
-        }
-        case 4:
-        {
+            // 다익스트라 + interpolation
             double dt = canManager.deltaT;
             t_getQ0t2.resize(6);
             for (int i = 0; i < 6; i++)
@@ -1715,23 +1765,23 @@ std::pair<double, vector<double>> PathManager::getQ0t2(int mode)
 
                 vector<double> x_values2 = {t_getQ0t2(2), t_getQ0t2(3)}; // 다음 x값과 다다음 x값
                 vector<pair<double, double>> y_ranges2 = {{lineData(1,1), lineData(1,2)}, {lineData(2,1), lineData(2,2)}};
-                q0_t3 = dijkstra_top10_with_median(x_values2, y_ranges2, q0_t2);
+                double q0_t3 = dijkstra_top10_with_median(x_values2, y_ranges2, q0_t2);
 
-                vector<double> x_values3 = {t_getQ0t2(3), t_getQ0t2(4)}; // 다다음 x값과 다다다음 x값
-                vector<pair<double, double>> y_ranges3 = {{lineData(2,1), lineData(2,2)}, {lineData(3,1), lineData(3,2)}};
-                q0_t4 = dijkstra_top10_with_median(x_values3, y_ranges3, q0_t3);
+                // vector<double> x_values3 = {t_getQ0t2(3), t_getQ0t2(4)}; // 다다음 x값과 다다다음 x값
+                // vector<pair<double, double>> y_ranges3 = {{lineData(2,1), lineData(2,2)}, {lineData(3,1), lineData(3,2)}};
+                // double q0_t4 = dijkstra_top10_with_median(x_values3, y_ranges3, q0_t3);
                 
                 // Interpolation
                 vector<double> y = {q0_t0, q0_t1, q0_t2, q0_t3};
                 vector<double> x = {t_getQ0t2(0), t_getQ0t2(1), t_getQ0t2(2), t_getQ0t2(3)};
-                m = f_SI_interpolation(y, x);
+                m = cubicInterpolation(y, x);
 
             } catch (const exception& e) {
                 cerr << e.what() << endl;
             }
             break;
         }
-        case 5:
+        case 4:
         {
             // 기울기 평균 + interpolation
             double dt = canManager.deltaT;
@@ -1778,6 +1828,7 @@ std::pair<double, vector<double>> PathManager::getQ0t2(int mode)
             }
 
             // t2 -> t3
+            double q0_t3;
             if (lineData.rows() == 2)
             {
                 q0_t3 = q0_t2;
@@ -1806,7 +1857,7 @@ std::pair<double, vector<double>> PathManager::getQ0t2(int mode)
 
             vector<double> y = {q0_t0, q0_t1, q0_t2, q0_t3};
             vector<double> x = {t_getQ0t2(0), t_getQ0t2(1), t_getQ0t2(2), t_getQ0t2(3)};
-            m = f_SI_interpolation(y, x);
+            m = cubicInterpolation(y, x);
         }
     }
     return {q0_t2, m};
@@ -1819,6 +1870,7 @@ void PathManager::getWaistCoefficient()
     MatrixXd A_1;
 
     vector<double> m = {0.0, 0.0};
+    double q0_t2;
     double dt = canManager.deltaT;
     double t21 = lineData(0, 0) * dt;
 
@@ -1828,7 +1880,9 @@ void PathManager::getWaistCoefficient()
     }
     else
     {
-        auto [q0_t2, m] = getQ0t2(5); // 0: 중앙값, 1: 다익스트라, 2: 기울기평균, 3: 최적화, 4: 다익스트라 + 보간법, 5. 기울기평균 + 보간법
+        std::pair<double, vector<double>> output = getQ0t2(4); // 0: 중앙값, 1: 다익스트라, 2: 기울기평균, 3: 다익스트라 + 보간법, 4: 기울기평균 + 보간법
+        q0_t2 = output.first;
+        m = output.second; 
     }
 
     A.resize(4, 4);
@@ -2377,51 +2431,4 @@ void PathManager::updateRange(const VectorXd &output, double &min, double &max)
 {
     min = output(1);
     max = output(0);
-}
-
-vector<double> PathManager::f_SI_interpolation(const vector<double> &q, const vector<double> &t)
-{
-    vector<double> m = {0.0, 0.0};
-    vector<double> a(3, 0.0);
-
-    for (int i = 0; i < 3; i++)
-    {
-        a[i] = (q[i + 1] - q[i]) / (t[i + 1] - t[i]);
-    }
-    double m1 = 0.5 * (a[0] + a[1]);
-    double m2 = 0.5 * (a[1] + a[2]);
-    double alph, bet;
-    if (q[1] == q[2])
-    {
-        m1 = 0;
-        m2 = 0;
-    }
-    else{
-        if((q[0] == q[1]) || (a[0] * a[1] < 0)){
-            m1 = 0;
-        }
-        else if((q[2] == q[3]) || (a[1] * a[2] < 0)){
-            m2 = 0;
-        }
-        alph = m1 / (q[2] - q[1]);
-        bet = m2 / (q[2] - q[1]);
-
-        double e = std::sqrt(std::pow(alph, 2) + std::pow(bet, 2));
-        if (e > 3.0)
-        {
-            m1 = (3 * m1) / e;
-            m2 = (3 * m2) / e;
-        }
-    }
-    
-    m[0] = m1;
-    m[1] = m2;
-    
-    // for (int i = 0; i < 4; i++)
-    // {
-    //     std::cout << "\n q[" << i << "] = " << q[i] << ", t[" << i << "] = " << t[i] << endl;
-    // }
-    // std::cout << "\n m1 : " << m1 << "\tm2 : " << m2 << endl;
-    
-    return m;
 }
