@@ -1682,26 +1682,49 @@ std::pair<double, vector<double>> PathManager::getQ0t2(int mode)
             // 최적화
             break;
         }
-        case 4: // 미완
+        case 4:
         {
+            double dt = canManager.deltaT;
+            t_getQ0t2.resize(6);
+            for (int i = 0; i < 6; i++)
+            {
+                if (i == 0)
+                {
+                    t_getQ0t2(i) = t0;
+                }
+                else if (i == 1)
+                {
+                    t_getQ0t2(i) = 0;
+                }
+                else if (lineData.rows() >= i-1)
+                {
+                    t_getQ0t2(i) = t_getQ0t2(i-1) + lineData(i-2,0)*dt;
+                }
+                else
+                {
+                    t_getQ0t2(i) = t_getQ0t2(i-1) + 1;
+                }
+            }
+
             // 다익스트라 평균 (다음, 다다음, 다다다음 값까지 봄)
             try {
-                vector<double> x_values1 = {t1, t2}; // 현재 x값과 다음 x값
+                vector<double> x_values1 = {t_getQ0t2(1), t_getQ0t2(2)}; // 현재 x값과 다음 x값
                 vector<pair<double, double>> y_ranges1 = {{lineData(0,1), lineData(0,2)}, {lineData(1,1), lineData(1,2)}};
                 q0_t2 = dijkstra_top10_with_median(x_values1, y_ranges1, q0_t1);
 
-                vector<double> x_values2 = {t2, t3}; // 다음 x값과 다다음 x값
+                vector<double> x_values2 = {t_getQ0t2(2), t_getQ0t2(3)}; // 다음 x값과 다다음 x값
                 vector<pair<double, double>> y_ranges2 = {{lineData(1,1), lineData(1,2)}, {lineData(2,1), lineData(2,2)}};
                 q0_t3 = dijkstra_top10_with_median(x_values2, y_ranges2, q0_t2);
 
-                vector<double> x_values3 = {t3, t4}; // 다다음 x값과 다다다음 x값
+                vector<double> x_values3 = {t_getQ0t2(3), t_getQ0t2(4)}; // 다다음 x값과 다다다음 x값
                 vector<pair<double, double>> y_ranges3 = {{lineData(2,1), lineData(2,2)}, {lineData(3,1), lineData(3,2)}};
                 q0_t4 = dijkstra_top10_with_median(x_values3, y_ranges3, q0_t3);
                 
                 // Interpolation
-                vector<double> q = {q0_t1, q0_t2, q0_t3, q0_t4};
-                vector<double> t = {t1, t2, t3, t4};
-                m = f_SI_interpolation(q, t);
+                vector<double> y = {q0_t0, q0_t1, q0_t2, q0_t3};
+                vector<double> x = {t_getQ0t2(0), t_getQ0t2(1), t_getQ0t2(2), t_getQ0t2(3)};
+                m = f_SI_interpolation(y, x);
+
             } catch (const exception& e) {
                 cerr << e.what() << endl;
             }
@@ -1782,8 +1805,7 @@ std::pair<double, vector<double>> PathManager::getQ0t2(int mode)
 
             vector<double> y = {q0_t0, q0_t1, q0_t2, q0_t3};
             vector<double> x = {t_getQ0t2(0), t_getQ0t2(1), t_getQ0t2(2), t_getQ0t2(3)};
-            vector<double> m_interpolation = f_SI_interpolation(y, x);
-            m = m_interpolation;
+            m = f_SI_interpolation(y, x);
         }
     }
     return {q0_t2, m};
