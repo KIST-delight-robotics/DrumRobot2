@@ -217,7 +217,7 @@ private:
 
     vector<double> cubicInterpolation(const vector<double>& q, const vector<double>& t);
     std::pair<double, vector<double>> getQ0t2(int mode);
-    void getWaistCoefficient();
+    vector<double> getWaistCoefficient();
     double getWaistAngle(int i);
     
     /////////////////////////////////////////////////////////////////////////// Play (wrist & elbow)
@@ -251,9 +251,6 @@ private:
         float elbowLiftTime;
 
     }HitParameter;
-
-    float getWristRAngle(VectorXd inst_i, VectorXd inst_f, float T, float t);
-    float getWristLAngle(VectorXd inst_i, VectorXd inst_f, float T, float t);
 
     float makeElbowAngle(float t1, float t2, float t, int state, HitParameter param, int intensity);
     float makeWristAngle(float t1, float t2, float t, int state, HitParameter param, int intensity);

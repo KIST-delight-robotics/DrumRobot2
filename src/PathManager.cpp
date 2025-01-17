@@ -256,10 +256,10 @@ void PathManager::generateTrajectory()
         Pt.pL = makePath(Pi_L, Pf_L, s_L);
 
         // brake
-        for (int j = 0; j < 8; j++)
-        {
-            Pt.brake_state[j] = false;
-        }
+        // for (int j = 0; j < 8; j++)
+        // {
+        //     Pt.brake_state[j] = false;
+        // }
 
         // 타격 시 손목 각도
         Pt.thetaR = t_R*(wrist_hit_angle_f(0) - wrist_hit_angle_i(0))/(t_f_R - t_i_R) + wrist_hit_angle_i(0);
@@ -290,6 +290,8 @@ bool PathManager::solveIKandPushConmmand()
 {
     VectorXd q;
 
+    vector<double> m = {0.0, 0.0};
+
     // 정해진 개수만큼 커맨드 생성
     if (i_solveIK >= lineData(0, 0))
     {
@@ -313,7 +315,7 @@ bool PathManager::solveIKandPushConmmand()
         if (i_solveIK == 0)
         {
             // 허리 계수 구하기
-            getWaistCoefficient();
+            m = getWaistCoefficient();
 
             // std::cout << "\n lineDate Start : \n";
             // std::cout << lineData;
@@ -323,6 +325,15 @@ bool PathManager::solveIKandPushConmmand()
 
     // waist
     double q0 = getWaistAngle(i_solveIK);
+
+
+    // brake
+    if(m[0] == 0 && m[1] == 0){
+        usbio.USBIO_4761_set(0, true);
+    }
+    else{
+        usbio.USBIO_4761_set(0, false);
+    }
 
     // solve IK
     solveIK(q, q0);
@@ -1444,10 +1455,10 @@ void PathManager::solveIK(VectorXd &q, double q0)
     q = ikFixedWaist(nextP.pR, nextP.pL, q0, nextP.thetaR, nextP.thetaL);
 
     // brake
-    for (int i = 0; i < 8; i++)
-    {
-        usbio.USBIO_4761_set(i, nextP.brake_state[i]);
-    }
+    // for (int i = 0; i < 8; i++)
+    // {
+    //     usbio.USBIO_4761_set(i, nextP.brake_state[i]);
+    // }
 }
 
 VectorXd PathManager::ikFixedWaist(VectorXd &pR, VectorXd &pL, double theta0, double theta7, double theta8)
@@ -1858,8 +1869,7 @@ std::pair<double, vector<double>> PathManager::getQ0t2(int mode)
     }
     return {q0_t2, m};
 }
-
-void PathManager::getWaistCoefficient()
+vector<double> PathManager::getWaistCoefficient()
 {
     MatrixXd A;
     MatrixXd b;
@@ -1897,6 +1907,7 @@ void PathManager::getWaistCoefficient()
     q0_t0 = q0_t1;
     q0_t1 = q0_t2;
     t0 = -1*t21;
+    return m;
 }
 
 double PathManager::getWaistAngle(int i)
