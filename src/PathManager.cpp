@@ -255,12 +255,6 @@ void PathManager::generateTrajectory()
         Pt.pR = makePath(Pi_R, Pf_R, s_R);
         Pt.pL = makePath(Pi_L, Pf_L, s_L);
 
-        // brake
-        // for (int j = 0; j < 8; j++)
-        // {
-        //     Pt.brake_state[j] = false;
-        // }
-
         // 타격 시 손목 각도
         Pt.thetaR = t_R*(wrist_hit_angle_f(0) - wrist_hit_angle_i(0))/(t_f_R - t_i_R) + wrist_hit_angle_i(0);
         Pt.thetaL = t_L*(wrist_hit_angle_f(1) - wrist_hit_angle_i(1))/(t_f_L - t_i_L) + wrist_hit_angle_i(1);
@@ -1461,12 +1455,6 @@ void PathManager::solveIK(VectorXd &q, double q0)
     P_buffer.pop();
 
     q = ikFixedWaist(nextP.pR, nextP.pL, q0, nextP.thetaR, nextP.thetaL);
-
-    // brake
-    // for (int i = 0; i < 8; i++)
-    // {
-    //     usbio.USBIO_4761_set(i, nextP.brake_state[i]);
-    // }
 }
 
 VectorXd PathManager::ikFixedWaist(VectorXd &pR, VectorXd &pL, double theta0, double theta7, double theta8)

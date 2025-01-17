@@ -79,10 +79,8 @@ public:
         VectorXd pR; // 0: x, 1: y, 2: z
         // 왼팔 좌표
         VectorXd pL; // 0: x, 1: y, 2: z
-        // 브레이크
-        bool brake_state[8];
         // 손목 각도
-        double thetaR; 
+        double thetaR;
         double thetaL;
     }Position;
     queue<Position> P_buffer;
