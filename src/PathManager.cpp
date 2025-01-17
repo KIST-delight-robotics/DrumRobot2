@@ -1593,8 +1593,9 @@ void PathManager::pushConmmandBuffer(VectorXd &Qi)
 
 std::pair<double, vector<double>> PathManager::getQ0t2(int mode)
 {
+    vector<double> m = {0.0, 0.0};
     q0_t2 = 0.0;
-    m = {0.0, 0.0};
+
     switch (mode)
     {
         case 0:
@@ -1817,6 +1818,7 @@ void PathManager::getWaistCoefficient()
     MatrixXd b;
     MatrixXd A_1;
 
+    vector<double> m = {0.0, 0.0};
     double dt = canManager.deltaT;
     double t21 = lineData(0, 0) * dt;
 
@@ -1826,7 +1828,7 @@ void PathManager::getWaistCoefficient()
     }
     else
     {
-        auto [q0_t2, m] = getQ0t2(4); // 0: 중앙값, 1: 다익스트라, 2: 기울기평균, 3: 최적화, 4: 다익스트라 + 보간법, 5. 기울기평균 + 보간법
+        auto [q0_t2, m] = getQ0t2(5); // 0: 중앙값, 1: 다익스트라, 2: 기울기평균, 3: 최적화, 4: 다익스트라 + 보간법, 5. 기울기평균 + 보간법
     }
 
     A.resize(4, 4);
@@ -2379,6 +2381,7 @@ void PathManager::updateRange(const VectorXd &output, double &min, double &max)
 
 vector<double> PathManager::f_SI_interpolation(const vector<double> &q, const vector<double> &t)
 {
+    vector<double> m = {0.0, 0.0};
     vector<double> a(3, 0.0);
 
     for (int i = 0; i < 3; i++)
@@ -2414,12 +2417,11 @@ vector<double> PathManager::f_SI_interpolation(const vector<double> &q, const ve
     m[0] = m1;
     m[1] = m2;
     
-    for (int i = 0; i < 4; i++)
-    {
-        std::cout << "\n q[" << i << "] = " << q[i] << ", t[" << i << "] = " << t[i] << endl;
-    }
-
-    std::cout << "\n m1 : " << m1 << "\tm2 : " << m2 << endl;
+    // for (int i = 0; i < 4; i++)
+    // {
+    //     std::cout << "\n q[" << i << "] = " << q[i] << ", t[" << i << "] = " << t[i] << endl;
+    // }
+    // std::cout << "\n m1 : " << m1 << "\tm2 : " << m2 << endl;
     
     return m;
 }

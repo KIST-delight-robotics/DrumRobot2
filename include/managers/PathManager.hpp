@@ -214,7 +214,6 @@ private:
     double q0_t2, q0_t3, q0_t4;
     int status = 0;
     double qthreshold = 0.05;
-    vector<double> m = {0.0, 0.0};
     double t3, t4;
 
     std::pair<double, vector<double>> getQ0t2(int mode);
