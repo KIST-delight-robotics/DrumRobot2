@@ -284,9 +284,9 @@ bool PathManager::solveIKandPushConmmand()
 {
     VectorXd q;
     // 정해진 개수만큼 커맨드 생성
-    if (i_solveIK >= lineData(0, 0))
+    if (index_solveIK >= lineData(0, 0))
     {
-        i_solveIK = 0;
+        index_solveIK = 0;
 
         // 커맨드 생성 후 삭제
         if (lineData.rows() >= 1)
@@ -303,7 +303,7 @@ bool PathManager::solveIKandPushConmmand()
     }
     else
     {
-        if (i_solveIK == 0)
+        if (index_solveIK == 0)
         {
             // 허리 계수 구하기
             getWaistCoefficient();
@@ -311,13 +311,11 @@ bool PathManager::solveIKandPushConmmand()
             // std::cout << "\n lineDate Start : \n";
             // std::cout << lineData;
         }
-        i_solveIK++;
+        index_solveIK++;
     }
 
     // waist
-    double q0 = getWaistAngle(i_solveIK);
-
-    // cout << "\nm1: " << m[0] << "\tm2: " << m[1] << endl;
+    double q0 = getWaistAngle(index_solveIK);
 
     // brake
     if(abs(q0_t0 - q0_t1) <= qthreshold){
@@ -341,7 +339,7 @@ bool PathManager::solveIKandPushConmmand()
     solveIK(q, q0);
 
     // wrist, elbow
-    getHitAngle(q, i_solveIK);
+    getHitAngle(q, index_solveIK);
 
     // push motor obj
     pushConmmandBuffer(q);
@@ -1871,6 +1869,7 @@ void PathManager::getWaistCoefficient()
     MatrixXd A;
     MatrixXd b;
     MatrixXd A_1;
+    vector<double> m = {0.0, 0.0};
     double q0_t2;
     double dt = canManager.deltaT;
     double t21 = lineData(0, 0) * dt;
@@ -1904,10 +1903,10 @@ void PathManager::getWaistCoefficient()
     t0 = -1*t21;
 }
 
-double PathManager::getWaistAngle(int i)
+double PathManager::getWaistAngle(int index)
 {
     double dt = canManager.deltaT;
-    double t = dt * i;
+    double t = dt * index;
 
     return waistCoefficient(0, 0) + waistCoefficient(1, 0) * t + waistCoefficient(2, 0) * t * t + waistCoefficient(3, 0) * t * t * t;
 }

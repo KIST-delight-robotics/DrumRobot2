@@ -195,7 +195,7 @@ private:
     VectorXd getWristHitAngle(VectorXd &inst_vector);
 
     /////////////////////////////////////////////////////////////////////////// Play (solve IK)
-    int i_solveIK = 0;
+    int index_solveIK = 0;
 
     float getLength(double theta);
     double getTheta(float l1, double theta);
@@ -207,7 +207,6 @@ private:
     MatrixXd waistCoefficient;
     double q0_t1;               // 시작 위치 저장
     double q0_t0, t0 = -1;      // 이전 위치, 이전 시간 저장
-    vector<double> m;
 
     // threshold 관련 변수
     double nextq0_t1;
