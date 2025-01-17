@@ -209,6 +209,7 @@ private:
     MatrixXd waistCoefficient;
     double q0_t1;               // 시작 위치 저장
     double q0_t0, t0 = -1;      // 이전 위치, 이전 시간 저장
+    vector<double> m;
 
     // threshold 관련 변수
     double nextq0_t1;
@@ -217,7 +218,7 @@ private:
 
     vector<double> cubicInterpolation(const vector<double>& q, const vector<double>& t);
     std::pair<double, vector<double>> getQ0t2(int mode);
-    vector<double> getWaistCoefficient();
+    void getWaistCoefficient();
     double getWaistAngle(int i);
     
     /////////////////////////////////////////////////////////////////////////// Play (wrist & elbow)

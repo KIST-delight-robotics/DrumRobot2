@@ -289,9 +289,6 @@ void PathManager::generateTrajectory()
 bool PathManager::solveIKandPushConmmand()
 {
     VectorXd q;
-
-    vector<double> m = {0.0, 0.0};
-
     // 정해진 개수만큼 커맨드 생성
     if (i_solveIK >= lineData(0, 0))
     {
@@ -315,7 +312,7 @@ bool PathManager::solveIKandPushConmmand()
         if (i_solveIK == 0)
         {
             // 허리 계수 구하기
-            m = getWaistCoefficient();
+            getWaistCoefficient();
 
             // std::cout << "\n lineDate Start : \n";
             // std::cout << lineData;
@@ -326,13 +323,24 @@ bool PathManager::solveIKandPushConmmand()
     // waist
     double q0 = getWaistAngle(i_solveIK);
 
+    // cout << "\nm1: " << m[0] << "\tm2: " << m[1] << endl;
 
     // brake
-    if(m[0] == 0 && m[1] == 0){
+    if(abs(q0_t0 - q0_t1) <= qthreshold){
         usbio.USBIO_4761_set(0, true);
     }
     else{
         usbio.USBIO_4761_set(0, false);
+    }
+    for (int i = 1; i < 8; i++)
+    {
+        usbio.USBIO_4761_set(i, false);
+    }
+    if(lineData.rows() == 1){
+        for (int i = 0; i < 8; i++)
+        {
+            usbio.USBIO_4761_set(i, false);
+        }
     }
 
     // solve IK
@@ -1634,7 +1642,7 @@ std::pair<double, vector<double>> PathManager::getQ0t2(int mode)
 {
     VectorXd t_getQ0t2;     // getQ0t2() 함수 안에서 사용할 시간 벡터
     double dt = canManager.deltaT;
-    vector<double> m = {0.0, 0.0};
+    vector<double> m_interpolation = {0.0, 0.0};
     double q0_t2 = 0.0;
 
     switch (mode)
@@ -1781,7 +1789,7 @@ std::pair<double, vector<double>> PathManager::getQ0t2(int mode)
                 // Interpolation
                 vector<double> y = {q0_t0, q0_t1, q0_t2, q0_t3};
                 vector<double> x = {t_getQ0t2(0), t_getQ0t2(1), t_getQ0t2(2), t_getQ0t2(3)};
-                m = cubicInterpolation(y, x);
+                m_interpolation = cubicInterpolation(y, x);
 
             } catch (const exception& e) {
                 cerr << e.what() << endl;
@@ -1864,18 +1872,17 @@ std::pair<double, vector<double>> PathManager::getQ0t2(int mode)
 
             vector<double> y = {q0_t0, q0_t1, q0_t2, q0_t3};
             vector<double> x = {t_getQ0t2(0), t_getQ0t2(1), t_getQ0t2(2), t_getQ0t2(3)};
-            m = cubicInterpolation(y, x);
+            m_interpolation = cubicInterpolation(y, x);
         }
     }
-    return {q0_t2, m};
+    return {q0_t2, m_interpolation};
 }
-vector<double> PathManager::getWaistCoefficient()
+
+void PathManager::getWaistCoefficient()
 {
     MatrixXd A;
     MatrixXd b;
     MatrixXd A_1;
-
-    vector<double> m = {0.0, 0.0};
     double q0_t2;
     double dt = canManager.deltaT;
     double t21 = lineData(0, 0) * dt;
@@ -1907,7 +1914,6 @@ vector<double> PathManager::getWaistCoefficient()
     q0_t0 = q0_t1;
     q0_t1 = q0_t2;
     t0 = -1*t21;
-    return m;
 }
 
 double PathManager::getWaistAngle(int i)
