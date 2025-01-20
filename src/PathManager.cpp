@@ -326,7 +326,6 @@ bool PathManager::solveIKandPushConmmand()
         q0b = false;
     }
     usbio.USBIO_4761_set(0, q0b);
-
     for (int i = 1; i < 8; i++)
     {
         usbio.USBIO_4761_set(i, false);
@@ -351,8 +350,8 @@ bool PathManager::solveIKandPushConmmand()
     for (int m = 0; m < 10; m++)
     {
         std::string fileName = "solveIK_q" + to_string(m);
-        if(m == 0){
-            fun.appendToCSV_DATA(fileName, m, q0b, 0);
+        if(m == 9){
+        fun.appendToCSV_DATA(fileName, m, q0b, 0);
         }
         else{
             fun.appendToCSV_DATA(fileName, m, q(m), 0);
@@ -942,15 +941,73 @@ VectorXd PathManager::getWristHitAngle(VectorXd &inst_vector)
 /*                              Wrist & Elbow                                 */
 ////////////////////////////////////////////////////////////////////////////////
 
-VectorXd PathManager::makeHitTrajetory(float t1, float t2, float t, int state, int wristIntensity)
+VectorXd PathManager::makeHitTrajetory(float t1, float t2, float t, int state, int wristIntensity, bool dir)
 {
     VectorXd addAngle;
 
     HitParameter param = getHitParameter(t1, t2, state, pre_parameters_tmp, wristIntensity);
     pre_parameters_tmp = param;
 
+    if (wristIntensity == 0)
+    {
+        if (dir == 0)
+        {
+            if(state == 3)
+            {
+                state = 2;
+                if(lineData(1,5) == 3)
+                {
+                    lineData(1,5) = 2;
+                }
+                else if (lineData(1,5) == 1)
+                {
+                    lineData(1,5) = 0;
+                }
+            }
+            else if (state == 2)
+            {
+                state = 0;
+                if(lineData(1,5) == 3)
+                {
+                    lineData(1,5) = 2;
+                }
+                else if (lineData(1,5) == 1)
+                {
+                    lineData(1,5) = 0;
+                }
+            }
+        }
+        else
+        {
+            if(state == 3)
+            {
+                state = 2;
+                if(lineData(1,5) == 3)
+                {
+                    lineData(1,5) = 2;
+                }
+                else if (lineData(1,5) == 1)
+                {
+                    lineData(1,5) = 0;
+                }
+            }
+            else if (state == 2)
+            {
+                state = 0;
+                if(lineData(1,5) == 3)
+                {
+                    lineData(1,5) = 2;
+                }
+                else if (lineData(1,5) == 1)
+                {
+                    lineData(1,5) = 0;
+                }
+            }
+        }
+    }
+
     addAngle.resize(2); // wrist, elbow
-    addAngle(0) = makeWristAngle(t1, t2, t, state, param, wristIntensity);
+    addAngle(0) = makeWristAngle(t1, t2, t, state, param, wristIntensity, dir);
     addAngle(1) = makeElbowAngle(t1, t2, t, state, param, wristIntensity);
 
     return addAngle;
@@ -996,7 +1053,7 @@ PathManager::HitParameter PathManager::getHitParameter(float t1, float t2, int h
     return param;
 }
 
-float PathManager::makeWristAngle(float t1, float t2, float t, int state, HitParameter param, int intensity)
+float PathManager::makeWristAngle(float t1, float t2, float t, int state, HitParameter param, int intensity, bool dir)
 {
     float wrist_q = 0.0;
     float t_contact = param.wristContactTime;
@@ -1006,12 +1063,64 @@ float PathManager::makeWristAngle(float t1, float t2, float t, int state, HitPar
     float t_hit = t2 - t1;
     float intensityFactor = 0.4 * intensity + 0.2; // 1 : 약하게   2 : 기본    3 : 강하게
     float wristLiftAngle = param.wristLiftAngle * intensityFactor;
-
-    if(intensity == 0)
-    {
-        if (state == 3) state = 1;
-        else if (state == 2) state = 0;
-    }
+    
+    // if (intensity == 0)
+    // {
+    //     if (dir == 0)
+    //     {
+    //         if(state == 3)
+    //         {
+    //             state = 2;
+    //             if(lineData(1,5) == 3)
+    //             {
+    //                 lineData(1,5) = 2;
+    //             }
+    //             else if (lineData(1,5) == 1)
+    //             {
+    //                 lineData(1,5) = 0;
+    //             }
+    //         }
+    //         else if (state == 2)
+    //         {
+    //             state = 0;
+    //             if(lineData(1,5) == 3)
+    //             {
+    //                 lineData(1,5) = 2;
+    //             }
+    //             else if (lineData(1,5) == 1)
+    //             {
+    //                 lineData(1,5) = 0;
+    //             }
+    //         }
+    //     }
+    //     else
+    //     {
+    //         if(state == 3)
+    //         {
+    //             state = 2;
+    //             if(lineData(1,5) == 3)
+    //             {
+    //                 lineData(1,5) = 2;
+    //             }
+    //             else if (lineData(1,5) == 1)
+    //             {
+    //                 lineData(1,5) = 0;
+    //             }
+    //         }
+    //         else if (state == 2)
+    //         {
+    //             state = 0;
+    //             if(lineData(1,5) == 3)
+    //             {
+    //                 lineData(1,5) = 2;
+    //             }
+    //             else if (lineData(1,5) == 1)
+    //             {
+    //                 lineData(1,5) = 0;
+    //             }
+    //         }
+    //     }
+    // }
 
     MatrixXd A;
     MatrixXd b;
@@ -1396,26 +1505,26 @@ void PathManager::getHitAngle(VectorXd &q, int index)
     if (readyRflag)
     {
         pre_parameters_tmp = pre_parameters_R;
-        add_qR = makeHitTrajetory(0, ntR, i_wristR * dt, next_stateR, next_intensityR);
+        add_qR = makeHitTrajetory(0, ntR, i_wristR * dt, next_stateR, next_intensityR, 0);
         pre_parameters_R = pre_parameters_tmp;
     }
     else
     {
         pre_parameters_tmp = pre_parameters_R;
-        add_qR = makeHitTrajetory(0, t, index * dt, stateR, lineData(0, 5));
+        add_qR = makeHitTrajetory(0, t, index * dt, stateR, lineData(0, 5), 0);
         pre_parameters_R = pre_parameters_tmp;
     }
 
     if (readyLflag)
     {
         pre_parameters_tmp = pre_parameters_L;
-        add_qL = makeHitTrajetory(0, ntL, i_wristL * dt, next_stateL, next_intensityL);
+        add_qL = makeHitTrajetory(0, ntL, i_wristL * dt, next_stateL, next_intensityL, 1);
         pre_parameters_L = pre_parameters_tmp;
     }
     else
     {
         pre_parameters_tmp = pre_parameters_L;
-        add_qL = makeHitTrajetory(0, t, index * dt, stateL, lineData(0, 6));
+        add_qL = makeHitTrajetory(0, t, index * dt, stateL, lineData(0, 6), 1);
         pre_parameters_L = pre_parameters_tmp;
     }
 
