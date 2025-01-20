@@ -349,11 +349,11 @@ bool PathManager::solveIKandPushConmmand()
     // 데이터 기록
     for (int m = 0; m < 10; m++)
     {
-        std::string fileName = "solveIK_q" + to_string(m);
         if(m == 9){
-        fun.appendToCSV_DATA(fileName, m, q0b, 0);
+            fun.appendToCSV_DATA("brake_status", m, q0b, 0);
         }
         else{
+            std::string fileName = "solveIK_q" + to_string(m);
             fun.appendToCSV_DATA(fileName, m, q(m), 0);
         }
     }
