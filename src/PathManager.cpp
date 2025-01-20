@@ -318,12 +318,15 @@ bool PathManager::solveIKandPushConmmand()
     double q0 = getWaistAngle(index_solveIK);
 
     // brake
+    bool q0b = false;
     if(abs(q0_t0 - q0_t1) <= qthreshold){
-        usbio.USBIO_4761_set(0, true);
+        q0b = true;
     }
     else{
-        usbio.USBIO_4761_set(0, false);
+        q0b = false;
     }
+    usbio.USBIO_4761_set(0, q0b);
+
     for (int i = 1; i < 8; i++)
     {
         usbio.USBIO_4761_set(i, false);
@@ -345,10 +348,15 @@ bool PathManager::solveIKandPushConmmand()
     pushConmmandBuffer(q);
 
     // 데이터 기록
-    for (int m = 0; m < 9; m++)
+    for (int m = 0; m < 10; m++)
     {
         std::string fileName = "solveIK_q" + to_string(m);
-        fun.appendToCSV_DATA(fileName, m, q(m), 0);
+        if(m == 0){
+            fun.appendToCSV_DATA(fileName, m, q0b, 0);
+        }
+        else{
+            fun.appendToCSV_DATA(fileName, m, q(m), 0);
+        }
     }
 
     return true;
