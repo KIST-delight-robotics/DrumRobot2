@@ -211,7 +211,7 @@ private:
     // threshold 관련 변수
     double nextq0_t1;
     int status = 0;
-    double qthreshold = 0.05;
+    double qthreshold = 0.01;
 
     vector<double> cubicInterpolation(const vector<double>& q, const vector<double>& t);
     std::pair<double, vector<double>> getQ0t2(int mode);
