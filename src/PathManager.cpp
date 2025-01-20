@@ -286,6 +286,7 @@ bool PathManager::solveIKandPushConmmand()
     // 정해진 개수만큼 커맨드 생성
     if (index_solveIK >= lineData(0, 0))
     {
+        if (shadow_flag == 1) shadow_flag = 0;
         index_solveIK = 0;
 
         // 커맨드 생성 후 삭제
@@ -630,17 +631,17 @@ VectorXd PathManager::makeState(MatrixXd measureMatrix)
 
     for (int i = 0; i < 2; i++)
     {
-        if (measureMatrix(0, i + 2) == 0 && measureMatrix(1, i + 2) == 0)
+        if (measureMatrix(0, i + 4) == 0 && measureMatrix(1, i + 4) == 0)
         {
             // Stay
             state(i) = 0;
         }
-        else if (measureMatrix(1, i + 2) == 0)
+        else if (measureMatrix(1, i + 4) == 0)
         {
             // Contact - Stay
             state(i) = 1;
         }
-        else if (measureMatrix(0, i + 2) == 0)
+        else if (measureMatrix(0, i + 4) == 0)
         {
             // Stay - Lift - Hit
             state(i) = 2;
@@ -941,73 +942,15 @@ VectorXd PathManager::getWristHitAngle(VectorXd &inst_vector)
 /*                              Wrist & Elbow                                 */
 ////////////////////////////////////////////////////////////////////////////////
 
-VectorXd PathManager::makeHitTrajetory(float t1, float t2, float t, int state, int wristIntensity, bool dir)
+VectorXd PathManager::makeHitTrajetory(float t1, float t2, float t, int state, int wristIntensity)
 {
     VectorXd addAngle;
 
     HitParameter param = getHitParameter(t1, t2, state, pre_parameters_tmp, wristIntensity);
     pre_parameters_tmp = param;
 
-    if (wristIntensity == 0)
-    {
-        if (dir == 0)
-        {
-            if(state == 3)
-            {
-                state = 2;
-                if(lineData(1,5) == 3)
-                {
-                    lineData(1,5) = 2;
-                }
-                else if (lineData(1,5) == 1)
-                {
-                    lineData(1,5) = 0;
-                }
-            }
-            else if (state == 2)
-            {
-                state = 0;
-                if(lineData(1,5) == 3)
-                {
-                    lineData(1,5) = 2;
-                }
-                else if (lineData(1,5) == 1)
-                {
-                    lineData(1,5) = 0;
-                }
-            }
-        }
-        else
-        {
-            if(state == 3)
-            {
-                state = 2;
-                if(lineData(1,5) == 3)
-                {
-                    lineData(1,5) = 2;
-                }
-                else if (lineData(1,5) == 1)
-                {
-                    lineData(1,5) = 0;
-                }
-            }
-            else if (state == 2)
-            {
-                state = 0;
-                if(lineData(1,5) == 3)
-                {
-                    lineData(1,5) = 2;
-                }
-                else if (lineData(1,5) == 1)
-                {
-                    lineData(1,5) = 0;
-                }
-            }
-        }
-    }
-
     addAngle.resize(2); // wrist, elbow
-    addAngle(0) = makeWristAngle(t1, t2, t, state, param, wristIntensity, dir);
+    addAngle(0) = makeWristAngle(t1, t2, t, state, param, wristIntensity);
     addAngle(1) = makeElbowAngle(t1, t2, t, state, param, wristIntensity);
 
     return addAngle;
@@ -1053,7 +996,7 @@ PathManager::HitParameter PathManager::getHitParameter(float t1, float t2, int h
     return param;
 }
 
-float PathManager::makeWristAngle(float t1, float t2, float t, int state, HitParameter param, int intensity, bool dir)
+float PathManager::makeWristAngle(float t1, float t2, float t, int state, HitParameter param, int intensity)
 {
     float wrist_q = 0.0;
     float t_contact = param.wristContactTime;
@@ -1063,69 +1006,12 @@ float PathManager::makeWristAngle(float t1, float t2, float t, int state, HitPar
     float t_hit = t2 - t1;
     float intensityFactor = 0.4 * intensity + 0.2; // 1 : 약하게   2 : 기본    3 : 강하게
     float wristLiftAngle = param.wristLiftAngle * intensityFactor;
-    
-    // if (intensity == 0)
-    // {
-    //     if (dir == 0)
-    //     {
-    //         if(state == 3)
-    //         {
-    //             state = 2;
-    //             if(lineData(1,5) == 3)
-    //             {
-    //                 lineData(1,5) = 2;
-    //             }
-    //             else if (lineData(1,5) == 1)
-    //             {
-    //                 lineData(1,5) = 0;
-    //             }
-    //         }
-    //         else if (state == 2)
-    //         {
-    //             state = 0;
-    //             if(lineData(1,5) == 3)
-    //             {
-    //                 lineData(1,5) = 2;
-    //             }
-    //             else if (lineData(1,5) == 1)
-    //             {
-    //                 lineData(1,5) = 0;
-    //             }
-    //         }
-    //     }
-    //     else
-    //     {
-    //         if(state == 3)
-    //         {
-    //             state = 2;
-    //             if(lineData(1,5) == 3)
-    //             {
-    //                 lineData(1,5) = 2;
-    //             }
-    //             else if (lineData(1,5) == 1)
-    //             {
-    //                 lineData(1,5) = 0;
-    //             }
-    //         }
-    //         else if (state == 2)
-    //         {
-    //             state = 0;
-    //             if(lineData(1,5) == 3)
-    //             {
-    //                 lineData(1,5) = 2;
-    //             }
-    //             else if (lineData(1,5) == 1)
-    //             {
-    //                 lineData(1,5) = 0;
-    //             }
-    //         }
-    //     }
-    // }
 
     MatrixXd A;
     MatrixXd b;
     MatrixXd A_1;
     MatrixXd sol;
+    
     if (state == 0)
     {
         // Stay
@@ -1166,6 +1052,7 @@ float PathManager::makeWristAngle(float t1, float t2, float t, int state, HitPar
     }
     else if (state == 2)
     {
+        
         // Stay - Lift - Hit
         if (t < t_stay)
         {
@@ -1201,6 +1088,7 @@ float PathManager::makeWristAngle(float t1, float t2, float t, int state, HitPar
         {
             wrist_q = 0.0;
         }
+        
     }
     else if (state == 3)
     {
@@ -1277,10 +1165,6 @@ float PathManager::makeElbowAngle(float t1, float t2, float t, int state, HitPar
     }
     else if (state == 1)
     {
-        if (t < t_stay)
-        {
-        }
-
         // Contact - Stay
         if (t < t_stay)
         {
@@ -1505,26 +1389,26 @@ void PathManager::getHitAngle(VectorXd &q, int index)
     if (readyRflag)
     {
         pre_parameters_tmp = pre_parameters_R;
-        add_qR = makeHitTrajetory(0, ntR, i_wristR * dt, next_stateR, next_intensityR, 0);
+        add_qR = makeHitTrajetory(0, ntR, i_wristR * dt, next_stateR, next_intensityR);
         pre_parameters_R = pre_parameters_tmp;
     }
     else
     {
         pre_parameters_tmp = pre_parameters_R;
-        add_qR = makeHitTrajetory(0, t, index * dt, stateR, lineData(0, 5), 0);
+        add_qR = makeHitTrajetory(0, t, index * dt, stateR, lineData(0, 5));
         pre_parameters_R = pre_parameters_tmp;
     }
 
     if (readyLflag)
     {
         pre_parameters_tmp = pre_parameters_L;
-        add_qL = makeHitTrajetory(0, ntL, i_wristL * dt, next_stateL, next_intensityL, 1);
+        add_qL = makeHitTrajetory(0, ntL, i_wristL * dt, next_stateL, next_intensityL);
         pre_parameters_L = pre_parameters_tmp;
     }
     else
     {
         pre_parameters_tmp = pre_parameters_L;
-        add_qL = makeHitTrajetory(0, t, index * dt, stateL, lineData(0, 6), 1);
+        add_qL = makeHitTrajetory(0, t, index * dt, stateL, lineData(0, 6));
         pre_parameters_L = pre_parameters_tmp;
     }
 

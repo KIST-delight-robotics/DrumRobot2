@@ -44,4 +44,4 @@ if __name__ == "__main__":
     file2_path = '../DrumRobot_data/solveIK_q8.txt'  # Replace with your file path (or None for single plot)
 
     # Call the function with one or two files
-    plot_from_txt(file1_path, file2_path)
+    plot_from_txt(file2_path, None)
