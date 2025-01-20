@@ -120,7 +120,7 @@ void PathManager::setReadyAngle()
     MatrixXd default_angle = combined * inst_p;
 
     VectorXd minmax = waistRange(pR, pL);
-    VectorXd qk = ikFixedWaist(pR, pL, 0.5 * minmax.sum(), default_angle(0), default_angle(1));
+    VectorXd qk = ikFixedWaist(pR, pL, 0.5 * (minmax(0) + minmax(1)), default_angle(0), default_angle(1));
 
     for (int i = 0; i < qk.size(); ++i)
     {
@@ -450,8 +450,8 @@ void PathManager::initVal()
     measureState(0, 1) = 1.0;
     measureState(1, 1) = 1.0;
 
-    lineData.resize(1, 5);
-    lineData = MatrixXd::Zero(1, 7);
+    lineData.resize(1, 8);
+    lineData = MatrixXd::Zero(1, 8);
 
     line = 0;
     threshold = 2.4;
@@ -772,6 +772,7 @@ void PathManager::saveLineData(int n, VectorXd minmax, VectorXd intensity)
         lineData(0, 4) = hitState(1);
         lineData(0, 5) = intensity(0);
         lineData(0, 6) = intensity(1);
+        lineData(0, 7) = minmax(2);
     }
     else
     {
@@ -783,6 +784,7 @@ void PathManager::saveLineData(int n, VectorXd minmax, VectorXd intensity)
         lineData(lineData.rows() - 1, 4) = hitState(1);
         lineData(lineData.rows() - 1, 5) = intensity(0);
         lineData(lineData.rows() - 1, 6) = intensity(1);
+        lineData(lineData.rows() - 1, 7) = minmax(2);
     }
 }
 
@@ -799,8 +801,14 @@ VectorXd PathManager::waistRange(VectorXd &pR, VectorXd &pL)
     float s = part_length.waist;
     float z0 = part_length.height;
 
+    VectorXd W(2);
+    W << 2, 1;
+    double min_J = W.sum();
+    double w = 0, J = 0;
+    int min_index = 0;
+
     MatrixXd Q_arr(7, 1);
-    VectorXd output(2);
+    VectorXd output(3);
     int j = 0;
 
     for (int i = 0; i < 1801; i++)
@@ -907,6 +915,19 @@ VectorXd PathManager::waistRange(VectorXd &pR, VectorXd &pL)
         output(0) = Q_arr(0, 0);     // min
         output(1) = Q_arr(0, j - 1); // max
     }
+
+    w = 2.0 * M_PI / abs(Q_arr(0, j - 1) - Q_arr(0, 0));
+    for (int i = 0; i < j; i++)
+    {
+        J = W(0)*cos(Q_arr(1, i) + Q_arr(2, i)) + W(1)*cos(w*abs(Q_arr(0, i) - Q_arr(0, 0)));
+
+        if (J < min_J)
+        {
+            min_J = J;
+            min_index = i;
+        }
+    }
+    output(2) = Q_arr(0, min_index);
 
     return output;
 }
@@ -1833,7 +1854,7 @@ std::pair<double, vector<double>> PathManager::getQ0t2(int mode)
             {
                 if (lineData.rows() > i+1)
                 {
-                    a(i) = (0.5*lineData(i+1,1) + 0.5*lineData(i+1,2) - q0_t1) / (t_getQ0t2(i+1)-t_getQ0t2(0));
+                    a(i) = (lineData(i+1,7) - q0_t1) / (t_getQ0t2(i+1)-t_getQ0t2(0));
                 }
                 else
                 {
@@ -1930,7 +1951,7 @@ std::pair<double, vector<double>> PathManager::getQ0t2(int mode)
             {
                 if (lineData.rows() > i+1)
                 {
-                    a(i) = (0.5*lineData(i+1,1) + 0.5*lineData(i+1,2) - q0_t1) / (t_getQ0t2(i+2)-t_getQ0t2(1));
+                    a(i) = (lineData(i+1,7) - q0_t1) / (t_getQ0t2(i+2)-t_getQ0t2(1));
                 }
                 else
                 {
@@ -1957,7 +1978,7 @@ std::pair<double, vector<double>> PathManager::getQ0t2(int mode)
                 {
                     if (lineData.rows() > i+2)
                     {
-                        a(i) = (0.5*lineData(i+2,1) + 0.5*lineData(i+2,2) - q0_t1) / (t_getQ0t2(i+3)-t_getQ0t2(2));
+                        a(i) = (lineData(i+2,7) - q0_t1) / (t_getQ0t2(i+3)-t_getQ0t2(2));
                     }
                     else
                     {
