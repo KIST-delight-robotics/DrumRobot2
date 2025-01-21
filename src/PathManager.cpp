@@ -451,8 +451,8 @@ void PathManager::initVal()
     measureState(0, 1) = 1.0;
     measureState(1, 1) = 1.0;
 
-    lineData.resize(1, 8);
-    lineData = MatrixXd::Zero(1, 8);
+    lineData.resize(1, 10);
+    lineData = MatrixXd::Zero(1, 10);
 
     line = 0;
     threshold = 2.4;
@@ -486,8 +486,10 @@ void PathManager::parseMeasure(MatrixXd &measureMatrix)
     t1 = measureMatrix(0, 8);
     t2 = measureMatrix(1, 8);
 
-    hitState.resize(2);
-    hitState = makeState(measureMatrix);
+    hitState.resize(4); 
+    hitState.head(2) = makeState(measureMatrix);
+    hitState(2) = R.first(20);
+    hitState(3) = L.first(20);
 
     measureState.block(0, 0, 1, 3) = R.second.transpose();
     measureState.block(1, 0, 1, 3) = L.second.transpose();
@@ -517,7 +519,7 @@ pair<VectorXd, VectorXd> PathManager::parseOneArm(VectorXd t, VectorXd inst, Vec
     //    S       FT      MT      HT      HH       R      RC      LC       S        S        S        S        S        S
 
     VectorXd inst_i = VectorXd::Zero(9), inst_f = VectorXd::Zero(9);
-    VectorXd outputVector = VectorXd::Zero(20); // 20 > 40 으로 변경
+    VectorXd outputVector = VectorXd::Zero(21); // 20 > 40 으로 변경
 
     VectorXd nextStateVector;
 
@@ -526,6 +528,7 @@ pair<VectorXd, VectorXd> PathManager::parseOneArm(VectorXd t, VectorXd inst, Vec
     int detectInst = 0, instNum_i, instNum_f;
     int preState, nextState;
     double threshold = 1.2 * 100.0 / bpm; // 일단 이렇게 하면 1줄만 읽는 일 없음
+    bool targetChangeFlag = 0;
 
     // 타격 감지
     for (int i = 1; i < t.rows(); i++)
@@ -615,9 +618,14 @@ pair<VectorXd, VectorXd> PathManager::parseOneArm(VectorXd t, VectorXd inst, Vec
         }
     }
 
+    if ((instNum_i / 2) < (instNum_f / 2))
+    {
+        targetChangeFlag = 1;
+    }
+
     inst_i(instrument_mapping[instNum_i]) = 1.0;
     inst_f(instrument_mapping[instNum_f]) = 1.0;
-    outputVector << t_i, inst_i, t_f, inst_f;
+    outputVector << t_i, inst_i, t_f, inst_f, targetChangeFlag;
 
     nextStateVector.resize(3);
     nextStateVector << t_i, instNum_i, nextState;
@@ -774,6 +782,8 @@ void PathManager::saveLineData(int n, VectorXd minmax, VectorXd intensity)
         lineData(0, 5) = intensity(0);
         lineData(0, 6) = intensity(1);
         lineData(0, 7) = minmax(2);
+        lineData(0, 8) = hitState(2);
+        lineData(0, 9) = hitState(3);
     }
     else
     {
@@ -786,6 +796,8 @@ void PathManager::saveLineData(int n, VectorXd minmax, VectorXd intensity)
         lineData(lineData.rows() - 1, 5) = intensity(0);
         lineData(lineData.rows() - 1, 6) = intensity(1);
         lineData(lineData.rows() - 1, 7) = minmax(2);
+        lineData(lineData.rows() - 1, 8) = hitState(2);
+        lineData(lineData.rows() - 1, 9) = hitState(3);
     }
 }
 
@@ -963,7 +975,7 @@ VectorXd PathManager::getWristHitAngle(VectorXd &inst_vector)
 /*                              Wrist & Elbow                                 */
 ////////////////////////////////////////////////////////////////////////////////
 
-VectorXd PathManager::makeHitTrajetory(float t1, float t2, float t, int state, int wristIntensity)
+VectorXd PathManager::makeHitTrajetory(float t1, float t2, float t, int state, int wristIntensity, bool targetChangeFlag)
 {
     VectorXd addAngle;
 
@@ -971,8 +983,8 @@ VectorXd PathManager::makeHitTrajetory(float t1, float t2, float t, int state, i
     pre_parameters_tmp = param;
 
     addAngle.resize(2); // wrist, elbow
-    addAngle(0) = makeWristAngle(t1, t2, t, state, param, wristIntensity);
-    addAngle(1) = makeElbowAngle(t1, t2, t, state, param, wristIntensity);
+    addAngle(0) = makeWristAngle(t1, t2, t, state, param, wristIntensity, targetChangeFlag);
+    addAngle(1) = makeElbowAngle(t1, t2, t, state, param, wristIntensity, targetChangeFlag);
 
     return addAngle;
 }
@@ -1017,7 +1029,7 @@ PathManager::HitParameter PathManager::getHitParameter(float t1, float t2, int h
     return param;
 }
 
-float PathManager::makeWristAngle(float t1, float t2, float t, int state, HitParameter param, int intensity)
+float PathManager::makeWristAngle(float t1, float t2, float t, int state, HitParameter param, int intensity, bool targetChangeFlag)
 {
     float wrist_q = 0.0;
     float t_contact = param.wristContactTime;
@@ -1026,7 +1038,7 @@ float PathManager::makeWristAngle(float t1, float t2, float t, int state, HitPar
     float t_release = param.wristReleaseTime;
     float t_hit = t2 - t1;
     float intensityFactor = 0.4 * intensity + 0.2; // 1 : 약하게   2 : 기본    3 : 강하게
-    float wristLiftAngle = param.wristLiftAngle * intensityFactor;
+    float wristLiftAngle = param.wristLiftAngle * intensityFactor + ((param.wristLiftAngle * 0.2 / t_hit) * t * targetChangeFlag);
 
     MatrixXd A;
     MatrixXd b;
@@ -1164,7 +1176,7 @@ float PathManager::makeWristAngle(float t1, float t2, float t, int state, HitPar
     return wrist_q;
 }
 
-float PathManager::makeElbowAngle(float t1, float t2, float t, int state, HitParameter param, int intensity)
+float PathManager::makeElbowAngle(float t1, float t2, float t, int state, HitParameter param, int intensity, bool targetChangeFlag)
 {
     float elbow_q = 0.0;
 
@@ -1172,7 +1184,7 @@ float PathManager::makeElbowAngle(float t1, float t2, float t, int state, HitPar
     float t_stay = param.elbowStayTime;
     float t_hit = t2 - t1;
     float intensityFactor = 0.4 * intensity + 0.2; // 1 : 약하게   2 : 기본    3 : 강하게
-    float elbowLiftAngle = param.elbowLiftAngle * intensityFactor;
+    float elbowLiftAngle = param.elbowLiftAngle * intensityFactor + ((param.elbowLiftAngle * 0.2 / t_hit) * t * targetChangeFlag);
 
     MatrixXd A;
     MatrixXd b;
@@ -1410,26 +1422,26 @@ void PathManager::getHitAngle(VectorXd &q, int index)
     if (readyRflag)
     {
         pre_parameters_tmp = pre_parameters_R;
-        add_qR = makeHitTrajetory(0, ntR, i_wristR * dt, next_stateR, next_intensityR);
+        add_qR = makeHitTrajetory(0, ntR, i_wristR * dt, next_stateR, next_intensityR, lineData(1, 8));
         pre_parameters_R = pre_parameters_tmp;
     }
     else
     {
         pre_parameters_tmp = pre_parameters_R;
-        add_qR = makeHitTrajetory(0, t, index * dt, stateR, lineData(0, 5));
+        add_qR = makeHitTrajetory(0, t, index * dt, stateR, lineData(0, 5), lineData(0, 8));
         pre_parameters_R = pre_parameters_tmp;
     }
 
     if (readyLflag)
     {
         pre_parameters_tmp = pre_parameters_L;
-        add_qL = makeHitTrajetory(0, ntL, i_wristL * dt, next_stateL, next_intensityL);
+        add_qL = makeHitTrajetory(0, ntL, i_wristL * dt, next_stateL, next_intensityL, lineData(1, 9));
         pre_parameters_L = pre_parameters_tmp;
     }
     else
     {
         pre_parameters_tmp = pre_parameters_L;
-        add_qL = makeHitTrajetory(0, t, index * dt, stateL, lineData(0, 6));
+        add_qL = makeHitTrajetory(0, t, index * dt, stateL, lineData(0, 6), lineData(0, 9));
         pre_parameters_L = pre_parameters_tmp;
     }
 
