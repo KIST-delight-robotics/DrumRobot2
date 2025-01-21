@@ -184,7 +184,7 @@ private:
                                                                                 // 2 : 1 <- 0
                                                                                 // 3 : 1 <- 1
 
-    VectorXd hitState = VectorXd::Zero(2);
+    VectorXd hitState = VectorXd::Zero(4);
 
     void parseMeasure(MatrixXd &measureMatrix);
     pair<VectorXd, VectorXd> parseOneArm(VectorXd t, VectorXd inst, VectorXd stateVector);
@@ -260,11 +260,11 @@ private:
 
     }HitParameter;
 
-    float makeElbowAngle(float t1, float t2, float t, int state, HitParameter param, int intensity);
-    float makeWristAngle(float t1, float t2, float t, int state, HitParameter param, int intensity);
+    float makeElbowAngle(float t1, float t2, float t, int state, HitParameter param, int intensity, bool targetChangeFlag);
+    float makeWristAngle(float t1, float t2, float t, int state, HitParameter param, int intensity, bool targetChangeFlag);
 
     HitParameter getHitParameter(float t1, float t2, int hitState, HitParameter preParam, int intensity);
-    VectorXd makeHitTrajetory(float t1, float t2, float t, int hitState, int wristIntesity);
+    VectorXd makeHitTrajetory(float t1, float t2, float t, int hitState, int wristIntesity, bool targetChangeFlag);
 
     HitParameter pre_parameters_R, pre_parameters_L, pre_parameters_tmp;
 
