@@ -605,7 +605,7 @@ pair<VectorXd, VectorXd> PathManager::parseOneArm(VectorXd t, VectorXd inst, Vec
         }
     }
 
-    if ((instNum_i / 2) < (instNum_f / 2))
+    if ((instNum_i - 1 / 2) < (instNum_f - 1 / 2))
     {
         targetChangeFlag = 1;
     }
@@ -1025,7 +1025,7 @@ float PathManager::makeWristAngle(float t1, float t2, float t, int state, HitPar
     float t_release = param.wristReleaseTime;
     float t_hit = t2 - t1;
     float intensityFactor = 0.4 * intensity + 0.2; // 1 : 약하게   2 : 기본    3 : 강하게
-    float wristLiftAngle = param.wristLiftAngle * intensityFactor + ((param.wristLiftAngle * 0.2 / t_hit) * t * targetChangeFlag);
+    float wristLiftAngle = param.wristLiftAngle * intensityFactor + (param.wristLiftAngle * 0.2  * targetChangeFlag);
 
     MatrixXd A;
     MatrixXd b;
@@ -1171,7 +1171,7 @@ float PathManager::makeElbowAngle(float t1, float t2, float t, int state, HitPar
     float t_stay = param.elbowStayTime;
     float t_hit = t2 - t1;
     float intensityFactor = 0.4 * intensity + 0.2; // 1 : 약하게   2 : 기본    3 : 강하게
-    float elbowLiftAngle = param.elbowLiftAngle * intensityFactor + ((param.elbowLiftAngle * 0.2 / t_hit) * t * targetChangeFlag);
+    float elbowLiftAngle = param.elbowLiftAngle * intensityFactor * (param.elbowLiftAngle * 0.2 * targetChangeFlag);
 
     MatrixXd A;
     MatrixXd b;
@@ -1409,7 +1409,7 @@ void PathManager::getHitAngle(VectorXd &q, int index)
     if (readyRflag)
     {
         pre_parameters_tmp = pre_parameters_R;
-        add_qR = makeHitTrajetory(0, ntR, i_wristR * dt, next_stateR, next_intensityR, lineData(1, 8));
+        add_qR = makeHitTrajetory(0, ntR, i_wristR * dt, next_stateR, next_intensityR, lineData(0, 8));
         pre_parameters_R = pre_parameters_tmp;
     }
     else
@@ -1422,7 +1422,7 @@ void PathManager::getHitAngle(VectorXd &q, int index)
     if (readyLflag)
     {
         pre_parameters_tmp = pre_parameters_L;
-        add_qL = makeHitTrajetory(0, ntL, i_wristL * dt, next_stateL, next_intensityL, lineData(1, 9));
+        add_qL = makeHitTrajetory(0, ntL, i_wristL * dt, next_stateL, next_intensityL, lineData(0, 9));
         pre_parameters_L = pre_parameters_tmp;
     }
     else
