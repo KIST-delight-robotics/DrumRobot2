@@ -106,6 +106,13 @@ public:
     void GetArr(vector<float> &arr);
     vector<float> makeHomeArr(int cnt);
 
+    /////////////////////////////////////////////////////////////////////////// brake
+    //                      q0  q1  q2  q3  q4  q5  q6  q7
+    vector<int> brakeArr = {0, 0,  0,  0,  0,  0,  0,  0}; // 1: true // 0: false
+
+    void to_brake(double motornum, double nowval, double nextval, double threshold);
+    void clear_brake();
+
     /////////////////////////////////////////////////////////////////////////// 기타
 
     vector<float> fkfun();

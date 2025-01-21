@@ -210,7 +210,6 @@ void PathManager::generateTrajectory()
     VectorXd wrist_hit_angle_f(2);
     VectorXd minmax;
     VectorXd intensity(2);
-
     float n, s_R, s_L;
     float dt = canManager.deltaT;
 
@@ -318,28 +317,16 @@ bool PathManager::solveIKandPushConmmand()
     // waist
     double q0 = getWaistAngle(index_solveIK);
 
-    // brake
-    bool q0b = false;
-    if(abs(q0_t0 - q0_t1) <= qthreshold){
-        q0b = true;
-    }
-    else{
-        q0b = false;
-    }
-    usbio.USBIO_4761_set(0, q0b);
-    for (int i = 1; i < 8; i++)
-    {
-        usbio.USBIO_4761_set(i, false);
-    }
-    if(lineData.rows() == 1){
-        for (int i = 0; i < 8; i++)
-        {
-            usbio.USBIO_4761_set(i, false);
-        }
-    }
+    // brake (허리)
+    to_brake(0, q0_t0, q0_t1, qthreshold);
+    int q0_b = brakeArr[0];
+    
+    // 마지막 줄에서 모든 브레이크 정리
+    clear_brake();
 
     // solve IK
     solveIK(q, q0);
+
 
     // wrist, elbow
     getHitAngle(q, index_solveIK);
@@ -351,7 +338,7 @@ bool PathManager::solveIKandPushConmmand()
     for (int m = 0; m < 10; m++)
     {
         if(m == 9){
-            fun.appendToCSV_DATA("brake_status", m, q0b, 0);
+            fun.appendToCSV_DATA("brake_status", m, q0_b, 0); // 허리 브레이크 결과 출력
         }
         else{
             std::string fileName = "solveIK_q" + to_string(m);
@@ -1474,6 +1461,10 @@ void PathManager::solveIK(VectorXd &q, double q0)
     nextP = P_buffer.front();
     P_buffer.pop();
 
+    // //brake
+    // to_brake(1, q.pR(1), nextP.pR(1), qthreshold);
+    // to_brake(2, q.pL(1), nextL.pL(1), qthreshold);
+
     q = ikFixedWaist(nextP.pR, nextP.pL, q0, nextP.thetaR, nextP.thetaL);
 }
 
@@ -2453,4 +2444,27 @@ void PathManager::updateRange(const VectorXd &output, double &min, double &max)
 {
     min = output(1);
     max = output(0);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/*                                Brake                                       */
+////////////////////////////////////////////////////////////////////////////////
+
+void PathManager::to_brake(double motornum, double nowval, double nextval, double threshold){
+    if(abs(nowval - nextval) <= threshold){
+        brakeArr[motornum] = 1;
+    }
+    else{
+        brakeArr[motornum] = 0;
+    }
+    usbio.USBIO_4761_set(motornum, brakeArr[motornum]);
+}
+void PathManager::clear_brake(){
+    brakeArr = {0, 0, 0, 0, 0, 0, 0, 0};
+    if(lineData.rows() == 1){
+        for (int i = 0; i < 8; i++)
+        {
+            usbio.USBIO_4761_set(i, brakeArr[i]);
+        }
+    }
 }
