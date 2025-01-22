@@ -1171,7 +1171,7 @@ float PathManager::makeElbowAngle(float t1, float t2, float t, int state, HitPar
     float t_stay = param.elbowStayTime;
     float t_hit = t2 - t1;
     float intensityFactor = 0.4 * intensity + 0.2; // 1 : 약하게   2 : 기본    3 : 강하게
-    float elbowLiftAngle = param.elbowLiftAngle * intensityFactor * (param.elbowLiftAngle * 0.2 * targetChangeFlag);
+    float elbowLiftAngle = param.elbowLiftAngle * intensityFactor + (param.elbowLiftAngle * 0.2 * targetChangeFlag);
 
     MatrixXd A;
     MatrixXd b;
