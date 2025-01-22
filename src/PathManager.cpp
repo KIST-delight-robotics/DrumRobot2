@@ -1,7 +1,6 @@
 #include "../include/managers/PathManager.hpp" // 적절한 경로로 변경하세요.
-// git 피날레
-//  For Qt
-//  #include "../include/managers/PathManager.hpp"
+
+
 PathManager::PathManager(State &stateRef,
                          CanManager &canManagerRef,
                          std::map<std::string, std::shared_ptr<GenericMotor>> &motorsRef,
@@ -89,8 +88,8 @@ void PathManager::getDrumPositoin()
     left_wrist_hit_angle.resize(1, 9);
 
     //                              S                   FT                  MT                  HT                  HH                  R                   RC                  LC
-    right_wrist_hit_angle << 25.0*M_PI/180.0,   30.0*M_PI/180.0,    15.0*M_PI/180.0,    15.0*M_PI/180.0,    10.0*M_PI/180.0,    15.0*M_PI/180.0,    0.0*M_PI/180.0,    10.0*M_PI/180.0, 0;
-    left_wrist_hit_angle <<  25.0*M_PI/180.0,   30.0*M_PI/180.0,    15.0*M_PI/180.0,    15.0*M_PI/180.0,    10.0*M_PI/180.0,    15.0*M_PI/180.0,    0.0*M_PI/180.0,    10.0*M_PI/180.0, 0;
+    right_wrist_hit_angle << 25.0*M_PI/180.0,   25.0*M_PI/180.0,    15.0*M_PI/180.0,    15.0*M_PI/180.0,    10.0*M_PI/180.0,    15.0*M_PI/180.0,    0.0*M_PI/180.0,    10.0*M_PI/180.0, 0;
+    left_wrist_hit_angle <<  25.0*M_PI/180.0,   25.0*M_PI/180.0,    15.0*M_PI/180.0,    15.0*M_PI/180.0,    10.0*M_PI/180.0,    15.0*M_PI/180.0,    0.0*M_PI/180.0,    10.0*M_PI/180.0, 0;
 }
 
 void PathManager::setReadyAngle()
@@ -322,10 +321,11 @@ bool PathManager::solveIKandPushConmmand()
     int q0_b = brakeArr[0];
     
     // 마지막 줄에서 모든 브레이크 정리
-    clear_brake();
+    final_brake();
 
     // solve IK
     solveIK(q, q0);
+    
     // to_brake(1, q1_state[0], q1_state[1], qthreshold); // 1번 오른쪽 어깨 모터 brake
     // to_brake(2, q2_state[0], q2_state[1], qthreshold); // 2번 왼쪽 어깨 모터 brake
 
@@ -1578,7 +1578,7 @@ VectorXd PathManager::ikFixedWaist(VectorXd &pR, VectorXd &pL, double theta0, do
     Qf.resize(9);
     Qf << theta0, theta1, theta2, theta3, theta4, theta5, theta6, theta7, theta8;
 
-    cout << "\ntheta1: " << theta1 << "\ttheta2: " << theta2 << endl;
+    // cout << "\ntheta1: " << theta1 << "\ttheta2: " << theta2 << endl;
     q1_state[1] = Qf(1);
     q2_state[1] = Qf(2);
 
@@ -2480,7 +2480,14 @@ void PathManager::to_brake(double motornum, double nowval, double nextval, doubl
     }
     usbio.USBIO_4761_set(motornum, brakeArr[motornum]);
 }
-void PathManager::clear_brake(){
+void PathManager::clear_brake(){ // 모든 brake끄기
+    brakeArr = {0, 0, 0, 0, 0, 0, 0, 0};
+    for (int i = 0; i < 8; i++)
+    {
+        usbio.USBIO_4761_set(i, brakeArr[i]);
+    }
+}
+void PathManager::final_brake(){ // 마지막 줄에서 모든 brake끄기
     brakeArr = {0, 0, 0, 0, 0, 0, 0, 0};
     if(lineData.rows() == 1){
         for (int i = 0; i < 8; i++)
@@ -2489,3 +2496,27 @@ void PathManager::clear_brake(){
         }
     }
 }
+
+
+
+// void PathManager::setC() {
+//     struct sigaction sa;
+//     sa.sa_handler = handleSignal; // Use static handler
+//     sigemptyset(&sa.sa_mask);
+//     sa.sa_flags = 0;
+
+//     if (sigaction(SIGINT, &sa, nullptr) == -1) {
+//         std::cerr << "Failed to set up SIGINT handler" << std::endl;
+//         exit(EXIT_FAILURE);
+//     }
+//     cout << "Ready to SIGINT" << endl;
+// }
+// void PathManager::handleSignal(int signal) {
+//     if (signal == SIGINT) {
+//         clear_brake();
+//         std::cout << "Signal SIGINT handled. Exiting..." << std::endl;
+//         exit(0); // shut_down();
+//     }
+// }
+
+

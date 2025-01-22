@@ -18,6 +18,7 @@
 #include "../include/tasks/Functions.hpp"
 // #include "../include/managers/SignalHandler.hpp"
 
+
 using namespace std;
 
 // 스레드 우선순위 설정 함수
@@ -43,22 +44,12 @@ int main(int argc, char *argv[])
 
     Functions fun(motors);
     CanManager canManager(motors, fun);
+    // SignalHandler signalHandler(state, canManager, motors, usbio, fun);
     PathManager pathManager(state, canManager, motors, usbio, fun);
     TestManager testManager(state, canManager, motors, usbio, fun);
-
     DrumRobot drumRobot(state, canManager, pathManager, testManager, motors, usbio, fun);
     GuiManager guiManager(state, canManager, motors);
 
-    // // Initialize signal handling
-    // SignalHandler::initialize();
-
-    // // Main program logic
-    // std::cout << "Program running. Press Ctrl+C to exit." << std::endl;
-
-    // // Simulate infinite loop
-    // while (true) {
-    //     // Your application logic here
-    // }
 
 
     //shy-desktop -> 1반환
