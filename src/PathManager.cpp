@@ -326,8 +326,8 @@ bool PathManager::solveIKandPushConmmand()
 
     // solve IK
     solveIK(q, q0);
-    to_brake(1, q1_state[0], q1_state[1], qthreshold); // 1번 오른쪽 어깨 모터 brake
-    to_brake(2, q2_state[0], q2_state[1], qthreshold); // 2번 왼쪽 어깨 모터 brake
+    // to_brake(1, q1_state[0], q1_state[1], qthreshold); // 1번 오른쪽 어깨 모터 brake
+    // to_brake(2, q2_state[0], q2_state[1], qthreshold); // 2번 왼쪽 어깨 모터 brake
 
     // wrist, elbow
     getHitAngle(q, index_solveIK);
@@ -449,6 +449,7 @@ void PathManager::initVal()
     q0_t1 = readyArr[0];
     q0_t0 = readyArr[0];
     nextq0_t1 = readyArr[0];
+    clear_brake();
 
 }
 
@@ -1173,7 +1174,7 @@ float PathManager::makeElbowAngle(float t1, float t2, float t, int state, HitPar
     float t_stay = param.elbowStayTime;
     float t_hit = t2 - t1;
     float intensityFactor = 0.4 * intensity + 0.2; // 1 : 약하게   2 : 기본    3 : 강하게
-    float elbowLiftAngle = param.elbowLiftAngle * intensityFactor * (param.elbowLiftAngle * 0.2 * targetChangeFlag);
+    float elbowLiftAngle = param.elbowLiftAngle * intensityFactor + (param.elbowLiftAngle * 0.2 * targetChangeFlag);
 
     MatrixXd A;
     MatrixXd b;
