@@ -853,6 +853,13 @@ void DrumRobot::checkUserInput()
                 state.main = Main::Shutdown;
             else if (input == 'h')
             {
+                state.play = PlaySub::ReadMusicSheet;
+                inputFile.close(); // 파일 닫기
+                while (!pathManager.P_buffer.empty())
+                {
+                    pathManager.P_buffer.pop();
+                }
+
                 state.main = Main::AddStance;
                 addStanceFlagSetting("goToHome");
             }

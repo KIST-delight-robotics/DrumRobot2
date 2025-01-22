@@ -260,11 +260,11 @@ void PathManager::generateTrajectory()
 
         P_buffer.push(Pt);
 
-        std::string fileName;
-        fileName = "Trajectory_R";
-        fun.appendToCSV_DATA(fileName, Pt.pR[0], Pt.pR[1], Pt.pR[2]);
-        fileName = "Trajectory_L";
-        fun.appendToCSV_DATA(fileName, Pt.pL[0], Pt.pL[1], Pt.pL[2]);
+        // std::string fileName;
+        // fileName = "Trajectory_R";
+        // fun.appendToCSV_DATA(fileName, Pt.pR[0], Pt.pR[1], Pt.pR[2]);
+        // fileName = "Trajectory_L";
+        // fun.appendToCSV_DATA(fileName, Pt.pL[0], Pt.pL[1], Pt.pL[2]);
 
         if (i == 0)
         {
@@ -335,17 +335,17 @@ bool PathManager::solveIKandPushConmmand()
     // push motor obj
     pushConmmandBuffer(q);
 
-    // 데이터 기록
-    for (int m = 0; m < 10; m++)
-    {
-        if(m == 9){
-            fun.appendToCSV_DATA("brake_status", m, q0_b, 0); // 허리 브레이크 결과 출력
-        }
-        else{
-            std::string fileName = "solveIK_q" + to_string(m);
-            fun.appendToCSV_DATA(fileName, m, q(m), 0);
-        }
-    }
+    // // 데이터 기록
+    // for (int m = 0; m < 10; m++)
+    // {
+    //     if(m == 9){
+    //         fun.appendToCSV_DATA("brake_status", m, q0_b, 0); // 허리 브레이크 결과 출력
+    //     }
+    //     else{
+    //         std::string fileName = "solveIK_q" + to_string(m);
+    //         fun.appendToCSV_DATA(fileName, m, q(m), 0);
+    //     }
+    // }
 
     return true;
 }
@@ -446,6 +446,8 @@ void PathManager::initVal()
     threshold = 2.4;
     round_sum = 0.0;
     totalTime = 0.0;
+
+    index_solveIK = 0;
     q0_t1 = readyArr[0];
     q0_t0 = readyArr[0];
     nextq0_t1 = readyArr[0];
