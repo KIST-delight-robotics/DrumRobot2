@@ -16,6 +16,8 @@
 #include "../include/managers/GuiManager.hpp"
 #include "../include/USBIO_advantech/USBIO_advantech.hpp"
 #include "../include/tasks/Functions.hpp"
+// #include "../include/managers/SignalHandler.hpp"
+
 
 using namespace std;
 
@@ -42,11 +44,13 @@ int main(int argc, char *argv[])
 
     Functions fun(motors);
     CanManager canManager(motors, fun);
+    // SignalHandler signalHandler(state, canManager, motors, usbio, fun);
     PathManager pathManager(state, canManager, motors, usbio, fun);
     TestManager testManager(state, canManager, motors, usbio, fun);
-
     DrumRobot drumRobot(state, canManager, pathManager, testManager, motors, usbio, fun);
     GuiManager guiManager(state, canManager, motors);
+
+
 
     //shy-desktop -> 1반환
     //shy-MINIPC-VC66-C2 -> 2반환

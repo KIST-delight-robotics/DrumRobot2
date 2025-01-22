@@ -31,6 +31,7 @@
 #include <chrono>
 #include <set>
 #include <numeric>
+#include <signal.h>
 #include "../include/eigen-3.4.0/Eigen/Dense"
 
 //For Qt
@@ -111,7 +112,8 @@ public:
     vector<int> brakeArr = {0, 0,  0,  0,  0,  0,  0,  0}; // 1: true // 0: false
 
     void to_brake(double motornum, double nowval, double nextval, double threshold); // 해당 모터의 현재값과 다음값 차이가 threshold보다 작거나 같으면 brake걸고 아니면 끄기
-    void clear_brake(); // 마지막 줄에서 모든 brake끄기
+    void clear_brake(); // 모든 brake끄기
+    void final_brake(); // 마지막 줄에서 모든 brake끄기
 
     /////////////////////////////////////////////////////////////////////////// 기타
     double q1_state[2] = {readyArr[1], readyArr[1]};
@@ -303,4 +305,6 @@ private:
     VectorXd makeProfile(VectorXd &q1, VectorXd &q2, VectorXd &Vmax, float acc, float t, float t2);
     void getMotorPos();
     
+    // void setC();
+    // static void handleSignal(int signal);
 };
