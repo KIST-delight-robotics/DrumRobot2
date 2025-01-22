@@ -16,7 +16,7 @@
 #include "../include/managers/GuiManager.hpp"
 #include "../include/USBIO_advantech/USBIO_advantech.hpp"
 #include "../include/tasks/Functions.hpp"
-#include "../include/managers/SignalHandler.hpp"
+// #include "../include/managers/SignalHandler.hpp"
 
 using namespace std;
 
@@ -49,16 +49,16 @@ int main(int argc, char *argv[])
     DrumRobot drumRobot(state, canManager, pathManager, testManager, motors, usbio, fun);
     GuiManager guiManager(state, canManager, motors);
 
-    // Initialize signal handling
-    SignalHandler::initialize();
+    // // Initialize signal handling
+    // SignalHandler::initialize();
 
-    // Main program logic
-    std::cout << "Program running. Press Ctrl+C to exit." << std::endl;
+    // // Main program logic
+    // std::cout << "Program running. Press Ctrl+C to exit." << std::endl;
 
-    // Simulate infinite loop
-    while (true) {
-        // Your application logic here
-    }
+    // // Simulate infinite loop
+    // while (true) {
+    //     // Your application logic here
+    // }
 
 
     //shy-desktop -> 1반환
