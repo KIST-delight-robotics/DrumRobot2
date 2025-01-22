@@ -250,7 +250,7 @@ void PathManager::generateTrajectory()
 
         s_R = timeScaling(0.0f, t_f_R - t_i_R, t_R);
         s_L = timeScaling(0.0f, t_f_L - t_i_L, t_L);
-
+        
         Pt.pR = makePath(Pi_R, Pf_R, s_R);
         Pt.pL = makePath(Pi_L, Pf_L, s_L);
 
@@ -326,7 +326,8 @@ bool PathManager::solveIKandPushConmmand()
 
     // solve IK
     solveIK(q, q0);
-
+    // to_brake(1, q1_state[0], q1_state[1], qthreshold); // 1번 오른쪽 어깨 모터 brake
+    // to_brake(2, q2_state[0], q2_state[1], qthreshold); // 2번 왼쪽 어깨 모터 brake
 
     // wrist, elbow
     getHitAngle(q, index_solveIK);
@@ -448,6 +449,8 @@ void PathManager::initVal()
     q0_t1 = readyArr[0];
     q0_t0 = readyArr[0];
     nextq0_t1 = readyArr[0];
+    clear_brake();
+
 }
 
 void PathManager::parseMeasure(MatrixXd &measureMatrix)
@@ -1473,7 +1476,7 @@ void PathManager::solveIK(VectorXd &q, double q0)
     nextP = P_buffer.front();
     P_buffer.pop();
 
-    // //brake
+    //brake
     // to_brake(1, q.pR(1), nextP.pR(1), qthreshold);
     // to_brake(2, q.pL(1), nextL.pL(1), qthreshold);
 
@@ -1484,6 +1487,8 @@ VectorXd PathManager::ikFixedWaist(VectorXd &pR, VectorXd &pL, double theta0, do
 {
     VectorXd Qf;
     PartLength part_length;
+    q1_state[0] = q1_state[1];
+    q2_state[0] = q2_state[1];
 
     float XR = pR(0), YR = pR(1), ZR = pR(2);
     float XL = pL(0), YL = pL(1), ZL = pL(2);
@@ -1572,6 +1577,10 @@ VectorXd PathManager::ikFixedWaist(VectorXd &pR, VectorXd &pL, double theta0, do
 
     Qf.resize(9);
     Qf << theta0, theta1, theta2, theta3, theta4, theta5, theta6, theta7, theta8;
+
+    cout << "\ntheta1: " << theta1 << "\ttheta2: " << theta2 << endl;
+    q1_state[1] = Qf(1);
+    q2_state[1] = Qf(2);
 
     return Qf;
 }
