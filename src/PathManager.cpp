@@ -317,17 +317,25 @@ bool PathManager::solveIKandPushConmmand()
     double q0 = getWaistAngle(index_solveIK);
 
     // brake (허리)
-    to_brake(0, q0_t0, q0_t1, qthreshold);
+    to_brake(0, q0_t0, q0_t1, q0_threshold);
+
     int q0_b = brakeArr[0];
     
     // 마지막 줄에서 모든 브레이크 정리
-    final_brake();
+    if(lineData.rows() == 1){
+        clear_brake();
+    }
 
     // solve IK
     solveIK(q, q0);
+
+    // cout << "\nq1: " << q1_state[0] << "\tq2: " << q1_state[1] << endl;
     
-    // to_brake(1, q1_state[0], q1_state[1], qthreshold); // 1번 오른쪽 어깨 모터 brake
-    // to_brake(2, q2_state[0], q2_state[1], qthreshold); // 2번 왼쪽 어깨 모터 brake
+    // brake 1번 2번 (어깨)
+    to_brake(1, q1_state[0], q1_state[1], q12_threshold); // 1번 오른쪽 어깨 모터 brake
+    to_brake(2, q2_state[0], q2_state[1], q12_threshold); // 2번 왼쪽 어깨 모터 brake
+    int q1_b = brakeArr[1];
+    int q2_b = brakeArr[2];
 
     // wrist, elbow
     getHitAngle(q, index_solveIK);
@@ -335,17 +343,23 @@ bool PathManager::solveIKandPushConmmand()
     // push motor obj
     pushConmmandBuffer(q);
 
-    // // 데이터 기록
-    // for (int m = 0; m < 10; m++)
-    // {
-    //     if(m == 9){
-    //         fun.appendToCSV_DATA("brake_status", m, q0_b, 0); // 허리 브레이크 결과 출력
-    //     }
-    //     else{
-    //         std::string fileName = "solveIK_q" + to_string(m);
-    //         fun.appendToCSV_DATA(fileName, m, q(m), 0);
-    //     }
-    // }
+    // 데이터 기록
+    for (int m = 0; m < 12; m++)
+    {
+        if(m == 9){
+            fun.appendToCSV_DATA("q0_brake_status", m, q0_b, 0); // 허리 브레이크 결과 출력
+        }
+        else if(m == 10){
+            fun.appendToCSV_DATA("q1_brake_status", m, q1_b, 0); // 1번 어깨 브레이크 결과 출력
+        }
+        else if(m == 11){
+            fun.appendToCSV_DATA("q2_brake_status", m, q2_b, 0); // 2번 어깨 브레이크 결과 출력
+        }
+        else{
+            std::string fileName = "solveIK_q" + to_string(m);
+            fun.appendToCSV_DATA(fileName, m, q(m), 0);
+        }
+    }
 
     return true;
 }
@@ -1478,10 +1492,6 @@ void PathManager::solveIK(VectorXd &q, double q0)
     nextP = P_buffer.front();
     P_buffer.pop();
 
-    //brake
-    // to_brake(1, q.pR(1), nextP.pR(1), qthreshold);
-    // to_brake(2, q.pL(1), nextL.pL(1), qthreshold);
-
     q = ikFixedWaist(nextP.pR, nextP.pL, q0, nextP.thetaR, nextP.thetaL);
 }
 
@@ -1581,6 +1591,7 @@ VectorXd PathManager::ikFixedWaist(VectorXd &pR, VectorXd &pL, double theta0, do
     Qf << theta0, theta1, theta2, theta3, theta4, theta5, theta6, theta7, theta8;
 
     // cout << "\ntheta1: " << theta1 << "\ttheta2: " << theta2 << endl;
+
     q1_state[1] = Qf(1);
     q2_state[1] = Qf(2);
 
@@ -1708,7 +1719,7 @@ std::pair<double, vector<double>> PathManager::getQ0t2(int mode)
                 }
                 q0_t2 = dijkstra_top10_with_median(x_values, y_ranges, q0_t1);
                 
-                if(abs(q0_t2 - q0_t1) <= qthreshold){ // qthreshold 이하라면 안 움직이고 이보다 큰 것들만 움직이게 함.
+                if(abs(q0_t2 - q0_t1) <= q0_threshold){ // qthreshold 이하라면 안 움직이고 이보다 큰 것들만 움직이게 함.
                     if(q0_t1 >= lineData(1,1) && q0_t1 <= lineData(1,2)){
                         nextq0_t1 = q0_t1;
                         q0_t2 = q0_t1;
@@ -2489,16 +2500,6 @@ void PathManager::clear_brake(){ // 모든 brake끄기
         usbio.USBIO_4761_set(i, brakeArr[i]);
     }
 }
-void PathManager::final_brake(){ // 마지막 줄에서 모든 brake끄기
-    brakeArr = {0, 0, 0, 0, 0, 0, 0, 0};
-    if(lineData.rows() == 1){
-        for (int i = 0; i < 8; i++)
-        {
-            usbio.USBIO_4761_set(i, brakeArr[i]);
-        }
-    }
-}
-
 
 
 // void PathManager::setC() {

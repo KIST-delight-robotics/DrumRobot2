@@ -113,7 +113,6 @@ public:
 
     void to_brake(double motornum, double nowval, double nextval, double threshold); // 해당 모터의 현재값과 다음값 차이가 threshold보다 작거나 같으면 brake걸고 아니면 끄기
     void clear_brake(); // 모든 brake끄기
-    void final_brake(); // 마지막 줄에서 모든 brake끄기
 
     /////////////////////////////////////////////////////////////////////////// 기타
     double q1_state[2] = {readyArr[1], readyArr[1]};
@@ -223,7 +222,8 @@ private:
     // threshold 관련 변수
     double nextq0_t1;
     int status = 0;
-    double qthreshold = 0.01;
+    double q0_threshold = 0.01;
+    double q12_threshold = 0.001;
 
     vector<double> cubicInterpolation(const vector<double>& q, const vector<double>& t);
     std::pair<double, vector<double>> getQ0t2(int mode);
