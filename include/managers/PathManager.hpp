@@ -141,7 +141,7 @@ private:
         {"L_arm3", 6},
         {"R_wrist", 7},
         {"L_wrist", 8},
-        {"maxonForTest", 8}};
+        {"maxonForTest", 9}};
 
 
     typedef struct{
