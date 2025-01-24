@@ -1,64 +1,80 @@
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Dense, LSTM
 
-# 1. 데이터 로드
-# txt 파일 읽기
-file_path = "./include/codes/codeMOY_easy0.txt"  # 드럼 악보 txt 파일 경로
-columns = ['Measure', 'Time', 'RightHandPos', 'LeftHandPos', 'RightHandForce', 'LeftHandForce', 'BaseHit', 'HiHat']
-drum_data = pd.read_csv(file_path, sep="\t", header=None, names=columns)
+# 드럼 위치 좌표 정의
+DRUM_POSITIONS = {
+    0: (0, 0, 0),  # 연주하지 않음
+    1: (0, 1, 0.5),  # 스네어
+    2: (1, 0, 0.4),  # 플로어 탐
+    3: (0.5, 1.5, 0.7),  # 미드 탐
+    4: (0.5, 2, 0.8),  # 하이 탐
+    5: (-0.5, 2, 1.0),  # 하이햇
+    6: (-1, 2, 1.2),  # 라이드 벨
+    7: (-1.5, 1.5, 1.1),  # 라이트 크래쉬
+    8: (-1.5, 0.5, 0.9),  # 레프트 크래쉬
+}
 
-# 필요한 데이터 선택
-data = drum_data[['Time', 'RightHandPos', 'LeftHandPos', 'RightHandForce', 'LeftHandForce', 'BaseHit', 'HiHat']].to_numpy()
+# 로봇 팔 제한 조건
+ARM_LENGTH = 1.5  # 최대 팔 길이
+MIN_SAFE_DISTANCE = 0.3  # 손 간 최소 거리
 
-# 2. 입력 시퀀스 생성 함수
-def seq2dataset(seq, window, horizon):
-    X, Y = [], []
-    for i in range(len(seq) - (window + horizon) + 1):
-        x = seq[i : i + window]
-        y = seq[i + window + horizon - 1]
-        X.append(x)
-        Y.append(y)
-    return np.array(X), np.array(Y)
+# 드럼 악보 데이터를 읽기
+def read_drum_data(file_path):
+    columns = ["Measure", "Time", "RightHandPos", "LeftHandPos", "Dummy1", "Dummy2", "Dummy3"]
+    drum_data = pd.read_csv(file_path, sep="\t", names=columns, skiprows=1)
+    return drum_data[["Measure", "Time", "RightHandPos", "LeftHandPos"]]
 
-# 3. 윈도우 크기와 수평선 계수 설정
-w = 8  # 윈도우 크기 (8개의 이전 데이터를 사용)
-h = 1  # 수평선 계수 (1개 데이터 예측)
+# 안전성 판단 함수
+def check_safety(right_pos, left_pos):
+    right_coords = np.array(DRUM_POSITIONS.get(right_pos, (0, 0, 0)))
+    left_coords = np.array(DRUM_POSITIONS.get(left_pos, (0, 0, 0)))
+    
+    # 1) 팔 길이 초과 확인
+    if np.linalg.norm(right_coords) > ARM_LENGTH or np.linalg.norm(left_coords) > ARM_LENGTH:
+        return False, "팔 길이 초과"
+    
+    # 2) 충돌 위험 확인
+    distance_between_hands = np.linalg.norm(right_coords - left_coords)
+    if distance_between_hands < MIN_SAFE_DISTANCE:
+        return False, f"충돌 위험: 손 간 거리 {distance_between_hands:.2f}m"
+    
+    return True, "안전"
 
-X, Y = seq2dataset(data, w, h)
-print(f"X shape: {X.shape}, Y shape: {Y.shape}")
-print(f"첫 번째 입력 샘플: \n{X[0]}\n첫 번째 출력 샘플: \n{Y[0]}")
+# 위험한 부분 수정 함수
+def adjust_drum_data(drum_data):
+    modified_data = drum_data.copy()
+    for i in range(len(modified_data)):
+        right_pos = modified_data.loc[i, "RightHandPos"]
+        left_pos = modified_data.loc[i, "LeftHandPos"]
+        
+        # 현재 동작이 위험한지 확인
+        is_safe, message = check_safety(right_pos, left_pos)
+        if not is_safe:
+            print(f"Measure {modified_data.loc[i, 'Measure']}, Time {modified_data.loc[i, 'Time']}: {message}")
+            # 위험한 경우 해당 동작을 0으로 변경
+            modified_data.loc[i, "RightHandPos"] = 0
+            modified_data.loc[i, "LeftHandPos"] = 0
+            
+    return modified_data
 
-# 4. 데이터 분할 (훈련: 70%, 테스트: 30%)
-split = int(len(X) * 0.7)
-x_train, y_train = X[:split], Y[:split]
-x_test, y_test = X[split:], Y[split:]
+# 수정된 악보 저장 함수
+def save_modified_drum_data(modified_data, output_path):
+    modified_data.to_csv(output_path, sep="\t", index=False, header=False)
 
-# 5. LSTM 모델 설계
-model = Sequential()
-model.add(LSTM(units=128, activation='relu', input_shape=(x_train.shape[1], x_train.shape[2])))
-model.add(Dense(Y.shape[1]))  # 출력 크기는 Y의 피처 수 (7개)
-model.compile(loss='mae', optimizer='adam', metrics=['mae'])
+# 메인 실행 함수
+def main():
+    input_path = "./include/codes/codeMOY_easy0.txt"  # 입력 파일 경로
+    output_path = "modified_drum_score.txt"  # 수정된 파일 저장 경로
+    
+    # 드럼 악보 데이터 읽기
+    drum_data = read_drum_data(input_path)
+    
+    # 위험한 동작 수정
+    modified_data = adjust_drum_data(drum_data)
+    
+    # 수정된 악보 저장
+    save_modified_drum_data(modified_data, output_path)
+    print(f"수정된 드럼 악보가 {output_path}에 저장되었습니다.")
 
-# 6. 모델 학습
-hist = model.fit(x_train, y_train, epochs=200, batch_size=32, validation_data=(x_test, y_test), verbose=2)
-
-# 7. 평가 및 예측
-ev = model.evaluate(x_test, y_test, verbose=0)
-print(f"손실함수: {ev[0]}, MAE: {ev[1]}")
-
-pred = model.predict(x_test)
-mape = np.mean(np.abs((y_test - pred) / y_test)) * 100
-print(f"LSTM (MAPE): {mape:.2f}%")
-
-# 8. 학습 결과 시각화
-plt.plot(hist.history['mae'], label='Train MAE')
-plt.plot(hist.history['val_mae'], label='Validation MAE')
-plt.title('Model MAE')
-plt.ylabel('Mean Absolute Error')
-plt.xlabel('Epoch')
-plt.legend(loc='best')
-plt.grid()
-plt.show()
+if __name__ == "__main__":
+    main()
