@@ -321,11 +321,6 @@ bool PathManager::solveIKandPushConmmand()
 
     int q0_b = brakeArr[0];
     
-    // 마지막 줄에서 모든 브레이크 정리
-    if(lineData.rows() == 1){
-        clear_brake();
-    }
-
     // solve IK
     solveIK(q, q0);
 
@@ -343,6 +338,10 @@ bool PathManager::solveIKandPushConmmand()
     // push motor obj
     pushConmmandBuffer(q);
 
+    // 마지막 줄에서 모든 브레이크 정리
+    if(lineData.rows() == 1){
+        clear_brake();
+    }
     // 데이터 기록
     for (int m = 0; m < 12; m++)
     {
