@@ -19,11 +19,11 @@ enum DrumPosition {
     LC = 8  // 레프트 크래쉬
 };
 
-// 특정 조건 검사 함수
-bool isDangerous(int rightHand, int currentLeft, const std::vector<int>& nextLeftPositions) {
+// 특정 조건 검사 함수 (오른손 기준)
+bool isDangerousRight(int rightHand, int currentLeft, const std::vector<int>& nextLeftPositions) {
     switch (rightHand) {
         case S: // 오른손 S
-            if (currentLeft == FT || currentLeft == HT || currentLeft == R || currentLeft == MT || currentLeft == RC) {
+            if (currentLeft == FT || currentLeft == HT || currentLeft == R || currentLeft == MT) {
                 return true;
             }
             break;
@@ -34,30 +34,32 @@ bool isDangerous(int rightHand, int currentLeft, const std::vector<int>& nextLef
 
         case MT: // 오른손 MT
             for (int nextLeft : nextLeftPositions) {
-                if (currentLeft == LC || currentLeft == HH || currentLeft == HT || currentLeft == S) {
-                    if (nextLeft == RC || nextLeft == R || nextLeft == FT) {
-                        return true;
-                    }
+                if ((currentLeft == LC || currentLeft == HH || currentLeft == HT || currentLeft == S) &&
+                    (nextLeft == RC || nextLeft == R || nextLeft == FT)) {
+                    return true;
+                }
+                if ((currentLeft == RC || currentLeft == R) &&
+                    (nextLeft == HT || nextLeft == S || nextLeft == FT)) {
+                    return true;
                 }
             }
             break;
 
         case HT: // 오른손 HT
-            if (currentLeft == FT) {
+            if (currentLeft == MT) {
                 return true;
             }
             for (int nextLeft : nextLeftPositions) {
-                if (currentLeft == LC || currentLeft == HH || currentLeft == S) {
-                    if (nextLeft == MT || nextLeft == RC || nextLeft == R || nextLeft == FT) {
-                        return true;
-                    }
+                if ((currentLeft == LC || currentLeft == HH || currentLeft == S) &&
+                    (nextLeft == MT || nextLeft == RC || nextLeft == R || nextLeft == FT)) {
+                    return true;
                 }
             }
             break;
 
         case HH: // 오른손 HH
             for (int nextLeft : nextLeftPositions) {
-                if (nextLeft == HT || nextLeft == MT || nextLeft == FT || nextLeft == R || nextLeft == RC) {
+                if (nextLeft == FT || nextLeft == HT || nextLeft == MT || nextLeft == R || nextLeft == RC) {
                     return true;
                 }
             }
@@ -86,30 +88,105 @@ bool isDangerous(int rightHand, int currentLeft, const std::vector<int>& nextLef
     return false;
 }
 
+// 특정 조건 검사 함수 (왼손 기준)
+bool isDangerousLeft(int leftHand, int currentRight, const std::vector<int>& nextRightPositions) {
+    switch (leftHand) {
+        case S: // 왼손 S
+            // 제약 없음
+            return false;
+
+        case FT: // 왼손 FT
+            if (currentRight == S) {
+                return true;
+            }
+            break;
+
+        case MT: // 왼손 MT
+            if (currentRight == HT) {
+                return true;
+            }
+            for (int nextRight : nextRightPositions) {
+                if ((currentRight == MT || currentRight == RC || currentRight == R || currentRight == FT) &&
+                    (nextRight == LC || nextRight == HH || nextRight == S)) {
+                    return true;
+                }
+            }
+            break;
+
+        case HT: // 왼손 HT
+            for (int nextRight : nextRightPositions) {
+                if ((currentRight == RC || currentRight == R || currentRight == FT) &&
+                    (nextRight == LC || nextRight == HH || nextRight == HT || nextRight == S)) {
+                    return true;
+                }
+                if ((currentRight == HT || currentRight == S || currentRight == FT) &&
+                    (nextRight == RC || nextRight == R)) {
+                    return true;
+                }
+            }
+            break;
+
+        case HH: // 왼손 HH
+            // 제약 없음
+            return false;
+
+        case R: // 왼손 R
+            for (int nextRight : nextRightPositions) {
+                if (nextRight == HH || nextRight == LC || nextRight == HT || nextRight == MT || nextRight == S || nextRight == RC) {
+                    return true;
+                }
+            }
+            break;
+
+        case RC: // 왼손 RC
+            for (int nextRight : nextRightPositions) {
+                if (nextRight == LC || nextRight == HH) {
+                    return true;
+                }
+            }
+            break;
+
+        case LC: // 왼손 LC
+            for (int nextRight : nextRightPositions) {
+                if (nextRight == HH) {
+                    return true;
+                }
+            }
+            break;
+    }
+    return false;
+}
+
 // 드럼 악보 데이터에서 위험한 동작 검사
 void checkDrumScore(const std::vector<std::tuple<int, double, int, int>>& drumData) {
     for (size_t i = 0; i < drumData.size(); ++i) {
-        int measure, nextMeasure = 0;
-        double time, nextTime = 0;
+        int measure;
+        double time;
         int rightPos, leftPos;
 
         // 현재 데이터 추출
         std::tie(measure, time, rightPos, leftPos) = drumData[i];
 
-        // 다음, 다다음, 다다다음 왼손 위치 추출
-        std::vector<int> nextLeftPositions;
+        // 다음, 다다음, 다다다음 위치 추출
+        std::vector<int> nextLeftPositions, nextRightPositions;
         for (size_t j = 1; j <= 3; ++j) {
             if (i + j < drumData.size()) {
                 int tempMeasure, tempRightPos, tempLeftPos;
                 double tempTime;
                 std::tie(tempMeasure, tempTime, tempRightPos, tempLeftPos) = drumData[i + j];
                 nextLeftPositions.push_back(tempLeftPos);
+                nextRightPositions.push_back(tempRightPos);
             }
         }
 
-        // 위험 여부 검사
-        if (isDangerous(rightPos, leftPos, nextLeftPositions)) {
-            std::cout << "위험한 동작: Measure " << measure << ", Time " << time << ", RightHand: " << rightPos << ", LeftHand: " << leftPos << std::endl;
+        // 오른손 기준 위험 여부 검사
+        if (isDangerousRight(rightPos, leftPos, nextLeftPositions)) {
+            std::cout << "위험한 동작 (오른손 기준): Measure " << measure << ", Time " << time << ", RightHand: " << rightPos << ", LeftHand: " << leftPos << std::endl;
+        }
+
+        // 왼손 기준 위험 여부 검사
+        if (isDangerousLeft(leftPos, rightPos, nextRightPositions)) {
+            std::cout << "위험한 동작 (왼손 기준): Measure " << measure << ", Time " << time << ", RightHand: " << rightPos << ", LeftHand: " << leftPos << std::endl;
         }
     }
 }
