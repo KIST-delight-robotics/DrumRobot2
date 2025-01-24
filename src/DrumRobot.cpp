@@ -843,7 +843,7 @@ void DrumRobot::checkUserInput()
             }
             else if (input == 'e')
             {
-                std::cout << "Performance is interrupted!\n";
+                std::cout << "Performance is interrupted! \n";
                 pathManager.line = 0;
                 state.main = Main::Shutdown;
             }
