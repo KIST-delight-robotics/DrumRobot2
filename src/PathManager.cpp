@@ -332,8 +332,8 @@ bool PathManager::solveIKandPushConmmand()
     // cout << "\nq1: " << q1_state[0] << "\tq2: " << q1_state[1] << endl;
     
     // brake 1번 2번 (어깨)
-    to_brake(1, q1_state[0], q1_state[1], q12_threshold); // 1번 오른쪽 어깨 모터 brake
-    to_brake(2, q2_state[0], q2_state[1], q12_threshold); // 2번 왼쪽 어깨 모터 brake
+    to_brake(1, q1_state[0], q1_state[1], 0.001); // 1번 오른쪽 어깨 모터 brake
+    to_brake(2, q2_state[0], q2_state[1], 0.001); // 2번 왼쪽 어깨 모터 brake
     int q1_b = brakeArr[1];
     int q2_b = brakeArr[2];
 
