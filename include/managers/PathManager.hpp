@@ -223,7 +223,6 @@ private:
     double nextq0_t1;
     int status = 0;
     double q0_threshold = 0.01;
-    double q12_threshold = 0.001;
 
     vector<double> cubicInterpolation(const vector<double>& q, const vector<double>& t);
     std::pair<double, vector<double>> getQ0t2(int mode);
