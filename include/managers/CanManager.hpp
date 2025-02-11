@@ -54,6 +54,8 @@ public:
     int errorCnt = 0;
     int maxonCnt = 0;
 
+    // float receive_info = 0.0;
+
     // tMotor 제어 주기 결정
     const float deltaT = 0.005;
 

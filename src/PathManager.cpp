@@ -1590,7 +1590,6 @@ VectorXd PathManager::ikFixedWaist(VectorXd &pR, VectorXd &pL, double theta0, do
     Qf << theta0, theta1, theta2, theta3, theta4, theta5, theta6, theta7, theta8;
 
     // cout << "\ntheta1: " << theta1 << "\ttheta2: " << theta2 << endl;
-
     q1_state[1] = Qf(1);
     q2_state[1] = Qf(2);
 
