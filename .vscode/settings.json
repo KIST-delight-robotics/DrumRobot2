@@ -83,7 +83,20 @@
         "queue": "cpp",
         "mprealsupport": "cpp",
         "*.expression": "cpp",
-        "fft": "cpp"
+        "fft": "cpp",
+        "dense": "cpp",
+        "core": "cpp",
+        "superlusupport": "cpp",
+        "*.evaluator": "cpp",
+        "*.traits": "cpp",
+        "adolcforward": "cpp",
+        "autodiff": "cpp",
+        "bvh": "cpp",
+        "eulerangles": "cpp",
+        "kroneckerproduct": "cpp",
+        "numericaldiff": "cpp",
+        "specialfunctions": "cpp",
+        "splines": "cpp"
     },
     "makefile.launchConfigurations": [
         {

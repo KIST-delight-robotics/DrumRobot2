@@ -319,10 +319,28 @@ void CanManager::clearCanBuffer(int canSocket)
         {
             // 수신 버퍼에서 데이터 읽기
             ssize_t nbytes = read(canSocket, &frame, sizeof(struct can_frame));
+            if (nbytes < 0)  // 읽기 실패
+            {
+                if (errno == EWOULDBLOCK || errno == EAGAIN)
+                {
+                    // non-blocking 모드에서 읽을 데이터 없음 -> 루프 종료
+                    break;
+                }
+                else
+                {
+                    perror("read() failed while clearing CAN buffer");
+                    break;
+                }
+            }
+            else if (nbytes == 0)
+            {
+                // CAN 소켓이 닫힘 -> 루프 종료
+                break;
+            }
         }
         else
         {
-            // 읽을 데이터가 없음
+            // 읽을 데이터 없음
             break;
         }
     }
@@ -478,6 +496,7 @@ void CanManager::setMotorsSocket()
 
             if (result > 0)
             {
+                // tempFrames.clear(); // 추가
                 tempFrames[socket_fd].push_back(frame);
             }
             readCount++;
@@ -539,20 +558,37 @@ void CanManager::setMotorsSocket()
         }
     }
 }
-
 void CanManager::readFramesFromAllSockets()
 {
     struct can_frame frame;
-
     for (const auto &socketPair : sockets)
     {
         int socket_fd = socketPair.second;
+        tempFrames[socket_fd].clear();
+        
         while (read(socket_fd, &frame, sizeof(frame)) == sizeof(frame))
         {
-            tempFrames[socket_fd].push_back(frame);
+            if (tempFrames[socket_fd].empty()) {
+                tempFrames[socket_fd].push_back(frame);
+            } else {
+                tempFrames[socket_fd][0] = frame;
+            }
         }
     }
 }
+// void CanManager::readFramesFromAllSockets()
+// {
+//     struct can_frame frame;
+//     for (const auto &socketPair : sockets)
+//     {
+//         int socket_fd = socketPair.second;
+//         while (read(socket_fd, &frame, sizeof(frame)) == sizeof(frame))
+//         {
+//             tempFrames[socket_fd].push_back(frame);
+//         }
+//     }
+// }
+
 
 bool CanManager::distributeFramesToMotors(bool setlimit)
 {
@@ -575,6 +611,8 @@ bool CanManager::distributeFramesToMotors(bool setlimit)
 
                     // tMotor->jointAngle = std::get<1>(parsedData) * tMotor->cwDir * tMotor->timingBeltRatio + tMotor->initialJointAngle;
                     tMotor->jointAngle = tMotor->motorPositionToJointAngle(std::get<1>(parsedData));
+                    
+                    // std::cout << tMotor->jointAngle << std::endl;
                     tMotor->recieveBuffer.push(frame);
 
                     fun.appendToCSV_DATA(fun.file_name, (float)tMotor->nodeId, tMotor->motorPosition, tMotor->motorCurrent);
@@ -605,10 +643,13 @@ bool CanManager::distributeFramesToMotors(bool setlimit)
                     maxonMotor->positionValues[maxonMotor->posIndex % 4] = std::get<1>(parsedData);
                     maxonMotor->posIndex++;
 
+                    
+
                     // maxonMotor->jointAngle = std::get<1>(parsedData) * maxonMotor->cwDir + maxonMotor->initialJointAngle;
                     maxonMotor->jointAngle = maxonMotor->motorPositionToJointAngle(std::get<1>(parsedData));
                     maxonMotor->recieveBuffer.push(frame);
-
+                    
+                    fun.appendToCSV_DATA("DATA", (float)maxonMotor->nodeId, maxonMotor->motorPosition, maxonMotor->motorTorque); // readFramesFromAllSockets바꾼 것과 기존 것 출력 결과물 차이보기.
                     fun.appendToCSV_DATA(fun.file_name, (float)maxonMotor->nodeId, maxonMotor->motorPosition, maxonMotor->motorTorque);
 
                     if (setlimit)

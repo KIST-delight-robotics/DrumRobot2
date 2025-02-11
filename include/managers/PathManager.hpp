@@ -213,7 +213,7 @@ private:
     void solveIK(VectorXd &q, double q0);
     VectorXd ikFixedWaist(VectorXd &pR, VectorXd &pL, double theta0, double theta7, double theta8);
     void pushConmmandBuffer(VectorXd &Qi);
-
+    
     /////////////////////////////////////////////////////////////////////////// Play (waist)
     MatrixXd waistCoefficient;
     double q0_t1;               // 시작 위치 저장

@@ -223,7 +223,7 @@ std::vector<std::tuple<int, double, int, int>> readDrumData(const std::string& f
 
 // 메인 함수
 int main() {
-    std::string filePath = "drum_score.txt"; // 입력 파일 경로
+    std::string filePath = "./include/codes/codeMOY_easy0.txt"; // 입력 파일 경로
 
     // 드럼 악보 데이터 읽기
     std::vector<std::tuple<int, double, int, int>> drumData = readDrumData(filePath);
