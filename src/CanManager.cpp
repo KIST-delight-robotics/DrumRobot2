@@ -496,7 +496,6 @@ void CanManager::setMotorsSocket()
 
             if (result > 0)
             {
-                // tempFrames.clear(); // 추가
                 tempFrames[socket_fd].push_back(frame);
             }
             readCount++;
@@ -558,36 +557,36 @@ void CanManager::setMotorsSocket()
         }
     }
 }
-void CanManager::readFramesFromAllSockets()
-{
-    struct can_frame frame;
-    for (const auto &socketPair : sockets)
-    {
-        int socket_fd = socketPair.second;
-        tempFrames[socket_fd].clear();
-        
-        while (read(socket_fd, &frame, sizeof(frame)) == sizeof(frame))
-        {
-            if (tempFrames[socket_fd].empty()) {
-                tempFrames[socket_fd].push_back(frame);
-            } else {
-                tempFrames[socket_fd][0] = frame;
-            }
-        }
-    }
-}
 // void CanManager::readFramesFromAllSockets()
 // {
 //     struct can_frame frame;
 //     for (const auto &socketPair : sockets)
 //     {
 //         int socket_fd = socketPair.second;
+//         tempFrames[socket_fd].clear();
+        
 //         while (read(socket_fd, &frame, sizeof(frame)) == sizeof(frame))
 //         {
-//             tempFrames[socket_fd].push_back(frame);
+//             if (tempFrames[socket_fd].empty()) {
+//                 tempFrames[socket_fd].push_back(frame);
+//             } else {
+//                 tempFrames[socket_fd][0] = frame;
+//             }
 //         }
 //     }
 // }
+void CanManager::readFramesFromAllSockets()
+{
+    struct can_frame frame;
+    for (const auto &socketPair : sockets)
+    {
+        int socket_fd = socketPair.second;
+        while (read(socket_fd, &frame, sizeof(frame)) == sizeof(frame))
+        {
+            tempFrames[socket_fd].push_back(frame);
+        }
+    }
+}
 
 
 bool CanManager::distributeFramesToMotors(bool setlimit)
