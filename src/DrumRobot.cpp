@@ -849,11 +849,21 @@ void DrumRobot::checkUserInput()
                     isWriteError = true;
                 }
             }
+<<<<<<< HEAD
             else if (input == 's')
             {
                 state.main = Main::Shutdown;
             }
             else if (input == 'r')
+=======
+            // else if (input == 'e')
+            // {
+            //     std::cout << "Performance is interrupted! \n";
+            //     pathManager.line = 0;
+            //     state.main = Main::Shutdown;
+            // }
+            else if (input == 'rs') // restart의 의미, ready상태와 명령어 구분을 위함.
+>>>>>>> 2cbb5fd49edf58d6305907acf24be1de2b271cee
                 state.main = Main::Play;
             // else if (input == 'e')
             //     state.main = Main::Shutdown;
@@ -890,7 +900,12 @@ void DrumRobot::checkUserInput()
             }
             // else if (input == 'e')
             //     state.main = Main::Shutdown;
+<<<<<<< HEAD
                 // pathManager.line = 0;
+=======
+            //     pathManager.line = 0;
+            // }
+>>>>>>> 2cbb5fd49edf58d6305907acf24be1de2b271cee
         }
     }
 
