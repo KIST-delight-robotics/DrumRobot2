@@ -664,8 +664,8 @@ bool CanManager::sendForCheck_Fixed(std::shared_ptr<GenericMotor> motor)
             motor->fixedMotorPosition = maxonMotor->motorPosition;
             motor->isfixed = true;
         }
-
         maxoncmd.getTargetPosition(*maxonMotor, &maxonMotor->sendFrame, maxonMotor->fixedMotorPosition);
+
         if (!sendMotorFrame(maxonMotor))
         {
             return false;
@@ -676,6 +676,8 @@ bool CanManager::sendForCheck_Fixed(std::shared_ptr<GenericMotor> motor)
         {
             return false;
         };
+        
+        maxoncmd.getTargetPosition(*maxonMotor, &maxonMotor->sendFrame, maxonMotor->fixedMotorPosition);
 
         fun.appendToCSV_DATA(fun.file_name, (float)maxonMotor->nodeId + SEND_SIGN, maxonMotor->fixedMotorPosition, maxonMotor->fixedMotorPosition - maxonMotor->motorPosition);
     }
@@ -724,19 +726,55 @@ bool CanManager::checkAllMotors_Fixed()
 
 bool CanManager::setCANFrame()
 {
+    static string curMode = "CSP";
     vector<float> Pos(9);
     for (auto &motor_pair : motors)
     {
         if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motor_pair.second))
         {
+            shared_ptr<GenericMotor> motor = motor_pair.second;
+
             MaxonData mData = maxonMotor->commandBuffer.front();
-            float desiredPosition;
-
+            float desiredPosition = maxonMotor->jointAngleToMotorPosition(mData.position);
+            float desiredTorque = 1;
             maxonMotor->commandBuffer.pop();
-            // desiredPosition = (mData.position - maxonMotor->initialJointAngle) * maxonMotor->cwDir;
-            desiredPosition = maxonMotor->jointAngleToMotorPosition(mData.position);
 
-            maxoncmd.getTargetPosition(*maxonMotor, &maxonMotor->sendFrame, desiredPosition);
+            if(dct_fun(maxonMotor->positionValues) && isHit)
+            {
+                if(curMode == "CSP") 
+                {
+                    curMode = "CST";
+                    maxoncmd.getCSTMode(*maxonMotor, &maxonMotor->sendFrame);
+                    txFrame(motor, maxonMotor->sendFrame);
+
+                    maxoncmd.getShutdown(*maxonMotor, &maxonMotor->sendFrame);
+                    txFrame(motor, maxonMotor->sendFrame);
+
+                    maxoncmd.getEnable(*maxonMotor, &maxonMotor->sendFrame);
+                    txFrame(motor, maxonMotor->sendFrame);
+                }
+                maxoncmd.getTargetTorque(*maxonMotor, &maxonMotor->sendFrame, desiredTorque);
+            }
+            else
+            {
+                if(curMode == "CST") 
+                {
+                    curMode = "CSP";
+                    maxoncmd.getCSPMode(*maxonMotor, &maxonMotor->sendFrame);
+                    txFrame(motor, maxonMotor->sendFrame);
+
+                    maxoncmd.getShutdown(*maxonMotor, &maxonMotor->sendFrame);
+                    txFrame(motor, maxonMotor->sendFrame);
+
+                    maxoncmd.getEnable(*maxonMotor, &maxonMotor->sendFrame);
+                    txFrame(motor, maxonMotor->sendFrame);
+                }
+                
+                fun.appendToCSV_DATA("maxonForTest_Q", desiredPosition, 0, 0);
+                
+                maxoncmd.getTargetPosition(*maxonMotor, &maxonMotor->sendFrame, desiredPosition);
+            }
+            // maxoncmd.getTargetTorque(*maxonMotor, &maxonMotor->sendFrame, desiredTorque);
 
             fun.appendToCSV_DATA(fun.file_name, (float)maxonMotor->nodeId + SEND_SIGN, desiredPosition, desiredPosition - maxonMotor->motorPosition);
         }
@@ -864,4 +902,51 @@ bool CanManager::safetyCheck_M(std::shared_ptr<GenericMotor> &motor)
     }
 
     return isSafe;
+}
+
+bool CanManager::dct_fun(double positions[])
+{
+    // 포지션 배열에서 각각의 값을 추출합니다.
+    double the_k = positions[3]; // 가장 최신 값
+    double the_k_1 = positions[2];
+    double the_k_2 = positions[1];
+    double the_k_3 = positions[0]; // 가장 오래된 값
+
+    double ang_k = (the_k + the_k_1) / 2;
+    double ang_k_1 = (the_k_1 + the_k_2) / 2;
+    double ang_k_2 = (the_k_2 + the_k_3) / 2;
+    double vel_k = ang_k - ang_k_1;
+    double vel_k_1 = ang_k_1 - ang_k_2;
+
+    if (isHit)
+    {
+        cout << "position   : \n";
+        cout << the_k << " " << the_k_1 << " " << the_k_2 << " " << the_k_3 << " \n";
+        cout << "avg position   : \n";
+        cout << ang_k << " " << ang_k_1 << " " << ang_k_2 << " \n";
+        cout << "velocity   : \n";
+        cout << vel_k << " " << vel_k_1 << " \n";
+    }
+
+    if (abs(vel_k) < (vel_k_1) && vel_k < 0 && abs(vel_k_1) >= 0.03)
+        return true;
+    else
+        return false;
+    
+    // // 포지션 배열에서 각각의 값을 추출합니다.
+    // double the_k = positions[3]; // 가장 최신 값
+    // double the_k_1 = positions[2];
+    // double the_k_2 = positions[1];
+    // double the_k_3 = positions[0]; // 가장 오래된 값
+
+    // // float ang_k = (the_k + the_k_1) / 2;
+    // // float ang_k_1 = (the_k_1 + the_k_2) / 2;
+    // // float ang_k_2 = (the_k_2 + the_k_3) / 2;
+    // double vel_k = the_k - the_k_1;
+    // double vel_k_1 = the_k_1 - the_k_2;
+
+    // if (abs(vel_k) * 2 < abs(vel_k_1) && vel_k < 0)
+    //     return true;
+    // else
+    //     return false;
 }

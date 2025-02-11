@@ -46,6 +46,7 @@ enum class TestSub
     SelectParamByUser,
     SetQValue,
     SetXYZ,
+    TestMaxon,
     FillBuf,
     CheckBuf,
     TimeCheck,

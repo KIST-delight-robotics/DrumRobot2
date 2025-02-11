@@ -104,8 +104,10 @@ private:
 
 struct MaxonData
 {
+    float torque;
     float position;
     double WristState;
+    bool isHit = false;
 };
 
 class MaxonMotor : public GenericMotor
@@ -121,7 +123,7 @@ public:
 
     float motorTorque;
 
-    float positionValues[4] = {0}; // 포지션 값 저장을 위한 정적 배열
+    double positionValues[4] = {0}; // 포지션 값 저장을 위한 정적 배열
     int posIndex = 0;
 
     bool stay = false;

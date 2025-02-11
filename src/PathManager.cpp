@@ -131,6 +131,7 @@ void PathManager::setReadyAngle()
     readyArr[6] += param.elbowStayAngle;
     readyArr[7] += param.wristStayAngle;
     readyArr[8] += param.wristStayAngle;
+    readyArr[9] = param.wristStayAngle;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -373,10 +374,10 @@ void PathManager::GetArr(vector<float> &arr)
     const float acc_max = 100.0; // rad/s^2
     // vector<float> Qi;
     // vector<float> Vmax;
-    VectorXd Q1 = VectorXd::Zero(9);
-    VectorXd Q2 = VectorXd::Zero(9);
-    VectorXd Qi = VectorXd::Zero(9);
-    VectorXd Vmax = VectorXd::Zero(9);
+    VectorXd Q1 = VectorXd::Zero(10);
+    VectorXd Q2 = VectorXd::Zero(10);
+    VectorXd Qi = VectorXd::Zero(10);
+    VectorXd Vmax = VectorXd::Zero(10);
 
     float dt = canManager.deltaT; // 0.005
     float t = 2.0;                // 3초동안 실행
@@ -386,7 +387,7 @@ void PathManager::GetArr(vector<float> &arr)
 
     getMotorPos();
 
-    for (int i = 0; i < 9; i++)
+    for (int i = 0; i < 10; i++)
     {
         Q1(i) = c_MotorAngle[i];
         Q2(i) = arr[i];
@@ -394,7 +395,7 @@ void PathManager::GetArr(vector<float> &arr)
 
     Vmax = calVmax(Q1, Q2, acc_max, t);
 
-    for (int k = 0; k < 9; k++)
+    for (int k = 0; k < 10; k++)
     {
         cout << "Q1[" << k << "] : " << Q1[k] * 180.0 / M_PI << " [deg] -> Q2[" << k << "] : " << Q2[k] * 180.0 / M_PI << " [deg]" << endl;
         cout << "Vmax[" << k << "] : " << Vmax(k) << "[rad/s]\n\n";
@@ -1964,9 +1965,9 @@ double PathManager::getWaistAngle(int index)
 
 VectorXd PathManager::calVmax(VectorXd &q1, VectorXd &q2, float acc, float t2)
 {
-    VectorXd Vmax = VectorXd::Zero(9);
+    VectorXd Vmax = VectorXd::Zero(10);
 
-    for (int i = 0; i < 9; i++)
+    for (int i = 0; i < 10; i++)
     {
         double val;
         double S = abs(q2(i) - q1(i)); // 수정됨, overflow방지
@@ -2012,9 +2013,9 @@ VectorXd PathManager::calVmax(VectorXd &q1, VectorXd &q2, float acc, float t2)
 
 VectorXd PathManager::makeProfile(VectorXd &q1, VectorXd &q2, VectorXd &Vmax, float acc, float t, float t2)
 {
-    VectorXd Qi = VectorXd::Zero(9);
+    VectorXd Qi = VectorXd::Zero(10);
 
-    for (int i = 0; i < 9; i++)
+    for (int i = 0; i < 10; i++)
     {
         double val, S;
         int sign;
@@ -2110,7 +2111,7 @@ vector<float> PathManager::makeHomeArr(int cnt)
     {
         getMotorPos();
 
-        for (int i = 0; i < 9; i++)
+        for (int i = 0; i < 10; i++)
         {
             home_arr[i] = c_MotorAngle[i];
         }

@@ -70,7 +70,7 @@ void DrumRobot::stateMachine()
         case Main::Test:
         {
             bool isWriteError = false;
-            if (state.test == TestSub::SelectParamByUser || state.test == TestSub::SetQValue || state.test == TestSub::SetXYZ)
+            if (state.test == TestSub::SelectParamByUser || state.test == TestSub::SetQValue || state.test == TestSub::SetXYZ || state.test == TestSub::TestMaxon )
             {
                 if (!canManager.checkAllMotors_Fixed()) // stateMachine() 주기가 5ms 라서 delay 필요 없음
                 {
@@ -935,9 +935,10 @@ void DrumRobot::initializeMotors()
     motors["L_arm3"] = make_shared<TMotor>(0x06, "AK70_10");
     motors["R_wrist"] = make_shared<MaxonMotor>(0x07);
     motors["L_wrist"] = make_shared<MaxonMotor>(0x08); 
-    motors["R_foot"] = make_shared<MaxonMotor>(0x09);
-    motors["L_foot"] = make_shared<MaxonMotor>(0x0A);
-    motors["maxonForTest"] = make_shared<MaxonMotor>(0x0B);
+    motors["maxonForTest"] = make_shared<MaxonMotor>(0x09);
+    motors["R_foot"] = make_shared<MaxonMotor>(0x0A);
+    motors["L_foot"] = make_shared<MaxonMotor>(0x0B);
+    
 
     for (auto &motor_pair : motors)
     {
@@ -1055,28 +1056,15 @@ void DrumRobot::initializeMotors()
                 maxonMotor->cwDir = 1.0f;
                 maxonMotor->rMin = joint_range_min[can_id] * M_PI / 180.0f; // -90deg
                 maxonMotor->rMax = joint_range_max[can_id] * M_PI / 180.0f; // 135deg
-                maxonMotor->txPdoIds[0] = 0x209; // Controlword
-                maxonMotor->txPdoIds[1] = 0x309; // TargetPosition
-                maxonMotor->txPdoIds[2] = 0x409; // TargetVelocity
-                maxonMotor->txPdoIds[3] = 0x509; // TargetTorque
-                maxonMotor->rxPdoIds[0] = 0x189; // Statusword, ActualPosition, ActualTorque
-                maxonMotor->myName = "R_foot";
-                maxonMotor->initialJointAngle = initial_joint_angles[can_id] * M_PI / 180.0f;
-            }
-            else if (motor_pair.first == "L_foot")
-            {
-                maxonMotor->cwDir = 1.0f;
-                maxonMotor->rMin = joint_range_min[can_id] * M_PI / 180.0f; // -90deg
-                maxonMotor->rMax = joint_range_max[can_id] * M_PI / 180.0f; // 135deg
                 maxonMotor->txPdoIds[0] = 0x20A; // Controlword
                 maxonMotor->txPdoIds[1] = 0x30A; // TargetPosition
                 maxonMotor->txPdoIds[2] = 0x40A; // TargetVelocity
                 maxonMotor->txPdoIds[3] = 0x50A; // TargetTorque
                 maxonMotor->rxPdoIds[0] = 0x18A; // Statusword, ActualPosition, ActualTorque
-                maxonMotor->myName = "L_foot";
+                maxonMotor->myName = "R_foot";
                 maxonMotor->initialJointAngle = initial_joint_angles[can_id] * M_PI / 180.0f;
             }
-            else if (motor_pair.first == "maxonForTest")
+            else if (motor_pair.first == "L_foot")
             {
                 maxonMotor->cwDir = 1.0f;
                 maxonMotor->rMin = joint_range_min[can_id] * M_PI / 180.0f; // -90deg
@@ -1086,6 +1074,19 @@ void DrumRobot::initializeMotors()
                 maxonMotor->txPdoIds[2] = 0x40B; // TargetVelocity
                 maxonMotor->txPdoIds[3] = 0x50B; // TargetTorque
                 maxonMotor->rxPdoIds[0] = 0x18B; // Statusword, ActualPosition, ActualTorque
+                maxonMotor->myName = "L_foot";
+                maxonMotor->initialJointAngle = initial_joint_angles[can_id] * M_PI / 180.0f;
+            }
+            else if (motor_pair.first == "maxonForTest")
+            {
+                maxonMotor->cwDir = 1.0f;
+                maxonMotor->rMin = joint_range_min[can_id] * M_PI / 180.0f; // -108deg
+                maxonMotor->rMax = joint_range_max[can_id] * M_PI / 180.0f; // 135deg
+                maxonMotor->txPdoIds[0] = 0x209; // Controlword
+                maxonMotor->txPdoIds[1] = 0x309; // TargetPosition
+                maxonMotor->txPdoIds[2] = 0x409; // TargetVelocity
+                maxonMotor->txPdoIds[3] = 0x509; // TargetTorque
+                maxonMotor->rxPdoIds[0] = 0x189; // Statusword, ActualPosition, ActualTorque
                 maxonMotor->myName = "maxonForTest";
                 maxonMotor->initialJointAngle = initial_joint_angles[can_id] * M_PI / 180.0f;
             }
@@ -1281,10 +1282,10 @@ void DrumRobot::motorSettingCmd()
                 maxoncmd.getHomingMethodTest(*maxonMotor, &frame);
                 canManager.sendAndRecv(motor, frame);
 
-                maxoncmd.getHomeoffsetDistance(*maxonMotor, &frame, 90);
+                maxoncmd.getHomeoffsetDistance(*maxonMotor, &frame, 0);
                 canManager.sendAndRecv(motor, frame);
 
-                maxoncmd.getHomePosition(*maxonMotor, &frame, 90);
+                maxoncmd.getHomePosition(*maxonMotor, &frame, 0);
                 canManager.sendAndRecv(motor, frame);
 
                 maxoncmd.getCurrentThresholdL(*maxonMotor, &frame);
