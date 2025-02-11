@@ -67,7 +67,7 @@ private:
 
     /*For SendTestProcess*/
     int method = 0;
-    float q[9] = {0.0};
+    float q[10] = {0.0};
 
     map<std::string, int> motor_mapping = { //< 각 관절에 해당하는 열 정보.
         {"waist", 0},
@@ -79,13 +79,13 @@ private:
         {"L_arm3", 6},
         {"R_wrist", 7},
         {"L_wrist", 8},
-        {"maxonForTest", 8},
-        {"R_foot", 9},
-        {"L_foot", 10}};
+        {"maxonForTest", 9},
+        {"R_foot", 10},
+        {"L_foot", 11}};
 
-    //                            Waist   Rarm1   Larm1   Rarm2   Rarm3   Larm2   Larm3   Rwrist  Lwrist  Rfoot   Lfoot   [deg]
-    const float joint_range_max[11] = {90.0,  150.0,  180.0,  90.0,   144.0,  90.0,   144.0,  135.0,  135.0,  135.0,  135.0};
-    const float joint_range_min[11] = {-90.0, 0.0,    30.0,   -60.0,  -30.0,  -60.0,  -30.0,  -108.0, -108.0, -90.0,  -90.0};
+    //                                 Waist  Rarm1   Larm1   Rarm2   Rarm3   Larm2   Larm3   Rwrist  Lwrist  maxonForTest  Rfoot   Lfoot   [deg]
+    const float joint_range_max[12] = {90.0,  150.0,  180.0,  90.0,   130.0,  90.0,   130.0,  135.0,  135.0,  135.0,        135.0,  135.0};
+    const float joint_range_min[12] = {-90.0, 0.0,    30.0,   -60.0,  -30.0,  -60.0,  -30.0,  -108.0, -108.0, -108.0,      -90.0,  -90.0};
 
     std::shared_ptr<MaxonMotor> virtualMaxonMotor;
     int maxonMotorCount = 0;
@@ -113,6 +113,27 @@ private:
     // setXYZ
     float R_xyz[3] = {0.0};
     float L_xyz[3] = {0.0};
+
+    // TestMaxon
+    string curMode;
+    int hitMode = 1;
+    bool isReached = false;
+    float torque = 0;
+    bool hitTest = 0;
+    double dt = 0.005;
+    tuple <double, int, int> params;
+    double hit_time;
+    int repeat;
+    int hitstate;
+    int intensity;
+    void setMaxonMotorMode(std::string targetMode, string motorName);
+    void maxonMotorEnable();
+    void CSTLoop();
+    void TestStickLoop();
+    void TestStick(const std::string selectedMotor, int des_tff, float tffThreshold, float posThreshold, int backTorqueUnit);
+    float makeWristAngle(float t1, float t2, float t, int state, int intensity);
+    tuple <double, int, int> CSTHitLoop();
+    bool dct_fun(float positions[], float vel_th);
 
     void UnfixedMotor();
 };

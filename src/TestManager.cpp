@@ -21,18 +21,18 @@ void TestManager::SendTestProcess()
             if (ret == -1)
                 std::cout << "system clear error" << endl;
 
-            float c_MotorAngle[9];
+            float c_MotorAngle[10];
             getMotorPos(c_MotorAngle);
 
             std::cout << "[ Current Q Values (Radian / Degree) ]\n";
-            for (int i = 0; i < 9; i++)
+            for (int i = 0; i < 10; i++)
             {
                 q[i] = c_MotorAngle[i];
                 std::cout << "Q[" << i << "] : " << c_MotorAngle[i] << "\t\t" << c_MotorAngle[i] * 180.0 / M_PI << "\n";
             }
             fkfun(c_MotorAngle); // 현재 q값에 대한 fkfun 진행
 
-            std::cout << "\nSelect Method (1 - 관절각도값 조절, 2 - 좌표값 조절, -1 - 나가기) : ";
+            std::cout << "\nSelect Method (1 - 관절각도값 조절, 2 - 좌표값 조절, 3 - 손목 모터 -1 - 나가기) : ";
             std::cin >> method;
             
             if (method == 1)
@@ -42,6 +42,10 @@ void TestManager::SendTestProcess()
             else if (method == 2)
             {
                 state.test = TestSub::SetXYZ;
+            }
+            else if (method == 3)
+            {
+                state.test = TestSub::TestMaxon;
             }
             else if (method == -1)
             {
@@ -57,9 +61,8 @@ void TestManager::SendTestProcess()
             if (ret == -1)
                 std::cout << "system clear error" << endl;
 
-            float c_MotorAngle[9] = {0};
+            float c_MotorAngle[10] = {0};
             getMotorPos(c_MotorAngle);
-
 
             if(sin_flag)
             {
@@ -70,7 +73,7 @@ void TestManager::SendTestProcess()
                 std::cout << "Mode : Go to target point\n";
             }
             std::cout << "\n[Current Q Values] [Target Q Values] (Radian)\n";
-            for (int i = 0; i < 9; i++)
+            for (int i = 0; i < 10; i++)
             {
                 std::cout << "Q[" << i << "] : " << c_MotorAngle[i] << "\t<->\t" << q[i] << std::endl;
             }
@@ -210,41 +213,129 @@ void TestManager::SendTestProcess()
                 }
             }
 
-            else if (userInput == 16)
+            // else if (userInput == 16)
+            // {
+            //     bool usbio_output = false;
+
+            //     std::cout << "Current brake states:" << std::endl;
+            //     for (int i = 0; i < 7; i++)
+            //     {
+            //         std::cout << "Brake " << i << ": " << (single_brake_flag[i] ? "Active" : "Inactive") << std::endl;
+            //     }
+
+            //     int break_num;
+            //     cin >> break_num;
+
+            //     if(!single_brake_flag[break_num])
+            //     {
+            //         usbio.USBIO_4761_set(break_num % 7, true);
+            //         usbio_output = usbio.USBIO_4761_output();
+            //         single_brake_flag[break_num] = true;
+            //     }
+            //     else
+            //     {
+            //         usbio.USBIO_4761_set(break_num % 7, false);
+            //         usbio_output = usbio.USBIO_4761_output();
+            //         single_brake_flag[break_num] = false;
+            //     }
+
+            //     if(!usbio_output)
+            //     {
+            //         std::cout << "OUTPUT Error" << endl;
+            //         usleep(5000000);
+            //         break;
+            //     }
+
+            // }
+            break;
+        }
+        case TestSub::TestMaxon:
+        {
+            //std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motors["maxonForTest"]);
+            int userInput = 100;
+            int ret = system("clear");
+            if (ret == -1)
+                std::cout << "system clear error" << endl;
+            
+            float c_MotorAngle[10] = {0};
+            getMotorPos(c_MotorAngle);
+
+            curMode = "CSP";
+
+            for (int i = 0; i < 10; i++)
             {
-                bool usbio_output = false;
+                q[i] = c_MotorAngle[i];
+                std::cout << "Q[" << i << "] : " << c_MotorAngle[i] << "\t\t" << c_MotorAngle[i] * 180.0 / M_PI << "\n";
+            } 
 
-                std::cout << "Current brake states:" << std::endl;
-                for (int i = 0; i < 7; i++)
+            if(hitTest)
+            {
+                int n = hit_time / dt;
+                // float contact_n = std::min(0.1 * n, 10.0);
+                for (int k = 0; k <= repeat; k++)
                 {
-                    std::cout << "Brake " << i << ": " << (single_brake_flag[i] ? "Active" : "Inactive") << std::endl;
-                }
+                    for (int i = 0; i < n; i++)
+                    {
+                        if (k == repeat)
+                        {
+                            q[9] = makeWristAngle(0, hit_time, i * dt, 1, intensity);
+                        }
+                        else if (k == 0)
+                        {
+                            q[9] = makeWristAngle(0, hit_time, i * dt, 2, intensity);
+                        }
+                        else
+                        {
+                            q[9] = makeWristAngle(0, hit_time, i * dt, 3, intensity);
+                        }
 
-                int break_num;
-                cin >> break_num;
-
-                if(!single_brake_flag[break_num])
-                {
-                    usbio.USBIO_4761_set(break_num % 7, true);
-                    usbio_output = usbio.USBIO_4761_output();
-                    single_brake_flag[break_num] = true;
+                        for (auto &entry : motors)
+                        {
+                            if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(entry.second))
+                            {
+                                MaxonData newData;
+                                newData.position = q[motor_mapping[entry.first]];
+                                newData.torque = torque;
+                                newData.WristState = 0.5;
+                                maxonMotor->commandBuffer.push(newData);
+                            }
+                        }
+                    }
                 }
-                else
-                {
-                    usbio.USBIO_4761_set(break_num % 7, false);
-                    usbio_output = usbio.USBIO_4761_output();
-                    single_brake_flag[break_num] = false;
-                }
+                hitTest = false;
+                canManager.isHit = true;
+                state.test = TestSub::CheckBuf;
+                break;
+            }
+            else
+            {
+                canManager.isHit = false;
+                cout << "\n Select Test Mode (1 - 타격 TEST, 2 - CST 모드 TEST, -1 - Back) : ";
+                cin >> userInput;
+            }
 
-                if(!usbio_output)
-                {
-                    std::cout << "OUTPUT Error" << endl;
-                    usleep(5000000);
-                    break;
-                }
+            if (userInput == -1)
+            {
+                state.test = TestSub::SelectParamByUser;
+            }
+            else if (userInput == 1)
+            {
+                params = CSTHitLoop();
+                hit_time = get<0>(params);
+                repeat = get<1>(params);
+                intensity = get<2>(params);
 
+                hitTest = 1;
+            }
+            else if (userInput == 2)
+            {
+                canManager.setSocketBlock();
+                TestStickLoop();
+                canManager.setSocketNonBlock();
+                state.test = TestSub::SelectParamByUser;
             }
             break;
+            
         }
         case TestSub::SetXYZ:
         {
@@ -307,6 +398,10 @@ void TestManager::SendTestProcess()
                 }
                 cout << "\n";
                 sleep(1);
+                GetArr(q);
+            }
+            else if (method == 3)
+            {
                 GetArr(q);
             }
             
@@ -431,6 +526,10 @@ void TestManager::SendTestProcess()
             else if (method == 2)
             {
                 state.test = TestSub::SetXYZ;
+            }
+            else if (method == 3)
+            {
+                state.test = TestSub::TestMaxon;
             }
             else
                 state.test = TestSub::SelectParamByUser;
@@ -562,7 +661,7 @@ vector<float> TestManager::cal_Vmax(float q1[], float q2[],  float acc, float t2
 {
     vector<float> Vmax;
 
-    for (long unsigned int i = 0; i < 9; i++)
+    for (long unsigned int i = 0; i < 10; i++)
     {
         float val;
         float S = q2[i] - q1[i];
@@ -818,8 +917,8 @@ void TestManager::GetArr(float arr[])
     const float acc_max = 100.0;    // rad/s^2
     vector<float> Qi;
     vector<float> Vmax;
-    float Q1[9] = {0.0};
-    float Q2[9] = {0.0};
+    float Q1[10] = {0.0};
+    float Q2[10] = {0.0};
     int n;
     int n_p;    // 목표위치까지 가기 위한 추가 시간
     int n_brake_start[7] = {0};
@@ -832,7 +931,7 @@ void TestManager::GetArr(float arr[])
 
     getMotorPos(Q1);
 
-    for (int i = 0; i < 9; i++)
+    for (int i = 0; i < 10; i++)
     {
         Q2[i] = arr[i];
     }
@@ -897,6 +996,7 @@ void TestManager::GetArr(float arr[])
                 {
                     MaxonData newData;
                     newData.position = Qi[motor_mapping[entry.first]];
+                    newData.torque = torque;
                     newData.WristState = 0.5;
                     maxonMotor->commandBuffer.push(newData);
                 }
@@ -1019,4 +1119,543 @@ void TestManager::UnfixedMotor()
 {
     for (auto motor_pair : motors)
         motor_pair.second->isfixed = false;
+}
+
+/////////////////////////////////////////////////////////////////////////////////
+/*                         Maxon Motor Function                               */
+/////////////////////////////////////////////////////////////////////////////////
+void TestManager::CSTLoop()
+{
+    std::shared_ptr<MaxonMotor> selectedMotor;
+
+    for (auto &motor_pair : motors)
+    {
+        if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motor_pair.second))
+        {
+            maxonMotor->clearCommandBuffer();
+            maxonMotor->clearReceiveBuffer();
+            if (motor_pair.first == "maxonForTest")
+            {
+                selectedMotor = maxonMotor;
+                break;
+            }
+        }
+    }
+
+    // std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motors[selectedMotor]);
+
+    chrono::system_clock::time_point external = std::chrono::system_clock::now();
+    while(1)
+    {
+        chrono::system_clock::time_point internal = std::chrono::system_clock::now();
+        chrono::microseconds elapsed_time = chrono::duration_cast<chrono::microseconds>(internal - external);
+        if (elapsed_time.count() >= 5000)
+        {
+            maxoncmd.getTargetTorque(*selectedMotor, &frame, 1);
+            canManager.txFrame(motors["maxonForTest"], frame);
+
+            maxoncmd.getSync(&frame);
+            canManager.txFrame(motors["maxonForTest"], frame);
+        }
+    }
+}
+
+void TestManager::maxonMotorEnable()
+{
+    struct can_frame frame;
+    canManager.setSocketsTimeout(2, 0);
+
+    // 제어 모드 설정
+    for (const auto &motorPair : motors)
+    {
+        std::string name = motorPair.first;
+        std::shared_ptr<GenericMotor> motor = motorPair.second;
+        if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motor))
+        {
+            maxoncmd.getHomeMode(*maxonMotor, &frame);
+            canManager.txFrame(motor, frame);
+
+            maxoncmd.getOperational(*maxonMotor, &frame);
+            canManager.txFrame(motor, frame);
+
+            usleep(100000);
+
+            maxoncmd.getShutdown(*maxonMotor, &frame);
+            canManager.txFrame(motor, frame);
+
+            maxoncmd.getSync(&frame);
+            canManager.txFrame(motor, frame);
+
+            usleep(100000);
+            
+            maxoncmd.getEnable(*maxonMotor, &frame);
+            canManager.txFrame(motor, frame);
+
+            maxoncmd.getSync(&frame);
+            canManager.txFrame(motor, frame);
+            
+            std::cout << "Maxon Enabled\n";
+
+            usleep(100000);
+
+            // maxoncmd.getStartHoming(*maxonMotor, &frame);
+            // canManager.txFrame(motor, frame);
+
+            // maxoncmd.getSync(&frame);
+            // canManager.txFrame(motor, frame);
+
+            // usleep(100000);
+            
+            // std::cout << "Maxon Enabled(2) \n";
+        }
+    }
+}
+
+void TestManager::setMaxonMotorMode(std::string targetMode, string motorName)
+{
+    struct can_frame frame;
+    canManager.setSocketsTimeout(0, 10000);
+    for (const auto &motorPair : motors)
+    {
+        std::string name = motorPair.first;
+        std::shared_ptr<GenericMotor> motor = motorPair.second;
+        if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motorPair.second))
+        {
+            if (name == motorName)
+            {
+                if (targetMode == "CSV")    // Cyclic Sync Velocity Mode
+                {
+                    maxoncmd.getCSVMode(*maxonMotor, &frame);
+                    canManager.sendAndRecv(motor, frame);
+                }
+                else if (targetMode == "CST")   // Cyclic Sync Torque Mode
+                {
+                    maxoncmd.getCSTMode(*maxonMotor, &frame);
+                    canManager.sendAndRecv(motor, frame);
+
+                    usleep(10);
+
+                    maxoncmd.getShutdown(*maxonMotor, &frame);
+                    canManager.sendAndRecv(motor, frame);
+
+                    usleep(10);
+
+                    maxoncmd.getEnable(*maxonMotor, &frame);
+                    canManager.sendAndRecv(motor, frame);
+
+                    usleep(10);
+                }
+                else if (targetMode == "HMM")   // Homming Mode
+                {
+                    maxoncmd.getHomeMode(*maxonMotor, &frame);
+                    canManager.sendAndRecv(motor, frame);
+                }
+                else if (targetMode == "CSP")   // Cyclic Sync Position Mode
+                {
+                    maxoncmd.getCSPMode(*maxonMotor, &frame);
+                    canManager.sendAndRecv(motor, frame);
+                }
+            }
+        }
+    }
+}
+
+void TestManager::TestStickLoop()
+{
+
+    std::string userInput;
+    std::string selectedMotor = "maxonForTest";
+    float des_tff = 0;
+    float posThreshold = 1.57; // 위치 임계값 초기화
+    float tffThreshold = 18;   // 토크 임계값 초기화
+    int backTorqueUnit = 150;
+
+    while (true)
+    {
+
+        int result = system("clear");
+        if (result != 0)
+        {
+            std::cerr << "Error during clear screen" << std::endl;
+        }
+
+        std::cout << "================ Tuning Menu ================\n";
+        std::cout << "Available Motors for Stick Mode:\n";
+        for (const auto &motor_pair : motors)
+        {
+            if (motor_pair.first == "maxonForTest")
+                std::cout << " - " << motor_pair.first << "\n";
+        }
+
+        bool isMaxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motors[selectedMotor]) != nullptr;
+        if (!isMaxonMotor)
+            break;
+
+        std::cout << "---------------------------------------------\n";
+        std::cout << "Selected Motor: " << selectedMotor << "\n";
+
+        std::cout << "Des Torque: " << des_tff * 31.052 / 1000 << "[mNm]\n";
+        std::cout << "Torque Threshold: " << tffThreshold << " [mNm]\n"; // 현재 토크 임계값 출력
+        std::cout << "Position Threshold: " << posThreshold << " [rad]\n";
+        std::cout << "Back Torque: " << backTorqueUnit * 31.052 / 1000 << " [mNm]\n";
+        std::cout << "\nCommands:\n";
+        std::cout << "[a]: des_tff | [b]: Direction | [c]: Back Torque\n";
+        std::cout << "[f]: Run | [g]: Exit\n";
+        std::cout << "=============================================\n";
+        std::cout << "Enter Command: ";
+        std::cin >> userInput;
+        std::transform(userInput.begin(), userInput.end(), userInput.begin(), ::tolower);
+
+        if (userInput[0] == 'g')
+        {
+            break;
+        }
+
+        else if (userInput == "a" && isMaxonMotor)
+        {
+            std::cout << "Enter Desired Torque In Unit: ";
+            std::cout << "-100 [unit] = -3.1052 [mNm]\n";
+            std::cin >> des_tff;
+        }
+        else if (userInput == "d" && isMaxonMotor)
+        {
+            std::cout << "Enter Desired Torque Threshold: ";
+            std::cout << "-100 [unit] = -3.1052 [mNm]\n";
+            std::cin >> tffThreshold;
+        }
+        else if (userInput == "e" && isMaxonMotor)
+        {
+            std::cout << "Enter Desired Position Threshold: ";
+            std::cin >> posThreshold;
+        }
+        else if (userInput[0] == 'f' && isMaxonMotor)
+        {
+            std::cout << "\nRunning CST Mode";
+            TestStick(selectedMotor, des_tff, tffThreshold, posThreshold, backTorqueUnit);
+        }
+    }
+}
+
+void TestManager::TestStick(const std::string selectedMotor, int des_tff, float tffThreshold, float posThreshold, int backTorqueUnit)
+{
+    canManager.setSocketsTimeout(0, 50000);
+
+    struct can_frame frame;
+
+    float p_act, tff_act;
+
+    std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motors[selectedMotor]);
+
+    bool motorFixed = false;
+
+    chrono::system_clock::time_point external = std::chrono::system_clock::now();
+    bool motorModeSet = false;
+    int index = 0;
+
+    while (1)
+    {
+        if (!motorModeSet)
+        {
+            maxoncmd.getCSTMode(*maxonMotor, &frame);
+            canManager.sendAndRecv(motors[selectedMotor], frame);
+            motorModeSet = true; // 모터 모드 설정 완료
+
+            maxoncmd.getShutdown(*maxonMotor, &frame);
+            canManager.sendAndRecv(motors[selectedMotor], frame);
+
+            maxoncmd.getEnable(*maxonMotor, &frame);
+            canManager.sendAndRecv(motors[selectedMotor], frame);
+
+            usleep(10);
+        }
+        if (motorFixed)
+        {
+            break;
+        }
+
+        chrono::system_clock::time_point internal = std::chrono::system_clock::now();
+        chrono::microseconds elapsed_time = chrono::duration_cast<chrono::microseconds>(internal - external);
+        if (elapsed_time.count() >= 5000)
+        {
+            index++;
+            maxoncmd.getTargetTorque(*maxonMotor, &frame, des_tff);
+            canManager.txFrame(motors[selectedMotor], frame);
+
+            maxoncmd.getSync(&frame);
+            canManager.txFrame(motors[selectedMotor], frame);
+
+            if (canManager.recvToBuff(motors[selectedMotor], canManager.maxonCnt))
+            {
+                while (!motors[selectedMotor]->recieveBuffer.empty())
+                {
+                    frame = motors[selectedMotor]->recieveBuffer.front();
+                    if (frame.can_id == maxonMotor->rxPdoIds[0])
+                    {
+                        std::tuple<int, float, float, int8_t> result = maxoncmd.parseRecieveCommand(*maxonMotor, &frame);
+
+                        p_act = std::get<1>(result);
+                        tff_act = std::get<2>(result);
+                        fun.appendToCSV_DATA("CST_log", des_tff * 31.052 / 1000, tff_act, p_act);
+                    }
+                    if (!motors[selectedMotor]->recieveBuffer.empty())
+                    {
+                        motors[selectedMotor]->recieveBuffer.pop();
+                    }
+                }
+            }
+        }
+        if (index >= 1000) 
+        {
+            maxoncmd.getTargetTorque(*maxonMotor, &frame, 0);
+            canManager.txFrame(motors[selectedMotor], frame);
+
+            maxoncmd.getSync(&frame);
+            canManager.txFrame(motors[selectedMotor], frame);
+            return;
+        }
+    }
+}
+
+float TestManager::makeWristAngle(float t1, float t2, float t, int state, int intensity)
+{
+    float wrist_q = 0.0;
+    float t_contact = std::min(0.1 * (t2 - t1), 0.05); // 0.08 -> 0.05
+    float t_lift = std::max(0.6 * (t2 - t1), t2 - t1 - 0.2);
+    float t_stay;
+    t2 - t1 < 0.15 ? t_stay = 0.45 * (t2 - t1) : t_stay = 0.47 * (t2 - t1) - 0.05;
+    float t_release = std::min(0.2 * (t2 - t1), 0.1);
+    float t_hit = t2 - t1;
+    float wristLiftAngle;
+    t2 - t1 < 0.5 ? wristLiftAngle = (-100 * ((t2 - t1) - 0.5) * ((t2 - t1) - 0.5) + 40) * M_PI / 180.0 : wristLiftAngle = 40  * M_PI / 180.0;
+    float wristStayAngle = 10.0 * M_PI / 180.0;
+    float wristContactAngle = -1.0 * std::min((t2 - t1) * 5.0 * M_PI / 180.0 / 0.5, 5.0 * M_PI / 180.0);
+
+    float intensityFactor = 0.4 * intensity + 0.2; // 1 : 약하게   2 : 기본    3 : 강하게
+    wristLiftAngle = wristLiftAngle * intensityFactor;
+
+    MatrixXd A;
+    MatrixXd b;
+    MatrixXd A_1;
+    MatrixXd sol;
+    
+    if (state == 0)
+    {
+        // Stay
+        wrist_q = wristStayAngle;
+    }
+    else if (state == 1)
+    {
+        // Contact - Stay
+        if (t < t_contact)
+        {
+            A.resize(3, 3);
+            b.resize(3, 1);
+            A << 1, 0, 0,
+                1, t_contact, t_contact * t_contact,
+                0, 1, 2 * t_contact;
+            b << 0, wristContactAngle, 0;
+            A_1 = A.inverse();
+            sol = A_1 * b;
+            wrist_q = sol(0, 0) + sol(1, 0) * t + sol(2, 0) * t * t;
+        }
+        else if (t <= t_release)
+        {
+            A.resize(4, 4);
+            b.resize(4, 1);
+            A << 1, t_contact, t_contact * t_contact, t_contact * t_contact * t_contact,
+                1, t_release, t_release * t_release, t_release * t_release * t_release,
+                0, 1, 2 * t_contact, 3 * t_contact * t_contact,
+                0, 1, 2 * t_release, 3 * t_release * t_release;
+            b << wristContactAngle, wristStayAngle, 0, 0;
+            A_1 = A.inverse();
+            sol = A_1 * b;
+            wrist_q = sol(0, 0) + sol(1, 0) * t + sol(2, 0) * t * t + sol(3, 0) * t * t * t;
+        }
+        else
+        {
+            wrist_q = wristStayAngle;
+        }
+    }
+    else if (state == 2)
+    {
+        
+        // Stay - Lift - Hit
+        if (t < t_stay)
+        {
+            // Stay
+            wrist_q = wristStayAngle;
+        }
+        else if (t < t_lift)
+        {
+            A.resize(4, 4);
+            b.resize(4, 1);
+            A << 1, t_stay, t_stay * t_stay, t_stay * t_stay * t_stay,
+                1, t_lift, t_lift * t_lift, t_lift * t_lift * t_lift,
+                0, 1, 2 * t_stay, 3 * t_stay * t_stay,
+                0, 1, 2 * t_lift, 3 * t_lift * t_lift;
+            b << wristStayAngle, wristLiftAngle, 0, 0;
+            A_1 = A.inverse();
+            sol = A_1 * b;
+            wrist_q = sol(0, 0) + sol(1, 0) * t + sol(2, 0) * t * t + sol(3, 0) * t * t * t;
+        }
+        else if (t <= t_hit)
+        {
+            A.resize(3, 3);
+            b.resize(3, 1);
+            A << 1, t_lift, t_lift * t_lift,
+                1, t_hit, t_hit * t_hit,
+                0, 1, 2 * t_lift;
+            b << wristLiftAngle, 0, 0;
+            A_1 = A.inverse();
+            sol = A_1 * b;
+            wrist_q = sol(0, 0) + sol(1, 0) * t + sol(2, 0) * t * t;
+        }
+        else
+        {
+            wrist_q = 0.0;
+        }
+        
+    }
+    else if (state == 3)
+    {
+        // Contact - Lift - Hit
+        if (t < t_contact)
+        {
+            A.resize(3, 3);
+            b.resize(3, 1);
+            A << 1, 0, 0,
+                1, t_contact, t_contact * t_contact,
+                0, 1, 2 * t_contact;
+            b << 0, wristContactAngle, 0;
+            A_1 = A.inverse();
+            sol = A_1 * b;
+            wrist_q = sol(0, 0) + sol(1, 0) * t + sol(2, 0) * t * t;
+        }
+        else if (t < t_stay)
+        {
+            A.resize(4, 4);
+            b.resize(4, 1);
+            A << 1, t_contact, t_contact * t_contact, t_contact * t_contact * t_contact,
+                1, t_stay, t_stay * t_stay, t_stay * t_stay * t_stay,
+                0, 1, 2 * t_contact, 3 * t_contact * t_contact,
+                0, 1, 2 * t_stay, 3 * t_stay * t_stay;
+            b << wristContactAngle, wristLiftAngle, 0, 0;
+            A_1 = A.inverse();
+            sol = A_1 * b;
+            wrist_q = sol(0, 0) + sol(1, 0) * t + sol(2, 0) * t * t + sol(3, 0) * t * t * t;
+        }
+        else if (t < t_lift)
+        {
+            // Stay
+            wrist_q = wristLiftAngle;
+        }
+        else if (t <= t_hit)
+        {
+            A.resize(3, 3);
+            b.resize(3, 1);
+            A << 1, t_lift, t_lift * t_lift,
+                1, t_hit, t_hit * t_hit,
+                0, 1, 2 * t_lift;
+            b << wristLiftAngle, 0, 0;
+            A_1 = A.inverse();
+            sol = A_1 * b;
+            wrist_q = sol(0, 0) + sol(1, 0) * t + sol(2, 0) * t * t;
+        }
+        else
+        {
+            wrist_q = 0.0;
+        }
+    }
+    return wrist_q;
+}
+
+tuple <double, int, int> TestManager::CSTHitLoop()
+{
+    string userInput;
+    double t = 0.6;
+    int repeat = 1;
+    int state = 3;
+    int intensity = 2;
+
+    while(1)
+    {
+        int result = system("clear");
+        if (result != 0)
+        {
+            std::cerr << "Error during clear screen" << std::endl;
+        }
+
+        cout << "========== Hit Test Mode ==========\n";
+        cout << "Hit Time   : " << t;
+        cout << "\nRepeat   : " << repeat;
+        cout << "\nState    :" << state;
+        cout << "\nIntensity    : " << intensity;
+        if (hitMode == 1)
+        {
+            cout << "\nHitting Mode   : CSP";
+        }
+        else if (hitMode == 2)
+        {
+            cout << "\nHitting Mode   : CST";
+        }
+        cout << "\n-----------------------------------";
+        cout << "\nSetting Parameters";
+        cout << "\n[t] : Time / [r] Repeat / [i] intensity / [m] Mode / [g] Run";
+        cout << "\n Enter Command   : ";
+        cin >> userInput;
+
+        if (userInput == "t")
+        {
+            cout << "\nEnter Hit Time     : ";
+            cin >> t;
+        }
+        else if(userInput == "r")
+        {
+            cout << "\nEnter Repeat Count     : ";
+            cin >> repeat;
+        }
+        else if (userInput == "m")
+        {
+            cout << "\n[1] CSP / [2] CST \nMode Select  : ";
+            cin >> hitMode;
+        }
+        else if (userInput == "i")
+        {
+            cout << "\nEnter Intensity     : ";
+            cin >> intensity;
+        }
+        else if(userInput == "g")
+        {
+            // 뭔가 플래그 켜주고 CanManager에서 확인하기
+            return make_tuple(t, repeat, intensity);
+        }
+    }
+
+}
+
+bool TestManager::dct_fun(float positions[], float vel_th)
+{
+    // 포지션 배열에서 각각의 값을 추출합니다.
+    float the_k = positions[3]; // 가장 최신 값
+    float the_k_1 = positions[2];
+    float the_k_2 = positions[1];
+    float the_k_3 = positions[0]; // 가장 오래된 값
+
+    float ang_k = (the_k + the_k_1) / 2;
+    float ang_k_1 = (the_k_1 + the_k_2) / 2;
+    float ang_k_2 = (the_k_2 + the_k_3) / 2;
+    // float vel_k = ang_k - ang_k_1;
+    // float vel_k_1 = ang_k_1 - ang_k_2;
+
+    // if (vel_k > vel_k_1 && vel_k > vel_th && ang_k < 0.05)
+    //     return true;
+    // else if (ang_k < -0.25)
+    //     return true;
+    // else
+    //     return false;
+
+    if (ang_k < 0 && ang_k_1 < 0)
+        return true;
+    else
+        return false;
 }

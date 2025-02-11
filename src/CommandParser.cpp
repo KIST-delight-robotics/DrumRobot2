@@ -633,10 +633,10 @@ void MaxonCommandParser::getHomingMethodTest(MaxonMotor &motor, struct can_frame
     frame->data[1] = 0x98;
     frame->data[2] = 0x60;
     frame->data[3] = 0x00;
-    frame->data[4] = 0xFC;
-    frame->data[5] = 0xFF;
-    frame->data[6] = 0xFF;
-    frame->data[7] = 0xFF;
+    frame->data[4] = 0x25;  // 37 (0x25)
+    frame->data[5] = 0x00;
+    frame->data[6] = 0x00;
+    frame->data[7] = 0x00;
 }
 
 void MaxonCommandParser::getStartHoming(MaxonMotor &motor, struct can_frame *frame)
@@ -767,6 +767,26 @@ void MaxonCommandParser::getTargetTorque(MaxonMotor &motor, struct can_frame *fr
     frame->data[3] = 0x00;
     frame->data[4] = 0x00;
     frame->data[5] = 0x00;
+    frame->data[6] = 0x00;
+    frame->data[7] = 0x00;
+}
+
+void MaxonCommandParser::setTargetTorque(MaxonMotor &motor, struct can_frame *frame, int targetTorque)
+{
+    unsigned char torByte0 = targetTorque & 0xFF;        // 하위 8비트
+    unsigned char torByte1 = (targetTorque >> 8) & 0xFF; // 다음 8비트
+
+    // Set CAN frame id and data length code
+    frame->can_id = motor.canSendId;
+    frame->can_dlc = 8;
+
+    /// pack ints into the can buffer ///
+    frame->data[0] = 0x2B;
+    frame->data[1] = 0x71;
+    frame->data[2] = 0x60;
+    frame->data[3] = 0x00;
+    frame->data[4] = torByte0;
+    frame->data[5] = torByte1;
     frame->data[6] = 0x00;
     frame->data[7] = 0x00;
 }

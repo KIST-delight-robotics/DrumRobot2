@@ -53,6 +53,7 @@ public:
     std::vector<std::string> ifnames;
     int errorCnt = 0;
     int maxonCnt = 0;
+    bool isHit = false;
 
     // float receive_info = 0.0;
 
@@ -94,12 +95,14 @@ public:
 
     void setSocketNonBlock();
     void setSocketBlock();
-
+    
     bool setCANFrame();
 
     bool safetyCheck_Tmotor(std::shared_ptr<TMotor> tMotor, TMotorData tData);
     bool safetyCheck_T(std::shared_ptr<GenericMotor> &motor);
     bool safetyCheck_M(std::shared_ptr<GenericMotor> &motor);
+
+    bool dct_fun(double positions[]);
 
     map<std::string, int> motor_mapping = { ///< 각 관절에 해당하는 열 정보.
         {"waist", 0},
