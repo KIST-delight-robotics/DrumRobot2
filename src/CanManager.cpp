@@ -496,7 +496,6 @@ void CanManager::setMotorsSocket()
 
             if (result > 0)
             {
-                // tempFrames.clear(); // 추가
                 tempFrames[socket_fd].push_back(frame);
             }
             readCount++;
