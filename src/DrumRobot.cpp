@@ -213,27 +213,27 @@ void DrumRobot::recvLoopForThread()
         }
         case Main::Ideal:
         {
-            ReadProcess(5000); /*5ms*/
+            ReadProcess(1000); /*1ms*/
             break;
         }
         case Main::Play:
         {
-            ReadProcess(5000);
+            ReadProcess(1000);
             break;
         }
         case Main::AddStance:
         {
-            ReadProcess(5000);
+            ReadProcess(1000);
             break;
         }
         case Main::Test:
         {
-            ReadProcess(5000);
+            ReadProcess(1000);
             break;
         }
         case Main::Pause:
         {
-            ReadProcess(5000);
+            ReadProcess(1000);
             break;
         }
         case Main::Error:
@@ -252,6 +252,23 @@ void DrumRobot::recvLoopForThread()
 
 void DrumRobot::ReadProcess(int periodMicroSec)
 {
+        // 단순히 maxon모터로 신호만 보내기 위함
+
+    // bool isWriteError = false;
+    // if (maxonMotorCount != 0)
+    // {
+    //     maxoncmd.getSync(&virtualMaxonMotor->sendFrame);
+    //     if (!canManager.sendMotorFrame(virtualMaxonMotor))
+    //     {
+    //         isWriteError = true;
+    //     }
+    // }
+    // if (isWriteError)
+    // {
+    //     state.main = Main::Error;
+    // }
+    
+
     auto currentTime = chrono::system_clock::now();
     auto elapsed_time = chrono::duration_cast<chrono::microseconds>(currentTime - ReadStandard);
 
@@ -849,26 +866,14 @@ void DrumRobot::checkUserInput()
                     isWriteError = true;
                 }
             }
-<<<<<<< HEAD
-            else if (input == 's')
-            {
+            else if(input == 's'){
+                pathManager.line = 0;
                 state.main = Main::Shutdown;
             }
-            else if (input == 'r')
-=======
-            // else if (input == 'e')
-            // {
-            //     std::cout << "Performance is interrupted! \n";
-            //     pathManager.line = 0;
-            //     state.main = Main::Shutdown;
-            // }
-            else if (input == 'rs') // restart의 의미, ready상태와 명령어 구분을 위함.
->>>>>>> 2cbb5fd49edf58d6305907acf24be1de2b271cee
+            else if (input == 'p') // restart의 의미, ready상태와 명령어 구분을 위함.
+            {
                 state.main = Main::Play;
-            // else if (input == 'e')
-            //     state.main = Main::Shutdown;
-                // std::cout << "Performance is interrupted! \n";
-                // pathManager.line = 0;
+            }
             else if (input == 'h')
             {
                 state.play = PlaySub::ReadMusicSheet;
@@ -884,31 +889,9 @@ void DrumRobot::checkUserInput()
         }
         else if (state.main == Main::Error)
         {
-            if (input == 's')
-                state.main = Main::Shutdown;
-        }
-        else
-        {
-            if (input == 's')
-            {
-                state.main = Main::Shutdown;
-            }
-            else if (input == 'h')
-            {
-                state.main = Main::AddStance;
-                addStanceFlagSetting("goToHome");
-            }
-            // else if (input == 'e')
-            //     state.main = Main::Shutdown;
-<<<<<<< HEAD
-                // pathManager.line = 0;
-=======
-            //     pathManager.line = 0;
-            // }
->>>>>>> 2cbb5fd49edf58d6305907acf24be1de2b271cee
+            state.main = Main::Shutdown;
         }
     }
-
     if (isWriteError)
     {
         state.main = Main::Error;
