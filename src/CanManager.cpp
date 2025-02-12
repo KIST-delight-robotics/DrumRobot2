@@ -648,7 +648,6 @@ bool CanManager::distributeFramesToMotors(bool setlimit)
                     maxonMotor->jointAngle = maxonMotor->motorPositionToJointAngle(std::get<1>(parsedData));
                     maxonMotor->recieveBuffer.push(frame);
                     
-                    fun.appendToCSV_DATA("DATA", (float)maxonMotor->nodeId, maxonMotor->motorPosition, maxonMotor->motorTorque); // readFramesFromAllSockets바꾼 것과 기존 것 출력 결과물 차이보기.
                     fun.appendToCSV_DATA(fun.file_name, (float)maxonMotor->nodeId, maxonMotor->motorPosition, maxonMotor->motorTorque);
 
                     if (setlimit)

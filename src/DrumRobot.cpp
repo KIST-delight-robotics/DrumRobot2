@@ -849,26 +849,15 @@ void DrumRobot::checkUserInput()
                     isWriteError = true;
                 }
             }
-<<<<<<< HEAD
             else if (input == 's')
             {
+                pathManager.line = 0;
                 state.main = Main::Shutdown;
             }
-            else if (input == 'r')
-=======
-            // else if (input == 'e')
-            // {
-            //     std::cout << "Performance is interrupted! \n";
-            //     pathManager.line = 0;
-            //     state.main = Main::Shutdown;
-            // }
-            else if (input == 'rs') // restart의 의미, ready상태와 명령어 구분을 위함.
->>>>>>> 2cbb5fd49edf58d6305907acf24be1de2b271cee
+            else if (input == 'p') // restart의 의미, ready상태와 명령어 구분을 위함.
+            {    
                 state.main = Main::Play;
-            // else if (input == 'e')
-            //     state.main = Main::Shutdown;
-                // std::cout << "Performance is interrupted! \n";
-                // pathManager.line = 0;
+            }
             else if (input == 'h')
             {
                 state.play = PlaySub::ReadMusicSheet;
@@ -884,28 +873,7 @@ void DrumRobot::checkUserInput()
         }
         else if (state.main == Main::Error)
         {
-            if (input == 's')
-                state.main = Main::Shutdown;
-        }
-        else
-        {
-            if (input == 's')
-            {
-                state.main = Main::Shutdown;
-            }
-            else if (input == 'h')
-            {
-                state.main = Main::AddStance;
-                addStanceFlagSetting("goToHome");
-            }
-            // else if (input == 'e')
-            //     state.main = Main::Shutdown;
-<<<<<<< HEAD
-                // pathManager.line = 0;
-=======
-            //     pathManager.line = 0;
-            // }
->>>>>>> 2cbb5fd49edf58d6305907acf24be1de2b271cee
+            state.main = Main::Shutdown;
         }
     }
 
