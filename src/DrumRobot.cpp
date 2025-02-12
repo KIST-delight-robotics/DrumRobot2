@@ -213,27 +213,27 @@ void DrumRobot::recvLoopForThread()
         }
         case Main::Ideal:
         {
-            ReadProcess(5000); /*5ms*/
+            ReadProcess(1000); /*1ms*/
             break;
         }
         case Main::Play:
         {
-            ReadProcess(5000);
+            ReadProcess(1000);
             break;
         }
         case Main::AddStance:
         {
-            ReadProcess(5000);
+            ReadProcess(1000);
             break;
         }
         case Main::Test:
         {
-            ReadProcess(5000);
+            ReadProcess(1000);
             break;
         }
         case Main::Pause:
         {
-            ReadProcess(5000);
+            ReadProcess(1000);
             break;
         }
         case Main::Error:
@@ -252,6 +252,23 @@ void DrumRobot::recvLoopForThread()
 
 void DrumRobot::ReadProcess(int periodMicroSec)
 {
+        // 단순히 maxon모터로 신호만 보내기 위함
+
+    // bool isWriteError = false;
+    // if (maxonMotorCount != 0)
+    // {
+    //     maxoncmd.getSync(&virtualMaxonMotor->sendFrame);
+    //     if (!canManager.sendMotorFrame(virtualMaxonMotor))
+    //     {
+    //         isWriteError = true;
+    //     }
+    // }
+    // if (isWriteError)
+    // {
+    //     state.main = Main::Error;
+    // }
+    
+
     auto currentTime = chrono::system_clock::now();
     auto elapsed_time = chrono::duration_cast<chrono::microseconds>(currentTime - ReadStandard);
 
@@ -849,13 +866,21 @@ void DrumRobot::checkUserInput()
                     isWriteError = true;
                 }
             }
+<<<<<<< HEAD
             else if (input == 's')
             {
+=======
+            else if(input == 's'){
+>>>>>>> dd2a5e73cf6a9d40cebed54e270ba52bcf74a314
                 pathManager.line = 0;
                 state.main = Main::Shutdown;
             }
             else if (input == 'p') // restart의 의미, ready상태와 명령어 구분을 위함.
+<<<<<<< HEAD
             {    
+=======
+            {
+>>>>>>> dd2a5e73cf6a9d40cebed54e270ba52bcf74a314
                 state.main = Main::Play;
             }
             else if (input == 'h')
@@ -876,7 +901,6 @@ void DrumRobot::checkUserInput()
             state.main = Main::Shutdown;
         }
     }
-
     if (isWriteError)
     {
         state.main = Main::Error;

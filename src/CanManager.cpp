@@ -639,16 +639,20 @@ bool CanManager::distributeFramesToMotors(bool setlimit)
                     maxonMotor->motorPosition = std::get<1>(parsedData);
                     maxonMotor->motorTorque = std::get<2>(parsedData);
                     maxonMotor->statusBit = std::get<3>(parsedData);
-                    maxonMotor->positionValues[maxonMotor->posIndex % 4] = std::get<1>(parsedData);
-                    maxonMotor->posIndex++;
-
-                    
+                    maxonMotor->positionValues.push(std::get<1>(parsedData));
+                    if ((maxonMotor->positionValues).size() >= maxonMotor->maxIndex)
+                    {
+                        maxonMotor->positionValues.pop();
+                    }
 
                     // maxonMotor->jointAngle = std::get<1>(parsedData) * maxonMotor->cwDir + maxonMotor->initialJointAngle;
                     maxonMotor->jointAngle = maxonMotor->motorPositionToJointAngle(std::get<1>(parsedData));
                     maxonMotor->recieveBuffer.push(frame);
                     
                     fun.appendToCSV_DATA(fun.file_name, (float)maxonMotor->nodeId, maxonMotor->motorPosition, maxonMotor->motorTorque);
+
+                    // fun.appendToCSV_DATA("손목데이터", (float)maxonMotor->nodeId, maxonMotor->motorPosition, maxonMotor->motorTorque);
+
 
                     if (setlimit)
                     {
@@ -793,6 +797,8 @@ bool CanManager::setCANFrame()
                     txFrame(motor, maxonMotor->sendFrame);
                 }
                 maxoncmd.getTargetTorque(*maxonMotor, &maxonMotor->sendFrame, desiredTorque);
+
+                // fun.appendToCSV_DATA("torque", &maxonMotor->sendFrame, desiredTorque, 0);
             }
             else
             {
@@ -943,13 +949,29 @@ bool CanManager::safetyCheck_M(std::shared_ptr<GenericMotor> &motor)
     return isSafe;
 }
 
-bool CanManager::dct_fun(double positions[])
+bool CanManager::dct_fun(queue<double> positions)
 {
     // 포지션 배열에서 각각의 값을 추출합니다.
-    double the_k = positions[3]; // 가장 최신 값
-    double the_k_1 = positions[2];
-    double the_k_2 = positions[1];
-    double the_k_3 = positions[0]; // 가장 오래된 값
+
+    double the_k_3; // 가장 오래된 값
+    double the_k_2;
+    double the_k_1;
+    double the_k;
+
+    if (positions.size() < 4)
+    {
+        return false;
+    }
+    else
+    {
+        the_k_3 = positions.front(); // 가장 오래된 값
+        positions.pop();
+        the_k_2 = positions.front();
+        positions.pop();
+        the_k_1 = positions.front();
+        positions.pop();
+        the_k = positions.front();
+    }
 
     double ang_k = (the_k + the_k_1) / 2;
     double ang_k_1 = (the_k_1 + the_k_2) / 2;
@@ -967,7 +989,7 @@ bool CanManager::dct_fun(double positions[])
         cout << vel_k << " " << vel_k_1 << " \n";
     }
 
-    if (abs(vel_k) < (vel_k_1) && vel_k < 0 && abs(vel_k_1) >= 0.03)
+    if (abs(vel_k) < 0.7 * abs(vel_k_1) && vel_k < 0 && abs(vel_k_1) > 0.01)
         return true;
     else
         return false;
