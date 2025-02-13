@@ -444,12 +444,6 @@ void TestManager::SendTestProcess()
         {
             // 단순히 maxon모터로 신호만 보내기 위함
             if(elapsedTimeMaxon.count() >= 1000){
-                bool isSafe;
-                isSafe = canManager.setCANFrame();
-                if (!isSafe)
-                {
-                    state.main = Main::Error;
-                }
                 for (auto &motorPair : motors)
                 {
                     std::string name = motorPair.first;
