@@ -47,6 +47,7 @@ public:
 
 private:
 
+    chrono::system_clock::time_point SendMaxon;
     State &state;
     CanManager &canManager;
     std::map<std::string, std::shared_ptr<GenericMotor>> &motors;

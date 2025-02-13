@@ -71,6 +71,7 @@ private:
     // 제어 주기
     chrono::system_clock::time_point ReadStandard;
     chrono::system_clock::time_point SendStandard;
+    chrono::system_clock::time_point SendMaxon;
     chrono::system_clock::time_point addStandard;
 
     // Sync command
