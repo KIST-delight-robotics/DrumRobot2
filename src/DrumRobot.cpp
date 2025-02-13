@@ -21,6 +21,7 @@ DrumRobot::DrumRobot(State &stateRef,
 {
     ReadStandard = chrono::system_clock::now();
     SendStandard = chrono::system_clock::now();
+    SendMaxon = chrono::system_clock::now();
     addStandard = chrono::system_clock::now();
 
     send_time_point = std::chrono::steady_clock::now();
@@ -254,6 +255,7 @@ void DrumRobot::ReadProcess(int periodMicroSec)
 {
     auto currentTime = chrono::system_clock::now();
     auto elapsed_time = chrono::duration_cast<chrono::microseconds>(currentTime - ReadStandard);
+    auto elapsedTimeMaxon = chrono::duration_cast<chrono::microseconds>(currentTime - SendMaxon);
 
     switch (state.read.load())
     {
@@ -262,22 +264,6 @@ void DrumRobot::ReadProcess(int periodMicroSec)
         {
             state.read = ReadSub::ReadCANFrame; // 주기가 되면 ReadCANFrame 상태로 진입
             ReadStandard = currentTime;         // 현재 시간으로 시간 객체 초기화
-
-
-            // 단순히 maxon모터로 신호만 보내기 위함
-            struct can_frame frame;
-            for (auto &motorPair : motors)
-            {
-                std::string name = motorPair.first;
-                auto &motor = motorPair.second;
-
-                // 타입에 따라 적절한 캐스팅과 초기화 수행
-                if (std::shared_ptr<TMotor> tMotor = std::dynamic_pointer_cast<TMotor>(motor)){}
-                else if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motor))
-                {
-                    maxoncmd.getCheck(*maxonMotor ,&frame);
-                }
-            }
         }
         break;
     case ReadSub::ReadCANFrame:
@@ -314,6 +300,7 @@ void DrumRobot::SendPlayProcess(int periodMicroSec, string musicName)
 {
     auto currentTime = chrono::system_clock::now();
     auto elapsedTime = chrono::duration_cast<chrono::microseconds>(currentTime - SendStandard);
+    auto elapsedTimeMaxon = chrono::duration_cast<chrono::microseconds>(currentTime - SendMaxon);
     switch (state.play.load())
     {
     case PlaySub::ReadMusicSheet:
@@ -406,10 +393,36 @@ void DrumRobot::SendPlayProcess(int periodMicroSec, string musicName)
     }
     case PlaySub::TimeCheck:
     {
+
+        // 단순히 maxon모터로 신호만 보내기 위함
+        if(elapsedTimeMaxon.count() >= 1000){
+            bool isSafe;
+            isSafe = canManager.setCANFrame();
+            if (!isSafe)
+            {
+                state.main = Main::Error;
+            }
+            for (auto &motorPair : motors)
+            {
+                std::string name = motorPair.first;
+                auto &motor = motorPair.second;
+
+                if (maxonMotorCount != 0)
+                {
+                    if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motor))
+                    {
+                        maxoncmd.getCheck(*maxonMotor, &virtualMaxonMotor->sendFrame);
+                    }
+                }
+            }
+            SendMaxon = currentTime;
+        }
+
         if (elapsedTime.count() >= periodMicroSec)
         {
             state.play = PlaySub::SetCANFrame;   // 주기가 되면 SetCANFrame 상태로 진입
             SendStandard = currentTime;             // 현재 시간으로 시간 객체 초기화
+            
         }
         break;
     }
@@ -483,6 +496,7 @@ void DrumRobot::SendAddStanceProcess(int periodMicroSec)
 {
     auto currentTime = chrono::system_clock::now();
     auto elapsed_time = chrono::duration_cast<chrono::microseconds>(currentTime - addStandard);
+    auto elapsedTimeMaxon = chrono::duration_cast<chrono::microseconds>(currentTime - SendMaxon);
 
     switch (state.addstance.load())
     {
@@ -526,6 +540,30 @@ void DrumRobot::SendAddStanceProcess(int periodMicroSec)
     }
     case AddStanceSub::TimeCheck:
     {
+        // 단순히 maxon모터로 신호만 보내기 위함
+        if(elapsedTimeMaxon.count() >= 1000){
+            bool isSafe;
+            isSafe = canManager.setCANFrame();
+            if (!isSafe)
+            {
+                state.main = Main::Error;
+            }
+            for (auto &motorPair : motors)
+            {
+                std::string name = motorPair.first;
+                auto &motor = motorPair.second;
+
+                if (maxonMotorCount != 0)
+                {
+                    if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motor))
+                    {
+                        maxoncmd.getCheck(*maxonMotor, &virtualMaxonMotor->sendFrame);
+                    }
+                }
+            }
+            SendMaxon = currentTime;
+        }
+
         if (elapsed_time.count() >= periodMicroSec)
         {
             state.addstance = AddStanceSub::CheckBuf;
