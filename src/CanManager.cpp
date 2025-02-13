@@ -819,7 +819,6 @@ bool CanManager::setCANFrame()
                 
                 maxoncmd.getTargetPosition(*maxonMotor, &maxonMotor->sendFrame, desiredPosition);
             }
-            // maxoncmd.getTargetTorque(*maxonMotor, &maxonMotor->sendFrame, desiredTorque);
 
             fun.appendToCSV_DATA(fun.file_name, (float)maxonMotor->nodeId + SEND_SIGN, desiredPosition, desiredPosition - maxonMotor->motorPosition);
         }
@@ -989,7 +988,7 @@ bool CanManager::dct_fun(queue<double> positions)
         cout << vel_k << " " << vel_k_1 << " \n";
     }
 
-    if (abs(vel_k) < 0.7 * abs(vel_k_1) && vel_k < 0 && abs(vel_k_1) > 0.01)
+    if (abs(vel_k) < abs(vel_k_1) && vel_k < 0 && abs(vel_k_1) > 0.03 && the_k <= 0.3)
         return true;
     else
         return false;
