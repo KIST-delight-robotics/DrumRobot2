@@ -252,23 +252,6 @@ void DrumRobot::recvLoopForThread()
 
 void DrumRobot::ReadProcess(int periodMicroSec)
 {
-        // 단순히 maxon모터로 신호만 보내기 위함
-
-    // bool isWriteError = false;
-    // if (maxonMotorCount != 0)
-    // {
-    //     maxoncmd.getSync(&virtualMaxonMotor->sendFrame);
-    //     if (!canManager.sendMotorFrame(virtualMaxonMotor))
-    //     {
-    //         isWriteError = true;
-    //     }
-    // }
-    // if (isWriteError)
-    // {
-    //     state.main = Main::Error;
-    // }
-    
-
     auto currentTime = chrono::system_clock::now();
     auto elapsed_time = chrono::duration_cast<chrono::microseconds>(currentTime - ReadStandard);
 
@@ -279,6 +262,22 @@ void DrumRobot::ReadProcess(int periodMicroSec)
         {
             state.read = ReadSub::ReadCANFrame; // 주기가 되면 ReadCANFrame 상태로 진입
             ReadStandard = currentTime;         // 현재 시간으로 시간 객체 초기화
+
+
+            // 단순히 maxon모터로 신호만 보내기 위함
+            struct can_frame frame;
+            for (auto &motorPair : motors)
+            {
+                std::string name = motorPair.first;
+                auto &motor = motorPair.second;
+
+                // 타입에 따라 적절한 캐스팅과 초기화 수행
+                if (std::shared_ptr<TMotor> tMotor = std::dynamic_pointer_cast<TMotor>(motor)){}
+                else if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motor))
+                {
+                    maxoncmd.getCheck(*maxonMotor ,&frame);
+                }
+            }
         }
         break;
     case ReadSub::ReadCANFrame:
@@ -866,21 +865,12 @@ void DrumRobot::checkUserInput()
                     isWriteError = true;
                 }
             }
-<<<<<<< HEAD
-            else if (input == 's')
-            {
-=======
             else if(input == 's'){
->>>>>>> dd2a5e73cf6a9d40cebed54e270ba52bcf74a314
                 pathManager.line = 0;
                 state.main = Main::Shutdown;
             }
             else if (input == 'p') // restart의 의미, ready상태와 명령어 구분을 위함.
-<<<<<<< HEAD
-            {    
-=======
             {
->>>>>>> dd2a5e73cf6a9d40cebed54e270ba52bcf74a314
                 state.main = Main::Play;
             }
             else if (input == 'h')

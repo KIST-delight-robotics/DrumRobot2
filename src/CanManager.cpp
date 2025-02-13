@@ -634,6 +634,7 @@ bool CanManager::distributeFramesToMotors(bool setlimit)
             {
                 if (frame.can_id == maxonMotor->rxPdoIds[0])
                 {
+                    // getCheck(*maxonMotor ,&frame);
                     std::tuple<int, float, float, unsigned char> parsedData = maxoncmd.parseRecieveCommand(*maxonMotor, &frame);
                     
                     maxonMotor->motorPosition = std::get<1>(parsedData);
