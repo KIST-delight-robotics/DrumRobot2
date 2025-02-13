@@ -652,7 +652,7 @@ bool CanManager::distributeFramesToMotors(bool setlimit)
                     
                     fun.appendToCSV_DATA(fun.file_name, (float)maxonMotor->nodeId, maxonMotor->motorPosition, maxonMotor->motorTorque);
 
-                    // fun.appendToCSV_DATA("손목데이터", (float)maxonMotor->nodeId, maxonMotor->motorPosition, maxonMotor->motorTorque);
+                    fun.appendToCSV_DATA("손목데이터", (float)maxonMotor->nodeId, maxonMotor->motorPosition, maxonMotor->motorTorque);
 
 
                     if (setlimit)
@@ -780,7 +780,7 @@ bool CanManager::setCANFrame()
 
             MaxonData mData = maxonMotor->commandBuffer.front();
             float desiredPosition = maxonMotor->jointAngleToMotorPosition(mData.position);
-            float desiredTorque = 1;
+            float desiredTorque = -1;
             maxonMotor->commandBuffer.pop();
 
             if(dct_fun(maxonMotor->positionValues) && isHit)
@@ -989,7 +989,7 @@ bool CanManager::dct_fun(queue<double> positions)
         cout << vel_k << " " << vel_k_1 << " \n";
     }
 
-    if (abs(vel_k) < abs(vel_k_1) && vel_k < 0 && abs(vel_k_1) > 0.03 && the_k <= 0.3)
+    if (abs(vel_k) * 1.5 < abs(vel_k_1) && vel_k < 0 && the_k <= 0.3)
         return true;
     else
         return false;

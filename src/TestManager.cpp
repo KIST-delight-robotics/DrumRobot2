@@ -1575,7 +1575,7 @@ tuple <double, int, int> TestManager::CSTHitLoop()
     double t = 0.6;
     int repeat = 1;
     int state = 3;
-    int intensity = 2;
+    int intensity = 3;
 
     while(1)
     {
