@@ -442,29 +442,29 @@ void TestManager::SendTestProcess()
         }
         case TestSub::TimeCheck:
         {
-            // 단순히 maxon모터로 신호만 보내기 위함
-            if(elapsedTimeMaxon.count() >= 1000){
-                bool isSafe;
-                isSafe = canManager.setCANFrame();
-                if (!isSafe)
-                {
-                    state.main = Main::Error;
-                }
-                for (auto &motorPair : motors)
-                {
-                    std::string name = motorPair.first;
-                    auto &motor = motorPair.second;
+            // // 단순히 maxon모터로 신호만 보내기 위함
+            // if(elapsedTimeMaxon.count() >= 1000){
+            //     bool isSafe;
+            //     isSafe = canManager.setCANFrame();
+            //     if (!isSafe)
+            //     {
+            //         state.main = Main::Error;
+            //     }
+            //     for (auto &motorPair : motors)
+            //     {
+            //         std::string name = motorPair.first;
+            //         auto &motor = motorPair.second;
 
-                    if (maxonMotorCount != 0)
-                    {
-                        if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motor))
-                        {
-                            maxoncmd.getCheck(*maxonMotor, &virtualMaxonMotor->sendFrame);
-                        }
-                    }
-                }
-                SendMaxon = currentTime;
-            }
+            //         if (maxonMotorCount != 0)
+            //         {
+            //             if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motor))
+            //             {
+            //                 maxoncmd.getCheck(*maxonMotor, &virtualMaxonMotor->sendFrame);
+            //             }
+            //         }
+            //     }
+            //     SendMaxon = currentTime;
+            // }
             usleep(1000000*canManager.deltaT);
             state.test = TestSub::SetCANFrame;
             break;

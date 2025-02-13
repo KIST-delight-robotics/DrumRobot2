@@ -796,8 +796,10 @@ bool CanManager::setCANFrame()
 
                     maxoncmd.getEnable(*maxonMotor, &maxonMotor->sendFrame);
                     txFrame(motor, maxonMotor->sendFrame);
+
+                    maxoncmd.getTargetTorque(*maxonMotor, &maxonMotor->sendFrame, desiredTorque);
                 }
-                maxoncmd.getTargetTorque(*maxonMotor, &maxonMotor->sendFrame, desiredTorque);
+                // maxoncmd.getTargetTorque(*maxonMotor, &maxonMotor->sendFrame, desiredTorque);
 
                 // fun.appendToCSV_DATA("torque", &maxonMotor->sendFrame, desiredTorque, 0);
             }
