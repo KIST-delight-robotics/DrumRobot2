@@ -396,12 +396,6 @@ void DrumRobot::SendPlayProcess(int periodMicroSec, string musicName)
 
         // 단순히 maxon모터로 신호만 보내기 위함
         if(elapsedTimeMaxon.count() >= 1000){
-            bool isSafe;
-            isSafe = canManager.setCANFrame();
-            if (!isSafe)
-            {
-                state.main = Main::Error;
-            }
             for (auto &motorPair : motors)
             {
                 std::string name = motorPair.first;
@@ -541,6 +535,7 @@ void DrumRobot::SendAddStanceProcess(int periodMicroSec)
     case AddStanceSub::TimeCheck:
     {
         // 단순히 maxon모터로 신호만 보내기 위함
+<<<<<<< HEAD
         // if(elapsedTimeMaxon.count() >= 1000){
         //     bool isSafe;
         //     isSafe = canManager.setCANFrame();
@@ -563,6 +558,24 @@ void DrumRobot::SendAddStanceProcess(int periodMicroSec)
         //     }
         //     SendMaxon = currentTime;
         // }
+=======
+        if(elapsedTimeMaxon.count() >= 1000){
+            for (auto &motorPair : motors)
+            {
+                std::string name = motorPair.first;
+                auto &motor = motorPair.second;
+
+                if (maxonMotorCount != 0)
+                {
+                    if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motor))
+                    {
+                        maxoncmd.getCheck(*maxonMotor, &virtualMaxonMotor->sendFrame);
+                    }
+                }
+            }
+            SendMaxon = currentTime;
+        }
+>>>>>>> 67ea87f7c4e6eeaca2d251379b4ea5629ef30bb9
 
         if (elapsed_time.count() >= periodMicroSec)
         {

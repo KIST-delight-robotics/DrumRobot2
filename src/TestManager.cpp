@@ -442,6 +442,7 @@ void TestManager::SendTestProcess()
         }
         case TestSub::TimeCheck:
         {
+<<<<<<< HEAD
             // // 단순히 maxon모터로 신호만 보내기 위함
             // if(elapsedTimeMaxon.count() >= 1000){
             //     bool isSafe;
@@ -465,6 +466,25 @@ void TestManager::SendTestProcess()
             //     }
             //     SendMaxon = currentTime;
             // }
+=======
+            // 단순히 maxon모터로 신호만 보내기 위함
+            if(elapsedTimeMaxon.count() >= 1000){
+                for (auto &motorPair : motors)
+                {
+                    std::string name = motorPair.first;
+                    auto &motor = motorPair.second;
+
+                    if (maxonMotorCount != 0)
+                    {
+                        if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motor))
+                        {
+                            maxoncmd.getCheck(*maxonMotor, &virtualMaxonMotor->sendFrame);
+                        }
+                    }
+                }
+                SendMaxon = currentTime;
+            }
+>>>>>>> 67ea87f7c4e6eeaca2d251379b4ea5629ef30bb9
             usleep(1000000*canManager.deltaT);
             state.test = TestSub::SetCANFrame;
             break;
