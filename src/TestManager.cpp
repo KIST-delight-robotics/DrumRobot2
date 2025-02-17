@@ -489,8 +489,8 @@ void TestManager::SendTestProcess(int periodMicroSec)
             if (elapsedTime.count() >= periodMicroSec / 5)
             {
                 state.test = TestSub::SetMaxonCANFrame;  // 1ms마다 Maxon CAN Frame 설정
-                SendStandard = currentTime;             // 시간 초기화
-                elapsedTime = chrono::microseconds(0);  // 시간 리셋
+                SendMaxon = currentTime;             // 시간 초기화
+                elapsedTimeMaxon = chrono::microseconds(0);  // 시간 리셋
             }
             // 5ms마다 SetCANFrame으로 이동
             else if (elapsedTime.count() >= periodMicroSec)
