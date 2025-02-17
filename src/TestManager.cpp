@@ -289,19 +289,6 @@ void TestManager::SendTestProcess()
                             q[9] = makeWristAngle(0, hit_time, i * dt, 3, intensity);
                         }
 
-<<<<<<< HEAD
-                        for (auto &entry : motors)
-                        {
-                            if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(entry.second))
-                            {
-                                MaxonData newData;
-                                newData.position = q[motor_mapping[entry.first]];
-                                newData.torque = torque;
-                                newData.WristState = 0.5;
-                                maxonMotor->commandBuffer.push(newData);
-                            }
-                        }
-=======
                         newData.position = q[motor_mapping[entry.first]];
                         maxonMotor->commandBuffer.push(newData);
                         //fun.appendToCSV_DATA("wristAngleData", (float)maxonMotor->nodeId , newData.position, 0);
@@ -319,7 +306,6 @@ void TestManager::SendTestProcess()
                     else
                     {
                         repeatCnt++;
->>>>>>> f1004de0ed67800a67880ee16b72945085105faa
                     }
                 }
                 hitTest = false;
