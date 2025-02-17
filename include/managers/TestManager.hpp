@@ -47,6 +47,7 @@ public:
 
 private:
 
+    chrono::system_clock::time_point SendStandard;
     chrono::system_clock::time_point SendMaxon;
     chrono::system_clock::time_point SendStandard;
     State &state;

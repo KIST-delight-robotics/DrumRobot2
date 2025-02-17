@@ -295,7 +295,6 @@ void DrumRobot::ReadProcess(int periodMicroSec)
     }
     }
 }
-
 void DrumRobot::SendPlayProcess(int periodMicroSec, string musicName)
 {
     auto currentTime = chrono::system_clock::now();
@@ -394,17 +393,13 @@ void DrumRobot::SendPlayProcess(int periodMicroSec, string musicName)
     }
     case PlaySub::TimeCheck:
     {
-
         // 단순히 maxon모터로 신호만 보내기 위함
-        if(elapsedTimeMaxon.count() >= 1000){
+        if(elapsedTimeMaxon.count() >= 1000) {
             for (auto &motorPair : motors)
             {
-                std::string name = motorPair.first;
-                auto &motor = motorPair.second;
-
                 if (maxonMotorCount != 0)
                 {
-                    if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motor))
+                    if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motorPair.second))
                     {
                         maxoncmd.getCheck(*maxonMotor, &virtualMaxonMotor->sendFrame);
                     }
@@ -412,7 +407,6 @@ void DrumRobot::SendPlayProcess(int periodMicroSec, string musicName)
             }
             SendMaxon = currentTime;
         }
-
         if (elapsedTime.count() >= periodMicroSec)
         {
             state.play = PlaySub::SetCANFrame;   // 주기가 되면 SetCANFrame 상태로 진입
@@ -487,6 +481,7 @@ void DrumRobot::SendPlayProcess(int periodMicroSec, string musicName)
     }
 }
 
+
 void DrumRobot::SendAddStanceProcess(int periodMicroSec)
 {
     auto currentTime = chrono::system_clock::now();
@@ -529,22 +524,20 @@ void DrumRobot::SendAddStanceProcess(int periodMicroSec)
             pathManager.GetArr(pathManager.backArr);
         }
 
-
         state.addstance = AddStanceSub::TimeCheck;
         break;
     }
     case AddStanceSub::TimeCheck:
     {
-        // 단순히 maxon모터로 신호만 보내기 위함
-        if(elapsedTimeMaxon.count() >= 1000){
+        bool shouldProcessMain = false;
+        
+        // Maxon 모터 1ms 주기 처리
+        if(elapsedTimeMaxon.count() >= 1000) {
             for (auto &motorPair : motors)
             {
-                std::string name = motorPair.first;
-                auto &motor = motorPair.second;
-
                 if (maxonMotorCount != 0)
                 {
-                    if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motor))
+                    if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motorPair.second))
                     {
                         maxoncmd.getCheck(*maxonMotor, &virtualMaxonMotor->sendFrame);
                     }
@@ -553,10 +546,16 @@ void DrumRobot::SendAddStanceProcess(int periodMicroSec)
             SendMaxon = currentTime;
         }
 
-        if (elapsed_time.count() >= periodMicroSec)
+        // T모터 5ms 주기 처리
+        if (elapsed_time.count() >= 5000)
+        {
+            shouldProcessMain = true;
+            addStandard = currentTime;
+        }
+
+        if (shouldProcessMain)
         {
             state.addstance = AddStanceSub::CheckBuf;
-            addStandard = currentTime;           // 현재 시간으로 시간 객체 초기화
         }
         break;
     }
@@ -679,6 +678,9 @@ void DrumRobot::SendAddStanceProcess(int periodMicroSec)
     }
     }
 }
+
+
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /*                                STATE UTILITY                               */

@@ -7,10 +7,17 @@ using namespace std;
 TestManager::TestManager(State &stateRef, CanManager &canManagerRef, std::map<std::string, std::shared_ptr<GenericMotor>> &motorsRef, USBIO &usbioRef, Functions &funRef)
     : state(stateRef), canManager(canManagerRef), motors(motorsRef), usbio(usbioRef), fun(funRef)
 {
+
+    SendStandard = chrono::system_clock::now();
     SendMaxon = chrono::system_clock::now();
 }
 
+<<<<<<< HEAD
 void TestManager::SendTestProcess(int periodMicroSec)
+=======
+
+void TestManager::SendTestProcess()
+>>>>>>> 1d89152877186609808fe92c38badf3f3bbfeae6
 {
 
     auto currentTime = chrono::system_clock::now();
@@ -482,15 +489,12 @@ void TestManager::SendTestProcess(int periodMicroSec)
         case TestSub::TimeCheck:
         {
             // 단순히 maxon모터로 신호만 보내기 위함
-            if(elapsedTimeMaxon.count() >= 1000){
+            if(elapsedTimeMaxon.count() >= 1000) {
                 for (auto &motorPair : motors)
                 {
-                    std::string name = motorPair.first;
-                    auto &motor = motorPair.second;
-
                     if (maxonMotorCount != 0)
                     {
-                        if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motor))
+                        if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motorPair.second))
                         {
                             maxoncmd.getCheck(*maxonMotor, &virtualMaxonMotor->sendFrame);
                         }
@@ -602,6 +606,7 @@ void TestManager::SendTestProcess(int periodMicroSec)
         }
     }
 }
+
 
 
 void TestManager::MaxonEnable()
