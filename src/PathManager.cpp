@@ -89,7 +89,8 @@ void PathManager::getDrumPositoin()
 
     //                              S                   FT                  MT                  HT                  HH                  R                   RC                  LC
     right_wrist_hit_angle << 25.0*M_PI/180.0,   25.0*M_PI/180.0,    15.0*M_PI/180.0,    15.0*M_PI/180.0,    10.0*M_PI/180.0,    15.0*M_PI/180.0,    0.0*M_PI/180.0,    10.0*M_PI/180.0, 0;
-    left_wrist_hit_angle <<  25.0*M_PI/180.0,   25.0*M_PI/180.0,    15.0*M_PI/180.0,    15.0*M_PI/180.0,    10.0*M_PI/180.0,    15.0*M_PI/180.0,    0.0*M_PI/180.0,    10.0*M_PI/180.0, 0;
+    //left_wrist_hit_angle <<  25.0*M_PI/180.0,   25.0*M_PI/180.0,    15.0*M_PI/180.0,    15.0*M_PI/180.0,    10.0*M_PI/180.0,    15.0*M_PI/180.0,    0.0*M_PI/180.0,    10.0*M_PI/180.0, 0;
+    left_wrist_hit_angle <<  0, 0, 0, 0, 0, 0, 0, 0, 0;
 }
 
 void PathManager::setReadyAngle()
@@ -130,7 +131,8 @@ void PathManager::setReadyAngle()
     readyArr[4] += param.elbowStayAngle;
     readyArr[6] += param.elbowStayAngle;
     readyArr[7] += param.wristStayAngle;
-    readyArr[8] += param.wristStayAngle;
+    //readyArr[8] += param.wristStayAngle;
+    readyArr[8] = param.wristStayAngle;     // for Test
     readyArr[9] = param.wristStayAngle;
 }
 

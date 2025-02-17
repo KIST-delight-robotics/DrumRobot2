@@ -54,6 +54,9 @@ public:
     int errorCnt = 0;
     int maxonCnt = 0;
     bool isHit = false;
+    bool isPlay = false;
+    bool stopPos = false;
+    float hittingActualPos = 0;
 
     // float receive_info = 0.0;
 
@@ -104,6 +107,8 @@ public:
 
     bool dct_fun(queue<double> positions);
 
+    float wristAngle(float t1, float t2, float t, int state, int intensity);
+
     map<std::string, int> motor_mapping = { ///< 각 관절에 해당하는 열 정보.
         {"waist", 0},
         {"R_arm1", 1},
@@ -114,9 +119,9 @@ public:
         {"L_arm3", 6},
         {"R_wrist", 7},
         {"L_wrist", 8},
-        {"maxonForTest", 8},
-        {"R_foot", 9},
-        {"L_foot", 10}};
+        {"maxonForTest", 9},
+        {"R_foot", 10},
+        {"L_foot", 11}};
 
 private:
 

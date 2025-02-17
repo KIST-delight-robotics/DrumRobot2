@@ -170,7 +170,7 @@ void DrumRobot::sendLoopForThread()
         case Main::Test:
         {
             // UnfixedMotor();
-            testManager.SendTestProcess();
+            testManager.SendTestProcess(5000);
             break;
         }
         case Main::Pause:
@@ -328,6 +328,7 @@ void DrumRobot::SendPlayProcess(int periodMicroSec, string musicName)
                         std::cout << "Play is Over\n";
                         state.main = Main::AddStance;
                         state.play = PlaySub::ReadMusicSheet;
+                        canManager.isPlay = false;
                         addStanceFlagSetting("goToHome");
                         usleep(500*1000);     // 0.5s
                         break; // 파일 열지 못했으므로 상태 변경 후 종료
@@ -535,30 +536,6 @@ void DrumRobot::SendAddStanceProcess(int periodMicroSec)
     case AddStanceSub::TimeCheck:
     {
         // 단순히 maxon모터로 신호만 보내기 위함
-<<<<<<< HEAD
-        // if(elapsedTimeMaxon.count() >= 1000){
-        //     bool isSafe;
-        //     isSafe = canManager.setCANFrame();
-        //     if (!isSafe)
-        //     {
-        //         state.main = Main::Error;
-        //     }
-        //     for (auto &motorPair : motors)
-        //     {
-        //         std::string name = motorPair.first;
-        //         auto &motor = motorPair.second;
-
-        //         if (maxonMotorCount != 0)
-        //         {
-        //             if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motor))
-        //             {
-        //                 maxoncmd.getCheck(*maxonMotor, &virtualMaxonMotor->sendFrame);
-        //             }
-        //         }
-        //     }
-        //     SendMaxon = currentTime;
-        // }
-=======
         if(elapsedTimeMaxon.count() >= 1000){
             for (auto &motorPair : motors)
             {
@@ -575,7 +552,6 @@ void DrumRobot::SendAddStanceProcess(int periodMicroSec)
             }
             SendMaxon = currentTime;
         }
->>>>>>> 67ea87f7c4e6eeaca2d251379b4ea5629ef30bb9
 
         if (elapsed_time.count() >= periodMicroSec)
         {
@@ -838,6 +814,7 @@ bool DrumRobot::processInput(const std::string &input)
                 openFlag = 1;
                 state.main = Main::Play;
                 robotFlagSetting("MOVING");
+                canManager.isPlay = true;
                 return true;
             }
             else if (input == "h")

@@ -137,6 +137,8 @@ public:
     unsigned char statusBit;
     float bumperLocation = 0.0;
 
+    float hittingPos;
+
     queue<MaxonData> commandBuffer;
     queue<float> wrist_BackArr;
     void clearCommandBuffer();

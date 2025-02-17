@@ -37,7 +37,7 @@ class TestManager
 public:
     TestManager(State &stateRef, CanManager &canManagerRef, std::map<std::string, std::shared_ptr<GenericMotor>> &motorsRef, USBIO &usbioRef, Functions &funRef);
 
-    void SendTestProcess();
+    void SendTestProcess(int periodMicroSec);
     void MaxonEnable();
     void setMaxonMode(std::string targetMode);
 
@@ -48,6 +48,7 @@ public:
 private:
 
     chrono::system_clock::time_point SendMaxon;
+    chrono::system_clock::time_point SendStandard;
     State &state;
     CanManager &canManager;
     std::map<std::string, std::shared_ptr<GenericMotor>> &motors;
@@ -132,9 +133,10 @@ private:
     void CSTLoop();
     void TestStickLoop();
     void TestStick(const std::string selectedMotor, int des_tff, float tffThreshold, float posThreshold, int backTorqueUnit);
-    float makeWristAngle(float t1, float t2, float t, int state, int intensity);
+    float makeWristAngle(float t1, float t2, float t, int state, int intensity, bool hitting, float hittingPos);
     tuple <double, int, int> CSTHitLoop();
     bool dct_fun(float positions[], float vel_th);
+    float getWristReadyAngle(float startAngle, float t1, float t2, float t, int state, int intensity);
 
     void UnfixedMotor();
 };
