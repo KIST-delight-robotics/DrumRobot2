@@ -218,7 +218,7 @@ void DrumRobot::recvLoopForThread()
             auto currentTime = std::chrono::system_clock::now();
             auto elapsedTimeMaxon = std::chrono::duration_cast<std::chrono::microseconds>(currentTime - SendMaxon);
 
-            if (elapsedTimeMaxon.count() >= 100) // 100us마다 실행
+            if (elapsedTimeMaxon.count() >= 1000) // 1ms마다 Maxon 모터로 위치 값 요청
             {
                 for (auto &motorPair : motors)
                 {
@@ -226,34 +226,8 @@ void DrumRobot::recvLoopForThread()
                     {
                         if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motorPair.second))
                         {
-                            // 모터에 핑 신호 전송
+                            // 위치 값 요청을 위한 신호 전송
                             maxoncmd.getCheck(*maxonMotor, &virtualMaxonMotor->sendFrame);
-                            if (!canManager.sendMotorFrame(virtualMaxonMotor))
-                            {
-                                state.main = Main::Error;
-                                break;
-                            }
-
-                            // CAN 프레임 설정
-                            if (!canManager.setCANFrame())
-                            {
-                                state.main = Main::Error;
-                                break;
-                            }
-
-                            // 모터 프레임 전송
-                            for (auto &motor_pair : motors)
-                            {
-                                shared_ptr<GenericMotor> motor = motor_pair.second;
-                                if (!canManager.sendMotorFrame(motor))
-                                {
-                                    state.main = Main::Error;
-                                    break;
-                                }
-                            }
-
-                            // 동기화 프레임 전송
-                            maxoncmd.getSync(&virtualMaxonMotor->sendFrame);
                             if (!canManager.sendMotorFrame(virtualMaxonMotor))
                             {
                                 state.main = Main::Error;
@@ -262,7 +236,6 @@ void DrumRobot::recvLoopForThread()
                         }
                     }
                 }
-
                 SendMaxon = currentTime;
             }
 
