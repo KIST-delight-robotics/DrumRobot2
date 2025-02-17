@@ -780,7 +780,7 @@ bool CanManager::setCANFrame()
 
             MaxonData mData = maxonMotor->commandBuffer.front();
             float desiredPosition = maxonMotor->jointAngleToMotorPosition(mData.position);
-            float desiredTorque = 1;
+            // float desiredTorque = 1;
             //hittingActualPos = maxonMotor->positionValues.back();
             
             maxonMotor->commandBuffer.pop();
@@ -789,6 +789,7 @@ bool CanManager::setCANFrame()
             {
                 fun.appendToCSV_DATA("hittingDetect", 1, 0, 0);
                 maxonMotor->hitting = true;
+                isHit = false;
                 maxonMotor->hittingPos = maxonMotor->positionValues.back();
                 desiredPosition = maxonMotor->positionValues.back();
                 cout << "CanManager hittingPos : " << maxonMotor->hittingPos << "\n";
