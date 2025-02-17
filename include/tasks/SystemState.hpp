@@ -54,9 +54,12 @@ enum class TestSub
     TestMaxon,
     FillBuf,
     CheckBuf,
+    CheckMaxonBuf,
     TimeCheck,
     SetCANFrame,
+    SetMaxonCANFrame,
     SendCANFrame,
+    SendMaxonCANFrame,
     Done
 };
 

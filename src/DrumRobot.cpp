@@ -427,10 +427,13 @@ void DrumRobot::SendPlayProcess(int periodMicroSec, string musicName)
     case PlaySub::SetMaxonCANFrame:
     {
         bool isSafe = true;
-        
         // Maxon 모터만 프레임 설정
-        if (maxonMotorCount != 0) {
-            isSafe = canManager.setCANFrame();
+        for (auto &motor_pair : motors) {
+            if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motor_pair.second)) {
+                if (!maxonMotor->commandBuffer.empty()) {
+                    isSafe = canManager.setCANFrame();
+                }
+            }
         }
 
         if (!isSafe) {
