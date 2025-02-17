@@ -304,31 +304,7 @@ void TestManager::SendTestProcess(int periodMicroSec)
 
                         newData.position = q[motor_mapping[entry.first]];
                         maxonMotor->commandBuffer.push(newData);
-
-                        // if(maxonMotor->hitting)
-                        // {
-                        //     newData.position = maxonMotor->hittingPos;
-                        //     cout << "TestManager hittingPos : " << maxonMotor->hittingPos << "\n";
-                        // }
-                        // else
-                        // {
-                        //     if (repeatCnt == repeat)
-                        //     {
-                        //         q[8] = makeWristAngle(0, hit_time, i * dt, 1, intensity);
-                        //     }
-                        //     else if (repeatCnt == 0)
-                        //     {
-                        //         q[8] = makeWristAngle(0, hit_time, i * dt, 2, intensity);
-                        //     }
-                        //     else
-                        //     {
-                        //         q[8] = makeWristAngle(0, hit_time, i * dt, 3, intensity);
-                        //     }
-                        //     newData.position = q[motor_mapping[entry.first]];
-                        // }
-                        // newData.torque = torque;
-                        // newData.WristState = 0.5;
-                        // maxonMotor->commandBuffer.push(newData);
+                        //fun.appendToCSV_DATA("wristAngleData", (float)maxonMotor->nodeId , newData.position, 0);
                     }
                 }
                 if (i >= n)

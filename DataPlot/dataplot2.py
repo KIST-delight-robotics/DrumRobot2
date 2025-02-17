@@ -40,7 +40,7 @@ def plot_from_txt(file1, file2=None):
 # Example usage
 if __name__ == "__main__":
     # Path to txt files
-    file1_path = '../DrumRobot_data/solveIK_q8.txt'  # Replace with your file path
+    file1_path = '../DrumRobot_data/wristAngleData.txt'  # Replace with your file path
     file2_path = '../DrumRobot_data/solveIK_q6.txt'  # Replace with your file path (or None for single plot)
 
     # Call the function with one or two files

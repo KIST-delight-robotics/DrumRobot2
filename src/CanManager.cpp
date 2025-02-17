@@ -724,6 +724,7 @@ bool CanManager::sendForCheck_Fixed(std::shared_ptr<GenericMotor> motor)
         maxoncmd.getTargetPosition(*maxonMotor, &maxonMotor->sendFrame, maxonMotor->fixedMotorPosition);
 
         fun.appendToCSV_DATA(fun.file_name, (float)maxonMotor->nodeId + SEND_SIGN, maxonMotor->fixedMotorPosition, maxonMotor->fixedMotorPosition - maxonMotor->motorPosition);
+        fun.appendToCSV_DATA("fixedPositionData", (float)maxonMotor->nodeId + SEND_SIGN, maxonMotor->fixedMotorPosition, maxonMotor->fixedMotorPosition - maxonMotor->motorPosition);
     }
     return true;
 }
