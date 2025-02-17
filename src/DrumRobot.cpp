@@ -209,7 +209,7 @@ void DrumRobot::recvLoopForThread()
         // 손목 모터에 1ms마다 핑 보내주기
         auto currentTime = chrono::system_clock::now();
         auto elapsedTimeMaxon = chrono::duration_cast<chrono::microseconds>(currentTime - SendMaxon);
-        if(elapsedTimeMaxon.count() >= 1000) {
+        if(elapsedTimeMaxon.count() >= 100) {
             for (auto &motorPair : motors)
             {
                 if (maxonMotorCount != 0)
