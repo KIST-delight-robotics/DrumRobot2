@@ -234,7 +234,11 @@ void DrumRobot::recvLoopForThread()
         }
         case Main::Pause:
         {
+<<<<<<< HEAD
             ReadProcess(1000);
+=======
+            ReadProcess(1000); // 1ms마다 실행
+>>>>>>> f1004de0ed67800a67880ee16b72945085105faa
             break;
         }
         case Main::Error:
