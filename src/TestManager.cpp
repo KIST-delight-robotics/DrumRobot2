@@ -482,8 +482,11 @@ void TestManager::SendTestProcess(int periodMicroSec)
         }
         case TestSub::TimeCheck:
         {
-            usleep(1000000*canManager.deltaT);
-            state.test = TestSub::SetCANFrame;
+            if (elapsedTime.count() >= periodMicroSec)
+            {
+                state.test = TestSub::SetCANFrame; 
+                SendStandard = currentTime;         // 현재 시간으로 시간 객체 초기화
+            }
             break;
         }
         case TestSub::SetCANFrame:

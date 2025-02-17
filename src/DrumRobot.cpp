@@ -206,22 +206,22 @@ void DrumRobot::recvLoopForThread()
         recv_time_point = std::chrono::steady_clock::now();
         recv_time_point += std::chrono::microseconds(100);  // 주기 : 100us
         
-        // 손목 모터에 0.1ms마다 핑 보내주기
-        auto currentTime = chrono::system_clock::now();
-        auto elapsedTimeMaxon = chrono::duration_cast<chrono::microseconds>(currentTime - SendMaxon);
-        if(elapsedTimeMaxon.count() >= 100) {
-            for (auto &motorPair : motors)
-            {
-                if (maxonMotorCount != 0)
-                {
-                    if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motorPair.second))
-                    {
-                        maxoncmd.getCheck(*maxonMotor, &virtualMaxonMotor->sendFrame);
-                    }
-                }
-            }
-            SendMaxon = currentTime;
-        }
+        // // 손목 모터에 0.1ms마다 핑 보내주기
+        // auto currentTime = chrono::system_clock::now();
+        // auto elapsedTimeMaxon = chrono::duration_cast<chrono::microseconds>(currentTime - SendMaxon);
+        // if(elapsedTimeMaxon.count() >= 100) {
+        //     for (auto &motorPair : motors)
+        //     {
+        //         if (maxonMotorCount != 0)
+        //         {
+        //             if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motorPair.second))
+        //             {
+        //                 maxoncmd.getCheck(*maxonMotor, &virtualMaxonMotor->sendFrame);
+        //             }
+        //         }
+        //     }
+        //     SendMaxon = currentTime;
+        // }
 
 
         switch (state.main.load())
