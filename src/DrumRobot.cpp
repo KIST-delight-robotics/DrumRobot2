@@ -205,6 +205,24 @@ void DrumRobot::recvLoopForThread()
     {
         recv_time_point = std::chrono::steady_clock::now();
         recv_time_point += std::chrono::microseconds(100);  // 주기 : 100us
+        
+        // 손목 모터에 0.1ms마다 핑 보내주기
+        auto currentTime = chrono::system_clock::now();
+        auto elapsedTimeMaxon = chrono::duration_cast<chrono::microseconds>(currentTime - SendMaxon);
+        if(elapsedTimeMaxon.count() >= 100) {
+            for (auto &motorPair : motors)
+            {
+                if (maxonMotorCount != 0)
+                {
+                    if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motorPair.second))
+                    {
+                        maxoncmd.getCheck(*maxonMotor, &virtualMaxonMotor->sendFrame);
+                    }
+                }
+            }
+            SendMaxon = currentTime;
+        }
+
 
         switch (state.main.load())
         {
@@ -255,7 +273,6 @@ void DrumRobot::ReadProcess(int periodMicroSec)
 {
     auto currentTime = chrono::system_clock::now();
     auto elapsed_time = chrono::duration_cast<chrono::microseconds>(currentTime - ReadStandard);
-    auto elapsedTimeMaxon = chrono::duration_cast<chrono::microseconds>(currentTime - SendMaxon);
 
     switch (state.read.load())
     {
@@ -299,7 +316,6 @@ void DrumRobot::SendPlayProcess(int periodMicroSec, string musicName)
 {
     auto currentTime = chrono::system_clock::now();
     auto elapsedTime = chrono::duration_cast<chrono::microseconds>(currentTime - SendStandard);
-    auto elapsedTimeMaxon = chrono::duration_cast<chrono::microseconds>(currentTime - SendMaxon);
     switch (state.play.load())
     {
     case PlaySub::ReadMusicSheet:
@@ -393,25 +409,10 @@ void DrumRobot::SendPlayProcess(int periodMicroSec, string musicName)
     }
     case PlaySub::TimeCheck:
     {
-        // 단순히 maxon모터로 신호만 보내기 위함
-        if(elapsedTimeMaxon.count() >= 1000) {
-            for (auto &motorPair : motors)
-            {
-                if (maxonMotorCount != 0)
-                {
-                    if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motorPair.second))
-                    {
-                        maxoncmd.getCheck(*maxonMotor, &virtualMaxonMotor->sendFrame);
-                    }
-                }
-            }
-            SendMaxon = currentTime;
-        }
         if (elapsedTime.count() >= periodMicroSec)
         {
-            state.play = PlaySub::SetCANFrame;   // 주기가 되면 SetCANFrame 상태로 진입
+            state.play = PlaySub::ReadMusicSheet;   // 주기가 되면 GenerateTrajectory 상태로 진입
             SendStandard = currentTime;             // 현재 시간으로 시간 객체 초기화
-            
         }
         break;
     }
@@ -486,7 +487,6 @@ void DrumRobot::SendAddStanceProcess(int periodMicroSec)
 {
     auto currentTime = chrono::system_clock::now();
     auto elapsed_time = chrono::duration_cast<chrono::microseconds>(currentTime - addStandard);
-    auto elapsedTimeMaxon = chrono::duration_cast<chrono::microseconds>(currentTime - SendMaxon);
 
     switch (state.addstance.load())
     {
@@ -529,33 +529,10 @@ void DrumRobot::SendAddStanceProcess(int periodMicroSec)
     }
     case AddStanceSub::TimeCheck:
     {
-        bool shouldProcessMain = false;
-        
-        // Maxon 모터 1ms 주기 처리
-        if(elapsedTimeMaxon.count() >= 1000) {
-            for (auto &motorPair : motors)
-            {
-                if (maxonMotorCount != 0)
-                {
-                    if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motorPair.second))
-                    {
-                        maxoncmd.getCheck(*maxonMotor, &virtualMaxonMotor->sendFrame);
-                    }
-                }
-            }
-            SendMaxon = currentTime;
-        }
-
-        // T모터 5ms 주기 처리
-        if (elapsed_time.count() >= 5000)
-        {
-            shouldProcessMain = true;
-            addStandard = currentTime;
-        }
-
-        if (shouldProcessMain)
+        if (elapsed_time.count() >= periodMicroSec)
         {
             state.addstance = AddStanceSub::CheckBuf;
+            addStandard = currentTime;           // 현재 시간으로 시간 객체 초기화
         }
         break;
     }
