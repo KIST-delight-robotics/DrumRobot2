@@ -37,7 +37,7 @@ class TestManager
 public:
     TestManager(State &stateRef, CanManager &canManagerRef, std::map<std::string, std::shared_ptr<GenericMotor>> &motorsRef, USBIO &usbioRef, Functions &funRef);
 
-    void SendTestProcess(int periodMicroSec);
+    void SendTestProcess();
     void MaxonEnable();
     void setMaxonMode(std::string targetMode);
 

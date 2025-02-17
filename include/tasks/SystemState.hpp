@@ -20,7 +20,11 @@ enum class PlaySub
     GenerateTrajectory,
     SolveIK,
     SetCANFrame,
+    SetTCANFrame,
+    SetMaxonCANFrame,
     SendCANFrame,
+    SendTCANFrame,
+    SendMaxonCANFrame,
     ReadMusicSheet
 };
 
@@ -31,7 +35,11 @@ enum class AddStanceSub
     CheckBuf,
     FillBuf,
     SetCANFrame,
-    SendCANFrame
+    SetTCANFrame,
+    SetMaxonCANFrame,
+    SendCANFrame,
+    SendTCANFrame,
+    SendMaxonCANFrame
 };
 
 enum class ReadSub
