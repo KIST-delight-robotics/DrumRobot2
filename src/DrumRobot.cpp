@@ -218,6 +218,7 @@ void DrumRobot::recvLoopForThread()
             // auto currentTime = std::chrono::system_clock::now();
             // auto elapsedTimeMaxon = std::chrono::duration_cast<std::chrono::microseconds>(currentTime - SendMaxon);
 
+<<<<<<< HEAD
             // if (elapsedTimeMaxon.count() >= 100) // 100us마다 실행
             // {
             //     for (auto &motorPair : motors)
@@ -265,6 +266,28 @@ void DrumRobot::recvLoopForThread()
 
             //     SendMaxon = currentTime;
             // }
+=======
+            if (elapsedTimeMaxon.count() >= 1000) // 1ms마다 Maxon 모터로 위치 값 요청
+            {
+                for (auto &motorPair : motors)
+                {
+                    if (maxonMotorCount != 0)
+                    {
+                        if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motorPair.second))
+                        {
+                            // 위치 값 요청을 위한 신호 전송
+                            maxoncmd.getCheck(*maxonMotor, &virtualMaxonMotor->sendFrame);
+                            if (!canManager.sendMotorFrame(virtualMaxonMotor))
+                            {
+                                state.main = Main::Error;
+                                break;
+                            }
+                        }
+                    }
+                }
+                SendMaxon = currentTime;
+            }
+>>>>>>> 7be50773b233d31139be13e678177b88d62befe4
 
             ReadProcess(1000); // 1ms마다 실행
             break;
