@@ -307,7 +307,7 @@ bool PathManager::solveIKandPushConmmand()
     {
         if (index_solveIK == 0)
         {
-            // 허리 계수 구하기
+            // 허리 계수 구하기s
             getWaistCoefficient();
 
             // std::cout << "\n lineDate Start : \n";
