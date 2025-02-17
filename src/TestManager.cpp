@@ -15,9 +15,6 @@ TestManager::TestManager(State &stateRef, CanManager &canManagerRef, std::map<st
 
 void TestManager::SendTestProcess()
 {
-
-    auto currentTime = chrono::system_clock::now();
-    auto elapsedTimeMaxon = chrono::duration_cast<chrono::microseconds>(currentTime - SendMaxon);
     // 선택에 따라 testMode 설정
     switch (state.test.load())
     {
@@ -445,20 +442,6 @@ void TestManager::SendTestProcess()
         }
         case TestSub::TimeCheck:
         {
-            // 단순히 maxon모터로 신호만 보내기 위함
-            if(elapsedTimeMaxon.count() >= 1000) {
-                for (auto &motorPair : motors)
-                {
-                    if (maxonMotorCount != 0)
-                    {
-                        if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motorPair.second))
-                        {
-                            maxoncmd.getCheck(*maxonMotor, &virtualMaxonMotor->sendFrame);
-                        }
-                    }
-                }
-                SendMaxon = currentTime;
-            }
             usleep(1000000*canManager.deltaT);
             state.test = TestSub::SetCANFrame;
             break;
