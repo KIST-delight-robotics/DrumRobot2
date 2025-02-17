@@ -205,66 +205,76 @@ void DrumRobot::recvLoopForThread()
     {
         recv_time_point = std::chrono::steady_clock::now();
         recv_time_point += std::chrono::microseconds(100);  // 주기 : 100us
-        
-        // 손목 모터에 0.1ms마다 핑 보내주기
-        auto currentTime = chrono::system_clock::now();
-        auto elapsedTimeMaxon = chrono::duration_cast<chrono::microseconds>(currentTime - SendMaxon);
-        if(elapsedTimeMaxon.count() >= 100) {
-            for (auto &motorPair : motors)
-            {
-                if (maxonMotorCount != 0)
-                {
-                    if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motorPair.second))
-                    {
-                        maxoncmd.getCheck(*maxonMotor, &virtualMaxonMotor->sendFrame);
-                    }
-                }
-            }
-            SendMaxon = currentTime;
-        }
-
 
         switch (state.main.load())
         {
-        case Main::SystemInit:
-        {
-            break;
-        }
         case Main::Ideal:
-        {
-            ReadProcess(1000); /*1ms*/
-            break;
-        }
         case Main::Play:
-        {
-            ReadProcess(1000);
-            break;
-        }
         case Main::AddStance:
-        {
-            ReadProcess(1000);
-            break;
-        }
         case Main::Test:
-        {
-            ReadProcess(1000);
-            break;
-        }
         case Main::Pause:
         {
-            ReadProcess(1000);
+            // 0.1ms(100us)마다 Maxon 모터로 핑 보내
+            auto currentTime = std::chrono::system_clock::now();
+            auto elapsedTimeMaxon = std::chrono::duration_cast<std::chrono::microseconds>(currentTime - SendMaxon);
+
+            if (elapsedTimeMaxon.count() >= 100) // 100us마다 실행
+            {
+                for (auto &motorPair : motors)
+                {
+                    if (maxonMotorCount != 0)
+                    {
+                        if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motorPair.second))
+                        {
+                            // 모터에 핑 신호 전송
+                            maxoncmd.getCheck(*maxonMotor, &virtualMaxonMotor->sendFrame);
+                            if (!canManager.sendMotorFrame(virtualMaxonMotor))
+                            {
+                                state.main = Main::Error;
+                                break;
+                            }
+
+                            // CAN 프레임 설정
+                            if (!canManager.setCANFrame())
+                            {
+                                state.main = Main::Error;
+                                break;
+                            }
+
+                            // 모터 프레임 전송
+                            for (auto &motor_pair : motors)
+                            {
+                                shared_ptr<GenericMotor> motor = motor_pair.second;
+                                if (!canManager.sendMotorFrame(motor))
+                                {
+                                    state.main = Main::Error;
+                                    break;
+                                }
+                            }
+
+                            // 동기화 프레임 전송
+                            maxoncmd.getSync(&virtualMaxonMotor->sendFrame);
+                            if (!canManager.sendMotorFrame(virtualMaxonMotor))
+                            {
+                                state.main = Main::Error;
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                SendMaxon = currentTime;
+            }
+
+            ReadProcess(1000); // 1ms마다 실행
             break;
-        }
-        case Main::Error:
-        {
-            break;
-        }
-        case Main::Shutdown:
-        {
-            break;
-        }
         }
 
+        case Main::SystemInit:
+        case Main::Error:
+        case Main::Shutdown:
+            break;
+        }
         std::this_thread::sleep_until(recv_time_point);
     }
 }
