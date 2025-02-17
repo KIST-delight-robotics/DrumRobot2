@@ -349,7 +349,8 @@ void TestManager::SendTestProcess(int periodMicroSec)
                 {
                     i++;
                 }
-                state.test = TestSub::CheckBuf;       
+                state.test = TestSub::CheckBuf;
+                UnfixedMotor();       
             }
             else
             {

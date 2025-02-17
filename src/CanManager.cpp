@@ -800,44 +800,6 @@ bool CanManager::setCANFrame()
             }
 
             maxoncmd.getTargetPosition(*maxonMotor, &maxonMotor->sendFrame, desiredPosition);
-            
-
-            // if(dct_fun(maxonMotor->positionValues) && isHit)
-            // {
-            //     if(curMode == "CSP") 
-            //     {
-            //         curMode = "CST";
-            //         maxoncmd.getCSTMode(*maxonMotor, &maxonMotor->sendFrame);
-            //         txFrame(motor, maxonMotor->sendFrame);
-
-            //         maxoncmd.getShutdown(*maxonMotor, &maxonMotor->sendFrame);
-            //         txFrame(motor, maxonMotor->sendFrame);
-
-            //         maxoncmd.getEnable(*maxonMotor, &maxonMotor->sendFrame);
-            //         txFrame(motor, maxonMotor->sendFrame);
-
-            //         maxoncmd.getTargetTorque(*maxonMotor, &maxonMotor->sendFrame, desiredTorque);
-            //     }
-            // }
-            // else
-            // {
-            //     if(curMode == "CST") 
-            //     {
-            //         curMode = "CSP";
-            //         maxoncmd.getCSPMode(*maxonMotor, &maxonMotor->sendFrame);
-            //         txFrame(motor, maxonMotor->sendFrame);
-
-            //         maxoncmd.getShutdown(*maxonMotor, &maxonMotor->sendFrame);
-            //         txFrame(motor, maxonMotor->sendFrame);
-
-            //         maxoncmd.getEnable(*maxonMotor, &maxonMotor->sendFrame);
-            //         txFrame(motor, maxonMotor->sendFrame);
-            //     }
-                
-            //     fun.appendToCSV_DATA("maxonForTest_Q", desiredPosition, 0, 0);
-                
-            //     maxoncmd.getTargetPosition(*maxonMotor, &maxonMotor->sendFrame, desiredPosition);
-            // }
 
             fun.appendToCSV_DATA(fun.file_name, (float)maxonMotor->nodeId + SEND_SIGN, desiredPosition, desiredPosition - maxonMotor->motorPosition);
         }
