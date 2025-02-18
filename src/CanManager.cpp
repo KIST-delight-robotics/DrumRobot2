@@ -581,16 +581,13 @@ void CanManager::readFramesFromAllSockets()
     for (const auto &socketPair : sockets)
     {
         int socket_fd = socketPair.second;
-
-        int flags = fcntl(socket_fd, F_GETFL, 0);
-        fcntl(socket_fd, F_SETFL, flags | O_NONBLOCK); // 논블로킹 모드 설정
-
         while (read(socket_fd, &frame, sizeof(frame)) == sizeof(frame))
         {
             tempFrames[socket_fd].push_back(frame);
         }
     }
 }
+
 
 bool CanManager::distributeFramesToMotors(bool setlimit)
 {

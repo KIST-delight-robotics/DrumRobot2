@@ -22,7 +22,6 @@ DrumRobot::DrumRobot(State &stateRef,
     ReadStandard = chrono::system_clock::now();
     SendStandard = chrono::system_clock::now();
     SendMaxon = chrono::system_clock::now();
-    ReadMaxon = chrono::system_clock::now();
     addStandard = chrono::system_clock::now();
 
     send_time_point = std::chrono::steady_clock::now();
@@ -395,18 +394,10 @@ void DrumRobot::SendPlayProcess(int periodMicroSec, string musicName)
     }
     case PlaySub::TimeCheck:
     {
-        // if (elapsedTime.count() >= periodMicroSec)
-        // {
-        //     state.play = PlaySub::SetCANFrame;   // 주기가 되면 SetCANFrame 상태로 진입
-        //     SendStandard = currentTime;             // 현재 시간으로 시간 객체 초기화
-        // }
-        // break;
-
         if (elapsedTime.count() >= periodMicroSec)  
         {
             state.play = PlaySub::SetCANFrame;  // 5ms마다 CAN Frame 설정
             SendStandard = currentTime;         // 시간 초기화
-            SendMaxon = currentTime;             // 시간 초기화
         }
         else if (elapsedTimeMaxon.count() >= periodMicroSec / 5){
             state.play = PlaySub::SetMaxonCANFrame;  // 1ms마다 Maxon CAN Frame 설정

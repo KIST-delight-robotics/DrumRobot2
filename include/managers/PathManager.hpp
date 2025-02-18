@@ -31,6 +31,7 @@
 #include <chrono>
 #include <set>
 #include <numeric>
+#include <signal.h>
 #include "../include/eigen-3.4.0/Eigen/Dense"
 
 //For Qt
@@ -91,13 +92,13 @@ public:
     
     /////////////////////////////////////////////////////////////////////////// AddStance
 
-    //   Ready Pos Array   :  waist         , R_arm1        , L_arm1        , R_arm2        , R_arm3        , L_arm2        , L_arm3        , R_wrist       , L_wrist
-    //                       { 0            , 90            , 90            , 45            , 75            , 45            , 75            , 30            , 30         } [deg]
-    vector<float> readyArr = { 0            , M_PI / 2.0    , M_PI / 2.0    , M_PI * 0.25   , M_PI / 2.4    , M_PI * 0.25   , M_PI / 2.4    , M_PI / 6.0    , M_PI / 6.0 };
+    //   Ready Pos Array   :  waist         , R_arm1        , L_arm1        , R_arm2        , R_arm3        , L_arm2        , L_arm3        , R_wrist       , L_wrist       , maxonForTest
+    //                       { 0            , 90            , 90            , 45            , 75            , 45            , 75            , 30            , 30            , 30                  } [deg]
+    vector<float> readyArr = { 0            , M_PI / 2.0    , M_PI / 2.0    , M_PI * 0.25   , M_PI / 2.4    , M_PI * 0.25   , M_PI / 2.4    , M_PI / 6.0    , M_PI / 6.0    , 10.0 * M_PI / 180.0};
 
-    //   Home Pos Array    : waist          , R_arm1        , L_arm1        , R_arm2    , R_arm3            , L_arm2    , L_arm3            , R_wrist               , L_wrist
-    //                      { 10            , 90            , 90            , 0         , 120               , 0         , 120               , 95                    , 95                    } [deg]
-    vector<float> homeArr = { M_PI / 18.0   , M_PI / 2.0    , M_PI / 2.0    , 0         , M_PI * (2.0/3.0)  , 0         , M_PI * (2.0/3.0)  , M_PI * (95.0/180.0)   , M_PI * (95.0/180.0)   };
+    //   Home Pos Array    : waist          , R_arm1        , L_arm1        , R_arm2    , R_arm3            , L_arm2    , L_arm3            , R_wrist               , L_wrist               , maxonForTest
+    //                      { 10            , 90            , 90            , 0         , 120               , 0         , 120               , 95                    , 95                    , 90        } [deg]
+    vector<float> homeArr = { M_PI / 18.0   , M_PI / 2.0    , M_PI / 2.0    , 0         , M_PI * (2.0/3.0)  , 0         , M_PI * (2.0/3.0)  , M_PI * (95.0/180.0)   , M_PI * (95.0/180.0)   , M_PI / 2.0};
 
     //   Back Pos Array    : waist      , R_arm1        , L_arm1        , R_arm2    , R_arm3    , L_arm2    , L_arm3    , R_wrist       , L_wrist
     //                      { 0         , 135           , 45            , 0         , 0         , 0         , 0         , 90            , 90         } [deg]
@@ -110,10 +111,13 @@ public:
     //                      q0  q1  q2  q3  q4  q5  q6  q7
     vector<int> brakeArr = {0, 0,  0,  0,  0,  0,  0,  0}; // 1: true // 0: false
 
-    void to_brake(double motornum, double nowval, double nextval, double threshold);
-    void clear_brake();
+    void to_brake(double motornum, double nowval, double nextval, double threshold); // 해당 모터의 현재값과 다음값 차이가 threshold보다 작거나 같으면 brake걸고 아니면 끄기
+    void clear_brake(); // 모든 brake끄기
 
     /////////////////////////////////////////////////////////////////////////// 기타
+    double q1_state[2] = {readyArr[1], readyArr[1]};
+    double q2_state[2] = {readyArr[2], readyArr[2]};
+
 
     vector<float> fkfun();
 
@@ -137,7 +141,7 @@ private:
         {"L_arm3", 6},
         {"R_wrist", 7},
         {"L_wrist", 8},
-        {"maxonForTest", 8}};
+        {"maxonForTest", 9}};
 
 
     typedef struct{
@@ -181,7 +185,7 @@ private:
                                                                                 // 2 : 1 <- 0
                                                                                 // 3 : 1 <- 1
 
-    VectorXd hitState = VectorXd::Zero(2);
+    VectorXd hitState = VectorXd::Zero(4);
 
     void parseMeasure(MatrixXd &measureMatrix);
     pair<VectorXd, VectorXd> parseOneArm(VectorXd t, VectorXd inst, VectorXd stateVector);
@@ -209,7 +213,7 @@ private:
     void solveIK(VectorXd &q, double q0);
     VectorXd ikFixedWaist(VectorXd &pR, VectorXd &pL, double theta0, double theta7, double theta8);
     void pushConmmandBuffer(VectorXd &Qi);
-
+    
     /////////////////////////////////////////////////////////////////////////// Play (waist)
     MatrixXd waistCoefficient;
     double q0_t1;               // 시작 위치 저장
@@ -218,7 +222,7 @@ private:
     // threshold 관련 변수
     double nextq0_t1;
     int status = 0;
-    double qthreshold = 0.01;
+    double q0_threshold = 0.01;
 
     vector<double> cubicInterpolation(const vector<double>& q, const vector<double>& t);
     std::pair<double, vector<double>> getQ0t2(int mode);
@@ -257,11 +261,11 @@ private:
 
     }HitParameter;
 
-    float makeElbowAngle(float t1, float t2, float t, int state, HitParameter param, int intensity);
-    float makeWristAngle(float t1, float t2, float t, int state, HitParameter param, int intensity);
+    float makeElbowAngle(float t1, float t2, float t, int state, HitParameter param, int intensity, bool targetChangeFlag);
+    float makeWristAngle(float t1, float t2, float t, int state, HitParameter param, int intensity, bool targetChangeFlag);
 
     HitParameter getHitParameter(float t1, float t2, int hitState, HitParameter preParam, int intensity);
-    VectorXd makeHitTrajetory(float t1, float t2, float t, int hitState, int wristIntesity);
+    VectorXd makeHitTrajetory(float t1, float t2, float t, int hitState, int wristIntesity, bool targetChangeFlag);
 
     HitParameter pre_parameters_R, pre_parameters_L, pre_parameters_tmp;
 
@@ -300,4 +304,6 @@ private:
     VectorXd makeProfile(VectorXd &q1, VectorXd &q2, VectorXd &Vmax, float acc, float t, float t2);
     void getMotorPos();
     
+    // void setC();
+    // static void handleSignal(int signal);
 };
