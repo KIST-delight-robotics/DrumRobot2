@@ -22,6 +22,7 @@ DrumRobot::DrumRobot(State &stateRef,
     ReadStandard = chrono::system_clock::now();
     SendStandard = chrono::system_clock::now();
     SendMaxon = chrono::system_clock::now();
+    ReadMaxon = chrono::system_clock::now();
     addStandard = chrono::system_clock::now();
 
     send_time_point = std::chrono::steady_clock::now();
