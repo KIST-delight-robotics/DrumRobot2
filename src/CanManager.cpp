@@ -978,8 +978,6 @@ bool CanManager::safetyCheck_M(std::shared_ptr<GenericMotor> &motor)
 
 bool CanManager::dct_fun(queue<double> positions)
 {
-    // 포지션 배열에서 각각의 값을 추출합니다.
-
     double the_k_3; // 가장 오래된 값
     double the_k_2;
     double the_k_1;
@@ -1000,178 +998,11 @@ bool CanManager::dct_fun(queue<double> positions)
         the_k = positions.front();
     }
 
-    // double ang_k = (the_k + the_k_1) / 2;
-    // double ang_k_1 = (the_k_1 + the_k_2) / 2;
-    // double ang_k_2 = (the_k_2 + the_k_3) / 2;
     double vel_k = the_k - the_k_1;
     double vel_k_1 = the_k_1 - the_k_2;
-
-    if (isHit)
-    {
-        cout << "position   : \n";
-        cout << the_k << " " << the_k_1 << " " << the_k_2 << " " << the_k_3 << " \n";
-        cout << "avg position   : \n";
-        // cout << ang_k << " " << ang_k_1 << " " << ang_k_2 << " \n";
-        cout << "velocity   : \n";
-        cout << vel_k << " " << vel_k_1 << " \n";
-    }
 
     if (abs(vel_k) * 2 < abs(vel_k_1) && vel_k_1 < 0 && the_k <= 0.3 && abs(vel_k_1) >= 0.01)
         return true;
     else
         return false;
 }
-
-// float CanManager::wristAngle(float t1, float t2, float t, int state, int intensity)
-// {
-//     float wrist_q = 0.0;
-//     float t_contact = std::min(0.1 * (t2 - t1), 0.05); // 0.08 -> 0.05
-//     float t_lift = std::max(0.6 * (t2 - t1), t2 - t1 - 0.2);
-//     float t_stay;
-//     t2 - t1 < 0.15 ? t_stay = 0.45 * (t2 - t1) : t_stay = 0.47 * (t2 - t1) - 0.05;
-//     float t_release = std::min(0.2 * (t2 - t1), 0.1);
-//     float t_hit = t2 - t1;
-//     float wristLiftAngle;
-//     t2 - t1 < 0.5 ? wristLiftAngle = (-100 * ((t2 - t1) - 0.5) * ((t2 - t1) - 0.5) + 40) * M_PI / 180.0 : wristLiftAngle = 40  * M_PI / 180.0;
-//     float wristStayAngle = 10.0 * M_PI / 180.0;
-//     float wristContactAngle = -1.0 * std::min((t2 - t1) * 5.0 * M_PI / 180.0 / 0.5, 5.0 * M_PI / 180.0);
-
-//     float intensityFactor = 0.4 * intensity + 0.2; // 1 : 약하게   2 : 기본    3 : 강하게
-//     wristLiftAngle = wristLiftAngle * intensityFactor;
-
-//     MatrixXd A;
-//     MatrixXd b;
-//     MatrixXd A_1;
-//     MatrixXd sol;
-    
-//     if (state == 0)
-//     {
-//         // Stay
-//         wrist_q = wristStayAngle;
-//     }
-//     else if (state == 1)
-//     {
-//         // Contact - Stay
-//         A.resize(3, 3);
-//         b.resize(3, 1);
-//         if (t < t_contact)
-//         {
-//             A << 1, 0, 0,
-//             1, t_contact, t_contact * t_contact,
-//             0, 1, 2 * t_contact;
-//             b << 0, wristContactAngle, 0;
-//             A_1 = A.inverse();
-//             sol = A_1 * b;
-//             wrist_q = sol(0, 0) + sol(1, 0) * t + sol(2, 0) * t * t;
-            
-//         }
-//         else if (t <= t_release)
-//         {
-//             A.resize(4, 4);
-//             b.resize(4, 1);
-//             A << 1, t_contact, t_contact * t_contact, t_contact * t_contact * t_contact,
-//                 1, t_release, t_release * t_release, t_release * t_release * t_release,
-//                 0, 1, 2 * t_contact, 3 * t_contact * t_contact,
-//                 0, 1, 2 * t_release, 3 * t_release * t_release;
-//             b << wristContactAngle, wristStayAngle, 0, 0;
-//             A_1 = A.inverse();
-//             sol = A_1 * b;
-//             wrist_q = sol(0, 0) + sol(1, 0) * t + sol(2, 0) * t * t + sol(3, 0) * t * t * t;
-//         }
-//         else
-//         {
-//             wrist_q = wristStayAngle;
-//         }
-//     }
-//     else if (state == 2)
-//     {
-        
-//         // Stay - Lift - Hit
-//         if (t < t_stay)
-//         {
-//             // Stay
-//             wrist_q = wristStayAngle;
-//         }
-//         else if (t < t_lift)
-//         {
-//             A.resize(4, 4);
-//             b.resize(4, 1);
-//             A << 1, t_stay, t_stay * t_stay, t_stay * t_stay * t_stay,
-//                 1, t_lift, t_lift * t_lift, t_lift * t_lift * t_lift,
-//                 0, 1, 2 * t_stay, 3 * t_stay * t_stay,
-//                 0, 1, 2 * t_lift, 3 * t_lift * t_lift;
-//             b << wristStayAngle, wristLiftAngle, 0, 0;
-//             A_1 = A.inverse();
-//             sol = A_1 * b;
-//             wrist_q = sol(0, 0) + sol(1, 0) * t + sol(2, 0) * t * t + sol(3, 0) * t * t * t;
-//         }
-//         else if (t <= t_hit)
-//         {
-//             A.resize(3, 3);
-//             b.resize(3, 1);
-//             A << 1, t_lift, t_lift * t_lift,
-//                 1, t_hit, t_hit * t_hit,
-//                 0, 1, 2 * t_lift;
-//             b << wristLiftAngle, 0, 0;
-//             A_1 = A.inverse();
-//             sol = A_1 * b;
-//             wrist_q = sol(0, 0) + sol(1, 0) * t + sol(2, 0) * t * t;
-//         }
-//         else
-//         {
-//             wrist_q = 0.0;
-//         }
-        
-//     }
-//     else if (state == 3)
-//     {
-//         // Contact - Lift - Hit
-//         if (t < t_contact)
-//         {
-//             A.resize(3, 3);
-//             b.resize(3, 1);
-//             A << 1, 0, 0,
-//                 1, t_contact, t_contact * t_contact,
-//                 0, 1, 2 * t_contact;
-//             b << 0, wristContactAngle, 0;
-//             A_1 = A.inverse();
-//             sol = A_1 * b;
-//             wrist_q = sol(0, 0) + sol(1, 0) * t + sol(2, 0) * t * t;
-//         }
-//         else if (t < t_stay)
-//         {
-//             A.resize(4, 4);
-//             b.resize(4, 1);
-//             A << 1, t_contact, t_contact * t_contact, t_contact * t_contact * t_contact,
-//                 1, t_stay, t_stay * t_stay, t_stay * t_stay * t_stay,
-//                 0, 1, 2 * t_contact, 3 * t_contact * t_contact,
-//                 0, 1, 2 * t_stay, 3 * t_stay * t_stay;
-//             b << wristContactAngle, wristLiftAngle, 0, 0;
-//             A_1 = A.inverse();
-//             sol = A_1 * b;
-//             wrist_q = sol(0, 0) + sol(1, 0) * t + sol(2, 0) * t * t + sol(3, 0) * t * t * t;
-//         }
-//         else if (t < t_lift)
-//         {
-//             // Stay
-//             wrist_q = wristLiftAngle;
-//         }
-//         else if (t <= t_hit)
-//         {
-//             A.resize(3, 3);
-//             b.resize(3, 1);
-//             A << 1, t_lift, t_lift * t_lift,
-//                 1, t_hit, t_hit * t_hit,
-//                 0, 1, 2 * t_lift;
-//             b << wristLiftAngle, 0, 0;
-//             A_1 = A.inverse();
-//             sol = A_1 * b;
-//             wrist_q = sol(0, 0) + sol(1, 0) * t + sol(2, 0) * t * t;
-//         }
-//         else
-//         {
-//             wrist_q = 0.0;
-//         }
-//     }
-//     return wrist_q;
-// }

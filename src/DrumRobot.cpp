@@ -403,7 +403,7 @@ void DrumRobot::SendPlayProcess(int periodMicroSec, string musicName)
 
         if (elapsedTime.count() >= periodMicroSec)  
         {
-            state.play = PlaySub::ReadMusicSheet;  // 5ms마다 CAN Frame 설정
+            state.play = PlaySub::SetCANFrame;  // 5ms마다 CAN Frame 설정
             SendStandard = currentTime;         // 시간 초기화
             SendMaxon = currentTime;             // 시간 초기화
         }
