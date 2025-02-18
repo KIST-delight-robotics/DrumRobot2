@@ -477,10 +477,16 @@ void TestManager::SendTestProcess(int periodMicroSec)
         }
         case TestSub::TimeCheck:
         {
-            if (elapsedTime.count() >= periodMicroSec)
+            if (elapsedTime.count() >= periodMicroSec)  
             {
-                state.test = TestSub::SetCANFrame; 
-                SendStandard = currentTime;         // 현재 시간으로 시간 객체 초기화
+                state.test = TestSub::SetCANFrame;  // 5ms마다 CAN Frame 설정
+                SendStandard = currentTime;         // 시간 초기화
+                SendMaxon = currentTime;             // 시간 초기화
+            }
+            else if (elapsedTimeMaxon.count() >= periodMicroSec / 5)
+            {
+                state.test = TestSub::SetMaxonCANFrame;  // 1ms마다 Maxon CAN Frame 설정
+                SendMaxon = currentTime;             // 시간 초기화
             }
             break;
         }
@@ -493,6 +499,17 @@ void TestManager::SendTestProcess(int periodMicroSec)
                 state.main = Main::Error;
             }
             state.test = TestSub::SendCANFrame;
+            break;
+        }
+        case TestSub::SetMaxonCANFrame:
+        {
+            bool isSafe;
+            isSafe = canManager.setCANFrame();
+            if (!isSafe)
+            {
+                state.main = Main::Error;
+            }
+            state.test = TestSub::SendMaxonCANFrame;
             break;
         }
         case TestSub::SendCANFrame:
@@ -520,6 +537,52 @@ void TestManager::SendTestProcess(int periodMicroSec)
                 }
             }
 
+            if (needSync)
+            {
+                maxoncmd.getSync(&virtualMaxonMotor->sendFrame);
+                if (!canManager.sendMotorFrame(virtualMaxonMotor))
+                {
+                    isWriteError = true;
+                }
+            }
+            if (isWriteError)
+            {
+                state.main = Main::Error;
+            }
+            else
+            {
+                state.test = TestSub::CheckBuf;
+            }
+
+            // brake
+            if (usbio.useUSBIO)
+            {
+                if(!usbio.USBIO_4761_output())
+                {
+                    cout << "brake Error\n";
+                }
+            }
+
+            break;
+        }
+        case TestSub::SendMaxonCANFrame:
+        {
+            bool needSync = false;
+            bool isWriteError = false;
+            for (auto &motor_pair : motors)
+            {
+                shared_ptr<GenericMotor> motor = motor_pair.second;
+
+                if (!canManager.sendMotorFrame(motor))
+                {
+                    isWriteError = true;
+                }
+                if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motor_pair.second))
+                {
+                    virtualMaxonMotor = maxonMotor;
+                    needSync = true;
+                }
+            }
             if (needSync)
             {
                 maxoncmd.getSync(&virtualMaxonMotor->sendFrame);
