@@ -31,12 +31,12 @@ enum class AddStanceSub
     TimeCheck,
     CheckCommand,
     CheckBuf,
-    CheckMaxonBuf,
+    // CheckMaxonBuf,
     FillBuf,
     SetCANFrame,
-    SetMaxonCANFrame,
+    // SetMaxonCANFrame,
     SendCANFrame,
-    SendMaxonCANFrame
+    // SendMaxonCANFrame
 };
 
 enum class ReadSub
@@ -54,7 +54,6 @@ enum class TestSub
     TestMaxon,
     FillBuf,
     CheckBuf,
-    CheckMaxonBuf,
     TimeCheck,
     SetCANFrame,
     SetMaxonCANFrame,

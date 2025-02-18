@@ -321,14 +321,11 @@ bool PathManager::solveIKandPushConmmand()
 
     // brake (허리)
     to_brake(0, q0_t0, q0_t1, q0_threshold);
-
     int q0_b = brakeArr[0];
     
     // solve IK
     solveIK(q, q0);
 
-    // cout << "\nq1: " << q1_state[0] << "\tq2: " << q1_state[1] << endl;
-    
     // brake 1번 2번 (어깨)
     to_brake(1, q1_state[0], q1_state[1], 0.001); // 1번 오른쪽 어깨 모터 brake
     to_brake(2, q2_state[0], q2_state[1], 0.001); // 2번 왼쪽 어깨 모터 brake
@@ -345,6 +342,7 @@ bool PathManager::solveIKandPushConmmand()
     if(lineData.rows() == 1){
         clear_brake();
     }
+    
     // 데이터 기록
     for (int m = 0; m < 12; m++)
     {
@@ -2501,26 +2499,3 @@ void PathManager::clear_brake(){ // 모든 brake끄기
         usbio.USBIO_4761_set(i, brakeArr[i]);
     }
 }
-
-
-// void PathManager::setC() {
-//     struct sigaction sa;
-//     sa.sa_handler = handleSignal; // Use static handler
-//     sigemptyset(&sa.sa_mask);
-//     sa.sa_flags = 0;
-
-//     if (sigaction(SIGINT, &sa, nullptr) == -1) {
-//         std::cerr << "Failed to set up SIGINT handler" << std::endl;
-//         exit(EXIT_FAILURE);
-//     }
-//     cout << "Ready to SIGINT" << endl;
-// }
-// void PathManager::handleSignal(int signal) {
-//     if (signal == SIGINT) {
-//         clear_brake();
-//         std::cout << "Signal SIGINT handled. Exiting..." << std::endl;
-//         exit(0); // shut_down();
-//     }
-// }
-
-

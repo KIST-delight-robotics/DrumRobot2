@@ -255,8 +255,7 @@ void DrumRobot::ReadProcess(int periodMicroSec)
 {
     auto currentTime = chrono::system_clock::now();
     auto elapsed_time = chrono::duration_cast<chrono::microseconds>(currentTime - ReadStandard);
-    auto elapsedTimeMaxon = chrono::duration_cast<chrono::microseconds>(currentTime - SendMaxon);
-
+    
     switch (state.read.load())
     {
     case ReadSub::TimeCheck:
@@ -329,7 +328,6 @@ void DrumRobot::SendPlayProcess(int periodMicroSec, string musicName)
                         std::cout << "Play is Over\n";
                         state.main = Main::AddStance;
                         state.play = PlaySub::ReadMusicSheet;
-                        canManager.isPlay = false;
                         addStanceFlagSetting("goToHome");
                         usleep(500*1000);     // 0.5s
                         break; // 파일 열지 못했으므로 상태 변경 후 종료
@@ -393,24 +391,26 @@ void DrumRobot::SendPlayProcess(int periodMicroSec, string musicName)
 
         break;
     }
-    case PlaySub::TimeCheck: 
+    case PlaySub::TimeCheck:
     {
-        // 5ms마다 주기 체크
-        if (elapsedTime.count() >= periodMicroSec)  // 5ms 주기 체크
-        {
-            state.play = PlaySub::ReadMusicSheet;  // 주기가 되면 ReadMusicSheet 상태로 진입
-            SendStandard = currentTime;  // 현재 시간으로 시간 객체 초기화
-            elapsedTime = chrono::microseconds(0);  // 주기 지나면 시간을 리셋
-        }
+        // if (elapsedTime.count() >= periodMicroSec)
+        // {
+        //     state.play = PlaySub::SetCANFrame;   // 주기가 되면 SetCANFrame 상태로 진입
+        //     SendStandard = currentTime;             // 현재 시간으로 시간 객체 초기화
+        // }
+        // break;
 
-        // 1ms마다 Maxon 모터 신호 보내는 코드
-        if (elapsedTimeMaxon.count() >= periodMicroSec / 5)  // 1ms 주기 체크
+        if (elapsedTime.count() >= periodMicroSec)  
         {
-            // Maxon 모터 신호 보내는 코드
-            SendMaxon = currentTime;
-            elapsedTimeMaxon = chrono::microseconds(0);  // 1ms마다 시간을 리셋
+            state.play = PlaySub::ReadMusicSheet;  // 5ms마다 CAN Frame 설정
+            SendStandard = currentTime;         // 시간 초기화
+            SendMaxon = currentTime;             // 시간 초기화
         }
+        else if (elapsedTimeMaxon.count() >= periodMicroSec / 5){
+            state.play = PlaySub::SetMaxonCANFrame;  // 1ms마다 Maxon CAN Frame 설정
+            SendMaxon = currentTime;             // 시간 초기화
 
+        }
         break;
     }
     case PlaySub::SetCANFrame:
@@ -426,20 +426,12 @@ void DrumRobot::SendPlayProcess(int periodMicroSec, string musicName)
     }
     case PlaySub::SetMaxonCANFrame:
     {
-        bool isSafe = true;
-        // Maxon 모터만 프레임 설정
-        for (auto &motor_pair : motors) {
-            if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motor_pair.second)) {
-                if (!maxonMotor->commandBuffer.empty()) {
-                    isSafe = canManager.setCANFrame();
-                }
-            }
-        }
-
-        if (!isSafe) {
+        bool isSafe;
+        isSafe = canManager.setCANFrame();
+        if (!isSafe)
+        {
             state.main = Main::Error;
         }
-
         state.play = PlaySub::SendMaxonCANFrame;
         break;
     }
@@ -455,10 +447,10 @@ void DrumRobot::SendPlayProcess(int periodMicroSec, string musicName)
                 isWriteError = true;
             }
 
-            if (std::shared_ptr<TMotor> tMotor = std::dynamic_pointer_cast<TMotor>(motor_pair.second))
-            {
-                usbio.USBIO_4761_set(motor_mapping[motor_pair.first], tMotor->brakeState);
-            }
+            // if (std::shared_ptr<TMotor> tMotor = std::dynamic_pointer_cast<TMotor>(motor_pair.second))
+            // {
+            //     usbio.USBIO_4761_set(motor_mapping[motor_pair.first], tMotor->brakeState);
+            // }
         }
 
         if (maxonMotorCount != 0)
@@ -477,7 +469,7 @@ void DrumRobot::SendPlayProcess(int periodMicroSec, string musicName)
         }
         else
         {
-            state.play = PlaySub::TimeCheck;
+            state.play = PlaySub::SolveIK;
         }
 
         // brake
@@ -488,7 +480,6 @@ void DrumRobot::SendPlayProcess(int periodMicroSec, string musicName)
                 cout << "brake Error\n";
             }
         }
-
         break;
     }
     case PlaySub::SendMaxonCANFrame:
@@ -507,7 +498,7 @@ void DrumRobot::SendPlayProcess(int periodMicroSec, string musicName)
             state.main = Main::Error;
         }
         else {
-            state.play = PlaySub::TimeCheck;
+            state.play = PlaySub::SolveIK;
         }
 
         // brake
@@ -533,7 +524,6 @@ void DrumRobot::SendAddStanceProcess(int periodMicroSec)
 {
     auto currentTime = chrono::system_clock::now();
     auto elapsed_time = chrono::duration_cast<chrono::microseconds>(currentTime - addStandard);
-    auto elapsedTimeMaxon = chrono::duration_cast<chrono::microseconds>(currentTime - SendMaxon);
 
     switch (state.addstance.load())
     {
@@ -576,19 +566,10 @@ void DrumRobot::SendAddStanceProcess(int periodMicroSec)
     }
     case AddStanceSub::TimeCheck:
     {
-        bool isTimeForMaxon = (elapsedTimeMaxon.count() >= periodMicroSec / 5);  // 1ms 체크
-        bool isTimeForAll = (elapsed_time.count() >= periodMicroSec);        // 5ms 체크
-
-        if (isTimeForAll)  
+        if (elapsed_time.count() >= periodMicroSec)  
         {
             state.addstance = AddStanceSub::CheckBuf;  // 5ms마다 SetCANFrame 실행
             addStandard = currentTime;
-        }
-
-        if (isTimeForMaxon && !isTimeForAll)  
-        {
-            state.addstance = AddStanceSub::CheckMaxonBuf;  // 1ms마다 실행, 단 5ms 주기일 땐 실행 X
-            SendMaxon = currentTime;
         }
         break;
     }
@@ -602,7 +583,6 @@ void DrumRobot::SendAddStanceProcess(int periodMicroSec)
             {
                 if (!maxonMotor->commandBuffer.empty())
                 {
-                    
                     allBuffersEmpty = false;
                     break;
                 }
@@ -651,33 +631,6 @@ void DrumRobot::SendAddStanceProcess(int periodMicroSec)
         }
         break;
     }
-    case AddStanceSub::CheckMaxonBuf:
-    {
-        bool maxonBuffersEmpty = true;
-
-        for (const auto &motor_pair : motors)
-        {
-            if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motor_pair.second))
-            {
-                if (!maxonMotor->commandBuffer.empty())
-                {
-                    maxonBuffersEmpty = false;
-                    break;
-                }
-            }
-        }
-
-        if (!maxonBuffersEmpty)
-        {
-            state.addstance = AddStanceSub::SetMaxonCANFrame;  // 맥슨 모터 값 전송
-        }
-        else
-        {
-            state.addstance = AddStanceSub::CheckBuf;  // 1ms 주기에서 할 일이 없으면 CheckBuf로 보냄
-        }
-        break;
-    }
-
     case AddStanceSub::SetCANFrame:
     {
         bool isSafe;
@@ -687,24 +640,6 @@ void DrumRobot::SendAddStanceProcess(int periodMicroSec)
             state.main = Main::Error;
         }
         state.addstance = AddStanceSub::SendCANFrame;
-        break;
-    }
-    case AddStanceSub::SetMaxonCANFrame:
-    {
-        bool isSafe = true;
-        // Maxon 모터만 프레임 설정
-        for (auto &motor_pair : motors) {
-            if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motor_pair.second)) {
-                if (!maxonMotor->commandBuffer.empty()) {
-                    isSafe = canManager.setCANFrame();
-                }
-            }
-        }
-
-        if (!isSafe) {
-            state.main = Main::Error;
-        }
-        state.addstance = AddStanceSub::SendMaxonCANFrame;
         break;
     }
     case AddStanceSub::SendCANFrame:
@@ -752,49 +687,10 @@ void DrumRobot::SendAddStanceProcess(int periodMicroSec)
                 cout << "brake Error\n";
             }
         }
-
-        break;
-    }
-    case AddStanceSub::SendMaxonCANFrame:
-    {
-        bool isWriteError = false;
-        
-        // Maxon 모터만 처리
-        for (auto &motor_pair : motors) {
-            if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motor_pair.second)) {
-                if (!canManager.sendMotorFrame(maxonMotor)) {
-                    isWriteError = true;
-                }
-            }
-        }
-
-        if (maxonMotorCount != 0) {
-            maxoncmd.getSync(&virtualMaxonMotor->sendFrame);
-            if (!canManager.sendMotorFrame(virtualMaxonMotor)) {
-                isWriteError = true;
-            }
-        }
-
-        if (isWriteError) {
-            state.main = Main::Error;
-        }
-        else {
-            state.addstance = AddStanceSub::TimeCheck;
-        }
-        // brake
-        if (usbio.useUSBIO)
-        {
-            if(!usbio.USBIO_4761_output())
-            {
-                cout << "brake Error\n";
-            }
-        }
         break;
     }
     }
 }
-
-
 
 
 ////////////////////////////////////////////////////////////////////////////////
