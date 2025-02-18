@@ -72,7 +72,7 @@ void DrumRobot::stateMachine()
         case Main::Test:
         {
             bool isWriteError = false;
-            if (state.test == TestSub::SelectParamByUser || state.test == TestSub::SetQValue || state.test == TestSub::SetXYZ || state.test == TestSub::TestMaxon )
+            if (state.test == TestSub::SelectParamByUser || state.test == TestSub::SetQValue || state.test == TestSub::SetXYZ || (state.test == TestSub::TestMaxon && !testManager.hitTest))
             {
                 if (!canManager.checkAllMotors_Fixed()) // stateMachine() 주기가 5ms 라서 delay 필요 없음
                 {
@@ -88,6 +88,7 @@ void DrumRobot::stateMachine()
             {
                 state.main = Main::Error;
             }
+            //checkUserInput();
             break;
         }
         case Main::Pause:
@@ -170,7 +171,7 @@ void DrumRobot::sendLoopForThread()
         }
         case Main::Test:
         {
-            // UnfixedMotor();
+            //UnfixedMotor();
             testManager.SendTestProcess(5000);
             break;
         }
@@ -403,7 +404,7 @@ void DrumRobot::SendPlayProcess(int periodMicroSec, string musicName)
 
         if (elapsedTime.count() >= periodMicroSec)  
         {
-            state.play = PlaySub::ReadMusicSheet;  // 5ms마다 CAN Frame 설정
+            state.play = PlaySub::SetCANFrame;  // 5ms마다 CAN Frame 설정
             SendStandard = currentTime;         // 시간 초기화
             SendMaxon = currentTime;             // 시간 초기화
         }

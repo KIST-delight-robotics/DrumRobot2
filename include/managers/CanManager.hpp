@@ -55,8 +55,8 @@ public:
     int maxonCnt = 0;
     bool isHit = false;
     bool isPlay = false;
-    bool stopPos = false;
-    float hittingActualPos = 0;
+    bool isCST = false;
+    
 
     // float receive_info = 0.0;
 

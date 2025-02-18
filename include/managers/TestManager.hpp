@@ -42,6 +42,7 @@ public:
     void setMaxonMode(std::string targetMode);
 
     bool isMaxonEnable = false;
+    bool hitTest = 0;
 
     vector<vector<float>> Input_pos;
 
@@ -121,7 +122,6 @@ private:
     int hitMode = 1;
     bool isReached = false;
     float torque = 0;
-    bool hitTest = 0;
     double dt = 0.005;
     tuple <double, int, int> params;
     double hit_time;
@@ -135,8 +135,6 @@ private:
     void TestStick(const std::string selectedMotor, int des_tff, float tffThreshold, float posThreshold, int backTorqueUnit);
     float makeWristAngle(float t1, float t2, float t, int state, int intensity, bool &hitting, float hittingPos);
     tuple <double, int, int> CSTHitLoop();
-    bool dct_fun(float positions[], float vel_th);
-    float getWristReadyAngle(float startAngle, float t1, float t2, float t, int state, int intensity);
 
     void UnfixedMotor();
 };
