@@ -721,10 +721,9 @@ bool CanManager::sendForCheck_Fixed(std::shared_ptr<GenericMotor> motor)
             return false;
         };
         
-        maxoncmd.getTargetPosition(*maxonMotor, &maxonMotor->sendFrame, maxonMotor->fixedMotorPosition);
+        //maxoncmd.getTargetPosition(*maxonMotor, &maxonMotor->sendFrame, maxonMotor->fixedMotorPosition);
 
         fun.appendToCSV_DATA(fun.file_name, (float)maxonMotor->nodeId + SEND_SIGN, maxonMotor->fixedMotorPosition, maxonMotor->fixedMotorPosition - maxonMotor->motorPosition);
-        fun.appendToCSV_DATA("fixedPositionData", (float)maxonMotor->nodeId + SEND_SIGN, maxonMotor->fixedMotorPosition, maxonMotor->fixedMotorPosition - maxonMotor->motorPosition);
     }
     return true;
 }
@@ -771,7 +770,6 @@ bool CanManager::checkAllMotors_Fixed()
 
 bool CanManager::setCANFrame()
 {
-    static string curMode = "CSP";
     vector<float> Pos(9);
     for (auto &motor_pair : motors)
     {
@@ -781,8 +779,7 @@ bool CanManager::setCANFrame()
 
             MaxonData mData = maxonMotor->commandBuffer.front();
             float desiredPosition = maxonMotor->jointAngleToMotorPosition(mData.position);
-            // float desiredTorque = 1;
-            //hittingActualPos = maxonMotor->positionValues.back();
+            float desiredTorque = 1;
             
             maxonMotor->commandBuffer.pop();
 
@@ -793,14 +790,20 @@ bool CanManager::setCANFrame()
                 isHit = false;
                 maxonMotor->hittingPos = maxonMotor->positionValues.back();
                 desiredPosition = maxonMotor->positionValues.back();
-                cout << "CanManager hittingPos : " << maxonMotor->hittingPos << "\n";
             }
             else
             {
                 fun.appendToCSV_DATA("hittingDetect", 0, 0, 0);
             }
 
-            maxoncmd.getTargetPosition(*maxonMotor, &maxonMotor->sendFrame, desiredPosition);
+            if(isCST)
+            {
+                maxoncmd.getTargetTorque(*maxonMotor, &maxonMotor->sendFrame, desiredTorque);
+            }
+            else
+            {
+                maxoncmd.getTargetPosition(*maxonMotor, &maxonMotor->sendFrame, desiredPosition);
+            }
 
             fun.appendToCSV_DATA(fun.file_name, (float)maxonMotor->nodeId + SEND_SIGN, desiredPosition, desiredPosition - maxonMotor->motorPosition);
         }
@@ -970,7 +973,7 @@ bool CanManager::dct_fun(queue<double> positions)
         cout << vel_k << " " << vel_k_1 << " \n";
     }
 
-    if (abs(vel_k) * 2 < abs(vel_k_1) && vel_k < 0 && the_k <= 0.3 && abs(vel_k_1) >= 0.01)
+    if (abs(vel_k) * 2 < abs(vel_k_1) && vel_k_1 < 0 && the_k <= 0.3 && abs(vel_k_1) >= 0.01)
         return true;
     else
         return false;

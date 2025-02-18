@@ -71,7 +71,7 @@ void DrumRobot::stateMachine()
         case Main::Test:
         {
             bool isWriteError = false;
-            if (state.test == TestSub::SelectParamByUser || state.test == TestSub::SetQValue || state.test == TestSub::SetXYZ || state.test == TestSub::TestMaxon )
+            if (state.test == TestSub::SelectParamByUser || state.test == TestSub::SetQValue || state.test == TestSub::SetXYZ || (state.test == TestSub::TestMaxon && !testManager.hitTest))
             {
                 if (!canManager.checkAllMotors_Fixed()) // stateMachine() 주기가 5ms 라서 delay 필요 없음
                 {
@@ -87,6 +87,7 @@ void DrumRobot::stateMachine()
             {
                 state.main = Main::Error;
             }
+            //checkUserInput();
             break;
         }
         case Main::Pause:
@@ -169,7 +170,7 @@ void DrumRobot::sendLoopForThread()
         }
         case Main::Test:
         {
-            // UnfixedMotor();
+            //UnfixedMotor();
             testManager.SendTestProcess(5000);
             break;
         }
