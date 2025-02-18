@@ -770,6 +770,8 @@ bool CanManager::checkAllMotors_Fixed()
 
 bool CanManager::setCANFrame()
 {
+    static int cnt = 0;
+    static bool CSTMode = false;
     vector<float> Pos(9);
     for (auto &motor_pair : motors)
     {
@@ -786,19 +788,60 @@ bool CanManager::setCANFrame()
             if(dct_fun(maxonMotor->positionValues) && (isPlay || isHit) && maxonMotor->hitting == false)
             {
                 fun.appendToCSV_DATA("hittingDetect", 1, 0, 0);
-                maxonMotor->hitting = true;
-                isHit = false;
-                maxonMotor->hittingPos = maxonMotor->positionValues.back();
-                desiredPosition = maxonMotor->positionValues.back();
+                if (isCST)
+                {
+                    maxoncmd.getCSTMode(*maxonMotor, &maxonMotor->sendFrame);
+                    sendMotorFrame(maxonMotor);
+
+                    maxoncmd.getShutdown(*maxonMotor, &maxonMotor->sendFrame);
+                    sendMotorFrame(maxonMotor);
+
+                    maxoncmd.getEnable(*maxonMotor, &maxonMotor->sendFrame);
+                    sendMotorFrame(maxonMotor);
+
+                    CSTMode = true;
+                }
+                else
+                {
+                    maxonMotor->hitting = true;
+                    isHit = false;
+                    maxonMotor->hittingPos = maxonMotor->positionValues.back();
+                    desiredPosition = maxonMotor->positionValues.back();
+                }
             }
             else
             {
                 fun.appendToCSV_DATA("hittingDetect", 0, 0, 0);
             }
 
-            if(isCST)
+            if(isCST && CSTMode)
             {
-                maxoncmd.getTargetTorque(*maxonMotor, &maxonMotor->sendFrame, desiredTorque);
+                cnt++;
+                if (cnt >= 3)
+                {
+                    maxonMotor->hitting = true;
+                    isHit = false;
+                    isCST = false;
+                    CSTMode = false;
+                    maxonMotor->hittingPos = maxonMotor->positionValues.back();
+                    desiredPosition = maxonMotor->positionValues.back();
+                    cnt = 0;
+
+                    maxoncmd.getCSPMode(*maxonMotor, &maxonMotor->sendFrame);
+                    sendMotorFrame(maxonMotor);
+
+                    maxoncmd.getShutdown(*maxonMotor, &maxonMotor->sendFrame);
+                    sendMotorFrame(maxonMotor);
+
+                    maxoncmd.getEnable(*maxonMotor, &maxonMotor->sendFrame);
+                    sendMotorFrame(maxonMotor);
+
+                    maxoncmd.getTargetPosition(*maxonMotor, &maxonMotor->sendFrame, desiredPosition);
+                }
+                else
+                {
+                    maxoncmd.getTargetTorque(*maxonMotor, &maxonMotor->sendFrame, desiredTorque);
+                }
             }
             else
             {

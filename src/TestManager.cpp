@@ -288,7 +288,7 @@ void TestManager::SendTestProcess(int periodMicroSec)
                     if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(entry.second))
                     {
                         MaxonData newData;
-                        if (hitMode == 1)
+                        if (hitMode == 1 || hitMode == 3)
                         {
                             if (repeatCnt == repeat)
                             {
