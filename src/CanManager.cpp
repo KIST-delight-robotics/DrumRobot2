@@ -908,6 +908,93 @@ bool CanManager::setCANFrame()
     return true;
 }
 
+bool CanManager::setMaxonCANFrame()
+{
+    static int cnt = 0;
+    static bool CSTMode = false;
+    vector<float> Pos(9);
+    for (auto &motor_pair : motors)
+    {
+        if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motor_pair.second))
+        {
+            shared_ptr<GenericMotor> motor = motor_pair.second;
+
+            MaxonData mData = maxonMotor->commandBuffer.front();
+            float desiredPosition = maxonMotor->jointAngleToMotorPosition(mData.position);
+            float desiredTorque = 1;
+            
+            maxonMotor->commandBuffer.pop();
+
+            if(dct_fun(maxonMotor->positionValues) && (isPlay || isHit) && maxonMotor->hitting == false)
+            {
+                fun.appendToCSV_DATA("hittingDetect", 1, 0, 0);
+                if (isCST)
+                {
+                    maxoncmd.getCSTMode(*maxonMotor, &maxonMotor->sendFrame);
+                    sendMotorFrame(maxonMotor);
+
+                    maxoncmd.getShutdown(*maxonMotor, &maxonMotor->sendFrame);
+                    sendMotorFrame(maxonMotor);
+
+                    maxoncmd.getEnable(*maxonMotor, &maxonMotor->sendFrame);
+                    sendMotorFrame(maxonMotor);
+
+                    CSTMode = true;
+                }
+                else
+                {
+                    maxonMotor->hitting = true;
+                    isHit = false;
+                    maxonMotor->hittingPos = maxonMotor->positionValues.back();
+                    desiredPosition = maxonMotor->positionValues.back();
+                }
+            }
+            else
+            {
+                fun.appendToCSV_DATA("hittingDetect", 0, 0, 0);
+            }
+
+            if(isCST && CSTMode)
+            {
+                cnt++;
+                if (cnt >= 3)
+                {
+                    maxonMotor->hitting = true;
+                    isHit = false;
+                    isCST = false;
+                    CSTMode = false;
+                    maxonMotor->hittingPos = maxonMotor->positionValues.back();
+                    desiredPosition = maxonMotor->positionValues.back();
+                    cnt = 0;
+
+                    maxoncmd.getCSPMode(*maxonMotor, &maxonMotor->sendFrame);
+                    sendMotorFrame(maxonMotor);
+
+                    maxoncmd.getShutdown(*maxonMotor, &maxonMotor->sendFrame);
+                    sendMotorFrame(maxonMotor);
+
+                    maxoncmd.getEnable(*maxonMotor, &maxonMotor->sendFrame);
+                    sendMotorFrame(maxonMotor);
+
+                    maxoncmd.getTargetPosition(*maxonMotor, &maxonMotor->sendFrame, desiredPosition);
+                }
+                else
+                {
+                    maxoncmd.getTargetTorque(*maxonMotor, &maxonMotor->sendFrame, desiredTorque);
+                }
+            }
+            else
+            {
+                maxoncmd.getTargetPosition(*maxonMotor, &maxonMotor->sendFrame, desiredPosition);
+            }
+
+            fun.appendToCSV_DATA(fun.file_name, (float)maxonMotor->nodeId + SEND_SIGN, desiredPosition, desiredPosition - maxonMotor->motorPosition);
+        }
+    }
+
+    return true;
+}
+
 bool CanManager::safetyCheck_Tmotor(std::shared_ptr<TMotor> tMotor, TMotorData tData)
 {
     bool isSafe = true;

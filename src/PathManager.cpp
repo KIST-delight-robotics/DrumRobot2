@@ -331,6 +331,7 @@ bool PathManager::solveIKandPushConmmand()
     to_brake(2, q2_state[0], q2_state[1], 0.001); // 2번 왼쪽 어깨 모터 brake
     int q1_b = brakeArr[1];
     int q2_b = brakeArr[2];
+    
 
     // wrist, elbow
     getHitAngle(q, index_solveIK);
