@@ -479,10 +479,28 @@ void TestManager::SendTestProcess(int periodMicroSec)
         {
             if (elapsedTime.count() >= periodMicroSec)  
             {
+<<<<<<< HEAD
                 state.test = TestSub::SetCANFrame;
                 SendStandard = currentTime;         // 시간 초기화
                 SendMaxon = currentTime;             // 시간 초기화
             }
+=======
+                // struct can_frame frame;
+                // std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motors["L_wrist"]);
+                // std::shared_ptr<GenericMotor> motor = motors["L_wrist"];
+                // maxoncmd.getCheck(*maxonMotor, &frame);
+                // canManager.sendAndRecv(motor, frame);
+
+                state.test = TestSub::SetCANFrame;  // 5ms마다 CAN Frame 설정
+                SendStandard = currentTime;         // 시간 초기화
+                // SendMaxon = currentTime;             // 시간 초기화
+            }
+            // else if (elapsedTimeMaxon.count() >= periodMicroSec / 5)
+            // {
+            //     state.test = TestSub::SetMaxonCANFrame;  // 1ms마다 Maxon CAN Frame 설정
+            //     SendMaxon = currentTime;             // 시간 초기화
+            // }
+>>>>>>> 481446086ed7898ae2299cd2ea70ced0dd9513f5
             break;
         }
         case TestSub::SetCANFrame:
@@ -496,17 +514,17 @@ void TestManager::SendTestProcess(int periodMicroSec)
             state.test = TestSub::SendCANFrame;
             break;
         }
-        case TestSub::SetMaxonCANFrame:
-        {
-            bool isSafe;
-            isSafe = canManager.setCANFrame();
-            if (!isSafe)
-            {
-                state.main = Main::Error;
-            }
-            state.test = TestSub::SendMaxonCANFrame;
-            break;
-        }
+        // case TestSub::SetMaxonCANFrame:
+        // {
+        //     bool isSafe;
+        //     isSafe = canManager.setMaxonCANFrame();
+        //     if (!isSafe)
+        //     {
+        //         state.main = Main::Error;
+        //     }
+        //     state.test = TestSub::SendMaxonCANFrame;
+        //     break;
+        // }
         case TestSub::SendCANFrame:
         {
             bool needSync = false;
@@ -560,52 +578,52 @@ void TestManager::SendTestProcess(int periodMicroSec)
 
             break;
         }
-        case TestSub::SendMaxonCANFrame:
-        {
-            bool needSync = false;
-            bool isWriteError = false;
-            for (auto &motor_pair : motors)
-            {
-                shared_ptr<GenericMotor> motor = motor_pair.second;
+        // case TestSub::SendMaxonCANFrame:
+        // {
+        //     bool needSync = false;
+        //     bool isWriteError = false;
+        //     for (auto &motor_pair : motors)
+        //     {
+        //         shared_ptr<GenericMotor> motor = motor_pair.second;
 
-                if (!canManager.sendMotorFrame(motor))
-                {
-                    isWriteError = true;
-                }
-                if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motor_pair.second))
-                {
-                    virtualMaxonMotor = maxonMotor;
-                    needSync = true;
-                }
-            }
-            if (needSync)
-            {
-                maxoncmd.getSync(&virtualMaxonMotor->sendFrame);
-                if (!canManager.sendMotorFrame(virtualMaxonMotor))
-                {
-                    isWriteError = true;
-                }
-            }
-            if (isWriteError)
-            {
-                state.main = Main::Error;
-            }
-            else
-            {
-                state.test = TestSub::CheckBuf;
-            }
+        //         if (!canManager.sendMotorFrame(motor))
+        //         {
+        //             isWriteError = true;
+        //         }
+        //         if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motor_pair.second))
+        //         {
+        //             virtualMaxonMotor = maxonMotor;
+        //             needSync = true;
+        //         }
+        //     }
+        //     if (needSync)
+        //     {
+        //         maxoncmd.getSync(&virtualMaxonMotor->sendFrame);
+        //         if (!canManager.sendMotorFrame(virtualMaxonMotor))
+        //         {
+        //             isWriteError = true;
+        //         }
+        //     }
+        //     if (isWriteError)
+        //     {
+        //         state.main = Main::Error;
+        //     }
+        //     else
+        //     {
+        //         state.test = TestSub::CheckBuf;
+        //     }
 
-            // brake
-            if (usbio.useUSBIO)
-            {
-                if(!usbio.USBIO_4761_output())
-                {
-                    cout << "brake Error\n";
-                }
-            }
+        //     // brake
+        //     if (usbio.useUSBIO)
+        //     {
+        //         if(!usbio.USBIO_4761_output())
+        //         {
+        //             cout << "brake Error\n";
+        //         }
+        //     }
 
-            break;
-        }
+        //     break;
+        // }
         case TestSub::Done:
         {
             //usleep(5000);
