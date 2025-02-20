@@ -152,7 +152,7 @@ private:
     // Maxon 모터 초기화 함수
     void maxonMotorEnable();
     void setMaxonMotorMode(std::string targetMode);
-
+    
     //play 관련 전역변수들
     std::string basePath = "/home/shy/DrumRobot/include/codes/";    // 악보 위치
     std::string musicName;

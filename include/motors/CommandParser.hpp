@@ -65,6 +65,7 @@ class MaxonCommandParser
 public:
     std::tuple<int, float, float, unsigned char> parseRecieveCommand(MaxonMotor &motor, struct can_frame *frame);
 
+    void getActualPos(MaxonMotor &motor, struct can_frame *frame);
     void getCheck(MaxonMotor &motor, struct can_frame *frame);
     void getStop(MaxonMotor &motor, struct can_frame *frame);
     void getQuickStop(MaxonMotor &motor, struct can_frame *frame);
