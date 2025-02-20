@@ -368,10 +368,23 @@ std::tuple<int, float, float, unsigned char> MaxonCommandParser::parseRecieveCom
 }
 
 // System
+void MaxonCommandParser::getActualPos(MaxonMotor &motor, struct can_frame *frame)
+{
+    frame->can_id = motor.canSendId;  // SDO Write 요청
+    frame->can_dlc = 8;
+    frame->data[0] = 0x40;  // SDO Write 명령 (4바이트 데이터)
+    frame->data[1] = 0x64;  
+    frame->data[2] = 0x60;  
+    frame->data[3] = 0x00;  
+    frame->data[4] = 0x00;  
+    frame->data[5] = 0x00;  
+    frame->data[6] = 0x00;  
+    frame->data[7] = 0x00;  
+}
+
 void MaxonCommandParser::getCheck(MaxonMotor &motor, struct can_frame *frame)
 {
-
-    frame->can_id = motor.canSendId;
+    frame->can_id =  motor.canSendId; 
     frame->can_dlc = 8;
     frame->data[0] = 0x00;
     frame->data[1] = 0x00;

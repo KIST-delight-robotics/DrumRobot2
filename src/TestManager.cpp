@@ -479,6 +479,12 @@ void TestManager::SendTestProcess(int periodMicroSec)
         {
             if (elapsedTime.count() >= periodMicroSec)  
             {
+<<<<<<< HEAD
+                state.test = TestSub::SetCANFrame;
+                SendStandard = currentTime;         // 시간 초기화
+                SendMaxon = currentTime;             // 시간 초기화
+            }
+=======
                 // struct can_frame frame;
                 // std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motors["L_wrist"]);
                 // std::shared_ptr<GenericMotor> motor = motors["L_wrist"];
@@ -494,6 +500,7 @@ void TestManager::SendTestProcess(int periodMicroSec)
             //     state.test = TestSub::SetMaxonCANFrame;  // 1ms마다 Maxon CAN Frame 설정
             //     SendMaxon = currentTime;             // 시간 초기화
             // }
+>>>>>>> 481446086ed7898ae2299cd2ea70ced0dd9513f5
             break;
         }
         case TestSub::SetCANFrame:
