@@ -576,52 +576,19 @@ void CanManager::setMotorsSocket()
 //     }
 // }
 
-// void CanManager::readFramesFromAllSockets()
-// {
-//     struct can_frame frame;
-//     for (const auto &socketPair : sockets)
-//     {
-//         int socket_fd = socketPair.second;
-//         while (read(socket_fd, &frame, sizeof(frame)) == sizeof(frame))
-//         {
-//             tempFrames[socket_fd].push_back(frame);
-//         }
-//     }
-// }
-
 void CanManager::readFramesFromAllSockets()
 {
     struct can_frame frame;
-
     for (const auto &socketPair : sockets)
     {
         int socket_fd = socketPair.second;
-
-        // Non-blocking 모드 설정
-        fcntl(socket_fd, F_SETFL, O_NONBLOCK);
-
-        while (true)
+        while (read(socket_fd, &frame, sizeof(frame)) == sizeof(frame))
         {
-            ssize_t bytesRead = read(socket_fd, &frame, sizeof(frame));
-
-            if (bytesRead == sizeof(frame))
-            {
-                tempFrames[socket_fd].push_back(frame); // 정상적으로 읽었으면 저장
-            }
-            else if (bytesRead == -1 && errno == EWOULDBLOCK)
-            {
-                // 읽을 데이터가 없으면 루프 종료 (non-blocking에서는 EWOULDBLOCK 발생 가능)
-                break;
-            }
-            else
-            {
-                // 기타 오류 발생 시 처리
-                perror("read error");
-                break;
-            }
+            tempFrames[socket_fd].push_back(frame);
         }
     }
 }
+
 
 
 bool CanManager::distributeFramesToMotors(bool setlimit)
@@ -667,6 +634,13 @@ bool CanManager::distributeFramesToMotors(bool setlimit)
             // MaxonMotor 처리
             for (auto &frame : tempFrames[motor->socket])
             {
+
+                // if((frame.can_id & 0x588) == maxonMotor->rxPdoIds[0]){
+                //     std::tuple<int, float, float, unsigned char> parsedData = maxoncmd.parseRecieveCommand(*maxonMotor, &frame);
+                //     maxonMotor->motorPosition = std::get<5>(parsedData);
+
+
+                // }
                 if (frame.can_id == maxonMotor->rxPdoIds[0])
                 {
                     // getCheck(*maxonMotor ,&frame);
