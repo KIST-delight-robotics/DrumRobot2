@@ -56,6 +56,9 @@ public:
     bool isHit = false;
     bool isPlay = false;
     bool isCST = false;
+
+    // SDO communication으로 받아오는 현재 위치 값
+    float current_Position = 0.0;
     
 
     // float receive_info = 0.0;

@@ -9,14 +9,12 @@ TestManager::TestManager(State &stateRef, CanManager &canManagerRef, std::map<st
 {
 
     SendStandard = chrono::system_clock::now();
-    SendMaxon = chrono::system_clock::now();
 }
 
 void TestManager::SendTestProcess(int periodMicroSec)
 {
     auto currentTime = chrono::system_clock::now();
     auto elapsedTime = chrono::duration_cast<chrono::microseconds>(currentTime - SendStandard);
-    auto elapsedTimeMaxon = chrono::duration_cast<chrono::microseconds>(currentTime - SendMaxon);
 
     // 선택에 따라 testMode 설정
     switch (state.test.load())
@@ -272,7 +270,7 @@ void TestManager::SendTestProcess(int periodMicroSec)
             {
                 q[i] = c_MotorAngle[i];
                 std::cout << "Q[" << i << "] : " << c_MotorAngle[i] << "\t\t" << c_MotorAngle[i] * 180.0 / M_PI << "\n";
-            } 
+            }
 
             if(hitTest)
             {
@@ -486,13 +484,15 @@ void TestManager::SendTestProcess(int periodMicroSec)
 
                 state.test = TestSub::SetCANFrame;  // 5ms마다 CAN Frame 설정
                 SendStandard = currentTime;         // 시간 초기화
-                // SendMaxon = currentTime;             // 시간 초기화
             }
+<<<<<<< HEAD
             // else if (elapsedTimeMaxon.count() >= periodMicroSec / 5)
             // {
             //     state.test = TestSub::SetMaxonCANFrame;  // 1ms마다 Maxon CAN Frame 설정
             //     SendMaxon = currentTime;             // 시간 초기화
             // }
+=======
+>>>>>>> dbf3b91a6ecba051a0ab05c541dc3264316c3621
             break;
         }
         case TestSub::SetCANFrame:
@@ -506,17 +506,6 @@ void TestManager::SendTestProcess(int periodMicroSec)
             state.test = TestSub::SendCANFrame;
             break;
         }
-        // case TestSub::SetMaxonCANFrame:
-        // {
-        //     bool isSafe;
-        //     isSafe = canManager.setMaxonCANFrame();
-        //     if (!isSafe)
-        //     {
-        //         state.main = Main::Error;
-        //     }
-        //     state.test = TestSub::SendMaxonCANFrame;
-        //     break;
-        // }
         case TestSub::SendCANFrame:
         {
             bool needSync = false;
@@ -570,52 +559,6 @@ void TestManager::SendTestProcess(int periodMicroSec)
 
             break;
         }
-        // case TestSub::SendMaxonCANFrame:
-        // {
-        //     bool needSync = false;
-        //     bool isWriteError = false;
-        //     for (auto &motor_pair : motors)
-        //     {
-        //         shared_ptr<GenericMotor> motor = motor_pair.second;
-
-        //         if (!canManager.sendMotorFrame(motor))
-        //         {
-        //             isWriteError = true;
-        //         }
-        //         if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motor_pair.second))
-        //         {
-        //             virtualMaxonMotor = maxonMotor;
-        //             needSync = true;
-        //         }
-        //     }
-        //     if (needSync)
-        //     {
-        //         maxoncmd.getSync(&virtualMaxonMotor->sendFrame);
-        //         if (!canManager.sendMotorFrame(virtualMaxonMotor))
-        //         {
-        //             isWriteError = true;
-        //         }
-        //     }
-        //     if (isWriteError)
-        //     {
-        //         state.main = Main::Error;
-        //     }
-        //     else
-        //     {
-        //         state.test = TestSub::CheckBuf;
-        //     }
-
-        //     // brake
-        //     if (usbio.useUSBIO)
-        //     {
-        //         if(!usbio.USBIO_4761_output())
-        //         {
-        //             cout << "brake Error\n";
-        //         }
-        //     }
-
-        //     break;
-        // }
         case TestSub::Done:
         {
             //usleep(5000);
@@ -1530,7 +1473,7 @@ float TestManager::makeWristAngle(float t1, float t2, float t, int state, int in
 {
     float wrist_q = 0.0;
     float t_press = std::min(0.1 * (t2 - t1), 0.05); // 0.08 -> 0.05
-    float t_lift = std::max(0.6 * (t2 - t1), t2 - t1 - 0.2);
+    float t_lift = std::max(0.8 * (t2 - t1), t2 - t1 - 0.1);
     float t_stay;
     t2 - t1 < 0.15 ? t_stay = 0.45 * (t2 - t1) : t_stay = 0.47 * (t2 - t1) - 0.05;
     float t_release = std::min(0.2 * (t2 - t1), 0.1);
@@ -1555,7 +1498,8 @@ float TestManager::makeWristAngle(float t1, float t2, float t, int state, int in
     {
         if (hittingTimeCheck)
         {
-            t_hitting = t + 0.005;
+            //t_hitting = t + 0.005;
+            t_hitting = t;
             hittingTimeCheck = false;
         }
 
