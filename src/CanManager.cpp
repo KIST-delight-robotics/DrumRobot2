@@ -575,10 +575,6 @@ void CanManager::setMotorsSocket()
 //         }
 //     }
 // }
-<<<<<<< HEAD
-
-=======
->>>>>>> b5cadd6b1ccbda51cae93515a373c9b1259029fe
 void CanManager::readFramesFromAllSockets()
 {
     struct can_frame frame;
@@ -637,15 +633,6 @@ bool CanManager::distributeFramesToMotors(bool setlimit)
             // MaxonMotor 처리
             for (auto &frame : tempFrames[motor->socket])
             {
-<<<<<<< HEAD
-
-                // if((frame.can_id & 0x588) == maxonMotor->rxPdoIds[0]){
-                //     std::tuple<int, float, float, unsigned char> parsedData = maxoncmd.parseRecieveCommand(*maxonMotor, &frame);
-                //     maxonMotor->motorPosition = std::get<5>(parsedData);
-
-
-                // }
-=======
                 // Maxon모터에서 1ms마다 SDO 응답 확인
                 if (frame.can_id == (0x580 + maxonMotor->nodeId)) {
                     if (frame.data[1] == 0x64 && frame.data[2] == 0x60 && frame.data[3] == 0x00) { 
@@ -661,7 +648,6 @@ bool CanManager::distributeFramesToMotors(bool setlimit)
 
                 
 
->>>>>>> b5cadd6b1ccbda51cae93515a373c9b1259029fe
                 if (frame.can_id == maxonMotor->rxPdoIds[0])
                 {
                     // getCheck(*maxonMotor ,&frame);
