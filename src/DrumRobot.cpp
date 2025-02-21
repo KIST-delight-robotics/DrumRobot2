@@ -21,7 +21,6 @@ DrumRobot::DrumRobot(State &stateRef,
 {
     ReadStandard = chrono::system_clock::now();
     SendStandard = chrono::system_clock::now();
-    SendMaxon = chrono::system_clock::now();
     addStandard = chrono::system_clock::now();
 
     send_time_point = std::chrono::steady_clock::now();
@@ -308,7 +307,6 @@ void DrumRobot::SendPlayProcess(int periodMicroSec, string musicName)
 {
     auto currentTime = chrono::system_clock::now();
     auto elapsedTime = chrono::duration_cast<chrono::microseconds>(currentTime - SendStandard);
-    auto elapsedTimeMaxon = chrono::duration_cast<chrono::microseconds>(currentTime - SendMaxon);
     
     switch (state.play.load())
     {
@@ -406,20 +404,7 @@ void DrumRobot::SendPlayProcess(int periodMicroSec, string musicName)
         {
             state.play = PlaySub::SetCANFrame;  // 5ms마다 CAN Frame 설정
             SendStandard = currentTime;         // 시간 초기화
-<<<<<<< HEAD
-            SendMaxon = currentTime;             // 시간 초기화
         }
-        else if (elapsedTimeMaxon.count() >= periodMicroSec / 5){
-            state.play = PlaySub::SetMaxonCANFrame;  // 1ms마다 Maxon CAN Frame 설정
-=======
->>>>>>> 481446086ed7898ae2299cd2ea70ced0dd9513f5
-            SendMaxon = currentTime;             // 시간 초기화
-        }
-        // else if (elapsedTimeMaxon.count() >= periodMicroSec / 5){
-        //     state.play = PlaySub::SetMaxonCANFrame;  // 1ms마다 Maxon CAN Frame 설정
-        //     SendMaxon = currentTime;             // 시간 초기화
-
-        // }
         break;
     }
     case PlaySub::SetCANFrame:
@@ -433,17 +418,6 @@ void DrumRobot::SendPlayProcess(int periodMicroSec, string musicName)
         state.play = PlaySub::SendCANFrame;
         break;
     }
-    // case PlaySub::SetMaxonCANFrame:
-    // {
-    //     bool isSafe;
-    //     isSafe = canManager.setMaxonCANFrame();
-    //     if (!isSafe)
-    //     {
-    //         state.main = Main::Error;
-    //     }
-    //     state.play = PlaySub::SendMaxonCANFrame;
-    //     break;
-    // }
     case PlaySub::SendCANFrame:
     {
         bool isWriteError = false;
@@ -491,37 +465,6 @@ void DrumRobot::SendPlayProcess(int periodMicroSec, string musicName)
         }
         break;
     }
-    // case PlaySub::SendMaxonCANFrame:
-    // {
-    //     bool isWriteError = false;
-
-    //     // Maxon 모터만 처리
-    //     if (maxonMotorCount != 0) {
-    //         maxoncmd.getSync(&virtualMaxonMotor->sendFrame);
-    //         if (!canManager.sendMotorFrame(virtualMaxonMotor)) {
-    //             isWriteError = true;
-    //         }
-    //     }
-
-    //     if (isWriteError) {
-    //         state.main = Main::Error;
-    //     }
-    //     else {
-    //         state.play = PlaySub::SolveIK;
-    //     }
-
-    //     // brake
-    //     if (usbio.useUSBIO) {
-    //         int cnt = 0;
-    //         while(!usbio.USBIO_4761_output()) {
-    //             cout << "brake Error\n";
-    //             usbio.USBIO_4761_init();
-    //             cnt++;
-    //             if (cnt >= 5) break;
-    //         }
-    //     }
-    //     break;
-    // }
     }
 }
 
