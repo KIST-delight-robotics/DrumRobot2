@@ -189,7 +189,7 @@ bool PathManager::readMeasure(ifstream &inputFile, bool &BPMFlag)
             // timeSum이 threshold를 넘으면 true 반환
             if (timeSum >= threshold)
             {
-                std::cout << "\n//////////////////////////////// line : " << line + 1 << "\n";
+                std::cout << "\n//////////////////////////////// line : " << lineOfScore + 1 << "\n";
                 // std::cout << measureMatrix;
                 // std::cout << "\n ////////////// time sum : " << timeSum << "\n";
 
@@ -307,7 +307,7 @@ bool PathManager::solveIKandPushConmmand()
     {
         if (index_solveIK == 0)
         {
-            // 허리 계수 구하기s
+            // 허리 계수 구하기
             getWaistCoefficient();
 
             // std::cout << "\n lineDate Start : \n";
@@ -457,7 +457,7 @@ void PathManager::initVal()
     lineData.resize(1, 10);
     lineData = MatrixXd::Zero(1, 10);
 
-    line = 0;
+    lineOfScore = 0;
     threshold = 2.4;
     round_sum = 0.0;
     totalTime = 0.0;
@@ -779,7 +779,7 @@ VectorXd PathManager::makePath(VectorXd Pi, VectorXd Pf, float s)
 
 void PathManager::saveLineData(int n, VectorXd minmax, VectorXd intensity)
 {
-    if (line == 1)
+    if (lineOfScore == 1)
     {
         lineData(0, 0) = n;
         lineData(0, 1) = minmax(0);

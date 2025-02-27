@@ -107,7 +107,7 @@ private:
     void initializeMotors();
     void initializecanManager();
     void DeactivateControlTask();
-    void ClearBufferforRecord();
+    void clearBufferforRecord();
     void printCurrentPositions();
     void motorSettingCmd();
     void setMaxonMode(std::string targetMode);

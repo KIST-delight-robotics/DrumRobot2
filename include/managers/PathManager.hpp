@@ -71,15 +71,13 @@ public:
     
     /////////////////////////////////////////////////////////////////////////// Play
 
-    int line = 0;  ///< 연주를 진행하고 있는 줄
-    MatrixXd measureMatrix;
+    int lineOfScore = 0;  ///< 악보를 읽고 궤적을 생성하고 있는 줄
+    MatrixXd measureMatrix; ///< 궤적을 생성하기 위해 읽은 악보 부분 (마디)
 
     // 궤적 저장할 구조체
     typedef struct {
-        // 오른팔 좌표
-        VectorXd pR; // 0: x, 1: y, 2: z
-        // 왼팔 좌표
-        VectorXd pL; // 0: x, 1: y, 2: z
+        VectorXd pR; ///< 오른팔 스틱 끝 좌표 (x, y, z)
+        VectorXd pL; ///< 왼팔 스틱 끝 좌표 (x, y, z)
         // 손목 각도
         double thetaR;
         double thetaL;

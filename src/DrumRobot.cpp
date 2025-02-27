@@ -58,7 +58,7 @@ void DrumRobot::stateMachine()
         }
         case Main::Ideal:
         {
-            ClearBufferforRecord();
+            clearBufferforRecord();
             idealStateRoutine();
             break;
         }
@@ -269,8 +269,8 @@ void DrumRobot::ReadProcess(int periodMicroSec)
             state.read = ReadSub::ReadCANFrame; // 주기가 되면 ReadCANFrame 상태로 진입
             ReadStandard = currentTime;         // 현재 시간으로 시간 객체 초기화
 
-            maxoncmd.getActualPos(*maxonMotor, &frame);
-            canManager.txFrame(motor, frame);
+            maxoncmd.getActualPos(*maxonMotor, &frame); //Maxon모터에게 1ms마다 신호
+            canManager.txFrame(motor, frame); // CAN을 통해 보내줌
         }
         break;
     case ReadSub::ReadCANFrame:
@@ -371,9 +371,9 @@ void DrumRobot::SendPlayProcess(int periodMicroSec, string musicName)
     }
     case PlaySub::GenerateTrajectory:
     {
-        pathManager.line++;
+        pathManager.lineOfScore++;
         pathManager.generateTrajectory();
-        if (pathManager.line > preCreatedLine)
+        if (pathManager.lineOfScore > preCreatedLine)
         {
             state.play = PlaySub::SolveIK;
         }
@@ -481,7 +481,7 @@ void DrumRobot::SendAddStanceProcess(int periodMicroSec)
     {
         if (goToHome || goToReady || goToShutdown)
         {
-            ClearBufferforRecord();
+            clearBufferforRecord();
             clearMotorsCommandBuffer();
             state.addstance = AddStanceSub::FillBuf;
         }
@@ -856,7 +856,7 @@ void DrumRobot::checkUserInput()
                 }
             }
             else if(input == 's'){
-                pathManager.line = 0;
+                pathManager.lineOfScore = 0;
                 state.main = Main::Shutdown;
             }
             else if (input == 'p') // restart의 의미, ready상태와 명령어 구분을 위함.
@@ -1131,7 +1131,7 @@ void DrumRobot::DeactivateControlTask()
     }
 }
 
-void DrumRobot::ClearBufferforRecord()
+void DrumRobot::clearBufferforRecord()
 {
     for (auto &motor_pair : motors)
     {

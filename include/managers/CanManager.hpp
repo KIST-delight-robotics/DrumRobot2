@@ -103,7 +103,6 @@ public:
     void setSocketBlock();
     
     bool setCANFrame();
-    bool setMaxonCANFrame();
 
     bool safetyCheck_Tmotor(std::shared_ptr<TMotor> tMotor, TMotorData tData);
     bool safetyCheck_T(std::shared_ptr<GenericMotor> &motor);
