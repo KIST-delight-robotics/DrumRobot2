@@ -246,3 +246,13 @@ State the license under which the project is available. Example: This project is
 </pre>
 
 ---
+
+## info
+- **T motor Control**
+<pre>
+T모터 Single Mode → 범위: 0-359도
+T모터 Multi Mode → 범위 0-3599도
+
+C++ 프로그램상 돌아가는 T모터 자체 각도 범위 → 0-3599도
+CubeMars에서 Single/Multi Mode 적절하게 세팅 필요
+</pre>
