@@ -585,8 +585,6 @@ void TestManager::SendTestProcess(int periodMicroSec)
     }
 }
 
-
-
 void TestManager::MaxonEnable()
 {
     struct can_frame frame;

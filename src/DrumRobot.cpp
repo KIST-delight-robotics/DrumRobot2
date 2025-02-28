@@ -21,7 +21,7 @@ DrumRobot::DrumRobot(State &stateRef,
 {
     ReadStandard = chrono::system_clock::now();
     SendStandard = chrono::system_clock::now();
-    SendMaxon = chrono::system_clock::now();
+    // SendMaxon = chrono::system_clock::now();
     addStandard = chrono::system_clock::now();
 
     sendLoopPeriod = std::chrono::steady_clock::now();
@@ -280,7 +280,6 @@ void DrumRobot::readProcess(int periodMicroSec)
         break;
     case ReadSub::UpdateMotorInfo:
     {
-        
         // if ((!settingInitPos) || state.main == Main::Test) // test 모드에서 에러 검출 안함
         // {
         //     canManager.distributeFramesToMotors(false);
@@ -308,7 +307,7 @@ void DrumRobot::sendPlayProcess(int periodMicroSec, string musicName)
 {
     auto currentTime = chrono::system_clock::now();
     auto elapsedTime = chrono::duration_cast<chrono::microseconds>(currentTime - SendStandard);
-    auto elapsedTimeMaxon = chrono::duration_cast<chrono::microseconds>(currentTime - SendMaxon);
+    // auto elapsedTimeMaxon = chrono::duration_cast<chrono::microseconds>(currentTime - SendMaxon);
     
     switch (state.play.load())
     {
@@ -934,7 +933,6 @@ void DrumRobot::initializeMotors()
     motors["R_foot"] = make_shared<MaxonMotor>(0x0A);
     motors["L_foot"] = make_shared<MaxonMotor>(0x0B);
     
-
     for (auto &motor_pair : motors)
     {
         auto &motor = motor_pair.second;
@@ -1030,6 +1028,7 @@ void DrumRobot::initializeMotors()
                 maxonMotor->txPdoIds[2] = 0x407; // TargetVelocity
                 maxonMotor->txPdoIds[3] = 0x507; // TargetTorque
                 maxonMotor->rxPdoIds[0] = 0x187; // Statusword, ActualPosition, ActualTorque
+                maxonMotor->rxPdoIds[1] = 0x287; // ActualPosition, ActualTorque
                 maxonMotor->myName = "R_wrist";
                 maxonMotor->initialJointAngle = initialJointAngles[can_id] * M_PI / 180.0f;
             }
@@ -1043,6 +1042,7 @@ void DrumRobot::initializeMotors()
                 maxonMotor->txPdoIds[2] = 0x408; // TargetVelocity
                 maxonMotor->txPdoIds[3] = 0x508; // TargetTorque
                 maxonMotor->rxPdoIds[0] = 0x188; // Statusword, ActualPosition, ActualTorque
+                maxonMotor->rxPdoIds[1] = 0x288; // ActualPosition, ActualTorque
                 maxonMotor->myName = "L_wrist";
                 maxonMotor->initialJointAngle = initialJointAngles[can_id] * M_PI / 180.0f;
             }
@@ -1056,6 +1056,7 @@ void DrumRobot::initializeMotors()
                 maxonMotor->txPdoIds[2] = 0x40A; // TargetVelocity
                 maxonMotor->txPdoIds[3] = 0x50A; // TargetTorque
                 maxonMotor->rxPdoIds[0] = 0x18A; // Statusword, ActualPosition, ActualTorque
+                maxonMotor->rxPdoIds[1] = 0x28A; // ActualPosition, ActualTorque
                 maxonMotor->myName = "R_foot";
                 maxonMotor->initialJointAngle = initialJointAngles[can_id] * M_PI / 180.0f;
             }
@@ -1069,6 +1070,7 @@ void DrumRobot::initializeMotors()
                 maxonMotor->txPdoIds[2] = 0x40B; // TargetVelocity
                 maxonMotor->txPdoIds[3] = 0x50B; // TargetTorque
                 maxonMotor->rxPdoIds[0] = 0x18B; // Statusword, ActualPosition, ActualTorque
+                maxonMotor->rxPdoIds[1] = 0x28B; // ActualPosition, ActualTorque
                 maxonMotor->myName = "L_foot";
                 maxonMotor->initialJointAngle = initialJointAngles[can_id] * M_PI / 180.0f;
             }
@@ -1082,6 +1084,7 @@ void DrumRobot::initializeMotors()
                 maxonMotor->txPdoIds[2] = 0x409; // TargetVelocity
                 maxonMotor->txPdoIds[3] = 0x509; // TargetTorque
                 maxonMotor->rxPdoIds[0] = 0x189; // Statusword, ActualPosition, ActualTorque
+                maxonMotor->rxPdoIds[1] = 0x289; // ActualPosition, ActualTorque
                 maxonMotor->myName = "maxonForTest";
                 maxonMotor->initialJointAngle = initialJointAngles[can_id] * M_PI / 180.0f;
             }

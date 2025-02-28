@@ -468,7 +468,6 @@ void CanManager::setMotorsSocket()
     // 모든 소켓에 대해 Maxon 모터에 명령을 보내고 응답을 확인
     for (const auto &socketPair : sockets)
     {
-
         int socket_fd = socketPair.second;
 
         for (auto &motor_pair : motors)
@@ -557,6 +556,7 @@ void CanManager::setMotorsSocket()
         }
     }
 }
+
 // void CanManager::readFramesFromAllSockets()
 // {
 //     struct can_frame frame;
@@ -623,7 +623,6 @@ void CanManager::readFramesFromAllSockets()
     }
 }
 
-
 bool CanManager::distributeFramesToMotors(bool setlimit)
 {
     for (auto &motor_pair : motors)
@@ -680,8 +679,6 @@ bool CanManager::distributeFramesToMotors(bool setlimit)
                         currentPosition = maxonMotor->motorPosition; // 현재 위치 값 해당 변수에 덮어쓰기
                     }
                 }
-
-                
 
                 if (frame.can_id == maxonMotor->rxPdoIds[0])
                 {
