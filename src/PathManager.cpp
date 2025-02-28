@@ -25,15 +25,15 @@ void PathManager::getDrumPositoin()
     }
 
     // Read data into a 2D vector
-    MatrixXd inst_xyz(6, 8);
+    MatrixXd instXYZ(6, 8);
 
     for (int i = 0; i < 6; ++i)
     {
         for (int j = 0; j < 8; ++j)
         {
-            inputFile >> inst_xyz(i, j);
+            inputFile >> instXYZ(i, j);
             if (i == 1 || i == 4)
-                inst_xyz(i, j) *= 1.0;
+                instXYZ(i, j) *= 1.0;
         }
     }
 
@@ -61,23 +61,23 @@ void PathManager::getDrumPositoin()
 
     for (int i = 0; i < 3; ++i)
     {
-        right_S(i) = inst_xyz(i, 0);
-        right_FT(i) = inst_xyz(i, 1);
-        right_MT(i) = inst_xyz(i, 2);
-        right_HT(i) = inst_xyz(i, 3);
-        right_HH(i) = inst_xyz(i, 4);
-        right_R(i) = inst_xyz(i, 5);
-        right_RC(i) = inst_xyz(i, 6);
-        right_LC(i) = inst_xyz(i, 7);
+        right_S(i) = instXYZ(i, 0);
+        right_FT(i) = instXYZ(i, 1);
+        right_MT(i) = instXYZ(i, 2);
+        right_HT(i) = instXYZ(i, 3);
+        right_HH(i) = instXYZ(i, 4);
+        right_R(i) = instXYZ(i, 5);
+        right_RC(i) = instXYZ(i, 6);
+        right_LC(i) = instXYZ(i, 7);
 
-        left_S(i) = inst_xyz(i + 3, 0);
-        left_FT(i) = inst_xyz(i + 3, 1);
-        left_MT(i) = inst_xyz(i + 3, 2);
-        left_HT(i) = inst_xyz(i + 3, 3);
-        left_HH(i) = inst_xyz(i + 3, 4);
-        left_R(i) = inst_xyz(i + 3, 5);
-        left_RC(i) = inst_xyz(i + 3, 6);
-        left_LC(i) = inst_xyz(i + 3, 7);
+        left_S(i) = instXYZ(i + 3, 0);
+        left_FT(i) = instXYZ(i + 3, 1);
+        left_MT(i) = instXYZ(i + 3, 2);
+        left_HT(i) = instXYZ(i + 3, 3);
+        left_HH(i) = instXYZ(i + 3, 4);
+        left_R(i) = instXYZ(i + 3, 5);
+        left_RC(i) = instXYZ(i + 3, 6);
+        left_LC(i) = instXYZ(i + 3, 7);
     }
 
     drumCoordinateR << right_S, right_FT, right_MT, right_HT, right_HH, right_R, right_RC, right_LC, right_LC;
@@ -95,32 +95,32 @@ void PathManager::getDrumPositoin()
 
 void PathManager::setReadyAngle()
 {
-    VectorXd default_right; /// 오른팔 시작 위치
-    VectorXd default_left;  /// 왼팔 시작 위치
+    VectorXd defaultInstrumentR; /// 오른팔 시작 위치
+    VectorXd defaultInstrumentL;  /// 왼팔 시작 위치
 
-    VectorXd inst_p(18);
+    VectorXd instrumentVector(18);
 
-    default_right.resize(9);
-    default_left.resize(9);
-    default_right << 1, 0, 0, 0, 0, 0, 0, 0, 0; // S
-    default_left << 1, 0, 0, 0, 0, 0, 0, 0, 0;  // S
+    defaultInstrumentR.resize(9);
+    defaultInstrumentL.resize(9);
+    defaultInstrumentR << 1, 0, 0, 0, 0, 0, 0, 0, 0; // S
+    defaultInstrumentL << 1, 0, 0, 0, 0, 0, 0, 0, 0;  // S
 
-    inst_p << default_right,
-        default_left;
+    instrumentVector << defaultInstrumentR,
+        defaultInstrumentL;
 
     MatrixXd combined(6, 18);
     combined << drumCoordinateR, MatrixXd::Zero(3, 9), MatrixXd::Zero(3, 9), drumCoordinateL;
-    MatrixXd p = combined * inst_p;
+    MatrixXd p = combined * instrumentVector;
 
     VectorXd pR = VectorXd::Map(p.data(), 3, 1);
     VectorXd pL = VectorXd::Map(p.data() + 3, 3, 1);
 
     combined.resize(2, 18);
     combined << wristAnglesR, MatrixXd::Zero(1, 9), MatrixXd::Zero(1, 9), wristAnglesL;
-    MatrixXd default_angle = combined * inst_p;
+    MatrixXd defaultWristAngle = combined * instrumentVector;
 
-    VectorXd minmax = waistRange(pR, pL);
-    VectorXd qk = IKFixedWaist(pR, pL, 0.5 * (minmax(0) + minmax(1)), default_angle(0), default_angle(1));
+    VectorXd waistMinMax = waistRange(pR, pL);
+    VectorXd qk = IKFixedWaist(pR, pL, 0.5 * (waistMinMax(0) + waistMinMax(1)), defaultWristAngle(0), defaultWristAngle(1));
 
     for (int i = 0; i < qk.size(); ++i)
     {
@@ -166,7 +166,7 @@ bool PathManager::readMeasure(ifstream &inputFile, bool &bpmFlag)
         {
             cout << "music";
             bpmOfScore = stod(items[0].substr(4));
-            cout << " bpmOfScore = " << bpmOfScore << "\n";
+            cout << " bpm = " << bpmOfScore << "\n";
             bpmFlag = 1;
 
             initVal();
@@ -189,7 +189,7 @@ bool PathManager::readMeasure(ifstream &inputFile, bool &bpmFlag)
             // timeSum이 threshold를 넘으면 true 반환
             if (timeSum >= threshold)
             {
-                std::cout << "\n//////////////////////////////// line : " << lineOfScore + 1 << "\n";
+                std::cout << "\n//////////////////////////////// Read Measure : " << lineOfScore + 1 << "\n";
                 // std::cout << measureMatrix;
                 // std::cout << "\n ////////////// time sum : " << timeSum << "\n";
 
@@ -203,16 +203,16 @@ bool PathManager::readMeasure(ifstream &inputFile, bool &bpmFlag)
 void PathManager::generateTrajectory()
 {
     // position
-    VectorXd Pi(6), Pf(6);
-    VectorXd Pi_R(3);
-    VectorXd Pi_L(3);
-    VectorXd Pf_R(3);
-    VectorXd Pf_L(3);
-    VectorXd wrist_hit_angle_i(2);
-    VectorXd wrist_hit_angle_f(2);
-    VectorXd minmax;
+    VectorXd initialPosition(6), finalPosition(6);
+    VectorXd initialPositionR(3);
+    VectorXd initialPositionL(3);
+    VectorXd finalPositionR(3);
+    VectorXd finalPositionL(3);
+    VectorXd initialWristAngle(2);
+    VectorXd finalWristAngle(2);
+    VectorXd waistMinMax;
     VectorXd intensity(2);
-    float n, s_R, s_L;
+    float n, sR, sL;
     float dt = canManager.DTSECOND;
 
     // parse
@@ -229,36 +229,36 @@ void PathManager::generateTrajectory()
     n = (int)n;
 
     // position
-    Pi = getTargetPosition(initialInstrument);
-    Pf = getTargetPosition(finalInstrument);
+    initialPosition = getTargetPosition(initialInstrument);
+    finalPosition = getTargetPosition(finalInstrument);
 
-    Pi_R << Pi(0), Pi(1), Pi(2);
-    Pi_L << Pi(3), Pi(4), Pi(5);
-    Pf_R << Pf(0), Pf(1), Pf(2);
-    Pf_L << Pf(3), Pf(4), Pf(5);
+    initialPositionR << initialPosition(0), initialPosition(1), initialPosition(2);
+    initialPositionL << initialPosition(3), initialPosition(4), initialPosition(5);
+    finalPositionR << finalPosition(0), finalPosition(1), finalPosition(2);
+    finalPositionL << finalPosition(3), finalPosition(4), finalPosition(5);
 
     // std::cout << "\nR : Pi_R -> Pf_R\n(" << Pi_R.transpose() << ") -> (" << Pf_R.transpose() << ")";
     // std::cout << "\nL : Pi_L -> Pf_L\n(" << Pi_L.transpose() << ") -> (" << Pf_L.transpose() << ")" << std::endl;
 
     // 타격 시 손목 각도
-    wrist_hit_angle_i = getWristHitAngle(initialInstrument);
-    wrist_hit_angle_f = getWristHitAngle(finalInstrument);
+    initialWristAngle = getWristHitAngle(initialInstrument);
+    finalWristAngle = getWristHitAngle(finalInstrument);
 
     for (int i = 0; i < n; i++)
     {
         Position Pt;
-        float t_R = dt * i + t1 - initialTimeR;
-        float t_L = dt * i + t1 - initialTimeL;
+        float tR = dt * i + t1 - initialTimeR;
+        float tL = dt * i + t1 - initialTimeL;
 
-        s_R = timeScaling(0.0f, finalTimeR - initialTimeR, t_R);
-        s_L = timeScaling(0.0f, finalTimeL - initialTimeL, t_L);
+        sR = timeScaling(0.0f, finalTimeR - initialTimeR, tR);
+        sL = timeScaling(0.0f, finalTimeL - initialTimeL, tL);
         
-        Pt.endEffectorR = makePath(Pi_R, Pf_R, s_R);
-        Pt.endEffectorL = makePath(Pi_L, Pf_L, s_L);
+        Pt.endEffectorR = makePath(initialPositionR, finalPositionR, sR);
+        Pt.endEffectorL = makePath(initialPositionL, finalPositionL, sL);
 
         // 타격 시 손목 각도
-        Pt.wristAngleR = t_R*(wrist_hit_angle_f(0) - wrist_hit_angle_i(0))/(finalTimeR - initialTimeR) + wrist_hit_angle_i(0);
-        Pt.wristAngleL = t_L*(wrist_hit_angle_f(1) - wrist_hit_angle_i(1))/(finalTimeL - initialTimeL) + wrist_hit_angle_i(1);
+        Pt.wristAngleR = tR*(finalWristAngle(0) - initialWristAngle(0))/(finalTimeR - initialTimeR) + initialWristAngle(0);
+        Pt.wristAngleL = tL*(finalWristAngle(1) - initialWristAngle(1))/(finalTimeL - initialTimeL) + initialWristAngle(1);
 
         trajectoryQueue.push(Pt);
 
@@ -270,7 +270,7 @@ void PathManager::generateTrajectory()
 
         if (i == 0)
         {
-            minmax = waistRange(Pt.endEffectorR, Pt.endEffectorL);
+            waistMinMax = waistRange(Pt.endEffectorR, Pt.endEffectorL);
         }
     }
 
@@ -278,7 +278,7 @@ void PathManager::generateTrajectory()
     intensity(0) = measureMatrix(0, 4);
     intensity(1) = measureMatrix(0, 5);
 
-    saveLineData(n, minmax, intensity);
+    saveLineData(n, waistMinMax, intensity);
 }
 
 bool PathManager::solveIKandPushConmmand()
@@ -293,10 +293,10 @@ bool PathManager::solveIKandPushConmmand()
         // 커맨드 생성 후 삭제
         if (lineData.rows() >= 1)
         {
-            MatrixXd tmp_matrix(lineData.rows() - 1, lineData.cols());
-            tmp_matrix = lineData.block(1, 0, tmp_matrix.rows(), tmp_matrix.cols());
-            lineData.resize(tmp_matrix.rows(), tmp_matrix.cols());
-            lineData = tmp_matrix;
+            MatrixXd tmpMatrix(lineData.rows() - 1, lineData.cols());
+            tmpMatrix = lineData.block(1, 0, tmpMatrix.rows(), tmpMatrix.cols());
+            lineData.resize(tmpMatrix.rows(), tmpMatrix.cols());
+            lineData = tmpMatrix;
         }
 
         std::cout << "\n lineDate Over \n";
@@ -331,7 +331,6 @@ bool PathManager::solveIKandPushConmmand()
     toBrake(2, q2_state[0], q2_state[1], 0.001); // 2번 왼쪽 어깨 모터 brake
     int q1_b = brakeArr[1];
     int q2_b = brakeArr[2];
-    
 
     // wrist, elbow
     getHitAngle(q, indexSolveIK);
@@ -344,23 +343,23 @@ bool PathManager::solveIKandPushConmmand()
         clearBrake();
     }
     
-    // 데이터 기록
-    for (int m = 0; m < 12; m++)
-    {
-        if(m == 9){
-            fun.appendToCSV_DATA("q0_brake_status", m, q0_b, 0); // 허리 브레이크 결과 출력
-        }
-        else if(m == 10){
-            fun.appendToCSV_DATA("q1_brake_status", m, q1_b, 0); // 1번 어깨 브레이크 결과 출력
-        }
-        else if(m == 11){
-            fun.appendToCSV_DATA("q2_brake_status", m, q2_b, 0); // 2번 어깨 브레이크 결과 출력
-        }
-        else{
-            std::string fileName = "solveIK_q" + to_string(m);
-            fun.appendToCSV_DATA(fileName, m, q(m), 0);
-        }
-    }
+    // // 데이터 기록
+    // for (int m = 0; m < 12; m++)
+    // {
+    //     if(m == 9){
+    //         fun.appendToCSV_DATA("q0_brake_status", m, q0_b, 0); // 허리 브레이크 결과 출력
+    //     }
+    //     else if(m == 10){
+    //         fun.appendToCSV_DATA("q1_brake_status", m, q1_b, 0); // 1번 어깨 브레이크 결과 출력
+    //     }
+    //     else if(m == 11){
+    //         fun.appendToCSV_DATA("q2_brake_status", m, q2_b, 0); // 2번 어깨 브레이크 결과 출력
+    //     }
+    //     else{
+    //         std::string fileName = "solveIK_q" + to_string(m);
+    //         fun.appendToCSV_DATA(fileName, m, q(m), 0);
+    //     }
+    // }
 
     return true;
 }
@@ -371,19 +370,17 @@ bool PathManager::solveIKandPushConmmand()
 
 void PathManager::getArr(vector<float> &arr)
 {
-    const float acc_max = 100.0; // rad/s^2
-    // vector<float> Qi;
-    // vector<float> Vmax;
+    const float accMax = 100.0; // rad/s^2
     VectorXd Q1 = VectorXd::Zero(10);
     VectorXd Q2 = VectorXd::Zero(10);
-    VectorXd Qi = VectorXd::Zero(10);
+    VectorXd Qt = VectorXd::Zero(10);
     VectorXd Vmax = VectorXd::Zero(10);
 
     float dt = canManager.DTSECOND; // 0.005
     float t = 2.0;                // 3초동안 실행
-    float extra_time = 1.0;       // 추가 시간 1초
+    float extraTime = 1.0;       // 추가 시간 1초
     int n = (int)(t / dt);
-    int n_p = (int)(extra_time / dt);
+    int extraN = (int)(extraTime / dt);
 
     getMotorPos();
 
@@ -393,7 +390,7 @@ void PathManager::getArr(vector<float> &arr)
         Q2(i) = arr[i];
     }
 
-    Vmax = calVmax(Q1, Q2, acc_max, t);
+    Vmax = calVmax(Q1, Q2, accMax, t);
 
     for (int k = 0; k < 10; k++)
     {
@@ -401,10 +398,10 @@ void PathManager::getArr(vector<float> &arr)
         cout << "Vmax[" << k << "] : " << Vmax(k) << "[rad/s]\n\n";
     }
 
-    for (int k = 1; k <= n + n_p; ++k)
+    for (int k = 1; k <= n + extraN; ++k)
     {
         // Make Array
-        Qi = makeProfile(Q1, Q2, Vmax, acc_max, t * k / n, t);
+        Qt = makeProfile(Q1, Q2, Vmax, accMax, t * k / n, t);
 
         // Send to Buffer
         for (auto &entry : motors)
@@ -412,7 +409,7 @@ void PathManager::getArr(vector<float> &arr)
             if (std::shared_ptr<TMotor> tMotor = std::dynamic_pointer_cast<TMotor>(entry.second))
             {
                 TMotorData newData;
-                newData.position = Qi[motorMapping[entry.first]];
+                newData.position = Qt[motorMapping[entry.first]];
                 newData.spd = 0;
                 newData.acl = 0;
                 newData.isBrake = false;
@@ -421,7 +418,7 @@ void PathManager::getArr(vector<float> &arr)
             else if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(entry.second))
             {
                 MaxonData newData;
-                newData.position = Qi[motorMapping[entry.first]];
+                newData.position = Qt[motorMapping[entry.first]];
                 newData.WristState = 0.5;
                 maxonMotor->commandBuffer.push(newData);
             }
@@ -472,34 +469,34 @@ void PathManager::initVal()
 
 void PathManager::parseMeasure(MatrixXd &measureMatrix)
 {
-    VectorXd Measure_time = measureMatrix.col(8);
-    VectorXd Measure_R = measureMatrix.col(2);
-    VectorXd Measure_L = measureMatrix.col(3);
-    VectorXd MeasureIntensity_R = measureMatrix.col(4);
-    VectorXd MeasureIntensity_L = measureMatrix.col(5);
+    VectorXd MeasureTime = measureMatrix.col(8);
+    VectorXd MeasureInstrumentR = measureMatrix.col(2);
+    VectorXd MeasureInstrumentL = measureMatrix.col(3);
+    VectorXd MeasureIntensityR = measureMatrix.col(4);
+    VectorXd MeasureIntensityL = measureMatrix.col(5);
 
-    pair<VectorXd, VectorXd> R = parseOneArm(Measure_time, Measure_R, measureState.row(0));
-    pair<VectorXd, VectorXd> L = parseOneArm(Measure_time, Measure_L, measureState.row(1));
+    pair<VectorXd, VectorXd> dataR = parseOneArm(MeasureTime, MeasureInstrumentR, measureState.row(0));
+    pair<VectorXd, VectorXd> dataL = parseOneArm(MeasureTime, MeasureInstrumentL, measureState.row(1));
 
     // 데이터 저장
-    initialInstrument << R.first.block(1, 0, 9, 1), L.first.block(1, 0, 9, 1);
-    finalInstrument << R.first.block(11, 0, 9, 1), L.first.block(11, 0, 9, 1);
+    initialInstrument << dataR.first.block(1, 0, 9, 1), dataL.first.block(1, 0, 9, 1);
+    finalInstrument << dataR.first.block(11, 0, 9, 1), dataL.first.block(11, 0, 9, 1);
 
-    initialTimeR = R.first(0);
-    initialTimeL = L.first(0);
-    finalTimeR = R.first(10);
-    finalTimeL = L.first(10);
+    initialTimeR = dataR.first(0);
+    initialTimeL = dataL.first(0);
+    finalTimeR = dataR.first(10);
+    finalTimeL = dataL.first(10);
 
     t1 = measureMatrix(0, 8);
     t2 = measureMatrix(1, 8);
 
     hitState.resize(4); 
     hitState.head(2) = makeState(measureMatrix);
-    hitState(2) = R.first(20);
-    hitState(3) = L.first(20);
+    hitState(2) = dataR.first(20);
+    hitState(3) = dataL.first(20);
 
-    measureState.block(0, 0, 1, 3) = R.second.transpose();
-    measureState.block(1, 0, 1, 3) = L.second.transpose();
+    measureState.block(0, 0, 1, 3) = dataR.second.transpose();
+    measureState.block(1, 0, 1, 3) = dataL.second.transpose();
 
     // std::cout << "\n /// t1 -> t2 : " << t1 << " -> " << t2 << "\n";
 
@@ -513,15 +510,15 @@ void PathManager::parseMeasure(MatrixXd &measureMatrix)
     // std::cout << measureState << std::endl;
 
     // 읽은 줄 삭제
-    MatrixXd tmp_matrix(measureMatrix.rows() - 1, measureMatrix.cols());
-    tmp_matrix = measureMatrix.block(1, 0, tmp_matrix.rows(), tmp_matrix.cols());
-    measureMatrix.resize(tmp_matrix.rows(), tmp_matrix.cols());
-    measureMatrix = tmp_matrix;
+    MatrixXd tmpMatrix(measureMatrix.rows() - 1, measureMatrix.cols());
+    tmpMatrix = measureMatrix.block(1, 0, tmpMatrix.rows(), tmpMatrix.cols());
+    measureMatrix.resize(tmpMatrix.rows(), tmpMatrix.cols());
+    measureMatrix = tmpMatrix;
 }
 
 pair<VectorXd, VectorXd> PathManager::parseOneArm(VectorXd t, VectorXd inst, VectorXd stateVector)
 {
-    map<int, int> instrument_mapping = {
+    map<int, int> instrumentMapping = {
         {1, 0}, {2, 1}, {3, 2}, {4, 3}, {5, 4}, {6, 5}, {7, 6}, {8, 7}, {11, 0}, {51, 0}, {61, 0}, {71, 0}, {81, 0}, {91, 0}};
     //    S       FT      MT      HT      HH       R      RC      LC       S        S        S        S        S        S
 
@@ -531,8 +528,8 @@ pair<VectorXd, VectorXd> PathManager::parseOneArm(VectorXd t, VectorXd inst, Vec
     VectorXd nextStateVector;
 
     bool detectHit = false;
-    double detectTime = 0, t_i, t_f;
-    int detectInst = 0, instNum_i, instNum_f;
+    double detectTime = 0, initialT, finalT;
+    int detectInst = 0, initialInstNum, finalInstNum;
     int preState, nextState;
     double threshold = 1.2 * 100.0 / bpmOfScore; // 일단 이렇게 하면 1줄만 읽는 일 없음
     bool targetChangeFlag = 0;
@@ -566,11 +563,11 @@ pair<VectorXd, VectorXd> PathManager::parseOneArm(VectorXd t, VectorXd inst, Vec
         {
             nextState = preState;
 
-            instNum_i = stateVector(1);
-            instNum_f = detectInst;
+            initialInstNum = stateVector(1);
+            finalInstNum = detectInst;
 
-            t_i = stateVector(0);
-            t_f = detectTime;
+            initialT = stateVector(0);
+            finalT = detectTime;
         }
         else
         {
@@ -579,22 +576,22 @@ pair<VectorXd, VectorXd> PathManager::parseOneArm(VectorXd t, VectorXd inst, Vec
             {
                 nextState = 2;
 
-                instNum_i = stateVector(1);
-                instNum_f = detectInst;
+                initialInstNum = stateVector(1);
+                finalInstNum = detectInst;
 
-                t_i = t(0);
-                t_f = detectTime;
+                initialT = t(0);
+                finalT = detectTime;
             }
             // 다음 타격 감지 못함
             else
             {
                 nextState = 0;
 
-                instNum_i = stateVector(1);
-                instNum_f = stateVector(1);
+                initialInstNum = stateVector(1);
+                finalInstNum = stateVector(1);
 
-                t_i = t(0);
-                t_f = t(1);
+                initialT = t(0);
+                finalT = t(1);
             }
         }
     }
@@ -606,36 +603,36 @@ pair<VectorXd, VectorXd> PathManager::parseOneArm(VectorXd t, VectorXd inst, Vec
         {
             nextState = 3;
 
-            instNum_i = inst(0);
-            instNum_f = detectInst;
+            initialInstNum = inst(0);
+            finalInstNum = detectInst;
 
-            t_i = t(0);
-            t_f = detectTime;
+            initialT = t(0);
+            finalT = detectTime;
         }
         // 다음 타격 감지 못함
         else
         {
             nextState = 1;
 
-            instNum_i = inst(0);
-            instNum_f = inst(0);
+            initialInstNum = inst(0);
+            finalInstNum = inst(0);
 
-            t_i = t(0);
-            t_f = t(1);
+            initialT = t(0);
+            finalT = t(1);
         }
     }
 
-    if ((instNum_i - 1 / 2) < (instNum_f - 1 / 2))
+    if ((initialInstNum - 1 / 2) < (finalInstNum - 1 / 2))
     {
         targetChangeFlag = 1;
     }
 
-    initialInstrument(instrument_mapping[instNum_i]) = 1.0;
-    finalInstrument(instrument_mapping[instNum_f]) = 1.0;
-    outputVector << t_i, initialInstrument, t_f, finalInstrument, targetChangeFlag;
+    initialInstrument(instrumentMapping[initialInstNum]) = 1.0;
+    finalInstrument(instrumentMapping[finalInstNum]) = 1.0;
+    outputVector << initialT, initialInstrument, finalT, finalInstrument, targetChangeFlag;
 
     nextStateVector.resize(3);
-    nextStateVector << t_i, instNum_i, nextState;
+    nextStateVector << initialT, initialInstNum, nextState;
 
     return std::make_pair(outputVector, nextStateVector);
 }
@@ -675,28 +672,28 @@ VectorXd PathManager::makeState(MatrixXd measureMatrix)
 /*                            Make Trajectory                                 */
 ////////////////////////////////////////////////////////////////////////////////
 
-VectorXd PathManager::getTargetPosition(VectorXd &inst_vector)
+VectorXd PathManager::getTargetPosition(VectorXd &inst)
 {
-    VectorXd inst_right = inst_vector.segment(0, 9);
-    VectorXd inst_left = inst_vector.segment(9, 9);
+    VectorXd instrumentR = inst.segment(0, 9);
+    VectorXd instrumentL = inst.segment(9, 9);
 
-    if (inst_right.sum() == 0)
+    if (instrumentR.sum() == 0)
     {
         std::cout << "Right Instrument Vector Error!!\n";
     }
 
-    if (inst_left.sum() == 0)
+    if (instrumentL.sum() == 0)
     {
         std::cout << "Left Instrument Vector Error!!\n";
     }
 
-    VectorXd inst_p(18);
-    inst_p << inst_right,
-        inst_left;
+    VectorXd instrumentVector(18);
+    instrumentVector << instrumentR,
+        instrumentL;
 
     MatrixXd combined(6, 18);
     combined << drumCoordinateR, MatrixXd::Zero(3, 9), MatrixXd::Zero(3, 9), drumCoordinateL;
-    MatrixXd p = combined * inst_p;
+    MatrixXd p = combined * instrumentVector;
 
     return p;
 }
@@ -777,18 +774,18 @@ VectorXd PathManager::makePath(VectorXd Pi, VectorXd Pf, float s)
     return Ps;
 }
 
-void PathManager::saveLineData(int n, VectorXd minmax, VectorXd intensity)
+void PathManager::saveLineData(int n, VectorXd waistMinMax, VectorXd intensity)
 {
     if (lineOfScore == 1)
     {
         lineData(0, 0) = n;
-        lineData(0, 1) = minmax(0);
-        lineData(0, 2) = minmax(1);
+        lineData(0, 1) = waistMinMax(0);
+        lineData(0, 2) = waistMinMax(1);
         lineData(0, 3) = hitState(0);
         lineData(0, 4) = hitState(1);
         lineData(0, 5) = intensity(0);
         lineData(0, 6) = intensity(1);
-        lineData(0, 7) = minmax(2);
+        lineData(0, 7) = waistMinMax(2);
         lineData(0, 8) = hitState(2);
         lineData(0, 9) = hitState(3);
     }
@@ -796,13 +793,13 @@ void PathManager::saveLineData(int n, VectorXd minmax, VectorXd intensity)
     {
         lineData.conservativeResize(lineData.rows() + 1, lineData.cols());
         lineData(lineData.rows() - 1, 0) = n;
-        lineData(lineData.rows() - 1, 1) = minmax(0);
-        lineData(lineData.rows() - 1, 2) = minmax(1);
+        lineData(lineData.rows() - 1, 1) = waistMinMax(0);
+        lineData(lineData.rows() - 1, 2) = waistMinMax(1);
         lineData(lineData.rows() - 1, 3) = hitState(0);
         lineData(lineData.rows() - 1, 4) = hitState(1);
         lineData(lineData.rows() - 1, 5) = intensity(0);
         lineData(lineData.rows() - 1, 6) = intensity(1);
-        lineData(lineData.rows() - 1, 7) = minmax(2);
+        lineData(lineData.rows() - 1, 7) = waistMinMax(2);
         lineData(lineData.rows() - 1, 8) = hitState(2);
         lineData(lineData.rows() - 1, 9) = hitState(3);
     }
@@ -810,24 +807,24 @@ void PathManager::saveLineData(int n, VectorXd minmax, VectorXd intensity)
 
 VectorXd PathManager::waistRange(VectorXd &pR, VectorXd &pL)
 {
-    PartLength part_length;
+    PartLength partLength;
 
     float XR = pR(0), YR = pR(1), ZR = pR(2);
     float XL = pL(0), YL = pL(1), ZL = pL(2);
-    float R1 = part_length.upperArm;
-    float R2 = part_length.lowerArm + part_length.stick;
-    float L1 = part_length.upperArm;
-    float L2 = part_length.lowerArm + part_length.stick;
-    float s = part_length.waist;
-    float z0 = part_length.height;
+    float R1 = partLength.upperArm;
+    float R2 = partLength.lowerArm + partLength.stick;
+    float L1 = partLength.upperArm;
+    float L2 = partLength.lowerArm + partLength.stick;
+    float s = partLength.waist;
+    float z0 = partLength.height;
 
     VectorXd W(2);
     W << 2, 1;
-    double min_J = W.sum();
-    double w = 0, J = 0;
-    int min_index = 0;
+    double minCost = W.sum();
+    double w = 0, cost = 0;
+    int minIndex = 0;
 
-    MatrixXd Q_arr(7, 1);
+    MatrixXd Qarr(7, 1);
     VectorXd output(3);
     int j = 0;
 
@@ -888,27 +885,27 @@ VectorXd PathManager::waistRange(VectorXd &pR, VectorXd &pL)
                                     {
                                         if (j == 0)
                                         {
-                                            Q_arr(0, 0) = theta0;
-                                            Q_arr(1, 0) = theta1;
-                                            Q_arr(2, 0) = theta2;
-                                            Q_arr(3, 0) = theta3;
-                                            Q_arr(4, 0) = theta4;
-                                            Q_arr(5, 0) = theta5;
-                                            Q_arr(6, 0) = theta6;
+                                            Qarr(0, 0) = theta0;
+                                            Qarr(1, 0) = theta1;
+                                            Qarr(2, 0) = theta2;
+                                            Qarr(3, 0) = theta3;
+                                            Qarr(4, 0) = theta4;
+                                            Qarr(5, 0) = theta5;
+                                            Qarr(6, 0) = theta6;
 
                                             j = 1;
                                         }
                                         else
                                         {
-                                            Q_arr.conservativeResize(Q_arr.rows(), Q_arr.cols() + 1);
+                                            Qarr.conservativeResize(Qarr.rows(), Qarr.cols() + 1);
 
-                                            Q_arr(0, j) = theta0;
-                                            Q_arr(1, j) = theta1;
-                                            Q_arr(2, j) = theta2;
-                                            Q_arr(3, j) = theta3;
-                                            Q_arr(4, j) = theta4;
-                                            Q_arr(5, j) = theta5;
-                                            Q_arr(6, j) = theta6;
+                                            Qarr(0, j) = theta0;
+                                            Qarr(1, j) = theta1;
+                                            Qarr(2, j) = theta2;
+                                            Qarr(3, j) = theta3;
+                                            Qarr(4, j) = theta4;
+                                            Qarr(5, j) = theta5;
+                                            Qarr(6, j) = theta6;
 
                                             j++;
                                         }
@@ -932,48 +929,48 @@ VectorXd PathManager::waistRange(VectorXd &pR, VectorXd &pL)
     }
     else
     {
-        output(0) = Q_arr(0, 0);     // min
-        output(1) = Q_arr(0, j - 1); // max
+        output(0) = Qarr(0, 0);     // min
+        output(1) = Qarr(0, j - 1); // max
     }
 
-    w = 2.0 * M_PI / abs(Q_arr(0, j - 1) - Q_arr(0, 0));
+    w = 2.0 * M_PI / abs(Qarr(0, j - 1) - Qarr(0, 0));
     for (int i = 0; i < j; i++)
     {
-        J = W(0)*cos(Q_arr(1, i) + Q_arr(2, i)) + W(1)*cos(w*abs(Q_arr(0, i) - Q_arr(0, 0)));
+        cost = W(0)*cos(Qarr(1, i) + Qarr(2, i)) + W(1)*cos(w*abs(Qarr(0, i) - Qarr(0, 0)));
 
-        if (J < min_J)
+        if (cost < minCost)
         {
-            min_J = J;
-            min_index = i;
+            minCost = cost;
+            minIndex = i;
         }
     }
-    output(2) = Q_arr(0, min_index);
+    output(2) = Qarr(0, minIndex);
 
     return output;
 }
 
-VectorXd PathManager::getWristHitAngle(VectorXd &inst_vector)
+VectorXd PathManager::getWristHitAngle(VectorXd &inst)
 {
-    VectorXd inst_right = inst_vector.segment(0, 9);
-    VectorXd inst_left = inst_vector.segment(9, 9);
+    VectorXd instrumentR = inst.segment(0, 9);
+    VectorXd instrumentL = inst.segment(9, 9);
 
-    if (inst_right.sum() == 0)
+    if (instrumentR.sum() == 0)
     {
         std::cout << "Right Instrument Vector Error!!\n";
     }
 
-    if (inst_left.sum() == 0)
+    if (instrumentL.sum() == 0)
     {
         std::cout << "Left Instrument Vector Error!!\n";
     }
 
-    VectorXd inst_p(18);
-    inst_p << inst_right,
-        inst_left;
+    VectorXd instrumentVector(18);
+    instrumentVector << instrumentR,
+        instrumentL;
 
     MatrixXd combined(2, 18);
     combined << wristAnglesR, MatrixXd::Zero(1, 9), MatrixXd::Zero(1, 9), wristAnglesL;
-    MatrixXd angle = combined * inst_p;
+    MatrixXd angle = combined * instrumentVector;
 
     return angle;
 }
@@ -1464,9 +1461,9 @@ void PathManager::getHitAngle(VectorXd &q, int index)
 
 float PathManager::getLength(double theta)
 {
-    PartLength part_length;
-    double l1 = part_length.lowerArm;
-    double l2 = part_length.stick;
+    PartLength partLength;
+    double l1 = partLength.lowerArm;
+    double l2 = partLength.stick;
 
     double l3 = l1 + l2 * cos(theta);
 
@@ -1477,9 +1474,9 @@ float PathManager::getLength(double theta)
 
 double PathManager::getTheta(float l1, double theta)
 {
-    PartLength part_length;
+    PartLength partLength;
 
-    float l2 = part_length.lowerArm + part_length.stick * cos(theta);
+    float l2 = partLength.lowerArm + partLength.stick * cos(theta);
 
     double theta_m = acos(l2 / l1);
 
@@ -1499,7 +1496,7 @@ void PathManager::solveIK(VectorXd &q, double q0)
 VectorXd PathManager::IKFixedWaist(VectorXd &pR, VectorXd &pL, double theta0, double theta7, double theta8)
 {
     VectorXd Qf;
-    PartLength part_length;
+    PartLength partLength;
     q1_state[0] = q1_state[1];
     q2_state[0] = q2_state[1];
 
@@ -1509,12 +1506,12 @@ VectorXd PathManager::IKFixedWaist(VectorXd &pR, VectorXd &pL, double theta0, do
     // float R2 = part_length.lowerArm + part_length.stick;
     // float L1 = part_length.upperArm;
     // float L2 = part_length.lowerArm + part_length.stick;
-    float R1 = part_length.upperArm;
+    float R1 = partLength.upperArm;
     float R2 = getLength(theta7);
-    float L1 = part_length.upperArm;
+    float L1 = partLength.upperArm;
     float L2 = getLength(theta8);
-    float s = part_length.waist;
-    float z0 = part_length.height;
+    float s = partLength.waist;
+    float z0 = partLength.height;
 
     float shoulderXR = 0.5 * s * cos(theta0);
     float shoulderYR = 0.5 * s * sin(theta0);
@@ -2104,7 +2101,7 @@ void PathManager::getMotorPos()
 
 vector<float> PathManager::makeHomeArr(int cnt)
 {
-    vector<float> home_arr = {0, 0, 0, 0, 0, 0, 0, 0, 0};
+    vector<float> homeArrOneStep = {0, 0, 0, 0, 0, 0, 0, 0, 0};
 
     if (cnt == 1)
     {
@@ -2112,12 +2109,12 @@ vector<float> PathManager::makeHomeArr(int cnt)
 
         for (int i = 0; i < 10; i++)
         {
-            home_arr[i] = currentMotorAngle[i];
+            homeArrOneStep[i] = currentMotorAngle[i];
         }
-        home_arr[1] = 135 * M_PI / 180.0;
-        home_arr[2] = 45 * M_PI / 180.0;
-        home_arr[7] = 90 * M_PI / 180.0;
-        home_arr[8] = 90 * M_PI / 180.0;
+        homeArrOneStep[1] = 135 * M_PI / 180.0;
+        homeArrOneStep[2] = 45 * M_PI / 180.0;
+        homeArrOneStep[7] = 90 * M_PI / 180.0;
+        homeArrOneStep[8] = 90 * M_PI / 180.0;
     }
     // else if (cnt == 2)
     // {
@@ -2136,7 +2133,7 @@ vector<float> PathManager::makeHomeArr(int cnt)
     {
         for (int i = 0; i < 9; i++)
         {
-            home_arr[i] = homeArr[i];
+            homeArrOneStep[i] = homeArr[i];
         }
     }
     else
@@ -2144,7 +2141,7 @@ vector<float> PathManager::makeHomeArr(int cnt)
         std::cout << "Invalid Home Cnt";
     }
 
-    return home_arr;
+    return homeArrOneStep;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2155,7 +2152,7 @@ vector<float> PathManager::FK()
 {
     getMotorPos();
 
-    PartLength part_length;
+    PartLength partLength;
     vector<float> P;
     vector<float> theta(9);
     for (auto &motorPair : motors)
@@ -2173,8 +2170,8 @@ vector<float> PathManager::FK()
             cout << name << " : " << theta[motorMapping[name]] << "\n";
         }
     }
-    float r1 = part_length.upperArm, r2 = part_length.lowerArm, l1 = part_length.upperArm, l2 = part_length.lowerArm, stick = part_length.stick;
-    float s = part_length.waist, z0 = part_length.height;
+    float r1 = partLength.upperArm, r2 = partLength.lowerArm, l1 = partLength.upperArm, l2 = partLength.lowerArm, stick = partLength.stick;
+    float s = partLength.waist, z0 = partLength.height;
 
     P.push_back(0.5 * s * cos(theta[0]) + r1 * sin(theta[3]) * cos(theta[0] + theta[1]) + r2 * sin(theta[3] + theta[4]) * cos(theta[0] + theta[1]) + stick * sin(theta[3] + theta[4] + theta[7]) * cos(theta[0] + theta[1]));
     P.push_back(0.5 * s * sin(theta[0]) + r1 * sin(theta[3]) * sin(theta[0] + theta[1]) + r2 * sin(theta[3] + theta[4]) * sin(theta[0] + theta[1]) + stick * sin(theta[3] + theta[4] + theta[7]) * sin(theta[0] + theta[1]));
