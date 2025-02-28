@@ -125,7 +125,7 @@ void DrumRobot::sendLoopForThread()
     while (state.main != Main::Shutdown)
     {
         send_time_point = std::chrono::steady_clock::now();
-        send_time_point += std::chrono::microseconds(1000);  // 주기 : 100us
+        send_time_point += std::chrono::microseconds(100);  // 주기 : 100us
 
         switch (state.main.load())
         {
@@ -214,7 +214,7 @@ void DrumRobot::recvLoopForThread()
         }
         case Main::Ideal:
         {
-            ReadProcess(1000); /*1ms*/
+            ReadProcess(5000); /*1ms*/
             break;
         }
         case Main::Play:
@@ -224,12 +224,12 @@ void DrumRobot::recvLoopForThread()
         }
         case Main::AddStance:
         {
-            ReadProcess(1000);
+            ReadProcess(5000);
             break;
         }
         case Main::Test:
         {
-            ReadProcess(1000);
+            ReadProcess(5000);
             break;
         }
         case Main::Pause:
@@ -253,10 +253,10 @@ void DrumRobot::recvLoopForThread()
 
 void DrumRobot::ReadProcess(int periodMicroSec)
 {
-    std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motors["L_wrist"]);
-    std::shared_ptr<GenericMotor> motor = motors["L_wrist"];
+    // std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motors["L_wrist"]);
+    // std::shared_ptr<GenericMotor> motor = motors["L_wrist"];
 
-    struct can_frame frame;
+    // struct can_frame frame;
 
     auto currentTime = chrono::system_clock::now();
     auto elapsed_time = chrono::duration_cast<chrono::microseconds>(currentTime - ReadStandard);
@@ -269,8 +269,8 @@ void DrumRobot::ReadProcess(int periodMicroSec)
             state.read = ReadSub::ReadCANFrame; // 주기가 되면 ReadCANFrame 상태로 진입
             ReadStandard = currentTime;         // 현재 시간으로 시간 객체 초기화
 
-            maxoncmd.getActualPos(*maxonMotor, &frame); //Maxon모터에게 1ms마다 신호
-            canManager.txFrame(motor, frame); // CAN을 통해 보내줌
+            // maxoncmd.getActualPos(*maxonMotor, &frame); //Maxon모터에게 1ms마다 신호
+            // canManager.txFrame(motor, frame); // CAN을 통해 보내줌
         }
         break;
     case ReadSub::ReadCANFrame:
@@ -468,8 +468,6 @@ void DrumRobot::SendPlayProcess(int periodMicroSec, string musicName)
     }
 }
 
-
-
 void DrumRobot::SendAddStanceProcess(int periodMicroSec)
 {
     auto currentTime = chrono::system_clock::now();
@@ -641,7 +639,6 @@ void DrumRobot::SendAddStanceProcess(int periodMicroSec)
     }
     }
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /*                                STATE UTILITY                               */
