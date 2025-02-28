@@ -44,11 +44,9 @@ public:
     bool isMaxonEnable = false;
     bool hitTest = 0;
 
-    vector<vector<float>> Input_pos;
-
 private:
 
-    chrono::system_clock::time_point SendStandard;
+    chrono::system_clock::time_point standardTime;
     State &state;
     CanManager &canManager;
     std::map<std::string, std::shared_ptr<GenericMotor>> &motors;
@@ -59,11 +57,10 @@ private:
     MaxonCommandParser maxoncmd;
     TMotorServoCommandParser tservocmd;
 
-    vector<string> InputData;
     bool error = false;
 
     // Robot Parameters
-    float part_length[6] = {0.250, 0.328, 0.250, 0.328, 0.325+0.048, 0.325+0.048};
+    float partLength[6] = {0.250, 0.328, 0.250, 0.328, 0.325+0.048, 0.325+0.048};
     float s = 0.520;  ///< 허리 길이.
     float z0 = 1.020-0.0605; ///< 바닥부터 허리까지의 높이.
 
@@ -71,7 +68,7 @@ private:
     int method = 0;
     float q[10] = {0.0};
 
-    map<std::string, int> motor_mapping = { //< 각 관절에 해당하는 열 정보.
+    map<std::string, int> motorMapping = { ///< 각 관절에 해당하는 정보 [이름, CAN ID]
         {"waist", 0},
         {"R_arm1", 1},
         {"L_arm1", 2},
@@ -86,8 +83,8 @@ private:
         {"L_foot", 11}};
 
     //                                 Waist  Rarm1   Larm1   Rarm2   Rarm3   Larm2   Larm3   Rwrist  Lwrist  maxonForTest  Rfoot   Lfoot   [deg]
-    const float joint_range_max[12] = {90.0,  150.0,  180.0,  90.0,   130.0,  90.0,   130.0,  135.0,  135.0,  135.0,        135.0,  135.0};
-    const float joint_range_min[12] = {-90.0, 0.0,    30.0,   -60.0,  -30.0,  -60.0,  -30.0,  -108.0, -108.0, -108.0,      -90.0,  -90.0};
+    const float jointRangeMax[12] = {90.0,  150.0,  180.0,  90.0,   130.0,  90.0,   130.0,  135.0,  135.0,  135.0,        135.0,  135.0};
+    const float jointRangeMin[12] = {-90.0, 0.0,    30.0,   -60.0,  -30.0,  -60.0,  -30.0,  -108.0, -108.0, -108.0,      -90.0,  -90.0};
 
     std::shared_ptr<MaxonMotor> virtualMaxonMotor;
     int maxonMotorCount = 0;
@@ -99,8 +96,8 @@ private:
     vector<float> cal_Vmax(float q1[], float q2[],  float acc, float t2);
     vector<float> sinProfile(float q1[], float q2[], float t, float t2);
     vector<float> ikfun_final(float pR[], float pL[], float part_length[], float s, float z0);
-    void fkfun(float arr[]);
-    void GetArr(float arr[]);
+    void FK(float arr[]);
+    void getArr(float arr[]);
 
     // setQ
     bool sin_flag = false;
@@ -135,5 +132,5 @@ private:
     float makeWristAngle(float t1, float t2, float t, int state, int intensity, bool &hitting, float hittingPos);
     tuple <double, int, int> CSTHitLoop();
 
-    void UnfixedMotor();
+    void unfixedMotor();
 };

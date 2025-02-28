@@ -8,14 +8,14 @@ TestManager::TestManager(State &stateRef, CanManager &canManagerRef, std::map<st
     : state(stateRef), canManager(canManagerRef), motors(motorsRef), usbio(usbioRef), fun(funRef)
 {
 
-    SendStandard = chrono::system_clock::now();
+    standardTime = chrono::system_clock::now();
 }
 
 void TestManager::SendTestProcess(int periodMicroSec)
 {
 
     auto currentTime = chrono::system_clock::now();
-    auto elapsedTime = chrono::duration_cast<chrono::microseconds>(currentTime - SendStandard);
+    auto elapsedTime = chrono::duration_cast<chrono::microseconds>(currentTime - standardTime);
 
     // 선택에 따라 testMode 설정
     switch (state.test.load())
@@ -35,7 +35,7 @@ void TestManager::SendTestProcess(int periodMicroSec)
                 q[i] = c_MotorAngle[i];
                 std::cout << "Q[" << i << "] : " << c_MotorAngle[i] << "\t\t" << c_MotorAngle[i] * 180.0 / M_PI << "\n";
             }
-            fkfun(c_MotorAngle); // 현재 q값에 대한 fkfun 진행
+            FK(c_MotorAngle); // 현재 q값에 대한 FK 진행
 
             std::cout << "\nSelect Method (1 - 관절각도값 조절, 2 - 좌표값 조절, 3 - 손목 모터 -1 - 나가기) : ";
             std::cin >> method;
@@ -110,7 +110,7 @@ void TestManager::SendTestProcess(int periodMicroSec)
             {
                 float degree_angle;
                 
-                std::cout << "\nRange : " << joint_range_min[userInput] << "~" << joint_range_max[userInput] << "(Degree)\n";
+                std::cout << "\nRange : " << jointRangeMin[userInput] << "~" << jointRangeMax[userInput] << "(Degree)\n";
                 std::cout << "Enter q[" << userInput << "] Values (Degree) : ";
                 std::cin >> degree_angle;
                 q[userInput] = degree_angle * M_PI / 180.0;
@@ -132,7 +132,7 @@ void TestManager::SendTestProcess(int periodMicroSec)
                 }
                 state.test = TestSub::FillBuf;
                 usleep(5000);
-                UnfixedMotor();
+                unfixedMotor();
             }
             else if (userInput == 10)
             {
@@ -187,7 +187,7 @@ void TestManager::SendTestProcess(int periodMicroSec)
                         degree_angle = 0.0;
                     }
                     
-                    std::cout << "\nRange : " << joint_range_min[i] << "~" << joint_range_max[i] << "(Degree)\n";
+                    std::cout << "\nRange : " << jointRangeMin[i] << "~" << jointRangeMax[i] << "(Degree)\n";
                     std::cout << "Enter q[" << i << "] Values (Degree) : " << degree_angle << "\n";
                     
                     // degree 값을 radian으로 변환하여 q 배열에 저장
@@ -200,7 +200,7 @@ void TestManager::SendTestProcess(int periodMicroSec)
 
                 state.test = TestSub::FillBuf;
                 usleep(5000);
-                UnfixedMotor();
+                unfixedMotor();
 
             }
 
@@ -318,7 +318,7 @@ void TestManager::SendTestProcess(int periodMicroSec)
                             }
                         }
 
-                        newData.position = q[motor_mapping[entry.first]];
+                        newData.position = q[motorMapping[entry.first]];
                         maxonMotor->commandBuffer.push(newData);
                         //fun.appendToCSV_DATA("wristAngleData", (float)maxonMotor->nodeId , newData.position, 0);
                     }
@@ -342,7 +342,7 @@ void TestManager::SendTestProcess(int periodMicroSec)
                     i++;
                 }
                 state.test = TestSub::CheckBuf;
-                UnfixedMotor();
+                unfixedMotor();
             }
             else
             {
@@ -419,12 +419,12 @@ void TestManager::SendTestProcess(int periodMicroSec)
             // Fill motors command Buffer
             if (method == 1)
             {
-                GetArr(q);
+                getArr(q);
             }
             else if (method == 2)
             {
                 vector<float> Qf(7);
-                Qf = ikfun_final(R_xyz, L_xyz, part_length, s, z0); // IK함수는 손목각도가 0일 때를 기준으로 풀림
+                Qf = ikfun_final(R_xyz, L_xyz, partLength, s, z0); // IK함수는 손목각도가 0일 때를 기준으로 풀림
                 Qf.push_back(0.0);                                  // 오른쪽 손목 각도
                 Qf.push_back(0.0);                                  // 왼쪽 손목 각도
                 for (int i = 0; i < 9; i++)
@@ -434,11 +434,11 @@ void TestManager::SendTestProcess(int periodMicroSec)
                 }
                 cout << "\n";
                 sleep(1);
-                GetArr(q);
+                getArr(q);
             }
             else if (method == 3)
             {
-                GetArr(q);
+                getArr(q);
             }
             
             state.test = TestSub::CheckBuf;
@@ -484,7 +484,7 @@ void TestManager::SendTestProcess(int periodMicroSec)
                 // canManager.sendAndRecv(motor, frame);
 
                 state.test = TestSub::SetCANFrame;  // 5ms마다 CAN Frame 설정
-                SendStandard = currentTime;         // 시간 초기화
+                standardTime = currentTime;         // 시간 초기화
             }
             break;
         }
@@ -514,7 +514,7 @@ void TestManager::SendTestProcess(int periodMicroSec)
 
                 if (std::shared_ptr<TMotor> tMotor = std::dynamic_pointer_cast<TMotor>(motor_pair.second))
                 {
-                    usbio.USBIO_4761_set(motor_mapping[motor_pair.first], tMotor->brakeState);
+                    usbio.USBIO_4761_set(motorMapping[motor_pair.first], tMotor->brakeState);
                 }
 
                 if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motor_pair.second))
@@ -666,11 +666,11 @@ void TestManager::setMaxonMode(std::string targetMode)
     }
 }
 
-void TestManager::fkfun(float theta[])
+void TestManager::FK(float theta[])
 {
     vector<float> P;
 
-    float r1 = part_length[0], r2 = part_length[1], l1 = part_length[2], l2 = part_length[3], stick = part_length[4];
+    float r1 = partLength[0], r2 = partLength[1], l1 = partLength[2], l2 = partLength[3], stick = partLength[4];
 
     P.push_back(0.5 * s * cos(theta[0]) + r1 * sin(theta[3]) * cos(theta[0] + theta[1]) + r2 * sin(theta[3] + theta[4]) * cos(theta[0] + theta[1]) + stick * sin(theta[3] + theta[4] + theta[7]) * cos(theta[0] + theta[1]));
     P.push_back(0.5 * s * sin(theta[0]) + r1 * sin(theta[3]) * sin(theta[0] + theta[1]) + r2 * sin(theta[3] + theta[4]) * sin(theta[0] + theta[1]) + stick * sin(theta[3] + theta[4] + theta[7]) * sin(theta[0] + theta[1]));
@@ -694,11 +694,11 @@ void TestManager::getMotorPos(float c_MotorAngle[])
     {
         if (std::shared_ptr<TMotor> tMotor = std::dynamic_pointer_cast<TMotor>(entry.second))
         {
-            c_MotorAngle[motor_mapping[entry.first]] = tMotor->jointAngle;
+            c_MotorAngle[motorMapping[entry.first]] = tMotor->jointAngle;
         }
         if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(entry.second))
         {
-            c_MotorAngle[motor_mapping[entry.first]] = maxonMotor->jointAngle;
+            c_MotorAngle[motorMapping[entry.first]] = maxonMotor->jointAngle;
         }
     }
 }
@@ -958,7 +958,7 @@ vector<float> TestManager::sinProfile(float q1[], float q2[], float t, float t2)
     return Qi;
 }
 
-void TestManager::GetArr(float arr[])
+void TestManager::getArr(float arr[])
 {
     const float acc_max = 100.0;    // rad/s^2
     vector<float> Qi;
@@ -970,8 +970,8 @@ void TestManager::GetArr(float arr[])
     int n_brake_start[7] = {0};
     int n_brake_end[7] = {0};
 
-    n = (int)(t/canManager.deltaT);    // t초동안 이동
-    n_p = (int)(extra_time/canManager.deltaT);  // 추가 시간
+    n = (int)(t/canManager.DTSECOND);    // t초동안 이동
+    n_p = (int)(extra_time/canManager.DTSECOND);  // 추가 시간
     
     std::cout << "Get Array...\n";
 
@@ -988,8 +988,8 @@ void TestManager::GetArr(float arr[])
     {
         if (brake_flag[i])
         {
-            n_brake_start[i] = (int)(brake_start_time[i]/canManager.deltaT);
-            n_brake_end[i] = (int)(brake_end_time[i]/canManager.deltaT);
+            n_brake_start[i] = (int)(brake_start_time[i]/canManager.DTSECOND);
+            n_brake_end[i] = (int)(brake_end_time[i]/canManager.DTSECOND);
         }
     }
     
@@ -1020,15 +1020,15 @@ void TestManager::GetArr(float arr[])
                 if (std::shared_ptr<TMotor> tMotor = std::dynamic_pointer_cast<TMotor>(entry.second))
                 {
                     TMotorData newData;
-                    newData.position = Qi[motor_mapping[entry.first]];
+                    newData.position = Qi[motorMapping[entry.first]];
                     newData.spd = 0;
                     newData.acl = 0;
                     
-                    if (k < n_brake_start[motor_mapping[entry.first]])
+                    if (k < n_brake_start[motorMapping[entry.first]])
                     {
                         newData.isBrake = false;
                     }
-                    else if (k < n_brake_end[motor_mapping[entry.first]])
+                    else if (k < n_brake_end[motorMapping[entry.first]])
                     {
                         newData.isBrake = true;
                     }
@@ -1041,7 +1041,7 @@ void TestManager::GetArr(float arr[])
                 else if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(entry.second))
                 {
                     MaxonData newData;
-                    newData.position = Qi[motor_mapping[entry.first]];
+                    newData.position = Qi[motorMapping[entry.first]];
                     newData.torque = torque;
                     newData.WristState = 0.5;
                     maxonMotor->commandBuffer.push(newData);
@@ -1161,7 +1161,7 @@ vector<float> TestManager::ikfun_final(float pR[], float pL[], float part_length
     return Qf;
 }
 
-void TestManager::UnfixedMotor()
+void TestManager::unfixedMotor()
 {
     for (auto motor_pair : motors)
         motor_pair.second->isfixed = false;

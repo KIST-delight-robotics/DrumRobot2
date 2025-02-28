@@ -23,9 +23,9 @@ DrumRobot::DrumRobot(State &stateRef,
     SendStandard = chrono::system_clock::now();
     addStandard = chrono::system_clock::now();
 
-    send_time_point = std::chrono::steady_clock::now();
-    recv_time_point = std::chrono::steady_clock::now();
-    state_time_point = std::chrono::steady_clock::now();
+    sendLoopPeriod = std::chrono::steady_clock::now();
+    recvLoopPeriod = std::chrono::steady_clock::now();
+    stateMachinePeriod = std::chrono::steady_clock::now();
 
 }
 
@@ -37,8 +37,8 @@ void DrumRobot::stateMachine()
 {
     while (state.main != Main::Shutdown)
     {
-        state_time_point = std::chrono::steady_clock::now();
-        state_time_point += std::chrono::microseconds(5000);    // 주기 : 5ms
+        stateMachinePeriod = std::chrono::steady_clock::now();
+        stateMachinePeriod += std::chrono::microseconds(5000);    // 주기 : 5ms
 
         switch (state.main.load())
         {
@@ -108,7 +108,7 @@ void DrumRobot::stateMachine()
             break;
         }
         
-        std::this_thread::sleep_until(state_time_point);
+        std::this_thread::sleep_until(stateMachinePeriod);
     }
 
     if (usbio.useUSBIO)
@@ -116,7 +116,7 @@ void DrumRobot::stateMachine()
         usbio.USBIO_4761_exit();
     }
     canManager.setSocketBlock();
-    DeactivateControlTask();
+    deactivateControlTask();
 }
 
 void DrumRobot::sendLoopForThread()
@@ -124,8 +124,8 @@ void DrumRobot::sendLoopForThread()
     initializePathManager();
     while (state.main != Main::Shutdown)
     {
-        send_time_point = std::chrono::steady_clock::now();
-        send_time_point += std::chrono::microseconds(100);  // 주기 : 100us
+        sendLoopPeriod = std::chrono::steady_clock::now();
+        sendLoopPeriod += std::chrono::microseconds(100);  // 주기 : 100us
 
         switch (state.main.load())
         {
@@ -157,19 +157,19 @@ void DrumRobot::sendLoopForThread()
         }
         case Main::Play:
         {
-            UnfixedMotor();
-            SendPlayProcess(5000, musicName);
+            unfixedMotor();
+            sendPlayProcess(5000, musicName);
             break;
         }
         case Main::AddStance:
         {
-            UnfixedMotor();
-            SendAddStanceProcess(5000);
+            unfixedMotor();
+            sendAddStanceProcess(5000);
             break;
         }
         case Main::Test:
         {
-            //UnfixedMotor();
+            //unfixedMotor();
             testManager.SendTestProcess(5000);
             break;
         }
@@ -195,7 +195,7 @@ void DrumRobot::sendLoopForThread()
             break;
         }
 
-        std::this_thread::sleep_until(send_time_point);
+        std::this_thread::sleep_until(sendLoopPeriod);
     }
 }
 
@@ -203,8 +203,8 @@ void DrumRobot::recvLoopForThread()
 {
     while (state.main != Main::Shutdown)
     {
-        recv_time_point = std::chrono::steady_clock::now();
-        recv_time_point += std::chrono::microseconds(100);  // 주기 : 100us
+        recvLoopPeriod = std::chrono::steady_clock::now();
+        recvLoopPeriod += std::chrono::microseconds(100);  // 주기 : 100us
 
         switch (state.main.load())
         {
@@ -214,27 +214,27 @@ void DrumRobot::recvLoopForThread()
         }
         case Main::Ideal:
         {
-            ReadProcess(5000); /*1ms*/
+            readProcess(5000); /*1ms*/
             break;
         }
         case Main::Play:
         {
-            ReadProcess(5000);
+            readProcess(5000);
             break;
         }
         case Main::AddStance:
         {
-            ReadProcess(5000);
+            readProcess(5000);
             break;
         }
         case Main::Test:
         {
-            ReadProcess(5000);
+            readProcess(5000);
             break;
         }
         case Main::Pause:
         {
-            ReadProcess(5000); // 1ms마다 실행
+            readProcess(5000); // 1ms마다 실행
             break;
         }
         case Main::Error:
@@ -247,11 +247,11 @@ void DrumRobot::recvLoopForThread()
         }
         }
 
-        std::this_thread::sleep_until(recv_time_point);
+        std::this_thread::sleep_until(recvLoopPeriod);
     }
 }
 
-void DrumRobot::ReadProcess(int periodMicroSec)
+void DrumRobot::readProcess(int periodMicroSec)
 {
     // std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motors["L_wrist"]);
     // std::shared_ptr<GenericMotor> motor = motors["L_wrist"];
@@ -303,7 +303,7 @@ void DrumRobot::ReadProcess(int periodMicroSec)
     }
 }
 
-void DrumRobot::SendPlayProcess(int periodMicroSec, string musicName)
+void DrumRobot::sendPlayProcess(int periodMicroSec, string musicName)
 {
     auto currentTime = chrono::system_clock::now();
     auto elapsedTime = chrono::duration_cast<chrono::microseconds>(currentTime - SendStandard);
@@ -329,13 +329,13 @@ void DrumRobot::SendPlayProcess(int periodMicroSec, string musicName)
                 }
                 else
                 {
-                    if (pathManager.P_buffer.empty())
+                    if (pathManager.trajectoryQueue.empty())
                     {
                         // 연주 종료
                         std::cout << "Play is Over\n";
                         state.main = Main::AddStance;
                         state.play = PlaySub::ReadMusicSheet;
-                        addStanceFlagSetting("goToHome");
+                        setAddStanceFlag("goToHome");
                         usleep(500*1000);     // 0.5s
                         break; // 파일 열지 못했으므로 상태 변경 후 종료
                     }
@@ -349,7 +349,7 @@ void DrumRobot::SendPlayProcess(int periodMicroSec, string musicName)
         }
 
         // 파일에서 읽고 measureMatrix가 2.4초 이상이 되도록 추가
-        if (pathManager.readMeasure(inputFile, BPMFlag) == true)
+        if (pathManager.readMeasure(inputFile, bpmFlag) == true)
         {
             state.play = PlaySub::GenerateTrajectory; // GenerateTrajectory 상태로 전환
             break;
@@ -432,7 +432,7 @@ void DrumRobot::SendPlayProcess(int periodMicroSec, string musicName)
 
             // if (std::shared_ptr<TMotor> tMotor = std::dynamic_pointer_cast<TMotor>(motor_pair.second))
             // {
-            //     usbio.USBIO_4761_set(motor_mapping[motor_pair.first], tMotor->brakeState);
+            //     usbio.USBIO_4761_set(motorMapping[motor_pair.first], tMotor->brakeState);
             // }
         }
 
@@ -468,7 +468,7 @@ void DrumRobot::SendPlayProcess(int periodMicroSec, string musicName)
     }
 }
 
-void DrumRobot::SendAddStanceProcess(int periodMicroSec)
+void DrumRobot::sendAddStanceProcess(int periodMicroSec)
 {
     auto currentTime = chrono::system_clock::now();
     auto elapsed_time = chrono::duration_cast<chrono::microseconds>(currentTime - addStandard);
@@ -494,19 +494,19 @@ void DrumRobot::SendAddStanceProcess(int periodMicroSec)
         if (goToReady)
         {
             std::cout << "Get Ready Pos Array ...\n";
-            pathManager.GetArr(pathManager.readyArr);
+            pathManager.getArr(pathManager.readyArr);
         }
         else if (goToHome)
         {
             hommingCnt++;
             vector<float> home_arr = pathManager.makeHomeArr(hommingCnt);
             std::cout << "Get Home Pos Array " << hommingCnt << "...\n";
-            pathManager.GetArr(home_arr);
+            pathManager.getArr(home_arr);
         }
         else if (goToShutdown)
         {
             std::cout << "Get Back Pos Array ...\n";
-            pathManager.GetArr(pathManager.backArr);
+            pathManager.getArr(pathManager.backArr);
         }
 
         state.addstance = AddStanceSub::TimeCheck;
@@ -562,7 +562,7 @@ void DrumRobot::SendAddStanceProcess(int periodMicroSec)
                     state.addstance = AddStanceSub::CheckCommand;
                     state.main = Main::Ideal;
                     canManager.clearReadBuffers();
-                    robotFlagSetting("isHome");
+                    setRobotFlag("isHome");
                 }
                 else
                 {
@@ -574,7 +574,7 @@ void DrumRobot::SendAddStanceProcess(int periodMicroSec)
                 state.addstance = AddStanceSub::CheckCommand;
                 state.main = Main::Ideal;
                 canManager.clearReadBuffers();
-                robotFlagSetting("isReady");
+                setRobotFlag("isReady");
             }
         }
         break;
@@ -604,7 +604,7 @@ void DrumRobot::SendAddStanceProcess(int periodMicroSec)
 
             if (std::shared_ptr<TMotor> tMotor = std::dynamic_pointer_cast<TMotor>(motor_pair.second))
             {
-                usbio.USBIO_4761_set(motor_mapping[motor_pair.first], tMotor->brakeState);
+                usbio.USBIO_4761_set(motorMapping[motor_pair.first], tMotor->brakeState);
             }
         }
 
@@ -739,7 +739,7 @@ bool DrumRobot::processInput(const std::string &input)
                 setMaxonMotorMode("CSP");
 
                 settingInitPos = true;
-                robotFlagSetting("isHome");
+                setRobotFlag("isHome");
 
                 return true;
             }
@@ -749,7 +749,7 @@ bool DrumRobot::processInput(const std::string &input)
                 setMaxonMotorMode("CSP");
 
                 settingInitPos = true;
-                robotFlagSetting("isRestart");
+                setRobotFlag("isRestart");
 
                 return true;
             }
@@ -759,8 +759,8 @@ bool DrumRobot::processInput(const std::string &input)
             if (input == "r" && isHome)
             {
                 state.main = Main::AddStance;
-                robotFlagSetting("MOVING");
-                addStanceFlagSetting("goToReady");
+                setRobotFlag("MOVING");
+                setAddStanceFlag("goToReady");
 
                 return true;
             }
@@ -769,11 +769,11 @@ bool DrumRobot::processInput(const std::string &input)
                 std::cout << "enter music name : ";
                 std::getline(std::cin, musicName);
                 
-                BPMFlag = 0;
+                bpmFlag = 0;
                 fileIndex = 0;
                 openFlag = 1;
                 state.main = Main::Play;
-                robotFlagSetting("MOVING");
+                setRobotFlag("MOVING");
                 return true;
             }
             else if (input == "h")
@@ -781,8 +781,8 @@ bool DrumRobot::processInput(const std::string &input)
                 if (isReady || isRestart)
                 {
                     state.main = Main::AddStance;
-                    robotFlagSetting("MOVING");
-                    addStanceFlagSetting("goToHome");
+                    setRobotFlag("MOVING");
+                    setAddStanceFlag("goToHome");
 
                     return true;
 
@@ -791,8 +791,8 @@ bool DrumRobot::processInput(const std::string &input)
             else if (input == "s" && isHome)
             {
                 state.main = Main::AddStance;
-                robotFlagSetting("MOVING");
-                addStanceFlagSetting("goToShutdown");
+                setRobotFlag("MOVING");
+                setAddStanceFlag("goToShutdown");
 
                 return true;
             }
@@ -864,13 +864,13 @@ void DrumRobot::checkUserInput()
             {
                 state.play = PlaySub::ReadMusicSheet;
                 inputFile.close(); // 파일 닫기
-                while (!pathManager.P_buffer.empty())
+                while (!pathManager.trajectoryQueue.empty())
                 {
-                    pathManager.P_buffer.pop();
+                    pathManager.trajectoryQueue.pop();
                 }
 
                 state.main = Main::AddStance;
-                addStanceFlagSetting("goToHome");
+                setAddStanceFlag("goToHome");
             }
         }
         else if (state.main == Main::Error)
@@ -935,7 +935,7 @@ void DrumRobot::initializeMotors()
     for (auto &motor_pair : motors)
     {
         auto &motor = motor_pair.second;
-        int can_id = motor_mapping[motor_pair.first];
+        int can_id = motorMapping[motor_pair.first];
 
         // 타입에 따라 적절한 캐스팅과 초기화 수행
         if (std::shared_ptr<TMotor> tMotor = std::dynamic_pointer_cast<TMotor>(motor))
@@ -944,50 +944,50 @@ void DrumRobot::initializeMotors()
             if (motor_pair.first == "waist")
             {
                 tMotor->cwDir = 1.0f;
-                tMotor->rMin = joint_range_min[can_id] * M_PI / 180.0f; // -90deg
-                tMotor->rMax = joint_range_max[can_id] * M_PI / 180.0f;  // 90deg
+                tMotor->rMin = jointRangeMin[can_id] * M_PI / 180.0f; // -90deg
+                tMotor->rMax = jointRangeMax[can_id] * M_PI / 180.0f;  // 90deg
                 tMotor->myName = "waist";
-                tMotor->initialJointAngle = initial_joint_angles[can_id] * M_PI / 180.0f;
+                tMotor->initialJointAngle = initialJointAngles[can_id] * M_PI / 180.0f;
                 tMotor->currentLimit = 29.8;  // [A]    // ak10-9
                 tMotor->useFourBarLinkage = false;
             }
             else if (motor_pair.first == "R_arm1")
             {
                 tMotor->cwDir = -1.0f;
-                tMotor->rMin = joint_range_min[can_id] * M_PI / 180.0f;   // 0deg
-                tMotor->rMax = joint_range_max[can_id] * M_PI / 180.0f; // 150deg
+                tMotor->rMin = jointRangeMin[can_id] * M_PI / 180.0f;   // 0deg
+                tMotor->rMax = jointRangeMax[can_id] * M_PI / 180.0f; // 150deg
                 tMotor->myName = "R_arm1";
-                tMotor->initialJointAngle = initial_joint_angles[can_id] * M_PI / 180.0f;
+                tMotor->initialJointAngle = initialJointAngles[can_id] * M_PI / 180.0f;
                 tMotor->currentLimit = 23.2;  // [A]    // ak70-10
                 tMotor->useFourBarLinkage = false;
             }
             else if (motor_pair.first == "L_arm1")
             {
                 tMotor->cwDir = -1.0f;
-                tMotor->rMin = joint_range_min[can_id] * M_PI / 180.0f;  // 30deg
-                tMotor->rMax = joint_range_max[can_id] * M_PI / 180.0f; // 180deg
+                tMotor->rMin = jointRangeMin[can_id] * M_PI / 180.0f;  // 30deg
+                tMotor->rMax = jointRangeMax[can_id] * M_PI / 180.0f; // 180deg
                 tMotor->myName = "L_arm1";
-                tMotor->initialJointAngle = initial_joint_angles[can_id] * M_PI / 180.0f;
+                tMotor->initialJointAngle = initialJointAngles[can_id] * M_PI / 180.0f;
                 tMotor->currentLimit = 23.2;  // [A]    // ak70-10
                 tMotor->useFourBarLinkage = false;
             }
             else if (motor_pair.first == "R_arm2")
             {
                 tMotor->cwDir = 1.0f;
-                tMotor->rMin = joint_range_min[can_id] * M_PI / 180.0f; // -60deg
-                tMotor->rMax = joint_range_max[can_id] * M_PI / 180.0f;  // 90deg
+                tMotor->rMin = jointRangeMin[can_id] * M_PI / 180.0f; // -60deg
+                tMotor->rMax = jointRangeMax[can_id] * M_PI / 180.0f;  // 90deg
                 tMotor->myName = "R_arm2";
-                tMotor->initialJointAngle = initial_joint_angles[can_id] * M_PI / 180.0f;
+                tMotor->initialJointAngle = initialJointAngles[can_id] * M_PI / 180.0f;
                 tMotor->currentLimit = 23.2;  // [A]    // ak70-10
                 tMotor->useFourBarLinkage = false;
             }
             else if (motor_pair.first == "R_arm3")
             {
                 tMotor->cwDir = -1.0f;
-                tMotor->rMin = joint_range_min[can_id] * M_PI / 180.0f; // -30deg
-                tMotor->rMax = joint_range_max[can_id] * M_PI / 180.0f; // 130deg
+                tMotor->rMin = jointRangeMin[can_id] * M_PI / 180.0f; // -30deg
+                tMotor->rMax = jointRangeMax[can_id] * M_PI / 180.0f; // 130deg
                 tMotor->myName = "R_arm3";
-                tMotor->initialJointAngle = initial_joint_angles[can_id] * M_PI / 180.0f;
+                tMotor->initialJointAngle = initialJointAngles[can_id] * M_PI / 180.0f;
                 tMotor->currentLimit = 23.2;  // [A]    // ak70-10
                 tMotor->useFourBarLinkage = true;
                 tMotor->setInitialMotorAngle(tMotor->initialJointAngle);
@@ -995,20 +995,20 @@ void DrumRobot::initializeMotors()
             else if (motor_pair.first == "L_arm2")
             {
                 tMotor->cwDir = -1.0f;
-                tMotor->rMin = joint_range_min[can_id] * M_PI / 180.0f; // -60deg
-                tMotor->rMax = joint_range_max[can_id] * M_PI / 180.0f;  // 90deg
+                tMotor->rMin = jointRangeMin[can_id] * M_PI / 180.0f; // -60deg
+                tMotor->rMax = jointRangeMax[can_id] * M_PI / 180.0f;  // 90deg
                 tMotor->myName = "L_arm2";
-                tMotor->initialJointAngle = initial_joint_angles[can_id] * M_PI / 180.0f;
+                tMotor->initialJointAngle = initialJointAngles[can_id] * M_PI / 180.0f;
                 tMotor->currentLimit = 23.2;  // [A]    // ak70-10
                 tMotor->useFourBarLinkage = false;
             }
             else if (motor_pair.first == "L_arm3")
             {
                 tMotor->cwDir = 1.0f;
-                tMotor->rMin = joint_range_min[can_id] * M_PI / 180.0f; // -30 deg
-                tMotor->rMax = joint_range_max[can_id] * M_PI / 180.0f; // 130 deg
+                tMotor->rMin = jointRangeMin[can_id] * M_PI / 180.0f; // -30 deg
+                tMotor->rMax = jointRangeMax[can_id] * M_PI / 180.0f; // 130 deg
                 tMotor->myName = "L_arm3";
-                tMotor->initialJointAngle = initial_joint_angles[can_id] * M_PI / 180.0f;
+                tMotor->initialJointAngle = initialJointAngles[can_id] * M_PI / 180.0f;
                 tMotor->currentLimit = 23.2;  // [A]    // ak70-10
                 tMotor->useFourBarLinkage = true;
                 tMotor->setInitialMotorAngle(tMotor->initialJointAngle);
@@ -1020,8 +1020,8 @@ void DrumRobot::initializeMotors()
             if (motor_pair.first == "R_wrist")
             {
                 maxonMotor->cwDir = -1.0f;
-                maxonMotor->rMin = joint_range_min[can_id] * M_PI / 180.0f; // -108deg
-                maxonMotor->rMax = joint_range_max[can_id] * M_PI / 180.0f;  // 135deg
+                maxonMotor->rMin = jointRangeMin[can_id] * M_PI / 180.0f; // -108deg
+                maxonMotor->rMax = jointRangeMax[can_id] * M_PI / 180.0f;  // 135deg
                 maxonMotor->txPdoIds[0] = 0x207; // Controlword
                 maxonMotor->txPdoIds[1] = 0x307; // TargetPosition
                 maxonMotor->txPdoIds[2] = 0x407; // TargetVelocity
@@ -1029,13 +1029,13 @@ void DrumRobot::initializeMotors()
                 maxonMotor->rxPdoIds[0] = 0x187; // Statusword, ActualPosition, ActualTorque
                 maxonMotor->rxPdoIds[1] = 0x287; // ActualPosition, ActualTorque
                 maxonMotor->myName = "R_wrist";
-                maxonMotor->initialJointAngle = initial_joint_angles[can_id] * M_PI / 180.0f;
+                maxonMotor->initialJointAngle = initialJointAngles[can_id] * M_PI / 180.0f;
             }
             else if (motor_pair.first == "L_wrist")
             {
                 maxonMotor->cwDir = 1.0f;
-                maxonMotor->rMin = joint_range_min[can_id] * M_PI / 180.0f; // -108deg
-                maxonMotor->rMax = joint_range_max[can_id] * M_PI / 180.0f;  // 135deg
+                maxonMotor->rMin = jointRangeMin[can_id] * M_PI / 180.0f; // -108deg
+                maxonMotor->rMax = jointRangeMax[can_id] * M_PI / 180.0f;  // 135deg
                 maxonMotor->txPdoIds[0] = 0x208; // Controlword
                 maxonMotor->txPdoIds[1] = 0x308; // TargetPosition
                 maxonMotor->txPdoIds[2] = 0x408; // TargetVelocity
@@ -1043,13 +1043,13 @@ void DrumRobot::initializeMotors()
                 maxonMotor->rxPdoIds[0] = 0x188; // Statusword, ActualPosition, ActualTorque
                 maxonMotor->rxPdoIds[1] = 0x288; // ActualPosition, ActualTorque
                 maxonMotor->myName = "L_wrist";
-                maxonMotor->initialJointAngle = initial_joint_angles[can_id] * M_PI / 180.0f;
+                maxonMotor->initialJointAngle = initialJointAngles[can_id] * M_PI / 180.0f;
             }
             else if (motor_pair.first == "R_foot")
             {
                 maxonMotor->cwDir = 1.0f;
-                maxonMotor->rMin = joint_range_min[can_id] * M_PI / 180.0f; // -90deg
-                maxonMotor->rMax = joint_range_max[can_id] * M_PI / 180.0f; // 135deg
+                maxonMotor->rMin = jointRangeMin[can_id] * M_PI / 180.0f; // -90deg
+                maxonMotor->rMax = jointRangeMax[can_id] * M_PI / 180.0f; // 135deg
                 maxonMotor->txPdoIds[0] = 0x20A; // Controlword
                 maxonMotor->txPdoIds[1] = 0x30A; // TargetPosition
                 maxonMotor->txPdoIds[2] = 0x40A; // TargetVelocity
@@ -1057,13 +1057,13 @@ void DrumRobot::initializeMotors()
                 maxonMotor->rxPdoIds[0] = 0x18A; // Statusword, ActualPosition, ActualTorque
                 maxonMotor->rxPdoIds[1] = 0x28A; // ActualPosition, ActualTorque
                 maxonMotor->myName = "R_foot";
-                maxonMotor->initialJointAngle = initial_joint_angles[can_id] * M_PI / 180.0f;
+                maxonMotor->initialJointAngle = initialJointAngles[can_id] * M_PI / 180.0f;
             }
             else if (motor_pair.first == "L_foot")
             {
                 maxonMotor->cwDir = 1.0f;
-                maxonMotor->rMin = joint_range_min[can_id] * M_PI / 180.0f; // -90deg
-                maxonMotor->rMax = joint_range_max[can_id] * M_PI / 180.0f; // 135deg
+                maxonMotor->rMin = jointRangeMin[can_id] * M_PI / 180.0f; // -90deg
+                maxonMotor->rMax = jointRangeMax[can_id] * M_PI / 180.0f; // 135deg
                 maxonMotor->txPdoIds[0] = 0x20B; // Controlword
                 maxonMotor->txPdoIds[1] = 0x30B; // TargetPosition
                 maxonMotor->txPdoIds[2] = 0x40B; // TargetVelocity
@@ -1071,13 +1071,13 @@ void DrumRobot::initializeMotors()
                 maxonMotor->rxPdoIds[0] = 0x18B; // Statusword, ActualPosition, ActualTorque
                 maxonMotor->rxPdoIds[1] = 0x28B; // ActualPosition, ActualTorque
                 maxonMotor->myName = "L_foot";
-                maxonMotor->initialJointAngle = initial_joint_angles[can_id] * M_PI / 180.0f;
+                maxonMotor->initialJointAngle = initialJointAngles[can_id] * M_PI / 180.0f;
             }
             else if (motor_pair.first == "maxonForTest")
             {
                 maxonMotor->cwDir = 1.0f;
-                maxonMotor->rMin = joint_range_min[can_id] * M_PI / 180.0f; // -108deg
-                maxonMotor->rMax = joint_range_max[can_id] * M_PI / 180.0f; // 135deg
+                maxonMotor->rMin = jointRangeMin[can_id] * M_PI / 180.0f; // -108deg
+                maxonMotor->rMax = jointRangeMax[can_id] * M_PI / 180.0f; // 135deg
                 maxonMotor->txPdoIds[0] = 0x209; // Controlword
                 maxonMotor->txPdoIds[1] = 0x309; // TargetPosition
                 maxonMotor->txPdoIds[2] = 0x409; // TargetVelocity
@@ -1085,7 +1085,7 @@ void DrumRobot::initializeMotors()
                 maxonMotor->rxPdoIds[0] = 0x189; // Statusword, ActualPosition, ActualTorque
                 maxonMotor->rxPdoIds[1] = 0x289; // ActualPosition, ActualTorque
                 maxonMotor->myName = "maxonForTest";
-                maxonMotor->initialJointAngle = initial_joint_angles[can_id] * M_PI / 180.0f;
+                maxonMotor->initialJointAngle = initialJointAngles[can_id] * M_PI / 180.0f;
             }
         }
     }
@@ -1098,7 +1098,7 @@ void DrumRobot::initializecanManager()
     canManager.setMotorsSocket();
 }
 
-void DrumRobot::DeactivateControlTask()
+void DrumRobot::deactivateControlTask()
 {
     struct can_frame frame;
 
@@ -1156,7 +1156,7 @@ void DrumRobot::printCurrentPositions()
     }
 
     vector<float> P(6);
-    P = pathManager.fkfun();
+    P = pathManager.FK();
 
     std::cout << "Right Hand Position : { " << P[0] << " , " << P[1] << " , " << P[2] << " }\n";
     std::cout << "Left Hand Position : { " << P[3] << " , " << P[4] << " , " << P[5] << " }\n";
@@ -1325,7 +1325,7 @@ void DrumRobot::clearMotorsCommandBuffer()
     }
 }
 
-void DrumRobot::UnfixedMotor()
+void DrumRobot::unfixedMotor()
 {
     for (auto motor_pair : motors)
         motor_pair.second->isfixed = false;
@@ -1335,7 +1335,7 @@ void DrumRobot::UnfixedMotor()
 /*                            flag setting                                     */
 /////////////////////////////////////////////////////////////////////////////////
 
-void DrumRobot::robotFlagSetting(string flag)
+void DrumRobot::setRobotFlag(string flag)
 {
 
     if (flag == "MOVING")
@@ -1368,7 +1368,7 @@ void DrumRobot::robotFlagSetting(string flag)
     }
 }
 
-void DrumRobot::addStanceFlagSetting(string flag)
+void DrumRobot::setAddStanceFlag(string flag)
 {
     if (flag == "goToReady")
     {
