@@ -58,7 +58,7 @@ public:
     bool isCST = false;
 
     // SDO communication으로 받아오는 현재 위치 값
-    float current_Position = 0.0;
+    float currentPosition = 0.0;
 
     // tMotor 제어 주기 결정
     const double DTSECOND = 0.005;

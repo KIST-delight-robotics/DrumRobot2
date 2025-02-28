@@ -641,7 +641,7 @@ bool CanManager::distributeFramesToMotors(bool setlimit)
                         maxonMotor->motorPosition = pos_radians;
 
                         fun.appendToCSV_DATA("q8손목", (float)maxonMotor->nodeId, maxonMotor->motorPosition, 0);
-                        current_Position = maxonMotor->motorPosition; // 현재 위치 값 해당 변수에 덮어쓰기
+                        currentPosition = maxonMotor->motorPosition; // 현재 위치 값 해당 변수에 덮어쓰기
                     }
                 }
 
@@ -823,7 +823,7 @@ bool CanManager::setCANFrame()
                     maxonMotor->hittingPos = maxonMotor->positionValues.back();
                     desiredPosition = maxonMotor->positionValues.back();
                 }
-                fun.appendToCSV_DATA("dct함수에 걸렸을 때 위치", (float)maxonMotor->nodeId, current_Position, 0); // 위 if문 조건에 걸린 경우, 그때의 현재 모터 위치 값 CSV파일로 출력함
+                fun.appendToCSV_DATA("dct함수에 걸렸을 때 위치", (float)maxonMotor->nodeId, currentPosition, 0); // 위 if문 조건에 걸린 경우, 그때의 현재 모터 위치 값 CSV파일로 출력함
             }
             else
             {
