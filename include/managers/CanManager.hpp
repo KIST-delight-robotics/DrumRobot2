@@ -59,12 +59,9 @@ public:
 
     // SDO communication으로 받아오는 현재 위치 값
     float current_Position = 0.0;
-    
-
-    // float receive_info = 0.0;
 
     // tMotor 제어 주기 결정
-    const float deltaT = 0.005;
+    const double DTSECOND = 0.005;
 
     void initializeCAN();
 
@@ -103,7 +100,6 @@ public:
     void setSocketBlock();
     
     bool setCANFrame();
-    bool setMaxonCANFrame();
 
     bool safetyCheck_Tmotor(std::shared_ptr<TMotor> tMotor, TMotorData tData);
     bool safetyCheck_T(std::shared_ptr<GenericMotor> &motor);
@@ -111,9 +107,7 @@ public:
 
     bool dct_fun(queue<double> positions);
 
-    float wristAngle(float t1, float t2, float t, int state, int intensity);
-
-    map<std::string, int> motor_mapping = { ///< 각 관절에 해당하는 열 정보.
+    map<std::string, int> motorMapping = { ///< 각 관절에 해당하는 정보 [이름, CAN ID]
         {"waist", 0},
         {"R_arm1", 1},
         {"L_arm1", 2},
@@ -142,7 +136,7 @@ private:
     void activateCanPort(const char *port);
     void deactivateCanPort(const char *port);
     void deactivateAllCanPorts();
-    void list_and_activate_available_can_ports();
+    void listAndActivateAvailableCANPorts();
 
     int createSocket(const std::string &ifname);
     int setSocketTimeout(int socket, int sec, int usec);

@@ -27,7 +27,7 @@ CanManager::~CanManager()
 
 void CanManager::initializeCAN()
 {
-    list_and_activate_available_can_ports();
+    listAndActivateAvailableCANPorts();
     for (const auto &ifname : this->ifnames)
     {
         std::cout << "Processing interface: " << ifname << std::endl;
@@ -232,7 +232,7 @@ void CanManager::deactivateAllCanPorts()
     pclose(fp);
 }
 
-void CanManager::list_and_activate_available_can_ports()
+void CanManager::listAndActivateAvailableCANPorts()
 {
     int portCount = 0; // CAN 포트 수를 세기 위한 변수
 
