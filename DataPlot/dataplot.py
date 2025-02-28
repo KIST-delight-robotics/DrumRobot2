@@ -56,7 +56,7 @@ def plot_current_by_can_id(receive_df, can_id, ax):
     """
     CAN ID별 Current 그래프 그리기 함수 (Receive 데이터)
     """
-    ax.plot(receive_df['시간'], receive_df['Current_or_Error'], 
+    ax.plot(receive_df['시간'], receive_df['Current_or_Error'],
             label=f'Current (Receive) - ID {can_id}', 
             color='green', marker='o', markersize=3, linestyle='None')
 

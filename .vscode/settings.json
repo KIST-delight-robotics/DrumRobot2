@@ -96,7 +96,9 @@
         "kroneckerproduct": "cpp",
         "numericaldiff": "cpp",
         "specialfunctions": "cpp",
-        "splines": "cpp"
+        "splines": "cpp",
+        "in.h": "c",
+        "stdio.h": "c"
     },
     "makefile.launchConfigurations": [
         {

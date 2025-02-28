@@ -468,6 +468,7 @@ void CanManager::setMotorsSocket()
     // 모든 소켓에 대해 Maxon 모터에 명령을 보내고 응답을 확인
     for (const auto &socketPair : sockets)
     {
+
         int socket_fd = socketPair.second;
 
         for (auto &motor_pair : motors)
@@ -574,19 +575,53 @@ void CanManager::setMotorsSocket()
 //         }
 //     }
 // }
+
+// void CanManager::readFramesFromAllSockets()
+// {
+//     struct can_frame frame;
+//     for (const auto &socketPair : sockets)
+//     {
+//         int socket_fd = socketPair.second;
+//         while (read(socket_fd, &frame, sizeof(frame)) == sizeof(frame))
+//         {
+//             tempFrames[socket_fd].push_back(frame);
+//         }
+//     }
+// }
+
 void CanManager::readFramesFromAllSockets()
 {
     struct can_frame frame;
+
     for (const auto &socketPair : sockets)
     {
         int socket_fd = socketPair.second;
-        while (read(socket_fd, &frame, sizeof(frame)) == sizeof(frame))
+
+        // Non-blocking 모드 설정
+        fcntl(socket_fd, F_SETFL, O_NONBLOCK);
+
+        while (true)
         {
-            tempFrames[socket_fd].push_back(frame);
+            ssize_t bytesRead = read(socket_fd, &frame, sizeof(frame));
+
+            if (bytesRead == sizeof(frame))
+            {
+                tempFrames[socket_fd].push_back(frame); // 정상적으로 읽었으면 저장
+            }
+            else if (bytesRead == -1 && errno == EWOULDBLOCK)
+            {
+                // 읽을 데이터가 없으면 루프 종료 (non-blocking에서는 EWOULDBLOCK 발생 가능)
+                break;
+            }
+            else
+            {
+                // 기타 오류 발생 시 처리
+                perror("read error");
+                break;
+            }
         }
     }
 }
-
 
 
 bool CanManager::distributeFramesToMotors(bool setlimit)
@@ -632,22 +667,6 @@ bool CanManager::distributeFramesToMotors(bool setlimit)
             // MaxonMotor 처리
             for (auto &frame : tempFrames[motor->socket])
             {
-                // Maxon모터에서 1ms마다 SDO 응답 확인
-                if (frame.can_id == (0x580 + maxonMotor->nodeId)) {
-                    if (frame.data[1] == 0x64 && frame.data[2] == 0x60 && frame.data[3] == 0x00) { 
-                        int32_t pos_enc = frame.data[4] | (frame.data[5] << 8) | (frame.data[6] << 16) | (frame.data[7] << 24);
-
-                        float pos_degrees = (static_cast<float>(pos_enc) * 360.0f) / (35.0f * 4096.0f);
-                        float pos_radians = pos_degrees * (M_PI / 180.0f);  
-                        maxonMotor->motorPosition = pos_radians;
-
-                        fun.appendToCSV_DATA("q8손목", (float)maxonMotor->nodeId, maxonMotor->motorPosition, 0);
-                        current_Position = maxonMotor->motorPosition; // 현재 위치 값 해당 변수에 덮어쓰기
-                    }
-                }
-
-                
-
                 if (frame.can_id == maxonMotor->rxPdoIds[0])
                 {
                     // getCheck(*maxonMotor ,&frame);
@@ -824,7 +843,6 @@ bool CanManager::setCANFrame()
                     maxonMotor->hittingPos = maxonMotor->positionValues.back();
                     desiredPosition = maxonMotor->positionValues.back();
                 }
-                fun.appendToCSV_DATA("dct함수에 걸렸을 때 위치", (float)maxonMotor->nodeId, current_Position, 0); // 위 if문 조건에 걸린 경우, 그때의 현재 모터 위치 값 CSV파일로 출력함
             }
             else
             {
@@ -884,6 +902,93 @@ bool CanManager::setCANFrame()
             tMotor->brakeState = tData.isBrake;
 
             fun.appendToCSV_DATA(fun.file_name, (float)tMotor->nodeId + SEND_SIGN, desiredPosition, desiredPosition - tMotor->motorPosition);
+        }
+    }
+
+    return true;
+}
+
+bool CanManager::setMaxonCANFrame()
+{
+    static int cnt = 0;
+    static bool CSTMode = false;
+    vector<float> Pos(9);
+    for (auto &motor_pair : motors)
+    {
+        if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motor_pair.second))
+        {
+            shared_ptr<GenericMotor> motor = motor_pair.second;
+
+            MaxonData mData = maxonMotor->commandBuffer.front();
+            float desiredPosition = maxonMotor->jointAngleToMotorPosition(mData.position);
+            float desiredTorque = 1;
+            
+            maxonMotor->commandBuffer.pop();
+
+            if(dct_fun(maxonMotor->positionValues) && (isPlay || isHit) && maxonMotor->hitting == false)
+            {
+                fun.appendToCSV_DATA("hittingDetect", 1, 0, 0);
+                if (isCST)
+                {
+                    maxoncmd.getCSTMode(*maxonMotor, &maxonMotor->sendFrame);
+                    sendMotorFrame(maxonMotor);
+
+                    maxoncmd.getShutdown(*maxonMotor, &maxonMotor->sendFrame);
+                    sendMotorFrame(maxonMotor);
+
+                    maxoncmd.getEnable(*maxonMotor, &maxonMotor->sendFrame);
+                    sendMotorFrame(maxonMotor);
+
+                    CSTMode = true;
+                }
+                else
+                {
+                    maxonMotor->hitting = true;
+                    isHit = false;
+                    maxonMotor->hittingPos = maxonMotor->positionValues.back();
+                    desiredPosition = maxonMotor->positionValues.back();
+                }
+            }
+            else
+            {
+                fun.appendToCSV_DATA("hittingDetect", 0, 0, 0);
+            }
+
+            if(isCST && CSTMode)
+            {
+                cnt++;
+                if (cnt >= 3)
+                {
+                    maxonMotor->hitting = true;
+                    isHit = false;
+                    isCST = false;
+                    CSTMode = false;
+                    maxonMotor->hittingPos = maxonMotor->positionValues.back();
+                    desiredPosition = maxonMotor->positionValues.back();
+                    cnt = 0;
+
+                    maxoncmd.getCSPMode(*maxonMotor, &maxonMotor->sendFrame);
+                    sendMotorFrame(maxonMotor);
+
+                    maxoncmd.getShutdown(*maxonMotor, &maxonMotor->sendFrame);
+                    sendMotorFrame(maxonMotor);
+
+                    maxoncmd.getEnable(*maxonMotor, &maxonMotor->sendFrame);
+                    sendMotorFrame(maxonMotor);
+
+                    maxoncmd.getTargetPosition(*maxonMotor, &maxonMotor->sendFrame, desiredPosition);
+                }
+                else
+                {
+                    maxoncmd.getTargetTorque(*maxonMotor, &maxonMotor->sendFrame, desiredTorque);
+                }
+            }
+            else
+            {
+                maxoncmd.getTargetPosition(*maxonMotor, &maxonMotor->sendFrame, desiredPosition);
+            }
+
+            fun.appendToCSV_DATA(fun.file_name, (float)maxonMotor->nodeId + SEND_SIGN, desiredPosition, desiredPosition - maxonMotor->motorPosition);
         }
     }
 
