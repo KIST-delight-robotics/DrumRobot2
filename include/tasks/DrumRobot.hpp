@@ -134,11 +134,11 @@ private:
         {"L_foot", 11}};
 
     // 로봇 고정했을 때 각 모터의 관절각      Waist   Rarm1   Larm1   Rarm2   Rarm3   Larm2   Larm3   Rwrist   Lwrist   maxonForTest   Rfoot   Lfoot   [deg]
-    const float initialJointAngles[12] = {10.0,   90.0,   90.0,   0.0,    120.0,  0.0,    120.0,   90.0,   0.0,    0.0,           0.0,    0.0};
+    const float initialJointAngles[12] = {10.0,   90.0,   90.0,   0.0,    135.0,  0.0,    135.0,   90.0,   90.0,    0.0,           0.0,    0.0};
 
     // 로봇의 관절각 범위
     //                                 Waist   Rarm1   Larm1   Rarm2   Rarm3   Larm2   Larm3   Rwrist   Lwrist   maxonForTest   Rfoot   Lfoot    [deg]
-    const float jointRangeMax[12] = {90.0,  150.0,  180.0,  90.0,   130.0,  90.0,   130.0,  135.0,  135.0,     135.0,         135.0,  135.0};
+    const float jointRangeMax[12] = {90.0,  150.0,  180.0,  90.0,   140.0,  90.0,   140.0,  135.0,  135.0,     135.0,         135.0,  135.0};
     // const float jointRangeMin[11] = {-90.0, 0.0,    30.0,   -60.0,    0.0,  -60.0,    0.0,    0.0,    0.0,  -90.0,  -90.0};
     const float jointRangeMin[12] = {-90.0, 0.0,    30.0,   -60.0,  -30.0,  -60.0,  -30.0,  -108.0, -108.0,    -90.0 ,       -90.0,  -90.0};
 
