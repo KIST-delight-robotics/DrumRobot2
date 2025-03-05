@@ -95,6 +95,7 @@ private:
 
     // AddStance
     bool goToHome = false;
+    bool goToSemiReady = false;
     bool goToReady = false;
     bool goToShutdown = false;
     void setAddStanceFlag(string flag);
@@ -134,7 +135,7 @@ private:
         {"L_foot", 11}};
 
     // 로봇 고정했을 때 각 모터의 관절각      Waist   Rarm1   Larm1   Rarm2   Rarm3   Larm2   Larm3   Rwrist   Lwrist   maxonForTest   Rfoot   Lfoot   [deg]
-    const float initialJointAngles[12] = {10.0,   90.0,   90.0,   0.0,    135.0,  0.0,    135.0,   90.0,   90.0,    0.0,           0.0,    0.0};
+    const float initialJointAngles[12] = {10.0,   90.0,   90.0,   0.0,    135.0,  0.0,    135.0,   -90.0,   -90.0,    0.0,           0.0,    0.0};
 
     // 로봇의 관절각 범위
     //                                 Waist   Rarm1   Larm1   Rarm2   Rarm3   Larm2   Larm3   Rwrist   Lwrist   maxonForTest   Rfoot   Lfoot    [deg]
