@@ -232,14 +232,14 @@ void TestManager::SendTestProcess(int periodMicroSec)
 
             //     if(!single_brake_flag[break_num])
             //     {
-            //         usbio.USBIO_4761_set(break_num % 7, true);
-            //         usbio_output = usbio.USBIO_4761_output();
+            //         usbio.setUSBIO4761(break_num % 7, true);
+            //         usbio_output = usbio.outputUSBIO4761();
             //         single_brake_flag[break_num] = true;
             //     }
             //     else
             //     {
-            //         usbio.USBIO_4761_set(break_num % 7, false);
-            //         usbio_output = usbio.USBIO_4761_output();
+            //         usbio.setUSBIO4761(break_num % 7, false);
+            //         usbio_output = usbio.outputUSBIO4761();
             //         single_brake_flag[break_num] = false;
             //     }
 
@@ -513,7 +513,7 @@ void TestManager::SendTestProcess(int periodMicroSec)
 
                 if (std::shared_ptr<TMotor> tMotor = std::dynamic_pointer_cast<TMotor>(motor_pair.second))
                 {
-                    usbio.USBIO_4761_set(motorMapping[motor_pair.first], tMotor->brakeState);
+                    usbio.setUSBIO4761(motorMapping[motor_pair.first], tMotor->brakeState);
                 }
 
                 if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motor_pair.second))
@@ -541,12 +541,9 @@ void TestManager::SendTestProcess(int periodMicroSec)
             }
 
             // brake
-            if (usbio.useUSBIO)
+            if(!usbio.outputUSBIO4761())
             {
-                if(!usbio.USBIO_4761_output())
-                {
-                    cout << "brake Error\n";
-                }
+                cout << "brake Error\n";
             }
 
             break;

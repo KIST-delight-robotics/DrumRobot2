@@ -131,9 +131,9 @@ void PathManager::setReadyAngle()
     readyArr[4] += param.elbowStayAngle;
     readyArr[6] += param.elbowStayAngle;
     readyArr[7] += param.wristStayAngle;
-    //readyArr[8] += param.wristStayAngle;
-    readyArr[8] = param.wristStayAngle;     // for Test
-    readyArr[9] = param.wristStayAngle;
+    readyArr[8] += param.wristStayAngle;
+    // readyArr[8] = param.wristStayAngle;     // for Test
+    // readyArr[9] = param.wristStayAngle;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -319,24 +319,17 @@ bool PathManager::solveIKandPushConmmand()
     // waist
     double q0 = getWaistAngle(indexSolveIK);
 
-    // brake (허리)
-    toBrake(0, q0_t0, q0_t1, q0_threshold);
-    int q0_b = brakeArr[0];
-    
     // solve IK
     solveIK(q, q0);
-
-    // brake 1번 2번 (어깨)
-    toBrake(1, q1_state[0], q1_state[1], 0.001); // 1번 오른쪽 어깨 모터 brake
-    toBrake(2, q2_state[0], q2_state[1], 0.001); // 2번 왼쪽 어깨 모터 brake
-    int q1_b = brakeArr[1];
-    int q2_b = brakeArr[2];
 
     // wrist, elbow
     getHitAngle(q, indexSolveIK);
 
     // push motor obj
     pushConmmandBuffer(q);
+
+    // brake (허리)
+    toBrake(0, q0_t0, q0_t1, q0_threshold);
 
     // 마지막 줄에서 모든 브레이크 정리
     if(lineData.rows() == 1){
@@ -2328,19 +2321,22 @@ void PathManager::updateRange(const VectorXd &output, double &min, double &max)
 /*                                Brake                                       */
 ////////////////////////////////////////////////////////////////////////////////
 
-void PathManager::toBrake(double motornum, double nowval, double nextval, double threshold){
+void PathManager::toBrake(double motornum, double nowval, double nextval, double threshold)
+{
     if(abs(nowval - nextval) <= threshold){
         brakeArr[motornum] = 1;
     }
     else{
         brakeArr[motornum] = 0;
     }
-    usbio.USBIO_4761_set(motornum, brakeArr[motornum]);
+    usbio.setUSBIO4761(motornum, brakeArr[motornum]);
 }
-void PathManager::clearBrake(){ // 모든 brake끄기
+
+void PathManager::clearBrake()  // 모든 brake끄기
+{
     brakeArr = {0, 0, 0, 0, 0, 0, 0, 0};
     for (int i = 0; i < 8; i++)
     {
-        usbio.USBIO_4761_set(i, brakeArr[i]);
+        usbio.setUSBIO4761(i, brakeArr[i]);
     }
 }

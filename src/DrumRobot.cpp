@@ -49,7 +49,7 @@ void DrumRobot::stateMachine()
             initializecanManager();
             motorSettingCmd(); //손목
             canManager.setSocketNonBlock();
-            usbio.USBIO_4761_init();
+            usbio.initUSBIO4761();
             fun.openCSVFile();
 
             std::cout << "System Initialize Complete [ Press Enter ]\n";
@@ -114,7 +114,7 @@ void DrumRobot::stateMachine()
 
     if (usbio.useUSBIO)
     {
-        usbio.USBIO_4761_exit();
+        usbio.exitUSBIO4761();
     }
     canManager.setSocketBlock();
     deactivateControlTask();
@@ -260,12 +260,12 @@ void DrumRobot::readProcess(int periodMicroSec)
     // struct can_frame frame;
 
     auto currentTime = chrono::system_clock::now();
-    auto elapsed_time = chrono::duration_cast<chrono::microseconds>(currentTime - ReadStandard);
+    auto elapsedTime = chrono::duration_cast<chrono::microseconds>(currentTime - ReadStandard);
     
     switch (state.read.load())
     {
     case ReadSub::TimeCheck:
-        if (elapsed_time.count() >= periodMicroSec)
+        if (elapsedTime.count() >= periodMicroSec)
         {
             state.read = ReadSub::ReadCANFrame; // 주기가 되면 ReadCANFrame 상태로 진입
             ReadStandard = currentTime;         // 현재 시간으로 시간 객체 초기화
@@ -434,7 +434,7 @@ void DrumRobot::sendPlayProcess(int periodMicroSec, string musicName)
 
             // if (std::shared_ptr<TMotor> tMotor = std::dynamic_pointer_cast<TMotor>(motor_pair.second))
             // {
-            //     usbio.USBIO_4761_set(motorMapping[motor_pair.first], tMotor->brakeState);
+            //     usbio.setUSBIO4761(motorMapping[motor_pair.first], tMotor->brakeState);
             // }
         }
 
@@ -458,12 +458,9 @@ void DrumRobot::sendPlayProcess(int periodMicroSec, string musicName)
         }
 
         // brake
-        if (usbio.useUSBIO)
+        if(!usbio.outputUSBIO4761())
         {
-            if(!usbio.USBIO_4761_output())
-            {
-                cout << "brake Error\n";
-            }
+            cout << "brake Error\n";
         }
         break;
     }
@@ -473,7 +470,7 @@ void DrumRobot::sendPlayProcess(int periodMicroSec, string musicName)
 void DrumRobot::sendAddStanceProcess(int periodMicroSec)
 {
     auto currentTime = chrono::system_clock::now();
-    auto elapsed_time = chrono::duration_cast<chrono::microseconds>(currentTime - addStandard);
+    auto elapsedTime = chrono::duration_cast<chrono::microseconds>(currentTime - addStandard);
 
     switch (state.addstance.load())
     {
@@ -516,7 +513,7 @@ void DrumRobot::sendAddStanceProcess(int periodMicroSec)
     }
     case AddStanceSub::TimeCheck:
     {
-        if (elapsed_time.count() >= periodMicroSec)  
+        if (elapsedTime.count() >= periodMicroSec)  
         {
             state.addstance = AddStanceSub::CheckBuf;  // 5ms마다 SetCANFrame 실행
             addStandard = currentTime;
@@ -606,7 +603,7 @@ void DrumRobot::sendAddStanceProcess(int periodMicroSec)
 
             if (std::shared_ptr<TMotor> tMotor = std::dynamic_pointer_cast<TMotor>(motor_pair.second))
             {
-                usbio.USBIO_4761_set(motorMapping[motor_pair.first], tMotor->brakeState);
+                usbio.setUSBIO4761(motorMapping[motor_pair.first], tMotor->brakeState);
             }
         }
 
@@ -630,12 +627,9 @@ void DrumRobot::sendAddStanceProcess(int periodMicroSec)
         }
 
         // brake
-        if (usbio.useUSBIO)
+        if(!usbio.outputUSBIO4761())
         {
-            if(!usbio.USBIO_4761_output())
-            {
-                cout << "brake Error\n";
-            }
+            cout << "brake Error\n";
         }
         break;
     }

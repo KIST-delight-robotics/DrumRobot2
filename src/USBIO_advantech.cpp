@@ -8,7 +8,7 @@ USBIO::~USBIO()
 {
 }
 
-void USBIO::USBIO_4761_init()
+void USBIO::initUSBIO4761()
 {
     useUSBIO = true;
 
@@ -36,7 +36,7 @@ void USBIO::USBIO_4761_init()
     }
 }
 
-void USBIO::USBIO_4761_set(int num, bool state)
+void USBIO::setUSBIO4761(int num, bool state)
 {
     uint8 current_output = bufferForWriting[0];
 
@@ -52,30 +52,34 @@ void USBIO::USBIO_4761_set(int num, bool state)
     bufferForWriting[0] = current_output;
 }
 
-bool USBIO::USBIO_4761_output()
+bool USBIO::outputUSBIO4761()
 {
-    do
+    if (useUSBIO)
     {
-        ret = instantDoCtrl->Write(0, 1, bufferForWriting);
-        CHK_RESULT(ret);
-    } while (false);
-    
+        do
+        {
+            ret = instantDoCtrl->Write(0, 1, bufferForWriting);
+            CHK_RESULT(ret);
+        } while (false);
+        
 
-    if(BioFailed(ret))
-    {
-        wchar_t enumString[256];
-        AdxEnumToString(L"ErrorCode", (int32)ret, 256, enumString);
-        std::cout << "Some error occurred. And the last error code is 0x" << ret << ". [" << enumString << "]\n";
+        if(BioFailed(ret))
+        {
+            wchar_t enumString[256];
+            AdxEnumToString(L"ErrorCode", (int32)ret, 256, enumString);
+            std::cout << "Some error occurred. And the last error code is 0x" << ret << ". [" << enumString << "]\n";
 
-        return false;
+            return false;
+        }
+        else
+        {
+            return true;
+        }
     }
-    else
-    {
-        return true;
-    }
+    return true;
 }
 
-void USBIO::USBIO_4761_exit()
+void USBIO::exitUSBIO4761()
 {
     instantDoCtrl->Dispose();
 }

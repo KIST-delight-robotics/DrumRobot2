@@ -18,10 +18,10 @@ public:
 
     ~USBIO();
 
-    void USBIO_4761_init();
-    bool USBIO_4761_output();
-    void USBIO_4761_set(int num, bool state);
-    void USBIO_4761_exit();
+    void initUSBIO4761();
+    bool outputUSBIO4761();
+    void setUSBIO4761(int num, bool state);
+    void exitUSBIO4761();
 
     bool useUSBIO = true;
 
