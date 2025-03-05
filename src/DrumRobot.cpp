@@ -1020,7 +1020,7 @@ void DrumRobot::initializeMotors()
             // 각 모터 이름에 따른 멤버 변수 설정
             if (motor_pair.first == "R_wrist")
             {
-                maxonMotor->cwDir = -1.0f;
+                maxonMotor->cwDir = 1.0f;
                 maxonMotor->rMin = jointRangeMin[can_id] * M_PI / 180.0f; // -108deg
                 maxonMotor->rMax = jointRangeMax[can_id] * M_PI / 180.0f;  // 135deg
                 maxonMotor->txPdoIds[0] = 0x207; // Controlword

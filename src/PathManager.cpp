@@ -131,8 +131,8 @@ void PathManager::setReadyAngle()
     readyArr[4] += param.elbowStayAngle;
     readyArr[6] += param.elbowStayAngle;
     readyArr[7] += param.wristStayAngle;
-    //readyArr[8] += param.wristStayAngle;
-    readyArr[8] = param.wristStayAngle;     // for Test
+    readyArr[8] += param.wristStayAngle;
+    //readyArr[8] = param.wristStayAngle;     // for Test
     readyArr[9] = param.wristStayAngle;
 }
 
