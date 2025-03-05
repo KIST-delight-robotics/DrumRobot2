@@ -95,8 +95,8 @@ public:
     vector<float> readyArr = { 0            , M_PI / 2.0    , M_PI / 2.0    , M_PI * 0.25   , M_PI / 2.4    , M_PI * 0.25   , M_PI / 2.4    , M_PI / 6.0    , M_PI / 6.0    , 10.0 * M_PI / 180.0};
 
     //   Home Pos Array    : waist          , R_arm1        , L_arm1        , R_arm2    , R_arm3         , L_arm2    , L_arm3         , R_wrist        , L_wrist        , maxonForTest
-    //                      { 10            , 90            , 90            , 0         , 135            , 0         , 135            , 90             , 90             , 90        } [deg]
-    vector<float> homeArr = { M_PI / 18.0   , M_PI / 2.0    , M_PI / 2.0    , 0         , M_PI * (0.75)  , 0         , M_PI * (0.75)  , M_PI * (0.5)   , M_PI * (0.5)   , M_PI / 2.0};
+    //                      { 10            , 90            , 90            , 0         , 135            , 0         , 135            , 60             , 60             , 90        } [deg]
+    vector<float> homeArr = { M_PI / 18.0   , M_PI / 2.0    , M_PI / 2.0    , 0         , M_PI * (0.75)  , 0         , M_PI * (0.75)  , M_PI / 3.0   , M_PI / 3.0   , M_PI / 2.0};
 
     //   Back Pos Array    : waist      , R_arm1        , L_arm1        , R_arm2    , R_arm3    , L_arm2    , L_arm3    , R_wrist       , L_wrist
     //                      { 0         , 135           , 45            , 0         , 0         , 0         , 0         , 90            , 90         } [deg]

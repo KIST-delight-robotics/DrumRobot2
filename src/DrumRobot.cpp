@@ -476,7 +476,7 @@ void DrumRobot::sendAddStanceProcess(int periodMicroSec)
     {
     case AddStanceSub::CheckCommand:
     {
-        if (goToHome || goToReady || goToShutdown)
+        if (goToHome || goToReady || goToShutdown || goToSemiReady)
         {
             clearBufferforRecord();
             clearMotorsCommandBuffer();
@@ -494,6 +494,12 @@ void DrumRobot::sendAddStanceProcess(int periodMicroSec)
         {
             std::cout << "Get Ready Pos Array ...\n";
             pathManager.getArr(pathManager.readyArr);
+        }
+        else if (goToSemiReady)
+        {
+            std::cout << "Get Semi Ready Pos Array ...\n";
+            pathManager.getArr(pathManager.homeArr);
+            sleep(1);
         }
         else if (goToHome)
         {
@@ -574,6 +580,13 @@ void DrumRobot::sendAddStanceProcess(int periodMicroSec)
                 state.main = Main::Ideal;
                 canManager.clearReadBuffers();
                 setRobotFlag("isReady");
+            }
+            else if (goToSemiReady)
+            {
+                state.addstance = AddStanceSub::CheckCommand;
+                state.main = Main::Ideal;
+                canManager.clearReadBuffers();
+                setRobotFlag("isHome");
             }
         }
         break;
@@ -735,7 +748,10 @@ bool DrumRobot::processInput(const std::string &input)
                 setMaxonMotorMode("CSP");
 
                 settingInitPos = true;
-                setRobotFlag("isHome");
+
+                state.main = Main::AddStance;
+                setRobotFlag("MOVING");
+                setAddStanceFlag("goToSemiReady");
 
                 return true;
             }
@@ -1369,6 +1385,7 @@ void DrumRobot::setAddStanceFlag(string flag)
     {
         goToReady = true;
         goToHome = false;
+        goToSemiReady = false;
         goToShutdown = false;
     }
     else if (flag == "goToHome")
@@ -1376,14 +1393,23 @@ void DrumRobot::setAddStanceFlag(string flag)
         goToReady = false;
         goToHome = true;
         goToShutdown = false;
+        goToSemiReady = false;
 
         hommingCnt = 0;
+    }
+    else if (flag == "goToSemiReady")
+    {
+        goToReady = false;
+        goToHome = false;
+        goToSemiReady = true;
+        goToShutdown = false;
     }
     else if (flag == "goToShutdown")
     {
         goToReady = false;
         goToHome = false;
         goToShutdown = true;
+        goToSemiReady = false;
     }
     else
     {
