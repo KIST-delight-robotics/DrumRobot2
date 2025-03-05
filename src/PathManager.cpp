@@ -87,7 +87,7 @@ void PathManager::getDrumPositoin()
     wristAnglesR.resize(1, 9);
     wristAnglesL.resize(1, 9);
 
-    //                              S                   FT                  MT                  HT                  HH                  R                   RC                  LC
+    //              S                  FT                  MT                  HT                  HH                  R                   RC                 LC
     wristAnglesR << 25.0*M_PI/180.0,   25.0*M_PI/180.0,    15.0*M_PI/180.0,    15.0*M_PI/180.0,    10.0*M_PI/180.0,    15.0*M_PI/180.0,    0.0*M_PI/180.0,    10.0*M_PI/180.0, 0;
     wristAnglesL << 25.0*M_PI/180.0,   25.0*M_PI/180.0,    15.0*M_PI/180.0,    15.0*M_PI/180.0,    10.0*M_PI/180.0,    15.0*M_PI/180.0,    0.0*M_PI/180.0,    10.0*M_PI/180.0, 0;
     // wristAnglesL <<  0, 0, 0, 0, 0, 0, 0, 0, 0;
