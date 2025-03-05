@@ -975,7 +975,7 @@ VectorXd PathManager::getWristHitAngle(VectorXd &inst)
 VectorXd PathManager::makeHitTrajetory(float t1, float t2, float t, int state, int wristIntensity, bool targetChangeFlag)
 {
     VectorXd addAngle;
-    bool hitMode = 1;
+    bool hitMode = 2;
 
     HitParameter param = getHitParameter(t1, t2, state, preParametersTmp, wristIntensity);
     preParametersTmp = param;
