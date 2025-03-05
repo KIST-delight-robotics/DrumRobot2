@@ -328,6 +328,13 @@ bool PathManager::solveIKandPushConmmand()
     // push motor obj
     pushConmmandBuffer(q);
 
+    // 데이터 기록
+    for (int i = 0; i < 9; i++)
+    {
+        std::string fileName = "solveIK_q" + to_string(i);
+        fun.appendToCSV_DATA(fileName, i, q(i), 0);
+    }
+
     // brake (허리)
     toBrake(0, q0_t0, q0_t1, q0_threshold);
 
@@ -975,27 +982,27 @@ VectorXd PathManager::getWristHitAngle(VectorXd &inst)
 VectorXd PathManager::makeHitTrajetory(float t1, float t2, float t, int state, int wristIntensity, bool targetChangeFlag)
 {
     VectorXd addAngle;
-    bool hitMode = 2;
+    int hitMode = 1;
 
     HitParameter param = getHitParameter(t1, t2, state, preParametersTmp, wristIntensity);
     preParametersTmp = param;
 
     addAngle.resize(2); // wrist, elbow
-    // for (auto &entry : motors)
-    // {
-    //     if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(entry.second))
-    //     {
-    //         if (hitMode == 1)
-    //         {
-    //             addAngle(0) = makeWristAngle_TEST(t1, t2, t, state, param, wristIntensity, targetChangeFlag, maxonMotor->hitting, maxonMotor->hittingPos);
-    //         }
-    //         else if (hitMode == 2)
-    //         {
-    //             addAngle(0) = makeWristAngle(t1, t2, t, state, param, wristIntensity, targetChangeFlag);
-    //         }
-    //     }
-    // }
-    addAngle(0) = makeWristAngle(t1, t2, t, state, param, wristIntensity, targetChangeFlag);
+    for (auto &entry : motors)
+    {
+        if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(entry.second))
+        {
+            if (hitMode == 1)
+            {
+                addAngle(0) = makeWristAngle_TEST(t1, t2, t, state, param, wristIntensity, targetChangeFlag, maxonMotor->hitting, maxonMotor->hittingPos);
+            }
+            else if (hitMode == 2)
+            {
+                addAngle(0) = makeWristAngle(t1, t2, t, state, param, wristIntensity, targetChangeFlag);
+            }
+        }
+    }
+    // addAngle(0) = makeWristAngle(t1, t2, t, state, param, wristIntensity, targetChangeFlag);
     addAngle(1) = makeElbowAngle(t1, t2, t, state, param, wristIntensity, targetChangeFlag);
 
     return addAngle;

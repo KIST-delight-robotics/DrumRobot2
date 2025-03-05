@@ -833,7 +833,7 @@ bool CanManager::setCANFrame()
             
             maxonMotor->commandBuffer.pop();
 
-            if(dct_fun(maxonMotor->positionValues) && (isPlay || isHit) && maxonMotor->hitting == false)
+            if(dct_fun(maxonMotor->positionValues) && isHit && maxonMotor->hitting == false)
             {
                 fun.appendToCSV_DATA("hittingDetect", 1, 0, 0);
                 if (isCST)
@@ -856,7 +856,7 @@ bool CanManager::setCANFrame()
                     maxonMotor->hittingPos = maxonMotor->positionValues.back();
                     desiredPosition = maxonMotor->positionValues.back();
                 }
-                fun.appendToCSV_DATA("dct함수에 걸렸을 때 위치", (float)maxonMotor->nodeId, currentPosition, 0); // 위 if문 조건에 걸린 경우, 그때의 현재 모터 위치 값 CSV파일로 출력함
+                //fun.appendToCSV_DATA("dct함수에 걸렸을 때 위치", (float)maxonMotor->nodeId, currentPosition, 0); // 위 if문 조건에 걸린 경우, 그때의 현재 모터 위치 값 CSV파일로 출력함
             }
             else
             {
