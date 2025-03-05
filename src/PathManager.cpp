@@ -981,21 +981,21 @@ VectorXd PathManager::makeHitTrajetory(float t1, float t2, float t, int state, i
     preParametersTmp = param;
 
     addAngle.resize(2); // wrist, elbow
-    for (auto &entry : motors)
-    {
-        if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(entry.second))
-        {
-            if (hitMode == 1)
-            {
-                addAngle(0) = makeWristAngle_TEST(t1, t2, t, state, param, wristIntensity, targetChangeFlag, maxonMotor->hitting, maxonMotor->hittingPos);
-            }
-            else if (hitMode == 2)
-            {
-                addAngle(0) = makeWristAngle(t1, t2, t, state, param, wristIntensity, targetChangeFlag);
-            }
-        }
-    }
-    //addAngle(0) = makeWristAngle(t1, t2, t, state, param, wristIntensity, targetChangeFlag);
+    // for (auto &entry : motors)
+    // {
+    //     if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(entry.second))
+    //     {
+    //         if (hitMode == 1)
+    //         {
+    //             addAngle(0) = makeWristAngle_TEST(t1, t2, t, state, param, wristIntensity, targetChangeFlag, maxonMotor->hitting, maxonMotor->hittingPos);
+    //         }
+    //         else if (hitMode == 2)
+    //         {
+    //             addAngle(0) = makeWristAngle(t1, t2, t, state, param, wristIntensity, targetChangeFlag);
+    //         }
+    //     }
+    // }
+    addAngle(0) = makeWristAngle(t1, t2, t, state, param, wristIntensity, targetChangeFlag);
     addAngle(1) = makeElbowAngle(t1, t2, t, state, param, wristIntensity, targetChangeFlag);
 
     return addAngle;
