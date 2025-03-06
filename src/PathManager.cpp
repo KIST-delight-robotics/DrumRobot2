@@ -89,8 +89,8 @@ void PathManager::getDrumPositoin()
 
     //              S                  FT                  MT                  HT                  HH                  R                   RC                 LC
     wristAnglesR << 25.0*M_PI/180.0,   25.0*M_PI/180.0,    15.0*M_PI/180.0,    15.0*M_PI/180.0,    10.0*M_PI/180.0,    15.0*M_PI/180.0,    0.0*M_PI/180.0,    10.0*M_PI/180.0, 0;
-    wristAnglesL << 25.0*M_PI/180.0,   25.0*M_PI/180.0,    15.0*M_PI/180.0,    15.0*M_PI/180.0,    10.0*M_PI/180.0,    15.0*M_PI/180.0,    0.0*M_PI/180.0,    10.0*M_PI/180.0, 0;
-    // wristAnglesL << 0, 0, 0, 0, 0, 0, 0, 0, 0;
+    // wristAnglesL << 25.0*M_PI/180.0,   25.0*M_PI/180.0,    15.0*M_PI/180.0,    15.0*M_PI/180.0,    10.0*M_PI/180.0,    15.0*M_PI/180.0,    0.0*M_PI/180.0,    10.0*M_PI/180.0, 0;
+    wristAnglesL << 0, 0, 0, 0, 0, 0, 0, 0, 0;
 }
 
 void PathManager::setReadyAngle()
@@ -329,11 +329,11 @@ bool PathManager::solveIKandPushConmmand()
     pushConmmandBuffer(q);
 
     // 데이터 기록
-    // for (int i = 0; i < 9; i++)
-    // {
-    //     std::string fileName = "solveIK_q" + to_string(i);
-    //     fun.appendToCSV_DATA(fileName, i, q(i), 0);
-    // }
+    for (int i = 0; i < 9; i++)
+    {
+        std::string fileName = "solveIK_q" + to_string(i);
+        fun.appendToCSV_DATA(fileName, i, q(i), 0);
+    }
 
     // brake (허리)
     toBrake(0, q0_t0, q0_t1, q0_threshold);
@@ -1042,7 +1042,7 @@ PathManager::HitParameter PathManager::getHitParameter(float t1, float t2, int h
         param.wristLiftTime = std::max(0.6 * (t2 - t1), t2 - t1 - 0.2);
     else
         param.wristLiftTime = std::max(0.7 * (t2 - t1), t2 - t1 - 0.15);
-    param.wristContactTime = std::min(0.05 * (t2 - t1), 0.025); // 0.05 -> 0.025
+    param.wristContactTime = std::min(0.1 * (t2 - t1), 0.05);
     param.wristReleaseTime = std::min(0.2 * (t2 - t1), 0.1);
 
     return param;

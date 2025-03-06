@@ -180,37 +180,45 @@ def main():
         plt.tight_layout(rect=[0, 0, 1, 0.96])
         plt.show()
         
-    elif mode == 3:
-        # Mode 3: Mode 0 스타일로 개별 그래프를 그리되,
-        # Desired/Actual Position 그래프에 추가로 hit_data.txt 파일을 읽어 타격 이벤트(타격 여부==1)를 표시한다.
-        hit_file_path = '../DrumRobot_data/hittingDetect.txt'
-        hit_df = load_hit_txt(hit_file_path)
+    if mode == 3:
         can_ids = df['CAN ID'].unique()
         for can_id in can_ids:
             can_id_df = df[df['CAN ID'] == can_id]
             receive_df = can_id_df[can_id_df['타입'] == 'Receive']
             send_df = can_id_df[can_id_df['타입'] == 'Send']
+
+            # Select the appropriate hit detection file based on CAN ID
+            if can_id == 7:
+                hit_file_path = '../DrumRobot_data/HittingDetectR.txt'
+            elif can_id == 8:
+                hit_file_path = '../DrumRobot_data/HittingDetectL.txt'
+            else:
+                continue  # Skip CAN IDs that are not 7 or 8
+            
+            hit_df = load_hit_txt(hit_file_path)
             
             # Plot Pos (Desired/Actual Position) with hit events overlay
             fig, ax = plt.subplots(figsize=(10, 6))
             plot_pos_by_can_id(receive_df, send_df, can_id, ax)
-            # x 범위: receive_df의 시간 값으로 결정
+            
             sorted_df = receive_df.sort_values(by='시간')
             if not sorted_df.empty:
                 x_vals = sorted_df['시간'].values
                 x_min, x_max = x_vals[0], x_vals[-1]
             else:
                 x_min, x_max = 0, 0
+            
             hit_label_added = False
             for row in hit_df.itertuples():
                 if row.타격 == 1:
                     hit_time = row.시간
-                    if hit_time >= x_min and hit_time <= x_max:
+                    if x_min <= hit_time <= x_max:
                         if not hit_label_added:
                             ax.axvline(x=hit_time, color='magenta', linestyle='--', linewidth=2, label="Hit")
                             hit_label_added = True
                         else:
                             ax.axvline(x=hit_time, color='magenta', linestyle='--', linewidth=2)
+            
             ax.set_xlabel('시간')
             ax.set_ylabel('Position 값')
             ax.set_title(f'CAN ID {can_id} - Actual Pos, Desire Pos with Hit Events')
@@ -218,7 +226,7 @@ def main():
             ax.grid(True)
             plt.show()
             
-            # Plot Error (Send 데이터) - Mode 0 스타일
+            # Plot Error (Send 데이터)
             fig, ax = plt.subplots(figsize=(10, 6))
             plot_error_by_can_id(send_df, can_id, ax)
             plt.xlabel('시간')
@@ -228,7 +236,7 @@ def main():
             plt.grid(True)
             plt.show()
             
-            # Plot Current (Receive 데이터) - Mode 0 스타일
+            # Plot Current (Receive 데이터)
             fig, ax = plt.subplots(figsize=(10, 6))
             plot_current_by_can_id(receive_df, can_id, ax)
             plt.xlabel('시간')
@@ -237,6 +245,7 @@ def main():
             plt.legend()
             plt.grid(True)
             plt.show()
+
 
 if __name__ == '__main__':
     main()

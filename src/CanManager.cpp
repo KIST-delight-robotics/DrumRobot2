@@ -853,7 +853,8 @@ bool CanManager::setCANFrame()
                 {
                     maxonMotor->hitting = true;
                     isHit = false;
-                    maxonMotor->hittingPos = maxonMotor->positionValues.back() - (1.5708 + 0.436332);
+                    maxonMotor->hittingPos = maxonMotor->positionValues.back() - (1.5708);
+                    // maxonMotor->hittingPos = maxonMotor->positionValues.back() - (1.5708 + 0.436332);
                     desiredPosition = maxonMotor->positionValues.back();
                 }
                 //fun.appendToCSV_DATA("dct함수에 걸렸을 때 위치", (float)maxonMotor->nodeId, currentPosition, 0); // 위 if문 조건에 걸린 경우, 그때의 현재 모터 위치 값 CSV파일로 출력함
