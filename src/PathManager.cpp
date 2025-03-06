@@ -328,7 +328,7 @@ bool PathManager::solveIKandPushConmmand()
     // push motor obj
     pushConmmandBuffer(q);
 
-    //데이터 기록
+    // 데이터 기록
     for (int i = 0; i < 9; i++)
     {
         std::string fileName = "solveIK_q" + to_string(i);
