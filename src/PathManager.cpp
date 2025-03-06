@@ -90,7 +90,7 @@ void PathManager::getDrumPositoin()
     //              S                  FT                  MT                  HT                  HH                  R                   RC                 LC
     wristAnglesR << 25.0*M_PI/180.0,   25.0*M_PI/180.0,    15.0*M_PI/180.0,    15.0*M_PI/180.0,    10.0*M_PI/180.0,    15.0*M_PI/180.0,    0.0*M_PI/180.0,    10.0*M_PI/180.0, 0;
     wristAnglesL << 25.0*M_PI/180.0,   25.0*M_PI/180.0,    15.0*M_PI/180.0,    15.0*M_PI/180.0,    10.0*M_PI/180.0,    15.0*M_PI/180.0,    0.0*M_PI/180.0,    10.0*M_PI/180.0, 0;
-    // wristAnglesL <<  0, 0, 0, 0, 0, 0, 0, 0, 0;
+    // wristAnglesL << 0, 0, 0, 0, 0, 0, 0, 0, 0;
 }
 
 void PathManager::setReadyAngle()
@@ -329,11 +329,11 @@ bool PathManager::solveIKandPushConmmand()
     pushConmmandBuffer(q);
 
     // 데이터 기록
-    for (int i = 0; i < 9; i++)
-    {
-        std::string fileName = "solveIK_q" + to_string(i);
-        fun.appendToCSV_DATA(fileName, i, q(i), 0);
-    }
+    // for (int i = 0; i < 9; i++)
+    // {
+    //     std::string fileName = "solveIK_q" + to_string(i);
+    //     fun.appendToCSV_DATA(fileName, i, q(i), 0);
+    // }
 
     // brake (허리)
     toBrake(0, q0_t0, q0_t1, q0_threshold);
@@ -979,7 +979,7 @@ VectorXd PathManager::getWristHitAngle(VectorXd &inst)
 /*                              Wrist & Elbow                                 */
 ////////////////////////////////////////////////////////////////////////////////
 
-VectorXd PathManager::makeHitTrajetory(float t1, float t2, float t, int state, int wristIntensity, bool targetChangeFlag)
+VectorXd PathManager::makeHitTrajetory(float t1, float t2, float t, int state, int wristIntensity, bool targetChangeFlag, bool wristDir)
 {
     VectorXd addAngle;
     int hitMode = 1;
@@ -994,7 +994,7 @@ VectorXd PathManager::makeHitTrajetory(float t1, float t2, float t, int state, i
         {
             if (hitMode == 1)
             {
-                addAngle(0) = makeWristAngle_TEST(t1, t2, t, state, param, wristIntensity, targetChangeFlag, maxonMotor->hitting, maxonMotor->hittingPos);
+                addAngle(0) = makeWristAngle_TEST(t1, t2, t, state, param, wristIntensity, targetChangeFlag, maxonMotor->hitting, maxonMotor->hittingPos, wristDir);
             }
             else if (hitMode == 2)
             {
@@ -1042,7 +1042,7 @@ PathManager::HitParameter PathManager::getHitParameter(float t1, float t2, int h
         param.wristLiftTime = std::max(0.6 * (t2 - t1), t2 - t1 - 0.2);
     else
         param.wristLiftTime = std::max(0.7 * (t2 - t1), t2 - t1 - 0.15);
-    param.wristContactTime = std::min(0.1 * (t2 - t1), 0.05); // 0.08 -> 0.05
+    param.wristContactTime = std::min(0.05 * (t2 - t1), 0.025); // 0.05 -> 0.025
     param.wristReleaseTime = std::min(0.2 * (t2 - t1), 0.1);
 
     return param;
@@ -1195,10 +1195,12 @@ float PathManager::makeWristAngle(float t1, float t2, float t, int state, HitPar
     return wrist_q;
 }
 
-float PathManager::makeWristAngle_TEST(float t1, float t2, float t, int state, HitParameter param, int intensity, bool targetChangeFlag, bool &hitting, float hittingPos)
+float PathManager::makeWristAngle_TEST(float t1, float t2, float t, int state, HitParameter param, int intensity, bool targetChangeFlag, bool &hitting, float hittingPos, bool wristDir)
 {
-    float t_hitting = 0.0;
+    static float t_hittingR = 0.0;
+    static float t_hittingL = 0.0;
 
+    float t_hitting = 0.0;
     float wrist_q = 0.0;
     float t_press = param.wristContactTime;
     float t_lift = param.wristLiftTime;
@@ -1219,9 +1221,24 @@ float PathManager::makeWristAngle_TEST(float t1, float t2, float t, int state, H
     {
         if (hittingTimeCheck)
         {
-            //t_hitting = t + 0.005;
-            t_hitting = t;
+            if (wristDir)
+            {
+                t_hittingL = t;
+            }
+            else
+            {
+                t_hittingR = t;
+            }
             hittingTimeCheck = false;
+        }
+
+        if (wristDir)
+        {
+            t_hitting = t_hittingL;
+        }
+        else
+        {
+            t_hitting = t_hittingR;
         }
 
         if (state == 1)
@@ -1684,26 +1701,26 @@ void PathManager::getHitAngle(VectorXd &q, int index)
     if (readyRflag)
     {
         preParametersTmp = preParametersR;
-        add_qR = makeHitTrajetory(0, ntR, i_wristR * dt, next_stateR, next_intensityR, lineData(0, 8));
+        add_qR = makeHitTrajetory(0, ntR, i_wristR * dt, next_stateR, next_intensityR, lineData(0, 8), 0);
         preParametersR = preParametersTmp;
     }
     else
     {
         preParametersTmp = preParametersR;
-        add_qR = makeHitTrajetory(0, t, index * dt, stateR, lineData(0, 5), lineData(0, 8));
+        add_qR = makeHitTrajetory(0, t, index * dt, stateR, lineData(0, 5), lineData(0, 8), 0);
         preParametersR = preParametersTmp;
     }
 
     if (readyLflag)
     {
         preParametersTmp = preParametersL;
-        add_qL = makeHitTrajetory(0, ntL, i_wristL * dt, next_stateL, next_intensityL, lineData(0, 9));
+        add_qL = makeHitTrajetory(0, ntL, i_wristL * dt, next_stateL, next_intensityL, lineData(0, 9), 1);
         preParametersL = preParametersTmp;
     }
     else
     {
         preParametersTmp = preParametersL;
-        add_qL = makeHitTrajetory(0, t, index * dt, stateL, lineData(0, 6), lineData(0, 9));
+        add_qL = makeHitTrajetory(0, t, index * dt, stateL, lineData(0, 6), lineData(0, 9), 1);
         preParametersL = preParametersTmp;
     }
 

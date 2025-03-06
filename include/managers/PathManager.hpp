@@ -259,10 +259,10 @@ private:
 
     float makeElbowAngle(float t1, float t2, float t, int state, HitParameter param, int intensity, bool targetChangeFlag);
     float makeWristAngle(float t1, float t2, float t, int state, HitParameter param, int intensity, bool targetChangeFlag);
-    float makeWristAngle_TEST(float t1, float t2, float t, int state, HitParameter param, int intensity, bool targetChangeFlag, bool &hitting, float hittingPos);
+    float makeWristAngle_TEST(float t1, float t2, float t, int state, HitParameter param, int intensity, bool targetChangeFlag, bool &hitting, float hittingPos, bool wristDir);
 
     HitParameter getHitParameter(float t1, float t2, int hitState, HitParameter preParam, int intensity);
-    VectorXd makeHitTrajetory(float t1, float t2, float t, int hitState, int wristIntesity, bool targetChangeFlag);
+    VectorXd makeHitTrajetory(float t1, float t2, float t, int hitState, int wristIntesity, bool targetChangeFlag, bool wristDir);
 
     HitParameter preParametersR, preParametersL, preParametersTmp;
 
