@@ -89,8 +89,8 @@ void PathManager::getDrumPositoin()
 
     //              S                  FT                  MT                  HT                  HH                  R                   RC                 LC
     wristAnglesR << 25.0*M_PI/180.0,   25.0*M_PI/180.0,    15.0*M_PI/180.0,    15.0*M_PI/180.0,    10.0*M_PI/180.0,    15.0*M_PI/180.0,    0.0*M_PI/180.0,    10.0*M_PI/180.0, 0;
-    wristAnglesL << 25.0*M_PI/180.0,   25.0*M_PI/180.0,    15.0*M_PI/180.0,    15.0*M_PI/180.0,    10.0*M_PI/180.0,    15.0*M_PI/180.0,    0.0*M_PI/180.0,    10.0*M_PI/180.0, 0;
-    // wristAnglesL << 0, 0, 0, 0, 0, 0, 0, 0, 0;
+    // wristAnglesL << 25.0*M_PI/180.0,   25.0*M_PI/180.0,    15.0*M_PI/180.0,    15.0*M_PI/180.0,    10.0*M_PI/180.0,    15.0*M_PI/180.0,    0.0*M_PI/180.0,    10.0*M_PI/180.0, 0;
+    wristAnglesL << 0, 0, 0, 0, 0, 0, 0, 0, 0;
 }
 
 void PathManager::setReadyAngle()
@@ -328,12 +328,12 @@ bool PathManager::solveIKandPushConmmand()
     // push motor obj
     pushConmmandBuffer(q);
 
-    // 데이터 기록
-    // for (int i = 0; i < 9; i++)
-    // {
-    //     std::string fileName = "solveIK_q" + to_string(i);
-    //     fun.appendToCSV_DATA(fileName, i, q(i), 0);
-    // }
+    //데이터 기록
+    for (int i = 0; i < 9; i++)
+    {
+        std::string fileName = "solveIK_q" + to_string(i);
+        fun.appendToCSV_DATA(fileName, i, q(i), 0);
+    }
 
     // brake (허리)
     toBrake(0, q0_t0, q0_t1, q0_threshold);
@@ -988,20 +988,29 @@ VectorXd PathManager::makeHitTrajetory(float t1, float t2, float t, int state, i
     preParametersTmp = param;
 
     addAngle.resize(2); // wrist, elbow
-    for (auto &entry : motors)
+    
+    if (hitMode == 1)
     {
-        if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(entry.second))
+        for (auto &entry : motors)
         {
-            if (hitMode == 1)
+            if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(entry.second))
             {
-                addAngle(0) = makeWristAngle_TEST(t1, t2, t, state, param, wristIntensity, targetChangeFlag, maxonMotor->hitting, maxonMotor->hittingPos, wristDir);
-            }
-            else if (hitMode == 2)
-            {
-                addAngle(0) = makeWristAngle(t1, t2, t, state, param, wristIntensity, targetChangeFlag);
+                if (maxonMotor->myName == "R_wrist")
+                {
+                    addAngle(0) = makeWristAngle_TEST_R(t1, t2, t, state, param, wristIntensity, targetChangeFlag, maxonMotor->hitting, maxonMotor->hittingPos, wristDir);
+                }
+                else
+                {
+                    addAngle(0) = makeWristAngle_TEST_L(t1, t2, t, state, param, wristIntensity, targetChangeFlag, maxonMotor->hitting, maxonMotor->hittingPos, wristDir);
+                }
             }
         }
     }
+    else if (hitMode == 2)
+    {
+        addAngle(0) = makeWristAngle(t1, t2, t, state, param, wristIntensity, targetChangeFlag);
+    }
+
     // addAngle(0) = makeWristAngle(t1, t2, t, state, param, wristIntensity, targetChangeFlag);
     addAngle(1) = makeElbowAngle(t1, t2, t, state, param, wristIntensity, targetChangeFlag);
 
@@ -1042,7 +1051,7 @@ PathManager::HitParameter PathManager::getHitParameter(float t1, float t2, int h
         param.wristLiftTime = std::max(0.6 * (t2 - t1), t2 - t1 - 0.2);
     else
         param.wristLiftTime = std::max(0.7 * (t2 - t1), t2 - t1 - 0.15);
-    param.wristContactTime = std::min(0.05 * (t2 - t1), 0.025); // 0.05 -> 0.025
+    param.wristContactTime = std::min(0.1 * (t2 - t1), 0.05); // 0.05 -> 0.025
     param.wristReleaseTime = std::min(0.2 * (t2 - t1), 0.1);
 
     return param;
@@ -1195,12 +1204,9 @@ float PathManager::makeWristAngle(float t1, float t2, float t, int state, HitPar
     return wrist_q;
 }
 
-float PathManager::makeWristAngle_TEST(float t1, float t2, float t, int state, HitParameter param, int intensity, bool targetChangeFlag, bool &hitting, float hittingPos, bool wristDir)
+float PathManager::makeWristAngle_TEST_R(float t1, float t2, float t, int state, HitParameter param, int intensity, bool targetChangeFlag, bool &hitting, float hittingPos, bool wristDir)
 {
-    static float t_hittingR = 0.0;
-    static float t_hittingL = 0.0;
-
-    float t_hitting = 0.0;
+    static float t_hitting = 0.0;
     float wrist_q = 0.0;
     float t_press = param.wristContactTime;
     float t_lift = param.wristLiftTime;
@@ -1221,24 +1227,249 @@ float PathManager::makeWristAngle_TEST(float t1, float t2, float t, int state, H
     {
         if (hittingTimeCheck)
         {
-            if (wristDir)
-            {
-                t_hittingL = t;
-            }
-            else
-            {
-                t_hittingR = t;
-            }
+            t_hitting = t;
             hittingTimeCheck = false;
         }
 
-        if (wristDir)
+        if (state == 1)
         {
-            t_hitting = t_hittingL;
+            // Contact - Stay
+            A.resize(4, 4);
+            b.resize(4, 1);
+            if (t <= t_release)
+            {
+                if (t_hitting > t_release)
+                {
+                    A << 1, 0, 0, 0,
+                    1, t_release, t_release * t_release, t_release * t_release * t_release,
+                    0, 0, 0, 0,
+                    0, 1, 2 * t_release, 3 * t_release * t_release;
+                    b << hittingPos, param.wristStayAngle, 0, 0;
+                }
+                else
+                {
+                    A << 1, t_hitting, t_hitting * t_hitting, t_hitting * t_hitting * t_hitting,
+                    1, t_release, t_release * t_release, t_release * t_release * t_release,
+                    0, 1, 2 * t_hitting, 3 * t_hitting * t_hitting,
+                    0, 1, 2 * t_release, 3 * t_release * t_release;
+                    b << hittingPos, param.wristStayAngle, 0, 0;
+                }
+                A_1 = A.inverse();
+                sol = A_1 * b;
+                wrist_q = sol(0, 0) + sol(1, 0) * t + sol(2, 0) * t * t + sol(3, 0) * t * t * t;
+            }
+            else
+            {
+                hitting = false;
+                hittingTimeCheck = true;
+                wrist_q = param.wristStayAngle;
+            }
         }
-        else
+        else if (state == 2)
         {
-            t_hitting = t_hittingR;
+            wrist_q = hittingPos;
+        }
+        else if (state == 3)
+        {
+            // Contact - Lift - Hit
+            if (t < t_stay)
+            {
+                A.resize(4, 4);
+                b.resize(4, 1);
+                if (t_hitting > t_stay)
+                {
+                    A << 1, 0, 0, 0,
+                    1, t_stay, t_stay * t_stay, t_stay * t_stay * t_stay,
+                    0, 0, 0, 0,
+                    0, 1, 2 * t_stay, 3 * t_stay * t_stay;
+                    b << hittingPos, wristLiftAngle, 0, 0;
+                }
+                else
+                {
+                    A << 1, t_hitting, t_hitting * t_hitting, t_hitting * t_hitting * t_hitting,
+                    1, t_stay, t_stay * t_stay, t_stay * t_stay * t_stay,
+                    0, 1, 2 * t_hitting, 3 * t_hitting * t_hitting,
+                    0, 1, 2 * t_stay, 3 * t_stay * t_stay;
+                    b << hittingPos, wristLiftAngle, 0, 0;
+                }
+                A_1 = A.inverse();
+                sol = A_1 * b;
+                wrist_q = sol(0, 0) + sol(1, 0) * t + sol(2, 0) * t * t + sol(3, 0) * t * t * t;
+            }
+            else if (t < t_lift)
+            {
+                hitting = false;
+                hittingTimeCheck = true;
+                wrist_q = wristLiftAngle;
+            }
+            else if (t <= t_contact)
+            {
+                wrist_q = hittingPos;
+            }
+        }
+    }
+    else
+    {
+        if (state == 0)
+        {
+            // Stay
+            wrist_q = param.wristStayAngle;
+        }
+        else if (state == 1)
+        {
+            // Contact - Stay
+            A.resize(3, 3);
+            b.resize(3, 1);
+            if (t < t_press)
+            {
+                A << 1, 0, 0,
+                1, t_press, t_press * t_press,
+                0, 1, 2 * t_press;
+                b << 0, param.wristContactAngle, 0;
+                A_1 = A.inverse();
+                sol = A_1 * b;
+                wrist_q = sol(0, 0) + sol(1, 0) * t + sol(2, 0) * t * t;
+                
+            }
+            else if (t <= t_release)
+            {
+                A.resize(4, 4);
+                b.resize(4, 1);
+                A << 1, t_press, t_press * t_press, t_press * t_press * t_press,
+                    1, t_release, t_release * t_release, t_release * t_release * t_release,
+                    0, 1, 2 * t_press, 3 * t_press * t_press,
+                    0, 1, 2 * t_release, 3 * t_release * t_release;
+                b << param.wristContactAngle, param.wristStayAngle, 0, 0;
+                A_1 = A.inverse();
+                sol = A_1 * b;
+                wrist_q = sol(0, 0) + sol(1, 0) * t + sol(2, 0) * t * t + sol(3, 0) * t * t * t;
+            }
+            else
+            {
+                wrist_q = param.wristStayAngle;
+            }
+        }
+        else if (state == 2)
+        {
+            
+            // Stay - Lift - Hit
+            if (t < t_stay)
+            {
+                // Stay
+                wrist_q = param.wristStayAngle;
+            }
+            else if (t < t_lift)
+            {
+                A.resize(4, 4);
+                b.resize(4, 1);
+                A << 1, t_stay, t_stay * t_stay, t_stay * t_stay * t_stay,
+                    1, t_lift, t_lift * t_lift, t_lift * t_lift * t_lift,
+                    0, 1, 2 * t_stay, 3 * t_stay * t_stay,
+                    0, 1, 2 * t_lift, 3 * t_lift * t_lift;
+                b << param.wristStayAngle, wristLiftAngle, 0, 0;
+                A_1 = A.inverse();
+                sol = A_1 * b;
+                wrist_q = sol(0, 0) + sol(1, 0) * t + sol(2, 0) * t * t + sol(3, 0) * t * t * t;
+            }
+            else if (t <= t_contact)
+            {
+                canManager.isHit = true;
+                A.resize(3, 3);
+                b.resize(3, 1);
+                A << 1, t_lift, t_lift * t_lift,
+                    1, t_contact, t_contact * t_contact,
+                    0, 1, 2 * t_lift;
+                b << wristLiftAngle, 0, 0;
+                A_1 = A.inverse();
+                sol = A_1 * b;
+                wrist_q = sol(0, 0) + sol(1, 0) * t + sol(2, 0) * t * t;
+            }
+            else
+            {
+                wrist_q = 0.0;
+            }
+        }
+        else if (state == 3)
+        {
+            // Contact - Lift - Hit
+            if (t < t_press)
+            {
+                A.resize(3, 3);
+                b.resize(3, 1);
+                A << 1, 0, 0,
+                    1, t_press, t_press * t_press,
+                    0, 1, 2 * t_press;
+                b << 0, param.wristContactAngle, 0;
+                A_1 = A.inverse();
+                sol = A_1 * b;
+                wrist_q = sol(0, 0) + sol(1, 0) * t + sol(2, 0) * t * t;
+            }
+            else if (t < t_stay)
+            {
+                A.resize(4, 4);
+                b.resize(4, 1);
+                A << 1, t_press, t_press * t_press, t_press * t_press * t_press,
+                    1, t_stay, t_stay * t_stay, t_stay * t_stay * t_stay,
+                    0, 1, 2 * t_press, 3 * t_press * t_press,
+                    0, 1, 2 * t_stay, 3 * t_stay * t_stay;
+                b << param.wristContactAngle, wristLiftAngle, 0, 0;
+                A_1 = A.inverse();
+                sol = A_1 * b;
+                wrist_q = sol(0, 0) + sol(1, 0) * t + sol(2, 0) * t * t + sol(3, 0) * t * t * t;
+            }
+            else if (t < t_lift)
+            {
+                // Stay
+                wrist_q = wristLiftAngle;
+            }
+            else if (t <= t_contact)
+            {
+                canManager.isHit = true;
+                A.resize(3, 3);
+                b.resize(3, 1);
+                A << 1, t_lift, t_lift * t_lift,
+                    1, t_contact, t_contact * t_contact,
+                    0, 1, 2 * t_lift;
+                b << wristLiftAngle, 0, 0;
+                A_1 = A.inverse();
+                sol = A_1 * b;
+                wrist_q = sol(0, 0) + sol(1, 0) * t + sol(2, 0) * t * t;
+            }
+            else
+            {
+                wrist_q = 0.0;
+            }
+        }
+    }
+
+    return wrist_q;
+}
+
+float PathManager::makeWristAngle_TEST_L(float t1, float t2, float t, int state, HitParameter param, int intensity, bool targetChangeFlag, bool &hitting, float hittingPos, bool wristDir)
+{
+    static float t_hitting = 0.0;
+    float wrist_q = 0.0;
+    float t_press = param.wristContactTime;
+    float t_lift = param.wristLiftTime;
+    float t_stay = param.wristStayTime;
+    float t_release = param.wristReleaseTime;
+    float t_contact = t2 - t1;
+    float intensityFactor = 0.4 * intensity + 0.2; // 1 : 약하게   2 : 기본    3 : 강하게
+    float wristLiftAngle = param.wristLiftAngle * intensityFactor + (param.wristLiftAngle * 0.2  * targetChangeFlag);
+
+    static bool hittingTimeCheck = true;
+
+    MatrixXd A;
+    MatrixXd b;
+    MatrixXd A_1;
+    MatrixXd sol;
+
+    if(hitting)
+    {
+        if (hittingTimeCheck)
+        {
+            t_hitting = t;
+            hittingTimeCheck = false;
         }
 
         if (state == 1)
