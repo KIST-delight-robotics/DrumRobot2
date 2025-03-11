@@ -310,6 +310,8 @@ private:
 
     /////////////////////////////////////////////////////////////////////////// Detect Collision
     int predictCollision(MatrixXd measureMatrix);
+    MatrixXd parseAllLine(VectorXd t, VectorXd inst, VectorXd stateVector, char RL);
+    MatrixXd getOneDrumPosition(int InstNum, char RL);
     bool detectCollision(VectorXd PR, VectorXd PL, double hitR, double hitL);
     bool hex2TableData(char hex1, char hex2, int index);
 };
