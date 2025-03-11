@@ -209,7 +209,6 @@ bool PathManager::readMeasure(ifstream &inputFile, bool &bpmFlag)
 
 void PathManager::generateTrajectory()
 {
-    std::cout << "generate Trajectory \n";
     // Predict Collision
     std::chrono::system_clock::time_point start = std::chrono::system_clock::now();
     int C = predictCollision(measureMatrix);
@@ -217,8 +216,6 @@ void PathManager::generateTrajectory()
 
     std::string fileName = "CollisionDetection";
     fun.appendToCSV_DATA(fileName, C, sec.count()*1000000, 0);  // 충돌 OX, 탐색시간(us)
-
-    std::cout << "predict Collision \n";
 
     // position
     VectorXd initialPosition(6), finalPosition(6);
@@ -3414,8 +3411,6 @@ int PathManager::predictCollision(MatrixXd measureMatrix)
     // std::cout << "\n R pos Matrix \n" << R;
     // std::cout << "\n L pos Matrix \n\n" << L;
 
-    std::cout << "parseAllLine \n";
-
     // 충돌 예측
     double stepSize = 10;
     int C = 0;
@@ -3435,8 +3430,6 @@ int PathManager::predictCollision(MatrixXd measureMatrix)
         {
             VectorXd PR(3), PL(3), preR(3), nextR(3), preL(3), nextL(3);
             double hitR, hitL;
-
-            std::cout << "parseAllLine \n" << linePositionR.block(i,1,1,3);
 
             preR << linePositionR.block(i,1,1,3).transpose();
             nextR << linePositionR.block(i+1,1,1,3).transpose();
@@ -3584,7 +3577,7 @@ MatrixXd PathManager::getOneDrumPosition(int InstNum, char RL)
 bool PathManager::detectCollision(VectorXd PR, VectorXd PL, double hitR, double hitL)
 {
     std::ifstream tableFile;
-    std::string tablePath = "/home/shy/DrumRobot2_TABLE/";    // 테이블 위치
+    std::string tablePath = "/home/shy/DrumRobot/collision_table/";    // 테이블 위치
 
     int PR_index[3] = {0};
     int PL_index[3] = {0};
