@@ -123,11 +123,10 @@ public:
 
     float motorTorque;
 
-    queue<double> positionValues; // 포지션 값 저장을 위한 정적 배열
+    queue<double> positionValues; // 포지션 값 저장을 위한 queue
     int maxIndex = 5;
 
     bool stay = false;
-    bool hitting = false;
     bool isPositionMode = false;
     bool atPosition = false;
     bool positioning = false;
@@ -137,7 +136,10 @@ public:
     unsigned char statusBit;
     float bumperLocation = 0.0;
 
+    // 타격 감지용 변수
+    bool hitting = false;
     float hittingPos;
+    float hittingDrumAngle = 0;
 
     queue<MaxonData> commandBuffer;
     queue<float> wrist_BackArr;

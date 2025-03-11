@@ -678,6 +678,8 @@ void DrumRobot::displayAvailableCommands() const
                 std::cout << "- p : Play Drum\n";
                 std::cout << "- t : Start Test\n";
                 std::cout << "- h : Move to Home Pos\n";
+                std::cout << "- m : Mode Select\n";
+                std::cout << "- v : Release Time Value\n";
             }
             else if (isRestart)
             {
@@ -776,6 +778,40 @@ bool DrumRobot::processInput(const std::string &input)
                 setAddStanceFlag("goToReady");
 
                 return true;
+            }
+            else if (input == "v" && isReady)
+            {
+                std::cout << "Release Time Value : " << pathManager.releaseTimeVal;
+                std::cout << "\nrange : 0.6 ~ 1.5 \n";
+                std::cout << "enter Release TIme Value : ";
+                cin >> pathManager.releaseTimeVal;
+                if (pathManager.releaseTimeVal < 0.6 || pathManager.releaseTimeVal > 1.5)
+                {
+                    std::cout << "Release Time Value Error";
+                }
+            }
+            else if (input == "m" && isReady)
+            {
+                int mode = 0;
+                std::cout << "1 : CSP hitting \n";
+                std::cout << "2 : CSP hitting Detect \n";
+                std::cout << "3 : CSP hitting Detect (fast ver) \n";
+                std::cout << "enter hitting mode : ";
+                std::cin >> mode;
+
+                if (mode == 1)
+                {
+                    pathManager.hitMode = 1;
+                }
+                else if (mode == 2)
+                {
+                    pathManager.hitMode = 2;
+                    canManager.isCST = false;
+                }
+                else if (mode == 3)
+                {
+                    pathManager.hitMode = 3;  
+                }
             }
             else if (input == "p" && isReady)
             {

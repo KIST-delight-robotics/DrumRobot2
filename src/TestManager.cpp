@@ -349,7 +349,7 @@ void TestManager::SendTestProcess(int periodMicroSec)
             }
             else
             {
-                canManager.isHit = false;
+                // canManager.isHit = false;
                 cout << "\n Select Test Mode (1 - 타격 TEST, 2 - CST 모드 TEST, -1 - Back) : ";
                 cin >> userInput;
             }
@@ -413,6 +413,7 @@ void TestManager::SendTestProcess(int periodMicroSec)
             }
             else if (userInput == 3)
             {
+                unfixedMotor();
                 state.test = TestSub::FillBuf;
             }
             break;
@@ -1500,18 +1501,19 @@ float TestManager::makeWristAngle(float t1, float t2, float t, int state, int in
             // Contact - Stay
             A.resize(4, 4);
             b.resize(4, 1);
-            if (t <= t_release)
+            if (t <= t_press)
             {
-                if (t_hitting > t_release)
+                if (t_hitting > t_press)
                 {
                     A << 1, 0, 0, 0,
-                    1, t_release, t_release * t_release, t_release * t_release * t_release,
+                    1, t_press, t_press * t_press, t_press * t_press * t_press,
                     0, 0, 0, 0,
-                    0, 1, 2 * t_release, 3 * t_release * t_release;
+                    0, 1, 2 * t_press, 3 * t_press * t_press;
                     b << hittingPos, wristStayAngle, 0, 0;
                 }
                 else
                 {
+                    t_release = t_hitting + t_press;
                     A << 1, t_hitting, t_hitting * t_hitting, t_hitting * t_hitting * t_hitting,
                     1, t_release, t_release * t_release, t_release * t_release * t_release,
                     0, 1, 2 * t_hitting, 3 * t_hitting * t_hitting,
@@ -1637,7 +1639,7 @@ float TestManager::makeWristAngle(float t1, float t2, float t, int state, int in
             }
             else if (t <= t_contact)
             {
-                canManager.isHit = true;
+                // canManager.isHit = true;
                 A.resize(3, 3);
                 b.resize(3, 1);
                 A << 1, t_lift, t_lift * t_lift,
@@ -1689,7 +1691,7 @@ float TestManager::makeWristAngle(float t1, float t2, float t, int state, int in
             }
             else if (t <= t_contact)
             {
-                canManager.isHit = true;
+                // canManager.isHit = true;
                 A.resize(3, 3);
                 b.resize(3, 1);
                 A << 1, t_lift, t_lift * t_lift,
