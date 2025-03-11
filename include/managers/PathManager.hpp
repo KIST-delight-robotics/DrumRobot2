@@ -116,6 +116,9 @@ public:
     double q1_state[2] = {readyArr[1], readyArr[1]};
     double q2_state[2] = {readyArr[2], readyArr[2]};
 
+    int hitMode = 1; // 1 : CSP 2 : CSP & Detect 3: CSP & Detect & CST
+    float releaseTimeVal = 1; // 드럼 스틱 release time에 곱하는 배수
+
 
     vector<float> FK();
 
@@ -197,7 +200,7 @@ private:
     VectorXd getTargetPosition(VectorXd &inst_vector);
     float timeScaling(float ti, float tf, float t);
     VectorXd makePath(VectorXd Pi, VectorXd Pf, float s);
-    void saveLineData(int n, VectorXd minmax, VectorXd intesity);
+    void saveLineData(int n, VectorXd minmax, VectorXd intesity, VectorXd finalWristAngle);
     VectorXd waistRange(VectorXd &pR, VectorXd &pL);
     VectorXd getWristHitAngle(VectorXd &inst_vector);
 
@@ -226,10 +229,11 @@ private:
     double getWaistAngle(int i);
     
     /////////////////////////////////////////////////////////////////////////// Play (wrist & elbow)
+
     // 0.5초 기준 각도
     const float baseTime = 0.5;
     const float wristStayBaseAngle = 10.0 * M_PI / 180.0;
-    const float wristContactBaseAngle = 5.0 * M_PI / 180.0;
+    const float wristContactBaseAngle = 10.0 * M_PI / 180.0;
     const float wristLiftBaseAngle = 25.0 * M_PI / 180.0;
 
     const float elbowStayBaseAngle = 5.0 * M_PI / 180.0;
@@ -261,6 +265,8 @@ private:
     float makeWristAngle(float t1, float t2, float t, int state, HitParameter param, int intensity, bool targetChangeFlag);
     float makeWristAngle_TEST_R(float t1, float t2, float t, int state, HitParameter param, int intensity, bool targetChangeFlag, bool &hitting, float hittingPos, bool wristDir);
     float makeWristAngle_TEST_L(float t1, float t2, float t, int state, HitParameter param, int intensity, bool targetChangeFlag, bool &hitting, float hittingPos, bool wristDir);
+    float makeWristAngle_TEST_R_Fast(float t1, float t2, float t, int state, HitParameter param, int intensity, bool targetChangeFlag, bool &hitting, float hittingPos, bool wristDir);
+    float makeWristAngle_TEST_L_Fast(float t1, float t2, float t, int state, HitParameter param, int intensity, bool targetChangeFlag, bool &hitting, float hittingPos, bool wristDir);
 
     HitParameter getHitParameter(float t1, float t2, int hitState, HitParameter preParam, int intensity);
     VectorXd makeHitTrajetory(float t1, float t2, float t, int hitState, int wristIntesity, bool targetChangeFlag, bool wristDir);

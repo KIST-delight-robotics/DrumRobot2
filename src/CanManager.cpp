@@ -833,7 +833,7 @@ bool CanManager::setCANFrame()
             
             maxonMotor->commandBuffer.pop();
 
-            if(dct_fun(maxonMotor->positionValues) && isHit && maxonMotor->hitting == false)
+            if(dct_fun(maxonMotor->positionValues, maxonMotor->hittingDrumAngle) && (isHitR || isHitL) && maxonMotor->hitting == false)
             {
                 if(maxonMotor->myName == "R_wrist")
                 {
@@ -843,6 +843,7 @@ bool CanManager::setCANFrame()
                 {
                     fun.appendToCSV_DATA("hittingDetectL", 1, 0, 0);
                 }
+
                 if (isCST)
                 {
                     maxoncmd.getCSTMode(*maxonMotor, &maxonMotor->sendFrame);
@@ -859,9 +860,9 @@ bool CanManager::setCANFrame()
                 else
                 {
                     maxonMotor->hitting = true;
-                    isHit = false;
-                    maxonMotor->hittingPos = maxonMotor->positionValues.back() - (1.5708);
-                    // maxonMotor->hittingPos = maxonMotor->positionValues.back() - (1.5708 + 0.436332);
+                    if (isHitR) isHitR = false;
+                    if (isHitL) isHitL = false;
+                    maxonMotor->hittingPos = maxonMotor->positionValues.back() - (1.5708 + maxonMotor->hittingDrumAngle);
                     desiredPosition = maxonMotor->positionValues.back();
                 }
                 //fun.appendToCSV_DATA("dct함수에 걸렸을 때 위치", (float)maxonMotor->nodeId, currentPosition, 0); // 위 if문 조건에 걸린 경우, 그때의 현재 모터 위치 값 CSV파일로 출력함
@@ -884,10 +885,11 @@ bool CanManager::setCANFrame()
                 if (cnt >= 3)
                 {
                     maxonMotor->hitting = true;
-                    isHit = false;
-                    isCST = false;
+                    if (isHitR) isHitR = false;
+                    if (isHitL) isHitL = false;
                     CSTMode = false;
-                    maxonMotor->hittingPos = maxonMotor->positionValues.back() - 1.5708;
+                    // maxonMotor->hittingPos = maxonMotor->positionValues.back() - 1.5708;
+                    maxonMotor->hittingPos = maxonMotor->positionValues.back() - (1.5708 + maxonMotor->hittingDrumAngle);
                     desiredPosition = maxonMotor->positionValues.back();
                     cnt = 0;
 
@@ -1040,12 +1042,13 @@ bool CanManager::safetyCheck_M(std::shared_ptr<GenericMotor> &motor)
     return isSafe;
 }
 
-bool CanManager::dct_fun(queue<double> positions)
+bool CanManager::dct_fun(queue<double> positions, float hittingDrumAngle)
 {
     double the_k_3; // 가장 오래된 값
     double the_k_2;
     double the_k_1;
     double the_k;
+    double threshold = hittingDrumAngle + wristStayAngle + 1.5708; // 90 deg + 드럼 별 타격 각도 + 준비 각도
 
     if (positions.size() < 4)
     {
@@ -1066,7 +1069,7 @@ bool CanManager::dct_fun(queue<double> positions)
     double vel_k_1 = the_k_1 - the_k_2;
 
 
-    if (abs(vel_k) * 2 < abs(vel_k_1) && vel_k_1 < 0 && abs(vel_k_1) >= 0.01)
+    if (abs(vel_k) * 2 < abs(vel_k_1) && vel_k_1 < 0 && abs(vel_k_1) >= 0.01 && the_k <= threshold)
     {
         return true;
     }

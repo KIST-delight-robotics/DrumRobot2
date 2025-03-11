@@ -26,6 +26,7 @@
 #include <chrono>
 #include <fstream>
 
+#include "../include/eigen-3.4.0/Eigen/Dense"
 #include "Motor.hpp"
 #include "CommandParser.hpp"
 #include "../include/tasks/Functions.hpp"
@@ -37,6 +38,7 @@
 #define INIT_SIGN 99.9
 
 using namespace std;
+using namespace Eigen;
 
 class CanManager
 {
@@ -53,9 +55,14 @@ public:
     std::vector<std::string> ifnames;
     int errorCnt = 0;
     int maxonCnt = 0;
-    bool isHit = false;
+    bool isHitR = false;
+    bool isHitL = false;
     bool isPlay = false;
     bool isCST = false;
+    float wristStayAngle;
+
+    MatrixXd wristAnglesR;                               ///< 오른팔의 각 악기별 타격 시 손목 각도.
+    MatrixXd wristAnglesL;                                ///< 왼팔의 각 악기별 타격 시 손목 각도.
 
     // SDO communication으로 받아오는 현재 위치 값
     float currentPosition = 0.0;
@@ -105,7 +112,7 @@ public:
     bool safetyCheck_T(std::shared_ptr<GenericMotor> &motor);
     bool safetyCheck_M(std::shared_ptr<GenericMotor> &motor);
 
-    bool dct_fun(queue<double> positions);
+    bool dct_fun(queue<double> positions, float hittinDrumAngle);
 
     map<std::string, int> motorMapping = { ///< 각 관절에 해당하는 정보 [이름, CAN ID]
         {"waist", 0},

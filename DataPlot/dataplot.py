@@ -2,6 +2,40 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 
+class DraggableLine:
+    def __init__(self, axes, x_init):
+        self.axes = axes  # 모든 축을 리스트로 저장
+        self.fig = axes[0].figure
+        self.lines = [ax.axvline(x=x_init, color='magenta', linestyle='--', linewidth=2, label="Draggable Line") for ax in axes]
+        
+        self.press = None
+        self.cid_press = self.fig.canvas.mpl_connect('button_press_event', self.on_press)
+        self.cid_release = self.fig.canvas.mpl_connect('button_release_event', self.on_release)
+        self.cid_motion = self.fig.canvas.mpl_connect('motion_notify_event', self.on_motion)
+    
+    def on_press(self, event):
+        if event.inaxes not in self.axes:
+            return
+        for line in self.lines:
+            contains, _ = line.contains(event)
+            if contains:
+                self.press = event.xdata
+                return
+
+    def on_release(self, event):
+        self.press = None
+        self.fig.canvas.draw()
+
+    def on_motion(self, event):
+        if self.press is None or event.xdata is None:
+            return
+        dx = event.xdata - self.press
+        new_x = self.lines[0].get_xdata()[0] + dx
+        for line in self.lines:
+            line.set_xdata([new_x, new_x])
+        self.press = event.xdata
+        self.fig.canvas.draw()
+
 def load_txt(file_path):
     """
     데이터를 읽어서 CAN ID가 1자리이면 Receive, 3자리이면 Send로 분류하는 함수
@@ -37,6 +71,12 @@ def plot_pos_by_can_id(receive_df, send_df, can_id, ax):
     """
     CAN ID별 Actual/Desire Position 그래프 그리기 함수
     """
+    if can_id == 4:
+        receive_df = receive_df.copy()
+        send_df = send_df.copy()
+        receive_df['Pos'] *= -1
+        send_df['Pos'] *= -1
+
     ax.plot(receive_df['시간'], receive_df['Pos'], 
             label=f'Actual Pos (Receive) - ID {can_id}', 
             color='blue', marker='o', markersize=3, linestyle='None')
@@ -59,6 +99,33 @@ def plot_current_by_can_id(receive_df, can_id, ax):
     ax.plot(receive_df['시간'], receive_df['Current_or_Error'],
             label=f'Current (Receive) - ID {can_id}', 
             color='green', marker='o', markersize=3, linestyle='None')
+    
+def mode_2_plot(df):
+    specified_ids = list(map(int, input("Enter CAN IDs to plot (comma-separated): ").split(',')))
+    fig, axes = plt.subplots(len(specified_ids), 1, figsize=(12, 6 * len(specified_ids)), sharex=True)
+    draggable_lines = []
+    
+    for idx, can_id in enumerate(specified_ids):
+        can_id_df = df[df['CAN ID'] == can_id]
+        receive_df = can_id_df[can_id_df['타입'] == 'Receive']
+        send_df = can_id_df[can_id_df['타입'] == 'Send']
+
+        ax = axes[idx]
+
+        plot_pos_by_can_id(receive_df, send_df, can_id, ax)
+        
+        ax.set_ylabel(f'CAN ID {can_id}\nPosition')
+        ax.legend()
+        ax.grid(True)
+        
+        draggable_lines.append(DraggableLine(axes, x_init=receive_df['시간'].median()))
+    
+    axes[-1].set_xlabel('시간')
+    
+    plt.suptitle('Comparison of Actual and Desired Position for Specified CAN IDs', fontsize=16)
+    plt.tight_layout(rect=[0, 0, 1, 0.96])
+    plt.show()
+
 
 def main():
     file_path = '../DrumRobot_data/data1.txt'
@@ -164,21 +231,7 @@ def main():
 
     elif mode == 2:
         # Mode 2: 지정한 CAN ID들만 따로 그래프로 그림 (mode 0 스타일)
-        specified_ids = list(map(int, input("Enter CAN IDs to plot (comma-separated): ").split(',')))
-        fig, axes = plt.subplots(len(specified_ids), 1, figsize=(12, 8 * len(specified_ids)), sharex=True)
-        for idx, can_id in enumerate(specified_ids):
-            can_id_df = df[df['CAN ID'] == can_id]
-            receive_df = can_id_df[can_id_df['타입'] == 'Receive']
-            send_df = can_id_df[can_id_df['타입'] == 'Send']
-            plot_pos_by_can_id(receive_df, send_df, can_id, axes[idx])
-            plot_current_by_can_id(receive_df, can_id, axes[idx])
-            axes[idx].set_ylabel(f'CAN ID {can_id}\nPosition & Current 값')
-            axes[idx].legend()
-            axes[idx].grid(True)
-        axes[-1].set_xlabel('시간')
-        plt.suptitle('Comparison of Actual Pos, Desire Pos, and Current for Specified CAN IDs', fontsize=16)
-        plt.tight_layout(rect=[0, 0, 1, 0.96])
-        plt.show()
+        mode_2_plot(df)
         
     if mode == 3:
         can_ids = df['CAN ID'].unique()
@@ -189,9 +242,9 @@ def main():
 
             # Select the appropriate hit detection file based on CAN ID
             if can_id == 7:
-                hit_file_path = '../DrumRobot_data/HittingDetectR.txt'
+                hit_file_path = '../DrumRobot_data/hittingDetectR.txt'
             elif can_id == 8:
-                hit_file_path = '../DrumRobot_data/HittingDetectL.txt'
+                hit_file_path = '../DrumRobot_data/hittingDetectL.txt'
             else:
                 continue  # Skip CAN IDs that are not 7 or 8
             
