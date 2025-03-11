@@ -833,6 +833,32 @@ bool CanManager::setCANFrame()
             
             maxonMotor->commandBuffer.pop();
 
+            if (isCST && !CSTMode)
+            {
+                maxoncmd.getCSTMode(*maxonMotor, &maxonMotor->sendFrame);
+                sendMotorFrame(maxonMotor);
+
+                maxoncmd.getShutdown(*maxonMotor, &maxonMotor->sendFrame);
+                sendMotorFrame(maxonMotor);
+
+                maxoncmd.getEnable(*maxonMotor, &maxonMotor->sendFrame);
+                sendMotorFrame(maxonMotor);
+                
+                CSTMode = true;
+            }
+            else if (!isCST && CSTMode)
+            {
+                maxoncmd.getCSPMode(*maxonMotor, &maxonMotor->sendFrame);
+                sendMotorFrame(maxonMotor);
+
+                maxoncmd.getShutdown(*maxonMotor, &maxonMotor->sendFrame);
+                sendMotorFrame(maxonMotor);
+
+                maxoncmd.getEnable(*maxonMotor, &maxonMotor->sendFrame);
+                sendMotorFrame(maxonMotor);
+                CSTMode = false;
+            }
+
             if(dct_fun(maxonMotor->positionValues, maxonMotor->hittingDrumAngle) && (isHitR || isHitL) && maxonMotor->hitting == false)
             {
                 if(maxonMotor->myName == "R_wrist")
@@ -844,27 +870,12 @@ bool CanManager::setCANFrame()
                     fun.appendToCSV_DATA("hittingDetectL", 1, 0, 0);
                 }
 
-                if (isCST)
-                {
-                    maxoncmd.getCSTMode(*maxonMotor, &maxonMotor->sendFrame);
-                    sendMotorFrame(maxonMotor);
+                maxonMotor->hitting = true;
+                if (isHitR) isHitR = false;
+                if (isHitL) isHitL = false;
+                maxonMotor->hittingPos = maxonMotor->positionValues.back() - (1.5708 + maxonMotor->hittingDrumAngle);
+                desiredPosition = maxonMotor->positionValues.back();
 
-                    maxoncmd.getShutdown(*maxonMotor, &maxonMotor->sendFrame);
-                    sendMotorFrame(maxonMotor);
-
-                    maxoncmd.getEnable(*maxonMotor, &maxonMotor->sendFrame);
-                    sendMotorFrame(maxonMotor);
-
-                    CSTMode = true;
-                }
-                else
-                {
-                    maxonMotor->hitting = true;
-                    if (isHitR) isHitR = false;
-                    if (isHitL) isHitL = false;
-                    maxonMotor->hittingPos = maxonMotor->positionValues.back() - (1.5708 + maxonMotor->hittingDrumAngle);
-                    desiredPosition = maxonMotor->positionValues.back();
-                }
                 //fun.appendToCSV_DATA("dct함수에 걸렸을 때 위치", (float)maxonMotor->nodeId, currentPosition, 0); // 위 if문 조건에 걸린 경우, 그때의 현재 모터 위치 값 CSV파일로 출력함
             }
             else
@@ -881,33 +892,7 @@ bool CanManager::setCANFrame()
 
             if(isCST && CSTMode)
             {
-                cnt++;
-                if (cnt >= 3)
-                {
-                    maxonMotor->hitting = true;
-                    if (isHitR) isHitR = false;
-                    if (isHitL) isHitL = false;
-                    CSTMode = false;
-                    // maxonMotor->hittingPos = maxonMotor->positionValues.back() - 1.5708;
-                    maxonMotor->hittingPos = maxonMotor->positionValues.back() - (1.5708 + maxonMotor->hittingDrumAngle);
-                    desiredPosition = maxonMotor->positionValues.back();
-                    cnt = 0;
-
-                    maxoncmd.getCSPMode(*maxonMotor, &maxonMotor->sendFrame);
-                    sendMotorFrame(maxonMotor);
-
-                    maxoncmd.getShutdown(*maxonMotor, &maxonMotor->sendFrame);
-                    sendMotorFrame(maxonMotor);
-
-                    maxoncmd.getEnable(*maxonMotor, &maxonMotor->sendFrame);
-                    sendMotorFrame(maxonMotor);
-
-                    maxoncmd.getTargetPosition(*maxonMotor, &maxonMotor->sendFrame, desiredPosition);
-                }
-                else
-                {
-                    maxoncmd.getTargetTorque(*maxonMotor, &maxonMotor->sendFrame, desiredTorque);
-                }
+                maxoncmd.getTargetTorque(*maxonMotor, &maxonMotor->sendFrame, desiredTorque);
             }
             else
             {
