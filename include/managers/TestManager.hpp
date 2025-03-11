@@ -133,4 +133,9 @@ private:
     tuple <double, int, int> CSTHitLoop();
 
     void unfixedMotor();
+
+    // test table
+    void testTable();
+    string trimWhitespace(const std::string &str);
+    bool hex2TableData(char hex1, char hex2, int index);
 };

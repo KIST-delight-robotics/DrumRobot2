@@ -36,7 +36,7 @@ void TestManager::SendTestProcess(int periodMicroSec)
             }
             FK(c_MotorAngle); // 현재 q값에 대한 FK 진행
 
-            std::cout << "\nSelect Method (1 - 관절각도값 조절, 2 - 좌표값 조절, 3 - 손목 모터 -1 - 나가기) : ";
+            std::cout << "\nSelect Method (1 - 관절각도값 조절, 2 - 좌표값 조절, 3 - 손목 모터, 4 - TABlE TEST, -1 - 나가기) : ";
             std::cin >> method;
             
             if (method == 1)
@@ -50,6 +50,10 @@ void TestManager::SendTestProcess(int periodMicroSec)
             else if (method == 3)
             {
                 state.test = TestSub::TestMaxon;
+            }
+            else if (method == 4)
+            {
+                testTable();
             }
             else if (method == -1)
             {
@@ -1164,6 +1168,7 @@ void TestManager::unfixedMotor()
 /////////////////////////////////////////////////////////////////////////////////
 /*                         Maxon Motor Function                               */
 /////////////////////////////////////////////////////////////////////////////////
+
 void TestManager::CSTLoop()
 {
     std::shared_ptr<MaxonMotor> selectedMotor;
@@ -1775,4 +1780,224 @@ tuple <double, int, int> TestManager::CSTHitLoop()
         }
     }
 
+}
+
+/////////////////////////////////////////////////////////////////////////////////
+/*                              TEST Function                                  */
+/////////////////////////////////////////////////////////////////////////////////
+
+void TestManager::testTable()
+{
+    srand(time(NULL));
+    std::ifstream tableFile;
+    std::string tablePath = "/home/shy/DrumRobot2_TABLE/";    // 테이블 위치
+
+    int n, sum = 0;
+    double P[6] = {0};
+    int P_index[6] = {0};
+    double R[2][6] = {{-0.35, 0.45, 0.55, -0.35, 0.45, 0.55}, {0.8, 0.35, 0.65, 0.8, 0.35, 0.65}};
+    double dx = 0.05;
+    
+    std::cout << "\n 반복 횟수 : ";
+    std::cin >> n;
+
+    std::chrono::system_clock::time_point start = std::chrono::system_clock::now();
+    for (int i = 0; i < n; i++)
+    {
+        // 랜덤 위치
+        for (int j = 0; j < 6; j++)
+        {
+            // if (j == 0)
+            // {
+            //     std::cout << "\n 오른팔 좌표 :";
+            // }
+            // else if (j == 3)
+            // {
+            //     std::cout << "\n 왼팔 좌표 :";
+            // }
+
+            P[j] = R[0][j] + R[1][j]*((rand()%1000)/1000.0);
+            // std::cout << "\t" << P[j];
+        }
+
+        // 인덱스 공간으로 변환
+        for (int j = 0; j < 6; j++)
+        {
+            P_index[j] = floor((P[j] - R[0][j])/dx + 0.5);
+        }
+
+        std::string fileName = tablePath + "TABLE_" + std::to_string(P_index[0]+1) + "_" + std::to_string(P_index[1]+1) +".txt";
+        tableFile.open(fileName); // 파일 열기
+        
+        if (tableFile.is_open())
+        {
+            string row;
+
+            for (int j = 0; j < P_index[3]+1; j++)
+            {
+                getline(tableFile, row);
+            }
+
+            istringstream iss(row);
+            string item;
+
+            for (int j = 0; j < P_index[2]+1; j++)
+            {
+                getline(iss, item, '\t');
+            }
+
+            item = trimWhitespace(item);
+
+            char hex1 = item.at(2*P_index[5] + 1);
+            char hex2 = item.at(2*P_index[5]);
+
+            if (hex2TableData(hex1, hex2, P_index[4]))
+            {
+                sum++;
+            }
+
+            // std::cout << "\n data : " << hex2TableData(hex1, hex2, P_index[4]) << "\n";
+            // sleep(1);
+        }
+        else
+        {
+            std::cout << "\n table file open error \n";
+        }
+
+        tableFile.close(); // 파일 닫기
+    }
+
+    std::chrono::duration<double>sec = std::chrono::system_clock::now() - start;
+    std::cout << "\n 실행 시간 : " << sec.count()*1000 << " ms\n";
+    std::cout << "\n 충돌 횟수 : " << sum << "\n";
+    sleep(10);
+}
+
+string TestManager::trimWhitespace(const std::string &str)
+{
+    size_t first = str.find_first_not_of(" \t");
+    if (std::string::npos == first)
+    {
+        return str;
+    }
+    size_t last = str.find_last_not_of(" \t");
+    return str.substr(first, (last - first + 1));
+}
+
+bool TestManager::hex2TableData(char hex1, char hex2, int index)
+{
+    char hex;
+    bool bin[4];
+
+    if (index < 4)
+    {
+        hex = hex1;
+    }
+    else
+    {
+        hex = hex2;
+        index = index - 4;
+    }
+
+    switch(hex)
+    {
+    case '0':
+        bin[0] = false;
+        bin[1] = false;
+        bin[2] = false;
+        bin[3] = false;
+    break;
+    case '1':
+        bin[0] = true;
+        bin[1] = false;
+        bin[2] = false;
+        bin[3] = false;
+    break;
+    case '2':
+        bin[0] = false;
+        bin[1] = true;
+        bin[2] = false;
+        bin[3] = false;
+    break;
+    case '3':
+        bin[0] = true;
+        bin[1] = true;
+        bin[2] = false;
+        bin[3] = false;
+    break;
+    case '4':
+        bin[0] = false;
+        bin[1] = false;
+        bin[2] = true;
+        bin[3] = false;
+    break;
+    case '5':
+        bin[0] = true;
+        bin[1] = false;
+        bin[2] = true;
+        bin[3] = false;
+    break;
+    case '6':
+        bin[0] = false;
+        bin[1] = true;
+        bin[2] = true;
+        bin[3] = false;
+    break;
+    case '7':
+        bin[0] = true;
+        bin[1] = true;
+        bin[2] = true;
+        bin[3] = false;
+    break;
+    case '8':
+        bin[0] = false;
+        bin[1] = false;
+        bin[2] = false;
+        bin[3] = true;
+    break;
+    case '9':
+        bin[0] = true;
+        bin[1] = false;
+        bin[2] = false;
+        bin[3] = true;
+    break;
+    case 'A':
+        bin[0] = false;
+        bin[1] = true;
+        bin[2] = false;
+        bin[3] = true;
+    break;
+    case 'B':
+        bin[0] = true;
+        bin[1] = true;
+        bin[2] = false;
+        bin[3] = true;
+    break;
+    case 'C':
+        bin[0] = false;
+        bin[1] = false;
+        bin[2] = true;
+        bin[3] = true;
+    break;
+    case 'D':
+        bin[0] = true;
+        bin[1] = false;
+        bin[2] = true;
+        bin[3] = true;
+    break;
+    case 'E':
+        bin[0] = false;
+        bin[1] = true;
+        bin[2] = true;
+        bin[3] = true;
+    break;
+    case 'F':
+        bin[0] = true;
+        bin[1] = true;
+        bin[2] = true;
+        bin[3] = true;
+    break;
+    }
+
+    return bin[index];
 }

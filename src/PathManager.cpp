@@ -202,6 +202,14 @@ bool PathManager::readMeasure(ifstream &inputFile, bool &bpmFlag)
 
 void PathManager::generateTrajectory()
 {
+    // Predict Collision
+    std::chrono::system_clock::time_point start = std::chrono::system_clock::now();
+    int C = predictCollision(measureMatrix);
+    std::chrono::duration<double>sec = std::chrono::system_clock::now() - start;
+
+    std::string fileName = "CollisionDetection";
+    fun.appendToCSV_DATA(fileName, C, sec.count()*1000000, 0);  // 충돌 OX, 탐색시간(us)
+
     // position
     VectorXd initialPosition(6), finalPosition(6);
     VectorXd initialPositionR(3);
@@ -262,11 +270,36 @@ void PathManager::generateTrajectory()
 
         trajectoryQueue.push(Pt);
 
+        // double hitR, hitL;
+        // if (measureMatrix(0, 4) == 0)
+        // {
+        //     hitR = 0.07;
+        // }
+        // else
+        // {
+        //     hitR = 0.07 + 0.07*sin(M_PI*i/n);
+        // }
+
+        // if (measureMatrix(0, 5) == 0)
+        // {
+        //     hitL = 0.07;
+        // }
+        // else
+        // {
+        //     hitL = 0.07 + 0.07*sin(M_PI*i/n);
+        // }
+
+        // float C = 0;
+        // if (detectCollision(Pt.endEffectorR, Pt.endEffectorL, hitR, hitL))
+        // {
+        //     C = 1;
+        // }
+
         // std::string fileName;
         // fileName = "Trajectory_R";
-        // fun.appendToCSV_DATA(fileName, Pt.pR[0], Pt.pR[1], Pt.pR[2]);
+        // fun.appendToCSV_DATA(fileName, Pt.endEffectorR[0], Pt.endEffectorR[1], Pt.endEffectorR[2]);
         // fileName = "Trajectory_L";
-        // fun.appendToCSV_DATA(fileName, Pt.pL[0], Pt.pL[1], Pt.pL[2]);
+        // fun.appendToCSV_DATA(fileName, Pt.endEffectorL[0], Pt.endEffectorL[1], Pt.endEffectorL[2]);
 
         if (i == 0)
         {
@@ -299,7 +332,7 @@ bool PathManager::solveIKandPushConmmand()
             lineData = tmpMatrix;
         }
 
-        std::cout << "\n lineDate Over \n";
+        // std::cout << "\n lineDate Over \n";
 
         return false;
     }
@@ -469,14 +502,14 @@ void PathManager::initVal()
 
 void PathManager::parseMeasure(MatrixXd &measureMatrix)
 {
-    VectorXd MeasureTime = measureMatrix.col(8);
-    VectorXd MeasureInstrumentR = measureMatrix.col(2);
-    VectorXd MeasureInstrumentL = measureMatrix.col(3);
-    VectorXd MeasureIntensityR = measureMatrix.col(4);
-    VectorXd MeasureIntensityL = measureMatrix.col(5);
+    VectorXd measureTime = measureMatrix.col(8);
+    VectorXd measureInstrumentR = measureMatrix.col(2);
+    VectorXd measureInstrumentL = measureMatrix.col(3);
+    VectorXd measureIntensityR = measureMatrix.col(4);
+    VectorXd measureIntensityL = measureMatrix.col(5);
 
-    pair<VectorXd, VectorXd> dataR = parseOneArm(MeasureTime, MeasureInstrumentR, measureState.row(0));
-    pair<VectorXd, VectorXd> dataL = parseOneArm(MeasureTime, MeasureInstrumentL, measureState.row(1));
+    pair<VectorXd, VectorXd> dataR = parseOneArm(measureTime, measureInstrumentR, measureState.row(0));
+    pair<VectorXd, VectorXd> dataL = parseOneArm(measureTime, measureInstrumentL, measureState.row(1));
 
     // 데이터 저장
     initialInstrument << dataR.first.block(1, 0, 9, 1), dataL.first.block(1, 0, 9, 1);
@@ -2621,4 +2654,264 @@ void PathManager::clearBrake()  // 모든 brake끄기
     {
         usbio.setUSBIO4761(i, brakeArr[i]);
     }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/*                              Collision                                     */
+////////////////////////////////////////////////////////////////////////////////
+
+int PathManager::predictCollision(MatrixXd measureMatrix)
+{
+    VectorXd measureTime = measureMatrix.col(8);
+    VectorXd measureInstrumentR = measureMatrix.col(2);
+    VectorXd measureInstrumentL = measureMatrix.col(3);
+    VectorXd measureIntensityR = measureMatrix.col(4);
+    VectorXd measureIntensityL = measureMatrix.col(5);
+
+    std::cout << "\n Measure T \n" << measureTime.transpose();
+    std::cout << "\n Measure R \n" << measureInstrumentR.transpose();
+    std::cout << "\n Measure L \n" << measureInstrumentL.transpose();
+
+    bool endR = false, endL = false;
+    int endIndex = 1;
+    for (int i = 0; i < measureTime.rows(); i++)
+    {
+        if (measureInstrumentR(measureTime.rows()-1-i) != 0)
+        {
+            endR = true;
+        }
+
+        if (measureInstrumentL(measureTime.rows()-1-i) != 0)
+        {
+            endL = true;
+        }
+
+        if (endR && endL)
+        {
+            endIndex = measureTime.rows()-i;
+            std::cout << "\n end Index \n" << endIndex;
+            break;
+        }
+    }
+
+    // 악보 중 충돌을 예측할 범위
+    VectorXd detectTime = measureMatrix.block(0, 8, endIndex, 1);
+    VectorXd detectInstrumentR = measureMatrix.block(0, 2, endIndex, 1);
+    VectorXd detectInstrumentL = measureMatrix.block(0, 3, endIndex, 1);
+
+    std::cout << "\n Detect T \n" << detectTime.transpose();
+    std::cout << "\n Detect R \n" << detectInstrumentR.transpose();
+    std::cout << "\n Detect L \n" << detectInstrumentL.transpose();
+
+    // pair<VectorXd, VectorXd> dataR = parseOneArm(measureTime, measureInstrumentR, measureState.row(0));
+    // pair<VectorXd, VectorXd> dataL = parseOneArm(measureTime, measureInstrumentL, measureState.row(1));
+
+    // // 데이터 저장
+    // initialInstrument << dataR.first.block(1, 0, 9, 1), dataL.first.block(1, 0, 9, 1);
+    // finalInstrument << dataR.first.block(11, 0, 9, 1), dataL.first.block(11, 0, 9, 1);
+
+    // initialTimeR = dataR.first(0);
+    // initialTimeL = dataL.first(0);
+    // finalTimeR = dataR.first(10);
+    // finalTimeL = dataL.first(10);
+
+    // t1 = measureMatrix(0, 8);
+    // t2 = measureMatrix(1, 8);
+
+    // hitState.resize(4); 
+    // hitState.head(2) = makeState(measureMatrix);
+    // hitState(2) = dataR.first(20);
+    // hitState(3) = dataL.first(20);
+
+    // measureState.block(0, 0, 1, 3) = dataR.second.transpose();
+    // measureState.block(1, 0, 1, 3) = dataL.second.transpose();
+
+    return 0;
+}
+
+bool PathManager::detectCollision(VectorXd PR, VectorXd PL, double hitR, double hitL)
+{
+    std::ifstream tableFile;
+    std::string tablePath = "/home/shy/DrumRobot2_TABLE/";    // 테이블 위치
+
+    int PR_index[3] = {0};
+    int PL_index[3] = {0};
+    double range[2][3] = {{-0.35, 0.45, 0.55}, {0.8, 0.35, 0.65}};
+    double dx = 0.05;
+
+    //
+    PR(2) = PR(2) + hitR;
+    PL(2) = PL(2) + hitL;
+
+    // 인덱스 공간으로 변환
+    for (int i = 0; i < 3; i++)
+    {
+        PR_index[i] = floor((PR(i) - range[0][i])/dx + 0.5);
+        PL_index[i] = floor((PL(i) - range[0][i])/dx + 0.5);
+
+        if (PR_index[i] > range[2][i]/dx)
+        {
+            PR_index[i] = (int)(range[2][i]/dx);
+        }
+
+        if (PL_index[i] > range[2][i]/dx)
+        {
+            PL_index[i] = (int)(range[2][i]/dx);
+        }
+    }
+
+    std::string fileName = tablePath + "TABLE_" + std::to_string(PR_index[0]+1) + "_" + std::to_string(PR_index[1]+1) +".txt";
+    tableFile.open(fileName); // 파일 열기
+        
+    if (tableFile.is_open())
+    {
+        string row;
+
+        for (int j = 0; j < PL_index[0]+1; j++)
+        {
+            getline(tableFile, row);
+        }
+
+        istringstream iss(row);
+        string item;
+
+        for (int j = 0; j < PR_index[2]+1; j++)
+        {
+            getline(iss, item, '\t');
+        }
+
+        item = trimWhitespace(item);
+
+        char hex1 = item.at(2*PL_index[2] + 1);
+        char hex2 = item.at(2*PL_index[2]);
+
+        return hex2TableData(hex1, hex2, PL_index[1]);
+    }
+    else
+    {
+        std::cout << "\n table file open error \n";
+        std::cout << fileName;
+    }
+
+    tableFile.close(); // 파일 닫기
+
+    return false;
+}
+
+bool PathManager::hex2TableData(char hex1, char hex2, int index)
+{
+    char hex;
+    bool bin[4];
+
+    if (index < 4)
+    {
+        hex = hex1;
+    }
+    else
+    {
+        hex = hex2;
+        index = index - 4;
+    }
+
+    switch(hex)
+    {
+    case '0':
+        bin[0] = false;
+        bin[1] = false;
+        bin[2] = false;
+        bin[3] = false;
+    break;
+    case '1':
+        bin[0] = true;
+        bin[1] = false;
+        bin[2] = false;
+        bin[3] = false;
+    break;
+    case '2':
+        bin[0] = false;
+        bin[1] = true;
+        bin[2] = false;
+        bin[3] = false;
+    break;
+    case '3':
+        bin[0] = true;
+        bin[1] = true;
+        bin[2] = false;
+        bin[3] = false;
+    break;
+    case '4':
+        bin[0] = false;
+        bin[1] = false;
+        bin[2] = true;
+        bin[3] = false;
+    break;
+    case '5':
+        bin[0] = true;
+        bin[1] = false;
+        bin[2] = true;
+        bin[3] = false;
+    break;
+    case '6':
+        bin[0] = false;
+        bin[1] = true;
+        bin[2] = true;
+        bin[3] = false;
+    break;
+    case '7':
+        bin[0] = true;
+        bin[1] = true;
+        bin[2] = true;
+        bin[3] = false;
+    break;
+    case '8':
+        bin[0] = false;
+        bin[1] = false;
+        bin[2] = false;
+        bin[3] = true;
+    break;
+    case '9':
+        bin[0] = true;
+        bin[1] = false;
+        bin[2] = false;
+        bin[3] = true;
+    break;
+    case 'A':
+        bin[0] = false;
+        bin[1] = true;
+        bin[2] = false;
+        bin[3] = true;
+    break;
+    case 'B':
+        bin[0] = true;
+        bin[1] = true;
+        bin[2] = false;
+        bin[3] = true;
+    break;
+    case 'C':
+        bin[0] = false;
+        bin[1] = false;
+        bin[2] = true;
+        bin[3] = true;
+    break;
+    case 'D':
+        bin[0] = true;
+        bin[1] = false;
+        bin[2] = true;
+        bin[3] = true;
+    break;
+    case 'E':
+        bin[0] = false;
+        bin[1] = true;
+        bin[2] = true;
+        bin[3] = true;
+    break;
+    case 'F':
+        bin[0] = true;
+        bin[1] = true;
+        bin[2] = true;
+        bin[3] = true;
+    break;
+    }
+
+    return bin[index];
 }

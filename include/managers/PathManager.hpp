@@ -300,4 +300,9 @@ private:
     // q1[rad], q2[rad], Vmax[rad/s], acc[rad/s^2], t[s], t2[s]
     VectorXd makeProfile(VectorXd &q1, VectorXd &q2, VectorXd &Vmax, float acc, float t, float t2);
     void getMotorPos();
+
+    /////////////////////////////////////////////////////////////////////////// Detect Collision
+    int predictCollision(MatrixXd measureMatrix);
+    bool detectCollision(VectorXd PR, VectorXd PL, double hitR, double hitL);
+    bool hex2TableData(char hex1, char hex2, int index);
 };
