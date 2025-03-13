@@ -223,8 +223,8 @@ void PathManager::generateTrajectory()
     aNumOfLine = 0;
     int C = predictCollision(measureMatrix);
 
-    std::string fileName = "CollisionDetection";
-    fun.appendToCSV_DATA(fileName, C, aNumOfLine, 0.0);  // 충돌 OX, 탐색시간(us), 확인 줄
+    // std::string fileName = "CollisionDetection";
+    // fun.appendToCSV_DATA(fileName, C, aNumOfLine, 0.0);  // 충돌 OX, 탐색시간(us), 확인 줄
 
     // position
     pair<VectorXd, VectorXd> initialPosition, finalPosition;
@@ -283,13 +283,13 @@ void PathManager::generateTrajectory()
 
         trajectoryQueue.push(Pt);
 
-        std::string fileName;
-        fileName = "Trajectory_R";
-        fun.appendToCSV_DATA(fileName, Pt.endEffectorR[0], Pt.endEffectorR[1], Pt.endEffectorR[2]);
-        fileName = "Trajectory_L";
-        fun.appendToCSV_DATA(fileName, Pt.endEffectorL[0], Pt.endEffectorL[1], Pt.endEffectorL[2]);
-        fileName = "Wrist";
-        fun.appendToCSV_DATA(fileName, Pt.wristAngleR, Pt.wristAngleL, 0.0);
+        // std::string fileName;
+        // fileName = "Trajectory_R";
+        // fun.appendToCSV_DATA(fileName, Pt.endEffectorR[0], Pt.endEffectorR[1], Pt.endEffectorR[2]);
+        // fileName = "Trajectory_L";
+        // fun.appendToCSV_DATA(fileName, Pt.endEffectorL[0], Pt.endEffectorL[1], Pt.endEffectorL[2]);
+        // fileName = "Wrist";
+        // fun.appendToCSV_DATA(fileName, Pt.wristAngleR, Pt.wristAngleL, 0.0);
 
         if (i == 0)
         {
