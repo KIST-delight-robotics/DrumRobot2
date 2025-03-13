@@ -157,6 +157,16 @@ bool PathManager::readMeasure(ifstream &inputFile, bool &bpmFlag)
         timeSum += measureMatrix(i, 1);
     }
 
+    // timeSum이 threshold를 넘으면 true 반환
+    if (timeSum >= threshold)
+    {
+        std::cout << "\n//////////////////////////////// Read Measure : " << lineOfScore + 1 << "\n";
+        // std::cout << measureMatrix;
+        // std::cout << "\n ////////////// time sum : " << timeSum << "\n";
+
+        return true;
+    }
+
     while (getline(inputFile, row))
     {
         istringstream iss(row);
@@ -210,12 +220,11 @@ bool PathManager::readMeasure(ifstream &inputFile, bool &bpmFlag)
 void PathManager::generateTrajectory()
 {
     // Predict Collision
-    std::chrono::system_clock::time_point start = std::chrono::system_clock::now();
+    aNumOfLine = 0;
     int C = predictCollision(measureMatrix);
-    std::chrono::duration<double>sec = std::chrono::system_clock::now() - start;
 
     std::string fileName = "CollisionDetection";
-    fun.appendToCSV_DATA(fileName, C, sec.count()*1000000, 0);  // 충돌 OX, 탐색시간(us)
+    fun.appendToCSV_DATA(fileName, C, aNumOfLine, 0.0);  // 충돌 OX, 탐색시간(us), 확인 줄
 
     // position
     VectorXd initialPosition(6), finalPosition(6);
@@ -256,8 +265,8 @@ void PathManager::generateTrajectory()
     // std::cout << "\nL : Pi_L -> Pf_L\n(" << Pi_L.transpose() << ") -> (" << Pf_L.transpose() << ")" << std::endl;
 
     // 타격 시 손목 각도
-    initialWristAngle = getWristHitAngle(initialInstrument);
-    finalWristAngle = getWristHitAngle(finalInstrument);
+    initialWristAngle = getTargetWristAngle(initialInstrument);
+    finalWristAngle = getTargetWristAngle(finalInstrument);
 
     for (int i = 0; i < n; i++)
     {
@@ -546,13 +555,13 @@ pair<VectorXd, VectorXd> PathManager::parseOneArm(VectorXd t, VectorXd inst, Vec
     double detectTime = 0, initialT, finalT;
     int detectInst = 0, initialInstNum, finalInstNum;
     int preState, nextState;
-    double threshold = 1.2 * 100.0 / bpmOfScore; // 일단 이렇게 하면 1줄만 읽는 일 없음
+    double hitDetectionThreshold = 1.2 * 100.0 / bpmOfScore; // 일단 이렇게 하면 1줄만 읽는 일 없음
     bool targetChangeFlag = 0;
 
     // 타격 감지
     for (int i = 1; i < t.rows(); i++)
     {
-        if (round(10000 * threshold) < round(10000 * (t(i) - t(0))))
+        if (round(10000 * hitDetectionThreshold) < round(10000 * (t(i) - t(0))))
         {
             break;
         }
@@ -711,6 +720,31 @@ VectorXd PathManager::getTargetPosition(VectorXd &inst)
     MatrixXd p = combined * instrumentVector;
 
     return p;
+}
+
+VectorXd PathManager::getTargetWristAngle(VectorXd &inst)
+{
+    VectorXd instrumentR = inst.segment(0, 9);
+    VectorXd instrumentL = inst.segment(9, 9);
+
+    if (instrumentR.sum() == 0)
+    {
+        std::cout << "Right Instrument Vector Error!!\n";
+    }
+
+    if (instrumentL.sum() == 0)
+    {
+        std::cout << "Left Instrument Vector Error!!\n";
+    }
+
+    VectorXd instrumentVector(18);
+    instrumentVector << instrumentR, instrumentL;
+
+    MatrixXd combined(2, 18);
+    combined << wristAnglesR, MatrixXd::Zero(1, 9), MatrixXd::Zero(1, 9), wristAnglesL;
+    MatrixXd angle = combined * instrumentVector;
+
+    return angle;
 }
 
 float PathManager::timeScaling(float ti, float tf, float t)
@@ -966,31 +1000,6 @@ VectorXd PathManager::waistRange(VectorXd &pR, VectorXd &pL)
     output(2) = Qarr(0, minIndex);
 
     return output;
-}
-
-VectorXd PathManager::getWristHitAngle(VectorXd &inst)
-{
-    VectorXd instrumentR = inst.segment(0, 9);
-    VectorXd instrumentL = inst.segment(9, 9);
-
-    if (instrumentR.sum() == 0)
-    {
-        std::cout << "Right Instrument Vector Error!!\n";
-    }
-
-    if (instrumentL.sum() == 0)
-    {
-        std::cout << "Left Instrument Vector Error!!\n";
-    }
-
-    VectorXd instrumentVector(18);
-    instrumentVector << instrumentR, instrumentL;
-
-    MatrixXd combined(2, 18);
-    combined << wristAnglesR, MatrixXd::Zero(1, 9), MatrixXd::Zero(1, 9), wristAnglesL;
-    MatrixXd angle = combined * instrumentVector;
-
-    return angle;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3381,47 +3390,72 @@ int PathManager::predictCollision(MatrixXd measureMatrix)
     VectorXd measureIntensityL = measureMatrix.col(5);
 
     // 악보 중 충돌을 예측할 범위
+    double tStartR = measureTime(0), tStartL = measureTime(0);
+    bool startR = false, startL = false;
     bool endR = false, endL = false;
-    int endIndex = 1;
+    int endIndex = measureTime.rows();
+    double hitDetectionThreshold = 1.2 * 100.0 / bpmOfScore;
     for (int i = 0; i < measureTime.rows(); i++)
     {
-        if (measureInstrumentR(measureTime.rows()-1-i) != 0)
+        if (measureInstrumentR(i) == 0)
         {
-            endR = true;
+            if (round(10000 * hitDetectionThreshold) < round(10000 * (measureTime(i) - tStartR)))
+            {
+                endR = true;
+            }
+        }
+        else
+        {
+            if (startR)
+            {
+                endR = true;
+            }
+            else
+            {
+                startR = true;
+                tStartR = measureTime(i);
+            }
         }
 
-        if (measureInstrumentL(measureTime.rows()-1-i) != 0)
+        if (measureInstrumentL(i) == 0)
         {
-            endL = true;
+            if (round(10000 * hitDetectionThreshold) < round(10000 * (measureTime(i) - tStartL)))
+            {
+                endL = true;
+            }
+        }
+        else
+        {
+            if (startL)
+            {
+                endL = true;
+            }
+            else
+            {
+                startL = true;
+                tStartL = measureTime(i);
+            }
         }
 
         if (endR && endL)
         {
-            endIndex = measureTime.rows()-i;
-            // std::cout << "\n end Index \n" << endIndex;
+            endIndex = i + 1;
             break;
         }
     }
+
+    // std::cout << "\n end Index \n" << endIndex;
 
     // 파싱
     MatrixXd linePositionR = parseAllLine(measureTime, measureInstrumentR, measureState.row(0), 'R');
     MatrixXd linePositionL = parseAllLine(measureTime, measureInstrumentL, measureState.row(1), 'L');
 
-    // std::cout << "\n Measure Matrix \n" << measureMatrix;
-    // std::cout << "\n R pos Matrix \n" << R;
-    // std::cout << "\n L pos Matrix \n\n" << L;
-
     // 충돌 예측
-    double stepSize = 10;
+    double stepSize = 5;
     int C = 0;
     for (int i = 0; i < endIndex; i++)
     {
-        if (i == measureTime.rows())
-        {
-            break;
-        }
-
-        if (i > 0)  // 해당 줄만 체크
+        if (i == measureTime.rows()-1)
         {
             break;
         }
@@ -3457,12 +3491,15 @@ int PathManager::predictCollision(MatrixXd measureMatrix)
                 hitL = 0.07 + 0.07*sin(M_PI*j/stepSize);
             }
 
-            if (detectCollision(PR, PL, hitR, hitL))
+            bool CT = checkTable(PR, PL, hitR, hitL);
+            if (CT && i == 0)    // 해당 줄만 체크
             {
                 C = 1;
+                aNumOfLine++;
                 break;
             }
         }
+        aNumOfLine++;
     }
 
     return C;
@@ -3477,7 +3514,7 @@ MatrixXd PathManager::parseAllLine(VectorXd t, VectorXd inst, VectorXd stateVect
     MatrixXd linePosition = MatrixXd::Zero(t.rows() + 1, 4);
     int preState = stateVector(2), preInst = stateVector(1);
     double preT = stateVector(0);
-    double threshold = 1.2 * 100.0 / bpmOfScore; // 일단 이렇게 하면 1줄만 읽는 일 없음
+    double hitDetectionThreshold = 1.2 * 100.0 / bpmOfScore; // 일단 이렇게 하면 1줄만 읽는 일 없음
 
     linePosition(0,0) = preT;
     linePosition.block(0,1,1,3) = getOneDrumPosition(preInst, RL);
@@ -3514,7 +3551,7 @@ MatrixXd PathManager::parseAllLine(VectorXd t, VectorXd inst, VectorXd stateVect
                 for (int j = 1; j < t.rows()-i; j++)    // 다음 타격 찾기
                 {
                     preState = 0;
-                    if (round(10000 * threshold) < round(10000 * (t(i+j) - t(i))))
+                    if (round(10000 * hitDetectionThreshold) < round(10000 * (t(i+j) - t(i))))
                     {
                         break;
                     }
@@ -3536,7 +3573,7 @@ MatrixXd PathManager::parseAllLine(VectorXd t, VectorXd inst, VectorXd stateVect
             for (int j = 1; j < t.rows()-i; j++)    // 다음 타격 찾기
             {
                 preState = 0;
-                if (round(10000 * threshold) < round(10000 * (t(i+j) - t(i))))
+                if (round(10000 * hitDetectionThreshold) < round(10000 * (t(i+j) - t(i))))
                 {
                     break;
                 }
@@ -3574,7 +3611,7 @@ MatrixXd PathManager::getOneDrumPosition(int InstNum, char RL)
     return p.transpose();
 }
 
-bool PathManager::detectCollision(VectorXd PR, VectorXd PL, double hitR, double hitL)
+bool PathManager::checkTable(VectorXd PR, VectorXd PL, double hitR, double hitL)
 {
     std::ifstream tableFile;
     std::string tablePath = "/home/shy/DrumRobot/collision_table/";    // 테이블 위치

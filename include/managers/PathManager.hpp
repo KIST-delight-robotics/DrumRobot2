@@ -119,7 +119,6 @@ public:
     int hitMode = 1; // 1 : CSP 2 : CSP & Detect 3: CSP & Detect & CST
     float releaseTimeVal = 1; // 드럼 스틱 release time에 곱하는 배수
 
-
     vector<float> FK();
 
 private:
@@ -202,7 +201,7 @@ private:
     VectorXd makePath(VectorXd Pi, VectorXd Pf, float s);
     void saveLineData(int n, VectorXd minmax, VectorXd intesity, VectorXd finalWristAngle);
     VectorXd waistRange(VectorXd &pR, VectorXd &pL);
-    VectorXd getWristHitAngle(VectorXd &inst_vector);
+    VectorXd getTargetWristAngle(VectorXd &inst_vector);
 
     /////////////////////////////////////////////////////////////////////////// Play (solve IK)
     int indexSolveIK = 0;
@@ -309,9 +308,10 @@ private:
     void getMotorPos();
 
     /////////////////////////////////////////////////////////////////////////// Detect Collision
+    int aNumOfLine = 0;
     int predictCollision(MatrixXd measureMatrix);
     MatrixXd parseAllLine(VectorXd t, VectorXd inst, VectorXd stateVector, char RL);
     MatrixXd getOneDrumPosition(int InstNum, char RL);
-    bool detectCollision(VectorXd PR, VectorXd PL, double hitR, double hitL);
+    bool checkTable(VectorXd PR, VectorXd PL, double hitR, double hitL);
     bool hex2TableData(char hex1, char hex2, int index);
 };
