@@ -62,7 +62,8 @@ public:
     bool isCSTR = false;
     bool isCSTL = false;
     float wristStayAngle;
-    float backTorque = -1;
+    float backTorque = -10;
+    bool torqueOff = false;
 
     MatrixXd wristAnglesR;                               ///< 오른팔의 각 악기별 타격 시 손목 각도.
     MatrixXd wristAnglesL;                                ///< 왼팔의 각 악기별 타격 시 손목 각도.
@@ -110,6 +111,7 @@ public:
     void setSocketBlock();
     
     bool setCANFrame();
+    bool setCANFrame_TEST();
 
     bool safetyCheck_Tmotor(std::shared_ptr<TMotor> tMotor, TMotorData tData);
     bool safetyCheck_T(std::shared_ptr<GenericMotor> &motor);

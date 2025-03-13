@@ -89,8 +89,8 @@ void PathManager::getDrumPositoin()
 
     //              S                  FT                  MT                  HT                  HH                  R                   RC                 LC
     wristAnglesR << 25.0*M_PI/180.0,   25.0*M_PI/180.0,    15.0*M_PI/180.0,    15.0*M_PI/180.0,    10.0*M_PI/180.0,    15.0*M_PI/180.0,    0.0*M_PI/180.0,    10.0*M_PI/180.0, 0;
-    // wristAnglesL << 25.0*M_PI/180.0,   25.0*M_PI/180.0,    15.0*M_PI/180.0,    15.0*M_PI/180.0,    10.0*M_PI/180.0,    15.0*M_PI/180.0,    0.0*M_PI/180.0,    10.0*M_PI/180.0, 0;
-    wristAnglesL << 0, 0, 0, 0, 0, 0, 0, 0, 0;
+    wristAnglesL << 25.0*M_PI/180.0,   25.0*M_PI/180.0,    15.0*M_PI/180.0,    15.0*M_PI/180.0,    10.0*M_PI/180.0,    15.0*M_PI/180.0,    0.0*M_PI/180.0,    10.0*M_PI/180.0, 0;
+    // wristAnglesL << 0, 0, 0, 0, 0, 0, 0, 0, 0;
 
     canManager.wristAnglesR.resize(1, 9);
     canManager.wristAnglesL.resize(1, 9);
@@ -1053,6 +1053,25 @@ VectorXd PathManager::makeHitTrajetory(float t1, float t2, float t, int state, i
             }
         }
     }
+    else if (hitMode == 4)
+    {
+        for (auto &entry : motors)
+        {
+            if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(entry.second))
+            {
+                if (maxonMotor->myName == "R_wrist"  && wristDir == 0)
+                {
+                    maxonMotor->hittingDrumAngle = lineData(0, 10);
+                    addAngle(0) = makeWristAngle_TEST_R_CST(t1, t2, t, state, param, wristIntensity, targetChangeFlag, maxonMotor->hitting, maxonMotor->hittingPos, wristDir);
+                }
+                else if (maxonMotor->myName == "L_wrist"  && wristDir == 1)
+                {
+                    maxonMotor->hittingDrumAngle = lineData(0, 11);
+                    addAngle(0) = makeWristAngle_TEST_L_CST(t1, t2, t, state, param, wristIntensity, targetChangeFlag, maxonMotor->hitting, maxonMotor->hittingPos, wristDir);
+                }
+            }
+        }
+    }
     else if (hitMode == 1)
     {
         addAngle(0) = makeWristAngle(t1, t2, t, state, param, wristIntensity, targetChangeFlag);
@@ -1732,7 +1751,7 @@ float PathManager::makeWristAngle_TEST_R_CST(float t1, float t2, float t, int st
     float t_press = param.wristContactTime * releaseTimeVal;
     float t_lift = param.wristLiftTime;
     float t_stay = param.wristStayTime;
-    static float t_release = param.wristReleaseTime;
+    float t_release = param.wristReleaseTime;
     float t_contact = t2 - t1;
     float intensityFactor = 0.4 * intensity + 0.2; // 1 : 약하게   2 : 기본    3 : 강하게
     float wristLiftAngle = param.wristLiftAngle * intensityFactor + (param.wristLiftAngle * 0.2  * targetChangeFlag);
@@ -1750,7 +1769,6 @@ float PathManager::makeWristAngle_TEST_R_CST(float t1, float t2, float t, int st
         {
             t_hitting = t;
             hittingTimeCheck = false;
-            canManager.isCSTR = false;
         }
 
         if (state == 1)
@@ -1853,7 +1871,6 @@ float PathManager::makeWristAngle_TEST_R_CST(float t1, float t2, float t, int st
                 A_1 = A.inverse();
                 sol = A_1 * b;
                 wrist_q = sol(0, 0) + sol(1, 0) * t + sol(2, 0) * t * t;
-                
             }
             else if (t <= t_release)
             {

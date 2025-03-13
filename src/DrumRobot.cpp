@@ -796,12 +796,14 @@ bool DrumRobot::processInput(const std::string &input)
                 std::cout << "1 : CSP hitting \n";
                 std::cout << "2 : CSP hitting Detect \n";
                 std::cout << "3 : CSP hitting Detect (fast ver) \n";
+                std::cout << "4 : CST hitting Detect \n";
                 std::cout << "enter hitting mode : ";
                 std::cin >> mode;
 
                 if (mode == 1)
                 {
                     pathManager.hitMode = 1;
+                    canManager.isCST = false;
                 }
                 else if (mode == 2)
                 {
@@ -810,7 +812,12 @@ bool DrumRobot::processInput(const std::string &input)
                 }
                 else if (mode == 3)
                 {
-                    pathManager.hitMode = 3;  
+                    pathManager.hitMode = 3;
+                    canManager.isCST = false;  
+                }
+                else if (mode == 4)
+                {
+                    pathManager.hitMode = 4;
                 }
             }
             else if (input == "p" && isReady)
