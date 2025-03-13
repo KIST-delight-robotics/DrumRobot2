@@ -242,7 +242,7 @@ private:
     typedef struct {
 
         // 각도
-        float wristStayAngle = 10.0 * M_PI / 180.0;
+        float wristStayAngle = 15.0 * M_PI / 180.0;
         float wristContactAngle = 5.0 * M_PI / 180.0;
         float wristLiftAngle = 25.0 * M_PI / 180.0;
 
@@ -266,6 +266,8 @@ private:
     float makeWristAngle_TEST_L(float t1, float t2, float t, int state, HitParameter param, int intensity, bool targetChangeFlag, bool &hitting, float hittingPos, bool wristDir);
     float makeWristAngle_TEST_R_Fast(float t1, float t2, float t, int state, HitParameter param, int intensity, bool targetChangeFlag, bool &hitting, float hittingPos, bool wristDir);
     float makeWristAngle_TEST_L_Fast(float t1, float t2, float t, int state, HitParameter param, int intensity, bool targetChangeFlag, bool &hitting, float hittingPos, bool wristDir);
+    float makeWristAngle_TEST_R_CST(float t1, float t2, float t, int state, HitParameter param, int intensity, bool targetChangeFlag, bool &hitting, float hittingPos, bool wristDir);
+    float makeWristAngle_TEST_L_CST(float t1, float t2, float t, int state, HitParameter param, int intensity, bool targetChangeFlag, bool &hitting, float hittingPos, bool wristDir);
 
     HitParameter getHitParameter(float t1, float t2, int hitState, HitParameter preParam, int intensity);
     VectorXd makeHitTrajetory(float t1, float t2, float t, int hitState, int wristIntesity, bool targetChangeFlag, bool wristDir);

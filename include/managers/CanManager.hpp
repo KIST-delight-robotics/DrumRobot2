@@ -59,7 +59,10 @@ public:
     bool isHitL = false;
     bool isPlay = false;
     bool isCST = false;
+    bool isCSTR = false;
+    bool isCSTL = false;
     float wristStayAngle;
+    float backTorque = -1;
 
     MatrixXd wristAnglesR;                               ///< 오른팔의 각 악기별 타격 시 손목 각도.
     MatrixXd wristAnglesL;                                ///< 왼팔의 각 악기별 타격 시 손목 각도.
@@ -112,7 +115,7 @@ public:
     bool safetyCheck_T(std::shared_ptr<GenericMotor> &motor);
     bool safetyCheck_M(std::shared_ptr<GenericMotor> &motor);
 
-    bool dct_fun(queue<double> positions, float hittinDrumAngle);
+    bool dct_fun(shared_ptr<MaxonMotor> maxonMotor);
 
     map<std::string, int> motorMapping = { ///< 각 관절에 해당하는 정보 [이름, CAN ID]
         {"waist", 0},

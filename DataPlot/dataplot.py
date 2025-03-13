@@ -113,6 +113,7 @@ def mode_2_plot(df):
         ax = axes[idx]
 
         plot_pos_by_can_id(receive_df, send_df, can_id, ax)
+        plot_current_by_can_id(receive_df, can_id, ax)
         
         ax.set_ylabel(f'CAN ID {can_id}\nPosition')
         ax.legend()
@@ -128,7 +129,7 @@ def mode_2_plot(df):
 
 
 def main():
-    file_path = '../DrumRobot_data/data1.txt'
+    file_path = '../DrumRobot_data/data17.txt'
     df = load_txt(file_path)
 
     print("Choose mode:")
@@ -184,47 +185,20 @@ def main():
             receive_df = can_id_df[can_id_df['타입'] == 'Receive']
             send_df = can_id_df[can_id_df['타입'] == 'Send']
             fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 10), sharex=True)
-            # 상단 subplot: Pos
+            
             plot_pos_by_can_id(receive_df, send_df, can_id, ax1)
             ax1.set_ylabel('Position 값')
             ax1.set_title(f'CAN ID {can_id} - Actual Pos & Desire Pos')
             ax1.legend()
             ax1.grid(True)
-            # 하단 subplot: Current + rolling trend line (이전 5개 점 사용)
+            
             plot_current_by_can_id(receive_df, can_id, ax2)
-            sorted_df = receive_df.sort_values(by='시간')
-            x = sorted_df['시간'].values
-            y = sorted_df['Current_or_Error'].values
-            window_size = 5
-            slopes = []
-            for i in range(window_size, len(x)):
-                window_x = x[i-window_size:i]
-                window_y = y[i-window_size:i]
-                coefficients = np.polyfit(window_x, window_y, 1)
-                m = coefficients[0]
-                slopes.append(m)
-                trend_poly = np.poly1d(coefficients)
-                x_fit = np.linspace(window_x.min(), window_x.max(), 10)
-                if i == window_size:
-                    ax2.plot(x_fit, trend_poly(x_fit), "k-", label="Trend (prev 5 points)", alpha=0.7)
-                else:
-                    ax2.plot(x_fit, trend_poly(x_fit), "k-", alpha=0.7)
-            # 피크 구간 표시 (직전 점이 40 초과 + 기울기 양수→음수 전환)
-            marked = False
-            for i in range(window_size+1, len(x)):
-                if slopes[i-1-window_size] > 0 and slopes[i-window_size] < 0 and y[i-1] > 40:
-                    region_start = (x[i-1] + x[i]) / 2
-                    region_end = (x[i] + x[i+1]) / 2 if i < len(x)-1 else x[i]
-                    if not marked:
-                        ax2.axvspan(region_start, region_end, color='orange', alpha=0.3, label="Peak Region")
-                        marked = True
-                    else:
-                        ax2.axvspan(region_start, region_end, color='orange', alpha=0.3)
             ax2.set_xlabel('시간')
             ax2.set_ylabel('Current 값')
             ax2.set_title(f'CAN ID {can_id} - Current')
             ax2.legend()
             ax2.grid(True)
+            
             plt.tight_layout(rect=[0, 0, 1, 0.96])
             plt.suptitle(f'CAN ID {can_id} - Combined Plot', fontsize=16)
             plt.show()

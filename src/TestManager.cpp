@@ -1735,12 +1735,12 @@ float TestManager::makeWristAngle_CST(float t1, float t2, float t, int state, in
     float t_lift = std::max(0.8 * (t2 - t1), t2 - t1 - 0.1);
     float t_stay;
     t2 - t1 < 0.15 ? t_stay = 0.45 * (t2 - t1) : t_stay = 0.47 * (t2 - t1) - 0.05;
-    float t_release = std::min(0.2 * (t2 - t1), 0.1);
+    static float t_release = std::min(0.2 * (t2 - t1), 0.1);
     float t_contact = t2 - t1;
     float t_hitting = 0.0;
     float wristLiftAngle;
     t2 - t1 < 0.5 ? wristLiftAngle = (-100 * ((t2 - t1) - 0.5) * ((t2 - t1) - 0.5) + 40) * M_PI / 180.0 : wristLiftAngle = 40  * M_PI / 180.0;
-    float wristStayAngle = 10.0 * M_PI / 180.0;
+    float wristStayAngle = 15.0 * M_PI / 180.0;
     float wristContactAngle = -1.0 * std::min((t2 - t1) * 5.0 * M_PI / 180.0 / 0.5, 5.0 * M_PI / 180.0);
 
     float intensityFactor = 0.4 * intensity + 0.2; // 1 : 약하게   2 : 기본    3 : 강하게
@@ -1760,7 +1760,7 @@ float TestManager::makeWristAngle_CST(float t1, float t2, float t, int state, in
             //t_hitting = t + 0.005;
             t_hitting = t;
             hittingTimeCheck = false;
-            canManager.isCST = false;
+            canManager.isCSTL = false;
         }
 
         if (state == 1)
@@ -1768,7 +1768,7 @@ float TestManager::makeWristAngle_CST(float t1, float t2, float t, int state, in
             // Contact - Stay
             A.resize(4, 4);
             b.resize(4, 1);
-            if (t <= t_press)
+            if (t <= t_release)
             {
                 if (t_hitting > t_press)
                 {
@@ -1841,7 +1841,7 @@ float TestManager::makeWristAngle_CST(float t1, float t2, float t, int state, in
             }
         }
     }
-    else
+    else if (!hitting && !canManager.isCSTL)
     {
         if (state == 0)
         {
@@ -1906,7 +1906,8 @@ float TestManager::makeWristAngle_CST(float t1, float t2, float t, int state, in
             }
             else if (t <= t_contact)
             {
-                canManager.isCST = true;
+                canManager.isHitL = true;
+                canManager.isCSTL = true;
             }
             
         }
@@ -1945,7 +1946,8 @@ float TestManager::makeWristAngle_CST(float t1, float t2, float t, int state, in
             }
             else if (t <= t_contact)
             {
-                canManager.isCST = true;
+                canManager.isHitL = true;
+                canManager.isCSTL = true;
             }
         }
     }
@@ -1975,6 +1977,7 @@ tuple <double, int, int> TestManager::CSTHitLoop()
         cout << "\nRepeat   : " << repeat;
         cout << "\nState    :" << state;
         cout << "\nIntensity    : " << intensity;
+        cout << "\nBack Torque   : " << canManager.backTorque;
         if (hitMode == 1)
         {
             cout << "\nHitting Mode   : Detect Hitting";
@@ -1989,7 +1992,7 @@ tuple <double, int, int> TestManager::CSTHitLoop()
         }
         cout << "\n-----------------------------------";
         cout << "\nSetting Parameters";
-        cout << "\n[t] : Time / [r] Repeat / [i] intensity / [m] Mode / [g] Run";
+        cout << "\n[t] : Time / [r] Repeat / [i] intensity / [m] Mode / [b] back torque / [g] Run";
         cout << "\n Enter Command   : ";
         cin >> userInput;
 
@@ -1997,6 +2000,14 @@ tuple <double, int, int> TestManager::CSTHitLoop()
         {
             cout << "\nEnter Hit Time     : ";
             cin >> t;
+        }
+        else if (userInput == "b")
+        {
+            float temp;
+            cout << "\nRange : 1 ~ 500";
+            cout << "\nEnter Back Torque     : ";
+            cin >> temp;
+            canManager.backTorque = temp * -1;
         }
         else if(userInput == "r")
         {
@@ -2015,10 +2026,6 @@ tuple <double, int, int> TestManager::CSTHitLoop()
         }
         else if(userInput == "g")
         {
-            if (hitMode == 3)
-            {
-                canManager.isCST = true;
-            }
             return make_tuple(t, repeat, intensity);
         }
     }
