@@ -89,8 +89,8 @@ void PathManager::getDrumPositoin()
 
     //              S                  FT                  MT                  HT                  HH                  R                   RC                 LC
     wristAnglesR << 25.0*M_PI/180.0,   25.0*M_PI/180.0,    15.0*M_PI/180.0,    15.0*M_PI/180.0,    10.0*M_PI/180.0,    15.0*M_PI/180.0,    0.0*M_PI/180.0,    10.0*M_PI/180.0, 0;
-    // wristAnglesL << 25.0*M_PI/180.0,   25.0*M_PI/180.0,    15.0*M_PI/180.0,    15.0*M_PI/180.0,    10.0*M_PI/180.0,    15.0*M_PI/180.0,    0.0*M_PI/180.0,    10.0*M_PI/180.0, 0;
-    wristAnglesL << 0, 0, 0, 0, 0, 0, 0, 0, 0;
+    wristAnglesL << 25.0*M_PI/180.0,   25.0*M_PI/180.0,    15.0*M_PI/180.0,    15.0*M_PI/180.0,    10.0*M_PI/180.0,    15.0*M_PI/180.0,    0.0*M_PI/180.0,    10.0*M_PI/180.0, 0;
+    // wristAnglesL << 0, 0, 0, 0, 0, 0, 0, 0, 0;
 
     canManager.wristAnglesR.resize(1, 9);
     canManager.wristAnglesL.resize(1, 9);
@@ -214,11 +214,11 @@ void PathManager::generateTrajectory()
     int C = predictCollision(measureMatrix);
     std::chrono::duration<double>sec = std::chrono::system_clock::now() - start;
 
-    std::string fileName = "CollisionDetection";
-    fun.appendToCSV_DATA(fileName, C, sec.count()*1000000, 0);  // 충돌 OX, 탐색시간(us)
+    // std::string fileName = "CollisionDetection";
+    // fun.appendToCSV_DATA(fileName, C, sec.count()*1000000, 0);  // 충돌 OX, 탐색시간(us)
 
     // position
-    VectorXd initialPosition(6), finalPosition(6);
+    pair<VectorXd, VectorXd> initialPosition, finalPosition;
     VectorXd initialPositionR(3);
     VectorXd initialPositionL(3);
     VectorXd finalPositionR(3);
@@ -247,17 +247,13 @@ void PathManager::generateTrajectory()
     initialPosition = getTargetPosition(initialInstrument);
     finalPosition = getTargetPosition(finalInstrument);
 
-    initialPositionR << initialPosition(0), initialPosition(1), initialPosition(2);
-    initialPositionL << initialPosition(3), initialPosition(4), initialPosition(5);
-    finalPositionR << finalPosition(0), finalPosition(1), finalPosition(2);
-    finalPositionL << finalPosition(3), finalPosition(4), finalPosition(5);
+    initialPositionR << initialPosition.first(0), initialPosition.first(1), initialPosition.first(2);
+    initialPositionL << initialPosition.first(3), initialPosition.first(4), initialPosition.first(5);
+    finalPositionR << finalPosition.first(0), finalPosition.first(1), finalPosition.first(2);
+    finalPositionL << finalPosition.first(3), finalPosition.first(4), finalPosition.first(5);
 
-    // std::cout << "\nR : Pi_R -> Pf_R\n(" << Pi_R.transpose() << ") -> (" << Pf_R.transpose() << ")";
-    // std::cout << "\nL : Pi_L -> Pf_L\n(" << Pi_L.transpose() << ") -> (" << Pf_L.transpose() << ")" << std::endl;
-
-    // 타격 시 손목 각도
-    initialWristAngle = getWristHitAngle(initialInstrument);
-    finalWristAngle = getWristHitAngle(finalInstrument);
+    initialWristAngle = initialPosition.second;
+    finalWristAngle = finalPosition.second;
 
     for (int i = 0; i < n; i++)
     {
@@ -277,11 +273,13 @@ void PathManager::generateTrajectory()
 
         trajectoryQueue.push(Pt);
 
-        // std::string fileName;
-        // fileName = "Trajectory_R";
-        // fun.appendToCSV_DATA(fileName, Pt.endEffectorR[0], Pt.endEffectorR[1], Pt.endEffectorR[2]);
-        // fileName = "Trajectory_L";
-        // fun.appendToCSV_DATA(fileName, Pt.endEffectorL[0], Pt.endEffectorL[1], Pt.endEffectorL[2]);
+        std::string fileName;
+        fileName = "Trajectory_R";
+        fun.appendToCSV_DATA(fileName, Pt.endEffectorR[0], Pt.endEffectorR[1], Pt.endEffectorR[2]);
+        fileName = "Trajectory_L";
+        fun.appendToCSV_DATA(fileName, Pt.endEffectorL[0], Pt.endEffectorL[1], Pt.endEffectorL[2]);
+        fileName = "Wrist";
+        fun.appendToCSV_DATA(fileName, Pt.wristAngleR, Pt.wristAngleL, 0.0);
 
         if (i == 0)
         {
@@ -687,7 +685,7 @@ VectorXd PathManager::makeState(MatrixXd measureMatrix)
 /*                            Make Trajectory                                 */
 ////////////////////////////////////////////////////////////////////////////////
 
-VectorXd PathManager::getTargetPosition(VectorXd &inst)
+pair<VectorXd, VectorXd> PathManager::getTargetPosition(VectorXd inst)
 {
     VectorXd instrumentR = inst.segment(0, 9);
     VectorXd instrumentL = inst.segment(9, 9);
@@ -703,14 +701,17 @@ VectorXd PathManager::getTargetPosition(VectorXd &inst)
     }
 
     VectorXd instrumentVector(18);
-    instrumentVector << instrumentR,
-        instrumentL;
+    instrumentVector << instrumentR, instrumentL;
 
     MatrixXd combined(6, 18);
     combined << drumCoordinateR, MatrixXd::Zero(3, 9), MatrixXd::Zero(3, 9), drumCoordinateL;
     MatrixXd p = combined * instrumentVector;
+    
+    combined.resize(2, 18);
+    combined << wristAnglesR, MatrixXd::Zero(1, 9), MatrixXd::Zero(1, 9), wristAnglesL;
+    MatrixXd angle = combined * instrumentVector;
 
-    return p;
+    return std::make_pair(p, angle);
 }
 
 float PathManager::timeScaling(float ti, float tf, float t)

@@ -197,7 +197,7 @@ private:
     // [n min max state_hit_R state_hit_L]
     MatrixXd lineData;
 
-    VectorXd getTargetPosition(VectorXd &inst_vector);
+    pair<VectorXd, VectorXd> getTargetPosition(VectorXd inst_vector);
     float timeScaling(float ti, float tf, float t);
     VectorXd makePath(VectorXd Pi, VectorXd Pf, float s);
     void saveLineData(int n, VectorXd minmax, VectorXd intesity, VectorXd finalWristAngle);
