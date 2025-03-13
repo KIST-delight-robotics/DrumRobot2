@@ -510,7 +510,7 @@ void TestManager::SendTestProcess(int periodMicroSec)
         case TestSub::SetCANFrame:
         {
             bool isSafe;
-            isSafe = canManager.setCANFrame();
+            isSafe = canManager.setCANFrame_TEST();
             if (!isSafe)
             {
                 state.main = Main::Error;
