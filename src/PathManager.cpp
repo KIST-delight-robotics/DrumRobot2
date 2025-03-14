@@ -2627,7 +2627,7 @@ float PathManager::makeWristAngle_TEST_L_CST(float t1, float t2, float t, int st
                 wrist_q = sol(0, 0) + sol(1, 0) * t + sol(2, 0) * t * t;
                 
             }
-            else if (t <= t_release)
+            else if (t <= t_release) // 여기가 이상한가
             {
                 A.resize(4, 4);
                 b.resize(4, 1);
