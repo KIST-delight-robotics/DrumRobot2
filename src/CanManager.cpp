@@ -6,7 +6,7 @@ CanManager::CanManager(std::map<std::string, std::shared_ptr<GenericMotor>> &mot
     : motors(motorsRef), fun(funRef)
 {
 }
-
+//hi i am taehwang
 CanManager::~CanManager()
 {
     // 모든 소켓 닫기
