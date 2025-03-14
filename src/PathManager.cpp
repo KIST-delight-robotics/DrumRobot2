@@ -1757,7 +1757,7 @@ float PathManager::makeWristAngle_TEST_R_CST(float t1, float t2, float t, int st
     float t_contact = t2 - t1;
     float intensityFactor = 0.4 * intensity + 0.2; // 1 : 약하게   2 : 기본    3 : 강하게
     float wristLiftAngle = param.wristLiftAngle * intensityFactor + (param.wristLiftAngle * 0.2  * targetChangeFlag);
-    float wrist_threshold = 0.05;
+    float wrist_threshold = t_press;
 
     static bool hittingTimeCheck = true;
 
@@ -1783,11 +1783,22 @@ float PathManager::makeWristAngle_TEST_R_CST(float t1, float t2, float t, int st
             {
                 if (t_hitting > t_press)
                 {
-                    A << 1, 0, 0, 0,
-                    1, t_press, t_press * t_press, t_press * t_press * t_press,
-                    0, 1, 0, 0,
-                    0, 1, 2 * t_press, 3 * t_press * t_press;
-                    b << hittingPos, param.wristStayAngle, 0, 0;
+                    if (t <= t_press)
+                    {
+                        A << 1, 0, 0, 0,
+                        1, t_press, t_press * t_press, t_press * t_press * t_press,
+                        0, 1, 0, 0,
+                        0, 1, 2 * t_press, 3 * t_press * t_press;
+                        b << hittingPos, param.wristStayAngle, 0, 0;
+
+                        A_1 = A.inverse();
+                        sol = A_1 * b;
+                        wrist_q = sol(0, 0) + sol(1, 0) * t + sol(2, 0) * t * t + sol(3, 0) * t * t * t;
+                    }
+                    else
+                    {
+                        wrist_q = param.wristStayAngle;
+                    }
                 }
                 else
                 {
@@ -1797,10 +1808,11 @@ float PathManager::makeWristAngle_TEST_R_CST(float t1, float t2, float t, int st
                     0, 1, 2 * t_hitting, 3 * t_hitting * t_hitting,
                     0, 1, 2 * t_release, 3 * t_release * t_release;
                     b << hittingPos, param.wristStayAngle, 0, 0;
+
+                    A_1 = A.inverse();
+                    sol = A_1 * b;
+                    wrist_q = sol(0, 0) + sol(1, 0) * t + sol(2, 0) * t * t + sol(3, 0) * t * t * t;
                 }
-                A_1 = A.inverse();
-                sol = A_1 * b;
-                wrist_q = sol(0, 0) + sol(1, 0) * t + sol(2, 0) * t * t + sol(3, 0) * t * t * t;
             }
             else
             {
@@ -2510,11 +2522,22 @@ float PathManager::makeWristAngle_TEST_L_CST(float t1, float t2, float t, int st
             {
                 if (t_hitting > t_press)
                 {
-                    A << 1, 0, 0, 0,
-                    1, t_press, t_press * t_press, t_press * t_press * t_press,
-                    0, 1, 0, 0,
-                    0, 1, 2 * t_press, 3 * t_press * t_press;
-                    b << hittingPos, param.wristStayAngle, 0, 0;
+                    if (t <= t_press)
+                    {
+                        A << 1, 0, 0, 0,
+                        1, t_press, t_press * t_press, t_press * t_press * t_press,
+                        0, 1, 0, 0,
+                        0, 1, 2 * t_press, 3 * t_press * t_press;
+                        b << hittingPos, param.wristStayAngle, 0, 0;
+
+                        A_1 = A.inverse();
+                        sol = A_1 * b;
+                        wrist_q = sol(0, 0) + sol(1, 0) * t + sol(2, 0) * t * t + sol(3, 0) * t * t * t;
+                    }
+                    else
+                    {
+                        wrist_q = param.wristStayAngle;
+                    }
                 }
                 else
                 {
@@ -2524,10 +2547,11 @@ float PathManager::makeWristAngle_TEST_L_CST(float t1, float t2, float t, int st
                     0, 1, 2 * t_hitting, 3 * t_hitting * t_hitting,
                     0, 1, 2 * t_release, 3 * t_release * t_release;
                     b << hittingPos, param.wristStayAngle, 0, 0;
+
+                    A_1 = A.inverse();
+                    sol = A_1 * b;
+                    wrist_q = sol(0, 0) + sol(1, 0) * t + sol(2, 0) * t * t + sol(3, 0) * t * t * t;
                 }
-                A_1 = A.inverse();
-                sol = A_1 * b;
-                wrist_q = sol(0, 0) + sol(1, 0) * t + sol(2, 0) * t * t + sol(3, 0) * t * t * t;
             }
             else
             {
