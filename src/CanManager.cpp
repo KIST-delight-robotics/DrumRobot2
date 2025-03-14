@@ -820,10 +820,6 @@ bool CanManager::setCANFrame()
 {
     static bool CSTModeR = false;
     static bool CSTModeL = false;
-    static bool drumReachedR = false;
-    static bool drumReachedL = false;
-    float actualStayAngleR;
-    float actualStayAngleL;
 
     vector<float> Pos(9);
     for (auto &motor_pair : motors)
@@ -834,7 +830,7 @@ bool CanManager::setCANFrame()
 
             MaxonData mData = maxonMotor->commandBuffer.front();
             float desiredPosition = maxonMotor->jointAngleToMotorPosition(mData.position);
-            float desiredTorque = -500;
+            float desiredTorque = -400;
             
             maxonMotor->commandBuffer.pop();
 

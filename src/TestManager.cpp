@@ -1522,7 +1522,7 @@ float TestManager::makeWristAngle(float t1, float t2, float t, int state, int in
                 {
                     A << 1, 0, 0, 0,
                     1, t_press, t_press * t_press, t_press * t_press * t_press,
-                    0, 0, 0, 0,
+                    0, 1, 0, 0,
                     0, 1, 2 * t_press, 3 * t_press * t_press;
                     b << hittingPos, wristStayAngle, 0, 0;
                 }
@@ -1561,7 +1561,7 @@ float TestManager::makeWristAngle(float t1, float t2, float t, int state, int in
                 {
                     A << 1, 0, 0, 0,
                     1, t_stay, t_stay * t_stay, t_stay * t_stay * t_stay,
-                    0, 0, 0, 0,
+                    0, 1, 0, 0,
                     0, 1, 2 * t_stay, 3 * t_stay * t_stay;
                     b << hittingPos, wristLiftAngle, 0, 0;
                 }
@@ -1774,7 +1774,7 @@ float TestManager::makeWristAngle_CST(float t1, float t2, float t, int state, in
                 {
                     A << 1, 0, 0, 0,
                     1, t_press, t_press * t_press, t_press * t_press * t_press,
-                    0, 0, 0, 0,
+                    0, 1, 0, 0,
                     0, 1, 2 * t_press, 3 * t_press * t_press;
                     b << hittingPos, wristStayAngle, 0, 0;
                 }
@@ -1813,7 +1813,7 @@ float TestManager::makeWristAngle_CST(float t1, float t2, float t, int state, in
                 {
                     A << 1, 0, 0, 0,
                     1, t_stay, t_stay * t_stay, t_stay * t_stay * t_stay,
-                    0, 0, 0, 0,
+                    0, 1, 0, 0,
                     0, 1, 2 * t_stay, 3 * t_stay * t_stay;
                     b << hittingPos, wristLiftAngle, 0, 0;
                 }

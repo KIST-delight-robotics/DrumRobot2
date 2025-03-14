@@ -113,7 +113,7 @@ def mode_2_plot(df):
         ax = axes[idx]
 
         plot_pos_by_can_id(receive_df, send_df, can_id, ax)
-        plot_current_by_can_id(receive_df, can_id, ax)
+        # plot_current_by_can_id(receive_df, can_id, ax)
         
         ax.set_ylabel(f'CAN ID {can_id}\nPosition')
         ax.legend()

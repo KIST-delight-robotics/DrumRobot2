@@ -1300,7 +1300,7 @@ float PathManager::makeWristAngle_TEST_R(float t1, float t2, float t, int state,
                 {
                     A << 1, 0, 0, 0,
                     1, t_release, t_release * t_release, t_release * t_release * t_release,
-                    0, 0, 0, 0,
+                    0, 1, 0, 0,
                     0, 1, 2 * t_release, 3 * t_release * t_release;
                     b << hittingPos, param.wristStayAngle, 0, 0;
                 }
@@ -1338,7 +1338,7 @@ float PathManager::makeWristAngle_TEST_R(float t1, float t2, float t, int state,
                 {
                     A << 1, 0, 0, 0,
                     1, t_stay, t_stay * t_stay, t_stay * t_stay * t_stay,
-                    0, 0, 0, 0,
+                    0, 1, 0, 0,
                     0, 1, 2 * t_stay, 3 * t_stay * t_stay;
                     b << hittingPos, wristLiftAngle, 0, 0;
                 }
@@ -1541,7 +1541,7 @@ float PathManager::makeWristAngle_TEST_R_Fast(float t1, float t2, float t, int s
                 {
                     A << 1, 0, 0, 0,
                     1, t_press, t_press * t_press, t_press * t_press * t_press,
-                    0, 0, 0, 0,
+                    0, 1, 0, 0,
                     0, 1, 2 * t_press, 3 * t_press * t_press;
                     b << hittingPos, param.wristStayAngle, 0, 0;
                 }
@@ -1580,7 +1580,7 @@ float PathManager::makeWristAngle_TEST_R_Fast(float t1, float t2, float t, int s
                 {
                     A << 1, 0, 0, 0,
                     1, t_stay, t_stay * t_stay, t_stay * t_stay * t_stay,
-                    0, 0, 0, 0,
+                    0, 1, 0, 0,
                     0, 1, 2 * t_stay, 3 * t_stay * t_stay;
                     b << hittingPos, wristLiftAngle, 0, 0;
                 }
@@ -1753,10 +1753,11 @@ float PathManager::makeWristAngle_TEST_R_CST(float t1, float t2, float t, int st
     float t_press = param.wristContactTime * releaseTimeVal;
     float t_lift = param.wristLiftTime;
     float t_stay = param.wristStayTime;
-    float t_release = param.wristReleaseTime;
+    static float t_release = param.wristReleaseTime;
     float t_contact = t2 - t1;
     float intensityFactor = 0.4 * intensity + 0.2; // 1 : 약하게   2 : 기본    3 : 강하게
     float wristLiftAngle = param.wristLiftAngle * intensityFactor + (param.wristLiftAngle * 0.2  * targetChangeFlag);
+    float wrist_threshold = 0.05;
 
     static bool hittingTimeCheck = true;
 
@@ -1784,7 +1785,7 @@ float PathManager::makeWristAngle_TEST_R_CST(float t1, float t2, float t, int st
                 {
                     A << 1, 0, 0, 0,
                     1, t_press, t_press * t_press, t_press * t_press * t_press,
-                    0, 0, 0, 0,
+                    0, 1, 0, 0,
                     0, 1, 2 * t_press, 3 * t_press * t_press;
                     b << hittingPos, param.wristStayAngle, 0, 0;
                 }
@@ -1810,7 +1811,31 @@ float PathManager::makeWristAngle_TEST_R_CST(float t1, float t2, float t, int st
         }
         else if (state == 2)
         {
-            wrist_q = hittingPos;
+            float t_fast = t_hitting + wrist_threshold;
+            if (t_contact - t_hitting <= wrist_threshold)
+            {
+                A.resize(3, 3);
+                b.resize(3, 1);
+                A << 1, t_hitting, t_hitting * t_hitting,
+                    1, t_contact, t_contact * t_contact,
+                    0, 1, 2 * t_contact;
+                b << hittingPos, param.wristStayAngle, 0;
+                A_1 = A.inverse();
+                sol = A_1 * b;
+                wrist_q = sol(0, 0) + sol(1, 0) * t + sol(2, 0) * t * t;
+            }
+            else if (t_contact - t_hitting > wrist_threshold)
+            {
+                A.resize(3, 3);
+                b.resize(3, 1);
+                A << 1, t_hitting, t_hitting * t_hitting,
+                    1, t_fast, t_fast * t_fast,
+                    0, 1, 2 * t_fast;
+                b << hittingPos, param.wristStayAngle, 0;
+                A_1 = A.inverse();
+                sol = A_1 * b;
+                wrist_q = sol(0, 0) + sol(1, 0) * t + sol(2, 0) * t * t;
+            }
         }
         else if (state == 3)
         {
@@ -1823,7 +1848,7 @@ float PathManager::makeWristAngle_TEST_R_CST(float t1, float t2, float t, int st
                 {
                     A << 1, 0, 0, 0,
                     1, t_stay, t_stay * t_stay, t_stay * t_stay * t_stay,
-                    0, 0, 0, 0,
+                    0, 1, 0, 0,
                     0, 1, 2 * t_stay, 3 * t_stay * t_stay;
                     b << hittingPos, wristLiftAngle, 0, 0;
                 }
@@ -2002,7 +2027,7 @@ float PathManager::makeWristAngle_TEST_L(float t1, float t2, float t, int state,
                 {
                     A << 1, 0, 0, 0,
                     1, t_release, t_release * t_release, t_release * t_release * t_release,
-                    0, 0, 0, 0,
+                    0, 1, 0, 0,
                     0, 1, 2 * t_release, 3 * t_release * t_release;
                     b << hittingPos, param.wristStayAngle, 0, 0;
                 }
@@ -2040,7 +2065,7 @@ float PathManager::makeWristAngle_TEST_L(float t1, float t2, float t, int state,
                 {
                     A << 1, 0, 0, 0,
                     1, t_stay, t_stay * t_stay, t_stay * t_stay * t_stay,
-                    0, 0, 0, 0,
+                    0, 1, 0, 0,
                     0, 1, 2 * t_stay, 3 * t_stay * t_stay;
                     b << hittingPos, wristLiftAngle, 0, 0;
                 }
@@ -2243,7 +2268,7 @@ float PathManager::makeWristAngle_TEST_L_Fast(float t1, float t2, float t, int s
                 {
                     A << 1, 0, 0, 0,
                     1, t_press, t_press * t_press, t_press * t_press * t_press,
-                    0, 0, 0, 0,
+                    0, 1, 0, 0,
                     0, 1, 2 * t_press, 3 * t_press * t_press;
                     b << hittingPos, param.wristStayAngle, 0, 0;
                 }
@@ -2282,7 +2307,7 @@ float PathManager::makeWristAngle_TEST_L_Fast(float t1, float t2, float t, int s
                 {
                     A << 1, 0, 0, 0,
                     1, t_stay, t_stay * t_stay, t_stay * t_stay * t_stay,
-                    0, 0, 0, 0,
+                    0, 1, 0, 0,
                     0, 1, 2 * t_stay, 3 * t_stay * t_stay;
                     b << hittingPos, wristLiftAngle, 0, 0;
                 }
@@ -2487,7 +2512,7 @@ float PathManager::makeWristAngle_TEST_L_CST(float t1, float t2, float t, int st
                 {
                     A << 1, 0, 0, 0,
                     1, t_press, t_press * t_press, t_press * t_press * t_press,
-                    0, 0, 0, 0,
+                    0, 1, 0, 0,
                     0, 1, 2 * t_press, 3 * t_press * t_press;
                     b << hittingPos, param.wristStayAngle, 0, 0;
                 }
@@ -2526,7 +2551,7 @@ float PathManager::makeWristAngle_TEST_L_CST(float t1, float t2, float t, int st
                 {
                     A << 1, 0, 0, 0,
                     1, t_stay, t_stay * t_stay, t_stay * t_stay * t_stay,
-                    0, 0, 0, 0,
+                    0, 1, 0, 0,
                     0, 1, 2 * t_stay, 3 * t_stay * t_stay;
                     b << hittingPos, wristLiftAngle, 0, 0;
                 }
