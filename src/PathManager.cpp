@@ -400,8 +400,8 @@ void PathManager::getArr(vector<float> &arr)
     VectorXd Vmax = VectorXd::Zero(10);
 
     float dt = canManager.DTSECOND; // 0.005
-    float t = 2.0;                // 3초동안 실행
-    float extraTime = 1.0;       // 추가 시간 1초
+    float t = 2.0;                // 2초동안 실행
+    float extraTime = 1.0;       // 이전 시간 1초
     int n = (int)(t / dt);
     int extraN = (int)(extraTime / dt);
 
@@ -423,29 +423,55 @@ void PathManager::getArr(vector<float> &arr)
 
     for (int k = 1; k <= n + extraN; ++k)
     {
-        // Make Array
-        Qt = makeProfile(Q1, Q2, Vmax, accMax, t * k / n, t);
-
-        // Send to Buffer
-        for (auto &entry : motors)
+        if (k > extraN)
         {
-            if (std::shared_ptr<TMotor> tMotor = std::dynamic_pointer_cast<TMotor>(entry.second))
+            // 이동
+            int index = k - extraN;
+
+            // Make Array
+            Qt = makeProfile(Q1, Q2, Vmax, accMax, t * index / n, t);
+
+            // Send to Buffer
+            for (auto &entry : motors)
             {
-                TMotorData newData;
-                newData.position = Qt[motorMapping[entry.first]];
-                newData.spd = 0;
-                newData.acl = 0;
-                newData.isBrake = false;
-                tMotor->commandBuffer.push(newData);
-            }
-            else if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(entry.second))
-            {
-                MaxonData newData;
-                newData.position = Qt[motorMapping[entry.first]];
-                newData.WristState = 0.5;
-                maxonMotor->commandBuffer.push(newData);
+                if (std::shared_ptr<TMotor> tMotor = std::dynamic_pointer_cast<TMotor>(entry.second))
+                {
+                    TMotorData newData;
+                    newData.position = Qt[motorMapping[entry.first]];
+                    tMotor->commandBuffer.push(newData);
+                    std:cout << newData.position << "\n";
+                }
+                else if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(entry.second))
+                {
+                    MaxonData newData;
+                    newData.position = Qt[motorMapping[entry.first]];
+                    maxonMotor->commandBuffer.push(newData);
+                }
             }
         }
+        else
+        {
+            // 현재 위치 유지
+            // Send to Buffer
+            for (auto &entry : motors)
+            {
+                if (std::shared_ptr<TMotor> tMotor = std::dynamic_pointer_cast<TMotor>(entry.second))
+                {
+                    TMotorData newData;
+                    newData.position = Q1[motorMapping[entry.first]];
+                    tMotor->commandBuffer.push(newData);
+                    std:cout << newData.position << "\n";
+                }
+                else if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(entry.second))
+                {
+                    MaxonData newData;
+                    newData.position = Q1[motorMapping[entry.first]];
+                    maxonMotor->commandBuffer.push(newData);
+                }
+            }
+        }
+
+        usleep(1000);
     }
 }
 
@@ -3066,15 +3092,12 @@ void PathManager::pushConmmandBuffer(VectorXd &Qi)
         {
             TMotorData newData;
             newData.position = Qi[motorMapping[entry.first]];
-            newData.spd = 0;
-            newData.acl = 0;
             tMotor->commandBuffer.push(newData);
         }
         else if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(entry.second))
         {
             MaxonData newData;
             newData.position = Qi[motorMapping[entry.first]];
-            newData.WristState = 0; // 토크 제어 시 WristState 사용
             maxonMotor->commandBuffer.push(newData);
         }
     }

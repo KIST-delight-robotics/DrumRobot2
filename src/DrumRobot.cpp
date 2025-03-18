@@ -21,7 +21,6 @@ DrumRobot::DrumRobot(State &stateRef,
 {
     ReadStandard = chrono::system_clock::now();
     SendStandard = chrono::system_clock::now();
-    // SendMaxon = chrono::system_clock::now();
     addStandard = chrono::system_clock::now();
 
     sendLoopPeriod = std::chrono::steady_clock::now();
@@ -38,80 +37,36 @@ void DrumRobot::stateMachine()
 {
     while (state.main != Main::Shutdown)
     {
-        stateMachinePeriod = std::chrono::steady_clock::now();
-        stateMachinePeriod += std::chrono::microseconds(5000);    // 주기 : 5ms
-
         switch (state.main.load())
         {
-        case Main::SystemInit:
-        {
-            initializeMotors(); //팔 T모터
-            initializecanManager();
-            motorSettingCmd(); //손목
-            canManager.setSocketNonBlock();
-            usbio.initUSBIO4761();
-            fun.openCSVFile();
-
-            std::cout << "System Initialize Complete [ Press Enter ]\n";
-            getchar();
-            state.main = Main::Ideal;
-            break;
-        }
-        case Main::Ideal:
-        {
-            clearBufferforRecord();
-            idealStateRoutine();
-            break;
-        }
-        case Main::Play:
-        {
-            checkUserInput();
-            break;
-        }
-        case Main::Test:
-        {
-            bool isWriteError = false;
-            if (state.test == TestSub::SelectParamByUser || state.test == TestSub::SetQValue || state.test == TestSub::SetXYZ || (state.test == TestSub::TestMaxon && !testManager.hitTest))
+            case Main::Ideal:
             {
-                if (!canManager.checkAllMotors_Fixed()) // stateMachine() 주기가 5ms 라서 delay 필요 없음
-                {
-                    isWriteError = true;
-                }
+                clearBufferforRecord();
+                idealStateRoutine();
+                break;
             }
-            else
+            case Main::AddStance:
             {
-                checkUserInput();
+                sendAddStanceProcess();
+                break;
             }
-
-            if (isWriteError)
+            case Main::Play:
             {
-                state.main = Main::Error;
+                break;
             }
-            //checkUserInput();
-            break;
+            case Main::Error:
+            {
+                state.main = Main::Shutdown;
+                break;
+            }
+            case Main::Shutdown:
+            {
+                break;
+            }
         }
-        case Main::Pause:
-        {
-            checkUserInput();
-            break;
-        }
-        case Main::AddStance:
-        {
-            checkUserInput();
-            break;
-        }
-        case Main::Error:
-        {
-            state.main = Main::Shutdown;
-            break;
-        }
-        case Main::Shutdown:
-            break;
-        }
-        
-        std::this_thread::sleep_until(stateMachinePeriod);
     }
 
+    // Exit
     if (usbio.useUSBIO)
     {
         usbio.exitUSBIO4761();
@@ -139,7 +94,7 @@ void DrumRobot::recvLoopForThread()
         recvLoopPeriod = std::chrono::steady_clock::now();
         recvLoopPeriod += std::chrono::microseconds(100);  // 주기 : 100us
 
-        readProcess(5000);
+        // readProcess(5000);
 
         std::this_thread::sleep_until(recvLoopPeriod);
     }
@@ -161,7 +116,7 @@ void DrumRobot::recvLoopForThread()
 //         case Main::SystemInit:
 //         {
 //             initializeMotors(); //팔 T모터
-//             initializecanManager();
+//             initializeCanManager();
 //             motorSettingCmd(); //손목
 //             canManager.setSocketNonBlock();
 //             usbio.initUSBIO4761();
@@ -1084,237 +1039,6 @@ void DrumRobot::recvLoopForThread()
 //     return 0;
 // }
 
-// ////////////////////////////////////////////////////////////////////////////////
-// /*                                 SYSTEM                                     */
-// ////////////////////////////////////////////////////////////////////////////////
-
-// void DrumRobot::initializeMotors()
-// {
-//     motors["waist"] = make_shared<TMotor>(0x00, "AK10_9");
-//     motors["R_arm1"] = make_shared<TMotor>(0x01, "AK70_10");
-//     motors["L_arm1"] = make_shared<TMotor>(0x02, "AK70_10");
-//     motors["R_arm2"] = make_shared<TMotor>(0x03, "AK70_10");
-//     motors["R_arm3"] = make_shared<TMotor>(0x04, "AK70_10");
-//     motors["L_arm2"] = make_shared<TMotor>(0x05, "AK70_10");
-//     motors["L_arm3"] = make_shared<TMotor>(0x06, "AK70_10");
-//     motors["R_wrist"] = make_shared<MaxonMotor>(0x07);
-//     motors["L_wrist"] = make_shared<MaxonMotor>(0x08); 
-//     motors["maxonForTest"] = make_shared<MaxonMotor>(0x09);
-//     motors["R_foot"] = make_shared<MaxonMotor>(0x0A);
-//     motors["L_foot"] = make_shared<MaxonMotor>(0x0B);
-    
-//     for (auto &motor_pair : motors)
-//     {
-//         auto &motor = motor_pair.second;
-//         int can_id = motorMapping[motor_pair.first];
-
-//         // 타입에 따라 적절한 캐스팅과 초기화 수행
-//         if (std::shared_ptr<TMotor> tMotor = std::dynamic_pointer_cast<TMotor>(motor))
-//         {
-//             // 각 모터 이름에 따른 멤버 변수 설정
-//             if (motor_pair.first == "waist")
-//             {
-//                 tMotor->cwDir = 1.0f;
-//                 tMotor->rMin = jointRangeMin[can_id] * M_PI / 180.0f; // -90deg
-//                 tMotor->rMax = jointRangeMax[can_id] * M_PI / 180.0f;  // 90deg
-//                 tMotor->myName = "waist";
-//                 tMotor->initialJointAngle = initialJointAngles[can_id] * M_PI / 180.0f;
-//                 tMotor->currentLimit = 29.8;  // [A]    // ak10-9
-//                 tMotor->useFourBarLinkage = false;
-//             }
-//             else if (motor_pair.first == "R_arm1")
-//             {
-//                 tMotor->cwDir = -1.0f;
-//                 tMotor->rMin = jointRangeMin[can_id] * M_PI / 180.0f;   // 0deg
-//                 tMotor->rMax = jointRangeMax[can_id] * M_PI / 180.0f; // 150deg
-//                 tMotor->myName = "R_arm1";
-//                 tMotor->initialJointAngle = initialJointAngles[can_id] * M_PI / 180.0f;
-//                 tMotor->currentLimit = 23.2;  // [A]    // ak70-10
-//                 tMotor->useFourBarLinkage = false;
-//             }
-//             else if (motor_pair.first == "L_arm1")
-//             {
-//                 tMotor->cwDir = -1.0f;
-//                 tMotor->rMin = jointRangeMin[can_id] * M_PI / 180.0f;  // 30deg
-//                 tMotor->rMax = jointRangeMax[can_id] * M_PI / 180.0f; // 180deg
-//                 tMotor->myName = "L_arm1";
-//                 tMotor->initialJointAngle = initialJointAngles[can_id] * M_PI / 180.0f;
-//                 tMotor->currentLimit = 23.2;  // [A]    // ak70-10
-//                 tMotor->useFourBarLinkage = false;
-//             }
-//             else if (motor_pair.first == "R_arm2")
-//             {
-//                 tMotor->cwDir = 1.0f;
-//                 tMotor->rMin = jointRangeMin[can_id] * M_PI / 180.0f; // -60deg
-//                 tMotor->rMax = jointRangeMax[can_id] * M_PI / 180.0f;  // 90deg
-//                 tMotor->myName = "R_arm2";
-//                 tMotor->initialJointAngle = initialJointAngles[can_id] * M_PI / 180.0f;
-//                 tMotor->currentLimit = 23.2;  // [A]    // ak70-10
-//                 tMotor->useFourBarLinkage = false;
-//             }
-//             else if (motor_pair.first == "R_arm3")
-//             {
-//                 tMotor->cwDir = -1.0f;
-//                 tMotor->rMin = jointRangeMin[can_id] * M_PI / 180.0f; // -30deg
-//                 tMotor->rMax = jointRangeMax[can_id] * M_PI / 180.0f; // 130deg
-//                 tMotor->myName = "R_arm3";
-//                 tMotor->initialJointAngle = initialJointAngles[can_id] * M_PI / 180.0f;
-//                 tMotor->currentLimit = 23.2;  // [A]    // ak70-10
-//                 tMotor->useFourBarLinkage = true;
-//                 tMotor->setInitialMotorAngle(tMotor->initialJointAngle);
-//             }
-//             else if (motor_pair.first == "L_arm2")
-//             {
-//                 tMotor->cwDir = -1.0f;
-//                 tMotor->rMin = jointRangeMin[can_id] * M_PI / 180.0f; // -60deg
-//                 tMotor->rMax = jointRangeMax[can_id] * M_PI / 180.0f;  // 90deg
-//                 tMotor->myName = "L_arm2";
-//                 tMotor->initialJointAngle = initialJointAngles[can_id] * M_PI / 180.0f;
-//                 tMotor->currentLimit = 23.2;  // [A]    // ak70-10
-//                 tMotor->useFourBarLinkage = false;
-//             }
-//             else if (motor_pair.first == "L_arm3")
-//             {
-//                 tMotor->cwDir = 1.0f;
-//                 tMotor->rMin = jointRangeMin[can_id] * M_PI / 180.0f; // -30 deg
-//                 tMotor->rMax = jointRangeMax[can_id] * M_PI / 180.0f; // 130 deg
-//                 tMotor->myName = "L_arm3";
-//                 tMotor->initialJointAngle = initialJointAngles[can_id] * M_PI / 180.0f;
-//                 tMotor->currentLimit = 23.2;  // [A]    // ak70-10
-//                 tMotor->useFourBarLinkage = true;
-//                 tMotor->setInitialMotorAngle(tMotor->initialJointAngle);
-//             }
-//         }
-//         else if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motor))
-//         {
-//             // 각 모터 이름에 따른 멤버 변수 설정
-//             if (motor_pair.first == "R_wrist")
-//             {
-//                 maxonMotor->cwDir = 1.0f;
-//                 maxonMotor->rMin = jointRangeMin[can_id] * M_PI / 180.0f; // -108deg
-//                 maxonMotor->rMax = jointRangeMax[can_id] * M_PI / 180.0f;  // 135deg
-//                 maxonMotor->txPdoIds[0] = 0x207; // Controlword
-//                 maxonMotor->txPdoIds[1] = 0x307; // TargetPosition
-//                 maxonMotor->txPdoIds[2] = 0x407; // TargetVelocity
-//                 maxonMotor->txPdoIds[3] = 0x507; // TargetTorque
-//                 maxonMotor->rxPdoIds[0] = 0x187; // Statusword, ActualPosition, ActualTorque
-//                 maxonMotor->rxPdoIds[1] = 0x287; // ActualPosition, ActualTorque
-//                 maxonMotor->myName = "R_wrist";
-//                 maxonMotor->initialJointAngle = initialJointAngles[can_id] * M_PI / 180.0f;
-//             }
-//             else if (motor_pair.first == "L_wrist")
-//             {
-//                 maxonMotor->cwDir = 1.0f;
-//                 maxonMotor->rMin = jointRangeMin[can_id] * M_PI / 180.0f; // -108deg
-//                 maxonMotor->rMax = jointRangeMax[can_id] * M_PI / 180.0f;  // 135deg
-//                 maxonMotor->txPdoIds[0] = 0x208; // Controlword
-//                 maxonMotor->txPdoIds[1] = 0x308; // TargetPosition
-//                 maxonMotor->txPdoIds[2] = 0x408; // TargetVelocity
-//                 maxonMotor->txPdoIds[3] = 0x508; // TargetTorque
-//                 maxonMotor->rxPdoIds[0] = 0x188; // Statusword, ActualPosition, ActualTorque
-//                 maxonMotor->rxPdoIds[1] = 0x288; // ActualPosition, ActualTorque
-//                 maxonMotor->myName = "L_wrist";
-//                 maxonMotor->initialJointAngle = initialJointAngles[can_id] * M_PI / 180.0f;
-//             }
-//             else if (motor_pair.first == "R_foot")
-//             {
-//                 maxonMotor->cwDir = 1.0f;
-//                 maxonMotor->rMin = jointRangeMin[can_id] * M_PI / 180.0f; // -90deg
-//                 maxonMotor->rMax = jointRangeMax[can_id] * M_PI / 180.0f; // 135deg
-//                 maxonMotor->txPdoIds[0] = 0x20A; // Controlword
-//                 maxonMotor->txPdoIds[1] = 0x30A; // TargetPosition
-//                 maxonMotor->txPdoIds[2] = 0x40A; // TargetVelocity
-//                 maxonMotor->txPdoIds[3] = 0x50A; // TargetTorque
-//                 maxonMotor->rxPdoIds[0] = 0x18A; // Statusword, ActualPosition, ActualTorque
-//                 maxonMotor->rxPdoIds[1] = 0x28A; // ActualPosition, ActualTorque
-//                 maxonMotor->myName = "R_foot";
-//                 maxonMotor->initialJointAngle = initialJointAngles[can_id] * M_PI / 180.0f;
-//             }
-//             else if (motor_pair.first == "L_foot")
-//             {
-//                 maxonMotor->cwDir = 1.0f;
-//                 maxonMotor->rMin = jointRangeMin[can_id] * M_PI / 180.0f; // -90deg
-//                 maxonMotor->rMax = jointRangeMax[can_id] * M_PI / 180.0f; // 135deg
-//                 maxonMotor->txPdoIds[0] = 0x20B; // Controlword
-//                 maxonMotor->txPdoIds[1] = 0x30B; // TargetPosition
-//                 maxonMotor->txPdoIds[2] = 0x40B; // TargetVelocity
-//                 maxonMotor->txPdoIds[3] = 0x50B; // TargetTorque
-//                 maxonMotor->rxPdoIds[0] = 0x18B; // Statusword, ActualPosition, ActualTorque
-//                 maxonMotor->rxPdoIds[1] = 0x28B; // ActualPosition, ActualTorque
-//                 maxonMotor->myName = "L_foot";
-//                 maxonMotor->initialJointAngle = initialJointAngles[can_id] * M_PI / 180.0f;
-//             }
-//             else if (motor_pair.first == "maxonForTest")
-//             {
-//                 maxonMotor->cwDir = 1.0f;
-//                 maxonMotor->rMin = jointRangeMin[can_id] * M_PI / 180.0f; // -108deg
-//                 maxonMotor->rMax = jointRangeMax[can_id] * M_PI / 180.0f; // 135deg
-//                 maxonMotor->txPdoIds[0] = 0x209; // Controlword
-//                 maxonMotor->txPdoIds[1] = 0x309; // TargetPosition
-//                 maxonMotor->txPdoIds[2] = 0x409; // TargetVelocity
-//                 maxonMotor->txPdoIds[3] = 0x509; // TargetTorque
-//                 maxonMotor->rxPdoIds[0] = 0x189; // Statusword, ActualPosition, ActualTorque
-//                 maxonMotor->rxPdoIds[1] = 0x289; // ActualPosition, ActualTorque
-//                 maxonMotor->myName = "maxonForTest";
-//                 maxonMotor->initialJointAngle = initialJointAngles[can_id] * M_PI / 180.0f;
-//             }
-//         }
-//     }
-// };
-
-// void DrumRobot::initializecanManager()
-// {
-//     canManager.initializeCAN();
-//     canManager.checkCanPortsStatus();
-//     canManager.setMotorsSocket();
-// }
-
-// void DrumRobot::deactivateControlTask()
-// {
-//     struct can_frame frame;
-
-//     canManager.setSocketsTimeout(0, 500000);
-
-//     for (auto &motorPair : motors)
-//     {
-//         std::string name = motorPair.first;
-//         auto &motor = motorPair.second;
-
-//         // 타입에 따라 적절한 캐스팅과 초기화 수행
-//         if (std::shared_ptr<TMotor> tMotor = std::dynamic_pointer_cast<TMotor>(motor))
-//         {
-//             tservocmd.comm_can_set_cb(*tMotor, &tMotor->sendFrame, 0);
-//             canManager.sendMotorFrame(tMotor);
-//             std::cout << "Exiting for motor [" << name << "]" << std::endl;
-//         }
-//         else if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motor))
-//         {
-//             maxoncmd.getQuickStop(*maxonMotor, &frame);
-//             canManager.txFrame(motor, frame);
-
-//             maxoncmd.getSync(&frame);
-//             canManager.txFrame(motor, frame);
-//             std::cout << "Exiting for motor [" << name << "]" << std::endl;
-//         }
-//     }
-// }
-
-// void DrumRobot::clearBufferforRecord()
-// {
-//     for (auto &motor_pair : motors)
-//     {
-//         if (std::shared_ptr<TMotor> tMotor = std::dynamic_pointer_cast<TMotor>(motor_pair.second))
-//         {
-//             tMotor->clearCommandBuffer();
-//             tMotor->clearReceiveBuffer();
-//         }
-//         else if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motor_pair.second))
-//         {
-//             maxonMotor->clearCommandBuffer();
-//             maxonMotor->clearReceiveBuffer();
-//         }
-//     }
-// }
 
 // void DrumRobot::printCurrentPositions()
 // {
@@ -1367,133 +1091,14 @@ void DrumRobot::recvLoopForThread()
 //     }
 // }
 
-// void DrumRobot::motorSettingCmd()
-// {
-//     // Count Maxon Motors
-//     for (const auto &motor_pair : motors)
-//     {
-//         // 각 요소가 MaxonMotor 타입인지 확인
-//         if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motor_pair.second))
-//         {
-//             maxonMotorCount++;
-//             virtualMaxonMotor = maxonMotor;
-//         }
-//     }
-
-//     struct can_frame frame;
-//     canManager.setSocketsTimeout(2, 0);
-//     for (const auto &motorPair : motors)
-//     {
-//         std::string name = motorPair.first;
-//         std::shared_ptr<GenericMotor> motor = motorPair.second;
-//         if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motorPair.second))
-//         {
-
-//             // CSP Settings
-//             maxoncmd.getCSPMode(*maxonMotor, &frame);
-//             canManager.sendAndRecv(motor, frame);
-
-//             maxoncmd.getPosOffset(*maxonMotor, &frame);
-//             canManager.sendAndRecv(motor, frame);
-
-//             maxoncmd.getTorqueOffset(*maxonMotor, &frame);
-//             canManager.sendAndRecv(motor, frame);
-
-//             // CSV Settings
-//             maxoncmd.getCSVMode(*maxonMotor, &frame);
-//             canManager.sendAndRecv(motor, frame);
-
-//             maxoncmd.getVelOffset(*maxonMotor, &frame);
-//             canManager.sendAndRecv(motor, frame);
-
-//             // CST Settings
-//             maxoncmd.getCSTMode(*maxonMotor, &frame);
-//             canManager.sendAndRecv(motor, frame);
-
-//             maxoncmd.getTorqueOffset(*maxonMotor, &frame);
-//             canManager.sendAndRecv(motor, frame);
-
-//             // HMM Settigns
-//             maxoncmd.getHomeMode(*maxonMotor, &frame);
-//             canManager.sendAndRecv(motor, frame);
-
-//             if (name == "L_wrist")
-//             {
-//                 maxoncmd.getHomingMethodL(*maxonMotor, &frame);
-//                 canManager.sendAndRecv(motor, frame);
-
-//                 maxoncmd.getHomeoffsetDistance(*maxonMotor, &frame, 0);
-//                 canManager.sendAndRecv(motor, frame);
-
-//                 maxoncmd.getHomePosition(*maxonMotor, &frame, 0);
-//                 canManager.sendAndRecv(motor, frame);
-
-//                 // maxoncmd.getCurrentThresholdL(*maxonMotor, &frame);
-//                 // canManager.sendAndRecv(motor, frame);
-//             }
-//             else if (name == "R_wrist")
-//             {
-//                 maxoncmd.getHomingMethodR(*maxonMotor, &frame);
-//                 canManager.sendAndRecv(motor, frame);
-
-//                 maxoncmd.getHomeoffsetDistance(*maxonMotor, &frame, 0);
-//                 canManager.sendAndRecv(motor, frame);
-
-//                 maxoncmd.getHomePosition(*maxonMotor, &frame, 0);
-//                 canManager.sendAndRecv(motor, frame);
-
-//                 // maxoncmd.getCurrentThresholdR(*maxonMotor, &frame);
-//                 // canManager.sendAndRecv(motor, frame);
-//             }
-//             else if (name == "maxonForTest")
-//             {
-//                 maxoncmd.getHomingMethodTest(*maxonMotor, &frame);
-//                 canManager.sendAndRecv(motor, frame);
-
-//                 maxoncmd.getHomeoffsetDistance(*maxonMotor, &frame, 0);
-//                 canManager.sendAndRecv(motor, frame);
-
-//                 maxoncmd.getHomePosition(*maxonMotor, &frame, 0);
-//                 canManager.sendAndRecv(motor, frame);
-
-//                 maxoncmd.getCurrentThresholdL(*maxonMotor, &frame);
-//                 canManager.sendAndRecv(motor, frame);
-//             }
-//         }
-//     }
-// }
-
 // ////////////////////////////////////////////////////////////////////////////////
 // /*                                 Send Thread Loop                           */
 // ////////////////////////////////////////////////////////////////////////////////
-
-// void DrumRobot::initializePathManager()
-// {
-//     pathManager.getDrumPositoin();
-//     pathManager.setReadyAngle();
-// }
 
 // void DrumRobot::clearMotorsSendBuffer()
 // {
 //     for (auto motor_pair : motors)
 //         motor_pair.second->clearSendBuffer();
-// }
-
-// void DrumRobot::clearMotorsCommandBuffer()
-// {
-//     for (const auto &motorPair : motors)
-//     {
-//         std::string name = motorPair.first;
-//         std::shared_ptr<GenericMotor> motor = motorPair.second;
-//         if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motorPair.second))
-//         {
-//             maxonMotor->clearCommandBuffer();
-//         }
-//         else if (std::shared_ptr<TMotor> tMotor = std::dynamic_pointer_cast<TMotor>(motorPair.second))
-//         {
-//             tMotor->clearCommandBuffer();
-//         }
-//     }
 // }
 
 // void DrumRobot::unfixedMotor()
@@ -1539,129 +1144,716 @@ void DrumRobot::recvLoopForThread()
 //     }
 // }
 
-// void DrumRobot::setAddStanceFlag(string flag)
-// {
-//     if (flag == "goToReady")
-//     {
-//         goToReady = true;
-//         goToHome = false;
-//         goToSemiReady = false;
-//         goToShutdown = false;
-//     }
-//     else if (flag == "goToHome")
-//     {
-//         goToReady = false;
-//         goToHome = true;
-//         goToShutdown = false;
-//         goToSemiReady = false;
 
-//         hommingCnt = 0;
-//     }
-//     else if (flag == "goToSemiReady")
-//     {
-//         goToReady = false;
-//         goToHome = false;
-//         goToSemiReady = true;
-//         goToShutdown = false;
-//     }
-//     else if (flag == "goToShutdown")
-//     {
-//         goToReady = false;
-//         goToHome = false;
-//         goToShutdown = true;
-//         goToSemiReady = false;
-//     }
-//     else
-//     {
-//         cout << "Invalid flag\n";
-//     }
-// }
 
-// /////////////////////////////////////////////////////////////////////////////////
-// /*                         Maxon Motor Function                               */
-// /////////////////////////////////////////////////////////////////////////////////
 
-// void DrumRobot::maxonMotorEnable()
-// {
-//     struct can_frame frame;
-//     canManager.setSocketsTimeout(2, 0);
 
-//     // 제어 모드 설정
-//     for (const auto &motorPair : motors)
-//     {
-//         std::string name = motorPair.first;
-//         std::shared_ptr<GenericMotor> motor = motorPair.second;
-//         if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motor))
-//         {
-//             maxoncmd.getHomeMode(*maxonMotor, &frame);
-//             canManager.txFrame(motor, frame);
+////////////////////////////////////////////////////////////////////////////////
+/*                          Initialize DrumRobot                              */
+////////////////////////////////////////////////////////////////////////////////
 
-//             maxoncmd.getOperational(*maxonMotor, &frame);
-//             canManager.txFrame(motor, frame);
+void DrumRobot::initializePathManager()
+{
+    pathManager.getDrumPositoin();
+    pathManager.setReadyAngle();
+}
 
-//             usleep(100000);
+void DrumRobot::initializeMotors()
+{
+    motors["waist"] = make_shared<TMotor>(0x00, "AK10_9");
+    motors["R_arm1"] = make_shared<TMotor>(0x01, "AK70_10");
+    motors["L_arm1"] = make_shared<TMotor>(0x02, "AK70_10");
+    motors["R_arm2"] = make_shared<TMotor>(0x03, "AK70_10");
+    motors["R_arm3"] = make_shared<TMotor>(0x04, "AK70_10");
+    motors["L_arm2"] = make_shared<TMotor>(0x05, "AK70_10");
+    motors["L_arm3"] = make_shared<TMotor>(0x06, "AK70_10");
+    motors["R_wrist"] = make_shared<MaxonMotor>(0x07);
+    motors["L_wrist"] = make_shared<MaxonMotor>(0x08); 
+    motors["maxonForTest"] = make_shared<MaxonMotor>(0x09);
+    motors["R_foot"] = make_shared<MaxonMotor>(0x0A);
+    motors["L_foot"] = make_shared<MaxonMotor>(0x0B);
+    
+    for (auto &motor_pair : motors)
+    {
+        auto &motor = motor_pair.second;
+        int can_id = motorMapping[motor_pair.first];
 
-//             maxoncmd.getShutdown(*maxonMotor, &frame);
-//             canManager.txFrame(motor, frame);
+        // 타입에 따라 적절한 캐스팅과 초기화 수행
+        if (std::shared_ptr<TMotor> tMotor = std::dynamic_pointer_cast<TMotor>(motor))
+        {
+            // 각 모터 이름에 따른 멤버 변수 설정
+            if (motor_pair.first == "waist")
+            {
+                tMotor->cwDir = 1.0f;
+                tMotor->rMin = jointRangeMin[can_id] * M_PI / 180.0f; // -90deg
+                tMotor->rMax = jointRangeMax[can_id] * M_PI / 180.0f;  // 90deg
+                tMotor->myName = "waist";
+                tMotor->initialJointAngle = initialJointAngles[can_id] * M_PI / 180.0f;
+                tMotor->currentLimit = 29.8;  // [A]    // ak10-9
+                tMotor->useFourBarLinkage = false;
+            }
+            else if (motor_pair.first == "R_arm1")
+            {
+                tMotor->cwDir = -1.0f;
+                tMotor->rMin = jointRangeMin[can_id] * M_PI / 180.0f;   // 0deg
+                tMotor->rMax = jointRangeMax[can_id] * M_PI / 180.0f; // 150deg
+                tMotor->myName = "R_arm1";
+                tMotor->initialJointAngle = initialJointAngles[can_id] * M_PI / 180.0f;
+                tMotor->currentLimit = 23.2;  // [A]    // ak70-10
+                tMotor->useFourBarLinkage = false;
+            }
+            else if (motor_pair.first == "L_arm1")
+            {
+                tMotor->cwDir = -1.0f;
+                tMotor->rMin = jointRangeMin[can_id] * M_PI / 180.0f;  // 30deg
+                tMotor->rMax = jointRangeMax[can_id] * M_PI / 180.0f; // 180deg
+                tMotor->myName = "L_arm1";
+                tMotor->initialJointAngle = initialJointAngles[can_id] * M_PI / 180.0f;
+                tMotor->currentLimit = 23.2;  // [A]    // ak70-10
+                tMotor->useFourBarLinkage = false;
+            }
+            else if (motor_pair.first == "R_arm2")
+            {
+                tMotor->cwDir = 1.0f;
+                tMotor->rMin = jointRangeMin[can_id] * M_PI / 180.0f; // -60deg
+                tMotor->rMax = jointRangeMax[can_id] * M_PI / 180.0f;  // 90deg
+                tMotor->myName = "R_arm2";
+                tMotor->initialJointAngle = initialJointAngles[can_id] * M_PI / 180.0f;
+                tMotor->currentLimit = 23.2;  // [A]    // ak70-10
+                tMotor->useFourBarLinkage = false;
+            }
+            else if (motor_pair.first == "R_arm3")
+            {
+                tMotor->cwDir = -1.0f;
+                tMotor->rMin = jointRangeMin[can_id] * M_PI / 180.0f; // -30deg
+                tMotor->rMax = jointRangeMax[can_id] * M_PI / 180.0f; // 130deg
+                tMotor->myName = "R_arm3";
+                tMotor->initialJointAngle = initialJointAngles[can_id] * M_PI / 180.0f;
+                tMotor->currentLimit = 23.2;  // [A]    // ak70-10
+                tMotor->useFourBarLinkage = true;
+                tMotor->setInitialMotorAngle(tMotor->initialJointAngle);
+            }
+            else if (motor_pair.first == "L_arm2")
+            {
+                tMotor->cwDir = -1.0f;
+                tMotor->rMin = jointRangeMin[can_id] * M_PI / 180.0f; // -60deg
+                tMotor->rMax = jointRangeMax[can_id] * M_PI / 180.0f;  // 90deg
+                tMotor->myName = "L_arm2";
+                tMotor->initialJointAngle = initialJointAngles[can_id] * M_PI / 180.0f;
+                tMotor->currentLimit = 23.2;  // [A]    // ak70-10
+                tMotor->useFourBarLinkage = false;
+            }
+            else if (motor_pair.first == "L_arm3")
+            {
+                tMotor->cwDir = 1.0f;
+                tMotor->rMin = jointRangeMin[can_id] * M_PI / 180.0f; // -30 deg
+                tMotor->rMax = jointRangeMax[can_id] * M_PI / 180.0f; // 130 deg
+                tMotor->myName = "L_arm3";
+                tMotor->initialJointAngle = initialJointAngles[can_id] * M_PI / 180.0f;
+                tMotor->currentLimit = 23.2;  // [A]    // ak70-10
+                tMotor->useFourBarLinkage = true;
+                tMotor->setInitialMotorAngle(tMotor->initialJointAngle);
+            }
+        }
+        else if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motor))
+        {
+            // 각 모터 이름에 따른 멤버 변수 설정
+            if (motor_pair.first == "R_wrist")
+            {
+                maxonMotor->cwDir = 1.0f;
+                maxonMotor->rMin = jointRangeMin[can_id] * M_PI / 180.0f; // -108deg
+                maxonMotor->rMax = jointRangeMax[can_id] * M_PI / 180.0f;  // 135deg
+                maxonMotor->txPdoIds[0] = 0x207; // Controlword
+                maxonMotor->txPdoIds[1] = 0x307; // TargetPosition
+                maxonMotor->txPdoIds[2] = 0x407; // TargetVelocity
+                maxonMotor->txPdoIds[3] = 0x507; // TargetTorque
+                maxonMotor->rxPdoIds[0] = 0x187; // Statusword, ActualPosition, ActualTorque
+                maxonMotor->rxPdoIds[1] = 0x287; // ActualPosition, ActualTorque
+                maxonMotor->myName = "R_wrist";
+                maxonMotor->initialJointAngle = initialJointAngles[can_id] * M_PI / 180.0f;
+            }
+            else if (motor_pair.first == "L_wrist")
+            {
+                maxonMotor->cwDir = 1.0f;
+                maxonMotor->rMin = jointRangeMin[can_id] * M_PI / 180.0f; // -108deg
+                maxonMotor->rMax = jointRangeMax[can_id] * M_PI / 180.0f;  // 135deg
+                maxonMotor->txPdoIds[0] = 0x208; // Controlword
+                maxonMotor->txPdoIds[1] = 0x308; // TargetPosition
+                maxonMotor->txPdoIds[2] = 0x408; // TargetVelocity
+                maxonMotor->txPdoIds[3] = 0x508; // TargetTorque
+                maxonMotor->rxPdoIds[0] = 0x188; // Statusword, ActualPosition, ActualTorque
+                maxonMotor->rxPdoIds[1] = 0x288; // ActualPosition, ActualTorque
+                maxonMotor->myName = "L_wrist";
+                maxonMotor->initialJointAngle = initialJointAngles[can_id] * M_PI / 180.0f;
+            }
+            else if (motor_pair.first == "R_foot")
+            {
+                maxonMotor->cwDir = 1.0f;
+                maxonMotor->rMin = jointRangeMin[can_id] * M_PI / 180.0f; // -90deg
+                maxonMotor->rMax = jointRangeMax[can_id] * M_PI / 180.0f; // 135deg
+                maxonMotor->txPdoIds[0] = 0x20A; // Controlword
+                maxonMotor->txPdoIds[1] = 0x30A; // TargetPosition
+                maxonMotor->txPdoIds[2] = 0x40A; // TargetVelocity
+                maxonMotor->txPdoIds[3] = 0x50A; // TargetTorque
+                maxonMotor->rxPdoIds[0] = 0x18A; // Statusword, ActualPosition, ActualTorque
+                maxonMotor->rxPdoIds[1] = 0x28A; // ActualPosition, ActualTorque
+                maxonMotor->myName = "R_foot";
+                maxonMotor->initialJointAngle = initialJointAngles[can_id] * M_PI / 180.0f;
+            }
+            else if (motor_pair.first == "L_foot")
+            {
+                maxonMotor->cwDir = 1.0f;
+                maxonMotor->rMin = jointRangeMin[can_id] * M_PI / 180.0f; // -90deg
+                maxonMotor->rMax = jointRangeMax[can_id] * M_PI / 180.0f; // 135deg
+                maxonMotor->txPdoIds[0] = 0x20B; // Controlword
+                maxonMotor->txPdoIds[1] = 0x30B; // TargetPosition
+                maxonMotor->txPdoIds[2] = 0x40B; // TargetVelocity
+                maxonMotor->txPdoIds[3] = 0x50B; // TargetTorque
+                maxonMotor->rxPdoIds[0] = 0x18B; // Statusword, ActualPosition, ActualTorque
+                maxonMotor->rxPdoIds[1] = 0x28B; // ActualPosition, ActualTorque
+                maxonMotor->myName = "L_foot";
+                maxonMotor->initialJointAngle = initialJointAngles[can_id] * M_PI / 180.0f;
+            }
+            else if (motor_pair.first == "maxonForTest")
+            {
+                maxonMotor->cwDir = 1.0f;
+                maxonMotor->rMin = jointRangeMin[can_id] * M_PI / 180.0f; // -108deg
+                maxonMotor->rMax = jointRangeMax[can_id] * M_PI / 180.0f; // 135deg
+                maxonMotor->txPdoIds[0] = 0x209; // Controlword
+                maxonMotor->txPdoIds[1] = 0x309; // TargetPosition
+                maxonMotor->txPdoIds[2] = 0x409; // TargetVelocity
+                maxonMotor->txPdoIds[3] = 0x509; // TargetTorque
+                maxonMotor->rxPdoIds[0] = 0x189; // Statusword, ActualPosition, ActualTorque
+                maxonMotor->rxPdoIds[1] = 0x289; // ActualPosition, ActualTorque
+                maxonMotor->myName = "maxonForTest";
+                maxonMotor->initialJointAngle = initialJointAngles[can_id] * M_PI / 180.0f;
+            }
+        }
+    }
+}
 
-//             maxoncmd.getSync(&frame);
-//             canManager.txFrame(motor, frame);
+void DrumRobot::initializeCanManager()
+{
+    canManager.initializeCAN();
+    canManager.checkCanPortsStatus();
+    canManager.setMotorsSocket();
+}
 
-//             usleep(100000);
+void DrumRobot::motorSettingCmd()
+{
+    // Count Maxon Motors
+    for (const auto &motor_pair : motors)
+    {
+        // 각 요소가 MaxonMotor 타입인지 확인
+        if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motor_pair.second))
+        {
+            maxonMotorCount++;
+            virtualMaxonMotor = maxonMotor;
+        }
+    }
+
+    struct can_frame frame;
+    canManager.setSocketsTimeout(2, 0);
+
+    for (const auto &motorPair : motors)
+    {
+        std::string name = motorPair.first;
+        std::shared_ptr<GenericMotor> motor = motorPair.second;
+        if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motorPair.second))
+        {
+            // CSP Settings
+            maxoncmd.getCSPMode(*maxonMotor, &frame);
+            canManager.sendAndRecv(motor, frame);
+
+            maxoncmd.getPosOffset(*maxonMotor, &frame);
+            canManager.sendAndRecv(motor, frame);
+
+            maxoncmd.getTorqueOffset(*maxonMotor, &frame);
+            canManager.sendAndRecv(motor, frame);
+
+            // CSV Settings
+            maxoncmd.getCSVMode(*maxonMotor, &frame);
+            canManager.sendAndRecv(motor, frame);
+
+            maxoncmd.getVelOffset(*maxonMotor, &frame);
+            canManager.sendAndRecv(motor, frame);
+
+            // CST Settings
+            maxoncmd.getCSTMode(*maxonMotor, &frame);
+            canManager.sendAndRecv(motor, frame);
+
+            maxoncmd.getTorqueOffset(*maxonMotor, &frame);
+            canManager.sendAndRecv(motor, frame);
+
+            // HMM Settigns
+            maxoncmd.getHomeMode(*maxonMotor, &frame);
+            canManager.sendAndRecv(motor, frame);
+
+            if (name == "L_wrist")
+            {
+                maxoncmd.getHomingMethodL(*maxonMotor, &frame);
+                canManager.sendAndRecv(motor, frame);
+
+                maxoncmd.getHomeoffsetDistance(*maxonMotor, &frame, 0);
+                canManager.sendAndRecv(motor, frame);
+
+                maxoncmd.getHomePosition(*maxonMotor, &frame, 0);
+                canManager.sendAndRecv(motor, frame);
+
+                // maxoncmd.getCurrentThresholdL(*maxonMotor, &frame);
+                // canManager.sendAndRecv(motor, frame);
+            }
+            else if (name == "R_wrist")
+            {
+                maxoncmd.getHomingMethodR(*maxonMotor, &frame);
+                canManager.sendAndRecv(motor, frame);
+
+                maxoncmd.getHomeoffsetDistance(*maxonMotor, &frame, 0);
+                canManager.sendAndRecv(motor, frame);
+
+                maxoncmd.getHomePosition(*maxonMotor, &frame, 0);
+                canManager.sendAndRecv(motor, frame);
+
+                // maxoncmd.getCurrentThresholdR(*maxonMotor, &frame);
+                // canManager.sendAndRecv(motor, frame);
+            }
+            else if (name == "maxonForTest")
+            {
+                maxoncmd.getHomingMethodTest(*maxonMotor, &frame);
+                canManager.sendAndRecv(motor, frame);
+
+                maxoncmd.getHomeoffsetDistance(*maxonMotor, &frame, 0);
+                canManager.sendAndRecv(motor, frame);
+
+                maxoncmd.getHomePosition(*maxonMotor, &frame, 0);
+                canManager.sendAndRecv(motor, frame);
+
+                maxoncmd.getCurrentThresholdL(*maxonMotor, &frame);
+                canManager.sendAndRecv(motor, frame);
+            }
+        }
+    }
+}
+
+bool DrumRobot::initializePos(const std::string &input)
+{
+    // set zero
+    if (input == "o")
+    {
+        for (const auto &motorPair : motors)
+        {
+            if (std::shared_ptr<TMotor> tMotor = std::dynamic_pointer_cast<TMotor>(motorPair.second))
+            {
+                if (tMotor->myName == "waist")
+                {
+                    tservocmd.comm_can_set_origin(*tMotor, &tMotor->sendFrame, 0);
+                    canManager.sendMotorFrame(tMotor);
+                }
+                else if (tMotor->myName == "R_arm1")
+                {
+                    tservocmd.comm_can_set_origin(*tMotor, &tMotor->sendFrame, 0);
+                    canManager.sendMotorFrame(tMotor);
+                }
+                else if (tMotor->myName == "L_arm1")
+                {
+                    tservocmd.comm_can_set_origin(*tMotor, &tMotor->sendFrame, 0);
+                    canManager.sendMotorFrame(tMotor);
+                }
+                else if (tMotor->myName == "R_arm2")
+                {
+                    tservocmd.comm_can_set_origin(*tMotor, &tMotor->sendFrame, 0);
+                    canManager.sendMotorFrame(tMotor);
+                }
+                else if (tMotor->myName == "L_arm2")
+                {
+                    tservocmd.comm_can_set_origin(*tMotor, &tMotor->sendFrame, 0);
+                    canManager.sendMotorFrame(tMotor);
+                }
+                else if (tMotor->myName == "R_arm3")
+                {
+                    tservocmd.comm_can_set_origin(*tMotor, &tMotor->sendFrame, 0);
+                    canManager.sendMotorFrame(tMotor);
+                }
+                else if (tMotor->myName == "L_arm3")
+                {
+                    tservocmd.comm_can_set_origin(*tMotor, &tMotor->sendFrame, 0);
+                    canManager.sendMotorFrame(tMotor);
+                }
+            }   
+        }
+        std::cout << "set zero and offset setting ~ ~ ~\n";
+        sleep(2);   // Set Zero 명령이 확실히 실행된 후
+    }
+
+    if (input == "o" || input == "i")
+    {
+        maxonMotorEnable();
+        setMaxonMotorMode("CSP");
+
+        state.main = Main::AddStance;
+        flagObj.setAddStanceFlag("goToHome");
+
+        return false;
+    }
+    else
+    {
+        std::cout << "Invalid command or not allowed in current state!\n";
+        return true;
+    }
+}
+
+void DrumRobot::initializeDrumRobot()
+{
+    std::string input;
+
+    initializePathManager();
+    initializeMotors(); // Tmotor
+    initializeCanManager();
+    motorSettingCmd(); // 손목
+    canManager.setSocketNonBlock();
+
+    usbio.initUSBIO4761();
+    fun.openCSVFile();
+
+    std::cout << "System Initialize Complete [ Press Commands ]\n";
+    std::cout << "- o : Set Zero & Offset setting\n";
+    std::cout << "- i : Offset setting\n";
+
+    do
+    {
+        std::cout << "Enter command: ";
+        std::getline(std::cin, input);
+    } while (initializePos(input));
+}
+
+/////////////////////////////////////////////////////////////////////////////////
+/*                           Maxon Motor Function                             */
+/////////////////////////////////////////////////////////////////////////////////
+
+void DrumRobot::maxonMotorEnable()
+{
+    struct can_frame frame;
+    canManager.setSocketsTimeout(2, 0);
+
+    // 제어 모드 설정
+    for (const auto &motorPair : motors)
+    {
+        std::string name = motorPair.first;
+        std::shared_ptr<GenericMotor> motor = motorPair.second;
+        if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motor))
+        {
+            maxoncmd.getHomeMode(*maxonMotor, &frame);
+            canManager.txFrame(motor, frame);
+
+            maxoncmd.getOperational(*maxonMotor, &frame);
+            canManager.txFrame(motor, frame);
+
+            usleep(100000);
+
+            maxoncmd.getShutdown(*maxonMotor, &frame);
+            canManager.txFrame(motor, frame);
+
+            maxoncmd.getSync(&frame);
+            canManager.txFrame(motor, frame);
+
+            usleep(100000);
             
-//             maxoncmd.getEnable(*maxonMotor, &frame);
-//             canManager.txFrame(motor, frame);
+            maxoncmd.getEnable(*maxonMotor, &frame);
+            canManager.txFrame(motor, frame);
 
-//             maxoncmd.getSync(&frame);
-//             canManager.txFrame(motor, frame);
+            maxoncmd.getSync(&frame);
+            canManager.txFrame(motor, frame);
             
-//             std::cout << "Maxon Enabled\n";
+            std::cout << "Maxon Enabled\n";
 
-//             usleep(100000);
+            usleep(100000);
 
-//             // maxoncmd.getStartHoming(*maxonMotor, &frame);
-//             // canManager.txFrame(motor, frame);
+            // maxoncmd.getStartHoming(*maxonMotor, &frame);
+            // canManager.txFrame(motor, frame);
 
-//             // maxoncmd.getSync(&frame);
-//             // canManager.txFrame(motor, frame);
+            // maxoncmd.getSync(&frame);
+            // canManager.txFrame(motor, frame);
 
-//             // usleep(100000);
+            // usleep(100000);
             
-//             // std::cout << "Maxon Enabled(2) \n";
-//         }
-//     }
-// }
+            // std::cout << "Maxon Enabled(2) \n";
+        }
+    }
+}
 
-// void DrumRobot::setMaxonMotorMode(std::string targetMode)
-// {
-//     struct can_frame frame;
-//     canManager.setSocketsTimeout(0, 10000);
-//     for (const auto &motorPair : motors)
-//     {
-//         std::string name = motorPair.first;
-//         std::shared_ptr<GenericMotor> motor = motorPair.second;
-//         if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motorPair.second))
-//         {
-//             if (targetMode == "CSV")    // Cyclic Sync Velocity Mode
-//             {
-//                 maxoncmd.getCSVMode(*maxonMotor, &frame);
-//                 canManager.sendAndRecv(motor, frame);
-//             }
-//             else if (targetMode == "CST")   // Cyclic Sync Torque Mode
-//             {
-//                 maxoncmd.getCSTMode(*maxonMotor, &frame);
-//                 canManager.sendAndRecv(motor, frame);
-//             }
-//             else if (targetMode == "HMM")   // Homming Mode
-//             {
-//                 maxoncmd.getHomeMode(*maxonMotor, &frame);
-//                 canManager.sendAndRecv(motor, frame);
-//             }
-//             else if (targetMode == "CSP")   // Cyclic Sync Position Mode
-//             {
-//                 maxoncmd.getCSPMode(*maxonMotor, &frame);
-//                 canManager.sendAndRecv(motor, frame);
-//             }
-//         }
-//     }
-// }
+void DrumRobot::setMaxonMotorMode(std::string targetMode)
+{
+    struct can_frame frame;
+    canManager.setSocketsTimeout(0, 10000);
+    for (const auto &motorPair : motors)
+    {
+        std::string name = motorPair.first;
+        std::shared_ptr<GenericMotor> motor = motorPair.second;
+        if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motorPair.second))
+        {
+            if (targetMode == "CSV")    // Cyclic Sync Velocity Mode
+            {
+                maxoncmd.getCSVMode(*maxonMotor, &frame);
+                canManager.sendAndRecv(motor, frame);
+            }
+            else if (targetMode == "CST")   // Cyclic Sync Torque Mode
+            {
+                maxoncmd.getCSTMode(*maxonMotor, &frame);
+                canManager.sendAndRecv(motor, frame);
+            }
+            else if (targetMode == "HMM")   // Homming Mode
+            {
+                maxoncmd.getHomeMode(*maxonMotor, &frame);
+                canManager.sendAndRecv(motor, frame);
+            }
+            else if (targetMode == "CSP")   // Cyclic Sync Position Mode
+            {
+                maxoncmd.getCSPMode(*maxonMotor, &frame);
+                canManager.sendAndRecv(motor, frame);
+            }
+        }
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/*                                  Exit                                      */
+////////////////////////////////////////////////////////////////////////////////
+
+void DrumRobot::deactivateControlTask()
+{
+    struct can_frame frame;
+
+    canManager.setSocketsTimeout(0, 500000);
+
+    for (auto &motorPair : motors)
+    {
+        std::string name = motorPair.first;
+        auto &motor = motorPair.second;
+
+        // 타입에 따라 적절한 캐스팅과 초기화 수행
+        if (std::shared_ptr<TMotor> tMotor = std::dynamic_pointer_cast<TMotor>(motor))
+        {
+            tservocmd.comm_can_set_cb(*tMotor, &tMotor->sendFrame, 0);
+            canManager.sendMotorFrame(tMotor);
+            std::cout << "Exiting for motor [" << name << "]" << std::endl;
+        }
+        else if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motor))
+        {
+            maxoncmd.getQuickStop(*maxonMotor, &frame);
+            canManager.txFrame(motor, frame);
+
+            maxoncmd.getSync(&frame);
+            canManager.txFrame(motor, frame);
+            std::cout << "Exiting for motor [" << name << "]" << std::endl;
+        }
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/*                                 SYSTEM                                     */
+////////////////////////////////////////////////////////////////////////////////
+
+void DrumRobot::clearBufferforRecord()
+{
+    for (auto &motor_pair : motors)
+    {
+        if (std::shared_ptr<TMotor> tMotor = std::dynamic_pointer_cast<TMotor>(motor_pair.second))
+        {
+            tMotor->clearCommandBuffer();
+            tMotor->clearReceiveBuffer();
+        }
+        else if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motor_pair.second))
+        {
+            maxonMotor->clearCommandBuffer();
+            maxonMotor->clearReceiveBuffer();
+        }
+    }
+}
+
+void DrumRobot::clearMotorsCommandBuffer()
+{
+    for (const auto &motorPair : motors)
+    {
+
+        if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motorPair.second))
+        {
+            maxonMotor->clearCommandBuffer();
+        }
+        else if (std::shared_ptr<TMotor> tMotor = std::dynamic_pointer_cast<TMotor>(motorPair.second))
+        {
+            tMotor->clearCommandBuffer();
+        }
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/*                              Ideal State                                  */
+////////////////////////////////////////////////////////////////////////////////
+
+void DrumRobot::displayAvailableCommands() const
+{
+    std::cout << "Available Commands:\n";
+
+    if (state.main == Main::Ideal)
+    {
+        if (isHome)
+        {
+            std::cout << "- r : Move to Ready Pos\n";
+            std::cout << "- t : Start Test\n";
+            std::cout << "- s : Shut down the system\n";
+        }
+        else if (isReady)
+        {
+            std::cout << "- p : Play Drum\n";
+            std::cout << "- t : Start Test\n";
+            std::cout << "- h : Move to Home Pos\n";
+            std::cout << "- m : Mode Select\n";
+            std::cout << "- v : Release Time Value\n";
+        }
+        else if (isRestart)
+        {
+            std::cout << "- h : Move to Home Pos\n";
+            std::cout << "- t : Start Test\n";
+        }
+    }
+    else
+    {
+        std::cout << "- s : Shut down the system\n";
+    }
+}
+
+void DrumRobot::processInput(const std::string &input)
+{
+    if (input == "r" && isHome)
+    {
+        state.main = Main::AddStance;
+    }
+    else if (input == "p" && isReady)
+    {
+        state.main = Main::Play;
+    }
+    else if (input == "h" && isReady)
+    {
+        state.main = Main::AddStance;
+    }
+    else if (input == "s" && isHome)
+    {
+        state.main = Main::AddStance;
+    }
+    else
+    {
+        std::cout << "Invalid command or not allowed in current state!\n";
+    }
+}
+
+void DrumRobot::idealStateRoutine()
+{
+    int ret = system("clear");
+    if (ret == -1)
+        std::cout << "system clear error" << endl;
+
+    displayAvailableCommands();
+
+    std::string input;
+
+    std::cout << "Enter command: ";
+    std::getline(std::cin, input);
+
+    processInput(input);    
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/*                            AddStance State                                 */
+////////////////////////////////////////////////////////////////////////////////
+
+void DrumRobot::sendAddStanceProcess()
+{
+    // clearBufferforRecord();
+    // clearMotorsCommandBuffer();
+
+    string flag = flagObj.getAddStanceFlag();
+
+    if (flag == "goToHome")
+    {
+        pathManager.getArr(pathManager.homeArr);
+    }
+    else if (flag == "goToReady")
+    {
+        pathManager.getArr(pathManager.readyArr);
+    }
+
+    state.main = Main::Ideal;
+
+    // canManager.clearReadBuffers();
+    // 전부 보내고 나서 실행해야 하는 함수
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/*                                  Flag                                      */
+////////////////////////////////////////////////////////////////////////////////
+
+FlagClass::FlagClass()
+{
+
+}
+
+FlagClass::~FlagClass()
+{
+
+}
+
+void FlagClass::setAddStanceFlag(string flagName)
+{
+    if (flagName == "goToHome")
+    {
+        addStanceFlag = GOTOHOME;
+    }
+    else if (flagName == "goToReady")
+    {
+        addStanceFlag = GOTOREADY;
+    }
+    else
+    {
+        cout << "Invalid Flag Name\n";
+    }
+}
+
+string FlagClass::getAddStanceFlag()
+{
+    if (addStanceFlag == GOTOHOME)
+    {
+        return "goToHome";
+    }
+    else if (addStanceFlag == GOTOREADY)
+    {
+        return "goToReady";
+    }
+}
+
+void FlagClass::setRobotFlag(string flagName)
+{
+    if (flagName == "isHome")
+    {
+        robotFlag = ISHOME;
+    }
+    else if (flagName == "isReady")
+    {
+        robotFlag = ISREADY;
+    }
+    else
+    {
+        cout << "Invalid Flag Name\n";
+    }
+}
+
+string FlagClass::getRobotFlag()
+{
+    if (robotFlag == ISHOME)
+    {
+        return "isHome";
+    }
+    else if (robotFlag == ISREADY)
+    {
+        return "isReady";
+    }
+}

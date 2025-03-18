@@ -34,6 +34,32 @@
 
 using namespace std;
 
+class FlagClass
+{
+public:
+    FlagClass();
+    ~FlagClass();
+
+    // AddStance
+    const int GOTOHOME = 1;
+    const int GOTOREADY = 2;
+
+    void setAddStanceFlag(string flagName);
+    string getAddStanceFlag();
+
+    // Robot
+    const int ISHOME = 1;
+    const int ISREADY = 2;
+
+    void setRobotFlag(string flagName);
+    string getRobotFlag();
+
+private:
+
+    int addStanceFlag = 0;
+    int robotFlag = 0;
+};
+
 class DrumRobot
 {
 public:
@@ -48,6 +74,8 @@ public:
     void stateMachine();
     void sendLoopForThread();
     void recvLoopForThread();
+    
+    void initializeDrumRobot();
 
 private:
     State &state;
@@ -79,7 +107,7 @@ private:
 
     // State Utility 메소드들
     void displayAvailableCommands() const;
-    bool processInput(const std::string &input);
+    void processInput(const std::string &input);
     void idealStateRoutine();
     void checkUserInput();
     int kbhit();
@@ -89,19 +117,21 @@ private:
     bool isReady = false;   // 스네어 위치
     bool isHome = false;    // 고정 위치
     bool isRestart = false; // 재시작 위치
-    void setRobotFlag(string flag);
+    void setRobotFlag(string flagName);
 
     // AddStance
     bool goToHome = false;
     bool goToSemiReady = false;
     bool goToReady = false;
     bool goToShutdown = false;
-    void setAddStanceFlag(string flag);
+    void setAddStanceFlag(string flagName);
     int hommingCnt = 0; ///< Home 이동이 여러 단계일 경우 각 단계
+
+    FlagClass flagObj;
     
     // System Initialize 메소드들
     void initializeMotors();
-    void initializecanManager();
+    void initializeCanManager();
     void deactivateControlTask();
     void clearBufferforRecord();
     void printCurrentPositions();
@@ -114,9 +144,11 @@ private:
     void initializePathManager();
     void clearMotorsSendBuffer();
     void sendPlayProcess(int periodMicroSec, string musicName);
-    void sendAddStanceProcess(int periodMicroSec);
+    void sendAddStanceProcess();
     void unfixedMotor();
     void clearMotorsCommandBuffer();
+
+    bool initializePos(const std::string &input);
 
     map<std::string, int> motorMapping = { ///< 각 관절에 해당하는 정보 [이름, CAN ID]
         {"waist", 0},

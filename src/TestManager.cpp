@@ -1035,21 +1035,7 @@ void TestManager::getArr(float arr[])
                 {
                     TMotorData newData;
                     newData.position = Qi[motorMapping[entry.first]];
-                    newData.spd = 0;
-                    newData.acl = 0;
-                    
-                    if (k < n_brake_start[motorMapping[entry.first]])
-                    {
-                        newData.isBrake = false;
-                    }
-                    else if (k < n_brake_end[motorMapping[entry.first]])
-                    {
-                        newData.isBrake = true;
-                    }
-                    else
-                    {
-                        newData.isBrake = false;
-                    }
+
                     tMotor->commandBuffer.push(newData);
                 }
                 else if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(entry.second))
@@ -1057,7 +1043,6 @@ void TestManager::getArr(float arr[])
                     MaxonData newData;
                     newData.position = Qi[motorMapping[entry.first]];
                     newData.torque = torque;
-                    newData.WristState = 0.5;
                     maxonMotor->commandBuffer.push(newData);
                 }
             }

@@ -48,6 +48,8 @@ int main(int argc, char *argv[])
 
     // 포트를 비활성화하고 다시 활성화
     fun.restCanPort();
+    // 드럼 로봇 초기화
+    drumRobot.initializeDrumRobot();
 
     // Create Threads
     std::thread stateThread(&DrumRobot::stateMachine, &drumRobot);

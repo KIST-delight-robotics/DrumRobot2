@@ -953,7 +953,7 @@ bool CanManager::setCANFrame()
                 return false;
             }
             tservocmd.comm_can_set_pos(*tMotor, &tMotor->sendFrame, desiredPosition);
-            tMotor->brakeState = tData.isBrake;
+            tMotor->brakeState = false;
 
             fun.appendToCSV_DATA(fun.file_name, (float)tMotor->nodeId + SEND_SIGN, desiredPosition, desiredPosition - tMotor->motorPosition);
         }
@@ -1158,7 +1158,7 @@ bool CanManager::setCANFrame_TEST()
                 return false;
             }
             tservocmd.comm_can_set_pos(*tMotor, &tMotor->sendFrame, desiredPosition);
-            tMotor->brakeState = tData.isBrake;
+            tMotor->brakeState = false;
 
             fun.appendToCSV_DATA(fun.file_name, (float)tMotor->nodeId + SEND_SIGN, desiredPosition, desiredPosition - tMotor->motorPosition);
         }
