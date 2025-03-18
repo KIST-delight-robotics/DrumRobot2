@@ -6,7 +6,7 @@ CanManager::CanManager(std::map<std::string, std::shared_ptr<GenericMotor>> &mot
     : motors(motorsRef), fun(funRef)
 {
 }
-//hi i am taehwang
+
 CanManager::~CanManager()
 {
     // 모든 소켓 닫기
@@ -803,7 +803,7 @@ bool CanManager::checkAllMotors_Fixed()
         auto &motor = motorPair.second;
         if (!motor->isError)
         {
-            if (!sendForCheck_Fixed(motor))
+            if (!sendForCheck_Fixed(motor)) 
             {
                 return false;
             }
@@ -811,7 +811,6 @@ bool CanManager::checkAllMotors_Fixed()
     }
     return true;
 }
-////////////////김태황???????????????????????????????????????
 ////////////////////////////////////////////////////////////////////////////////////////////////
 /*                                Functions for Thread Case                                      */
 //////////////////////////////////////////////////////////////////////////////////////////////

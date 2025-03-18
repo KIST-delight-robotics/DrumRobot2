@@ -62,6 +62,7 @@ public:
 struct TMotorData
 {
     float position;
+    std::string mode;
 };
 
 class TMotor : public GenericMotor
@@ -103,6 +104,7 @@ struct MaxonData
 {
     float torque;
     float position;
+    std::string mode;
 };
 
 class MaxonMotor : public GenericMotor
