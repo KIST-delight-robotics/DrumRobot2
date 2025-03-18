@@ -106,7 +106,7 @@ private:
     std::chrono::_V2::steady_clock::time_point stateMachinePeriod;
 
     // State Utility 메소드들
-    void displayAvailableCommands() const;
+    void displayAvailableCommands(string flagName) const;
     void processInput(const std::string &input);
     void idealStateRoutine();
     void checkUserInput();

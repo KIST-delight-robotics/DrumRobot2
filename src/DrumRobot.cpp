@@ -1690,7 +1690,7 @@ void DrumRobot::clearMotorsCommandBuffer()
 /*                              Ideal State                                  */
 ////////////////////////////////////////////////////////////////////////////////
 
-void DrumRobot::displayAvailableCommands() const
+void DrumRobot::displayAvailableCommands(string flagName) const
 {
     std::cout << "Available Commands:\n";
 
@@ -1752,7 +1752,8 @@ void DrumRobot::idealStateRoutine()
     if (ret == -1)
         std::cout << "system clear error" << endl;
 
-    displayAvailableCommands();
+    string flag = flagObj.getAddStanceFlag();
+    displayAvailableCommands(flag);
 
     std::string input;
 
