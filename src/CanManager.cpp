@@ -870,7 +870,6 @@ bool CanManager::setCANFrame()
                     if (isHitR) isHitR = false;
                     maxonMotor->hittingPos = maxonMotor->positionValues.back() + maxonMotor->initialJointAngle - maxonMotor->hittingDrumAngle;
                     desiredPosition = maxonMotor->positionValues.back();
-                    if (isCSTR) isCSTR = false;
                 }
                 else
                 {
