@@ -122,120 +122,62 @@ void DrumRobot::stateMachine()
 
 void DrumRobot::sendLoopForThread()
 {
-    initializePathManager();
+    
     while (state.main != Main::Shutdown)
     {
         sendLoopPeriod = std::chrono::steady_clock::now();
-        sendLoopPeriod += std::chrono::microseconds(100);  // 주기 : 100us
+        sendLoopPeriod += std::chrono::microseconds(5000);  // 주기 : 5msec
+        
+        if (!canManager.setCANFrame())
+        {
+            state.main = Main::Error;
+        }
 
+        bool isWriteError = false;
+
+        for (auto &motor_pair : motors)
+        {
+            shared_ptr<GenericMotor> motor = motor_pair.second;
+
+            if (!canManager.sendMotorFrame(motor))
+            {
+                isWriteError = true;
+            }
+        }
+
+        if (maxonMotorCount != 0)
+        {
+            maxoncmd.getSync(&virtualMaxonMotor->sendFrame);
+
+            if (!canManager.sendMotorFrame(virtualMaxonMotor))
+            {
+                isWriteError = true;
+            };
+        }
+
+        if (isWriteError)
+        {
+            state.main = Main::Error;
+        }
+        
         std::this_thread::sleep_until(sendLoopPeriod);
     }
 }
+
+
 
 void DrumRobot::recvLoopForThread()
 {
     while (state.main != Main::Shutdown)
     {
         recvLoopPeriod = std::chrono::steady_clock::now();
-        recvLoopPeriod += std::chrono::microseconds(100);  // 주기 : 100us
+        recvLoopPeriod += std::chrono::microseconds(50000);  // 주기 : 100us
 
-        readProcess(5000);
 
         std::this_thread::sleep_until(recvLoopPeriod);
     }
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/*                                SYSTEM LOOPS                                */
-////////////////////////////////////////////////////////////////////////////////
-
-// void DrumRobot::stateMachine()
-// {
-//     while (state.main != Main::Shutdown)
-//     {
-//         stateMachinePeriod = std::chrono::steady_clock::now();
-//         stateMachinePeriod += std::chrono::microseconds(5000);    // 주기 : 5ms
-
-//         switch (state.main.load())
-//         {
-//         case Main::SystemInit:
-//         {
-//             initializeMotors(); //팔 T모터
-//             initializecanManager();
-//             motorSettingCmd(); //손목
-//             canManager.setSocketNonBlock();
-//             usbio.initUSBIO4761();
-//             fun.openCSVFile();
-
-//             std::cout << "System Initialize Complete [ Press Enter ]\n";
-//             getchar();
-//             state.main = Main::Ideal;
-//             break;
-//         }
-//         case Main::Ideal:
-//         {
-//             clearBufferforRecord();
-//             idealStateRoutine();
-//             break;
-//         }
-//         case Main::Play:
-//         {
-//             checkUserInput();
-//             break;
-//         }
-//         case Main::Test:
-//         {
-//             bool isWriteError = false;
-//             if (state.test == TestSub::SelectParamByUser || state.test == TestSub::SetQValue || state.test == TestSub::SetXYZ || (state.test == TestSub::TestMaxon && !testManager.hitTest))
-//             {
-//                 if (!canManager.checkAllMotors_Fixed()) // stateMachine() 주기가 5ms 라서 delay 필요 없음
-//                 {
-//                     isWriteError = true;
-//                 }
-//             }
-//             else
-//             {
-//                 checkUserInput();
-//             }
-
-//             if (isWriteError)
-//             {
-//                 state.main = Main::Error;
-//             }
-//             //checkUserInput();
-//             break;
-//         }
-//         case Main::Pause:
-//         {
-//             checkUserInput();
-//             break;
-//         }
-//         case Main::AddStance:
-//         {
-//             checkUserInput();
-//             break;
-//         }
-//         case Main::Error:
-//         {
-//             state.main = Main::Shutdown;
-//             break;
-//         }
-//         case Main::Shutdown:
-//             break;
-//         }
-        
-//         std::this_thread::sleep_until(stateMachinePeriod);
-//     }
-
-//     if (usbio.useUSBIO)
-//     {
-//         usbio.exitUSBIO4761();
-//     }
-//     canManager.setSocketBlock();
-//     deactivateControlTask();
-// }
-
-// void DrumRobot::sendLoopForThread()
+/* void DrumRobot::sendLoopForThread()
 // {
 //     initializePathManager();
 //     while (state.main != Main::Shutdown)
@@ -314,8 +256,9 @@ void DrumRobot::recvLoopForThread()
 //         std::this_thread::sleep_until(sendLoopPeriod);
 //     }
 // }
+*/
 
-// void DrumRobot::recvLoopForThread()
+/* void DrumRobot::recvLoopForThread()
 // {
 //     while (state.main != Main::Shutdown)
 //     {
@@ -330,7 +273,7 @@ void DrumRobot::recvLoopForThread()
 //         }
 //         case Main::Ideal:
 //         {
-//             readProcess(5000); /*1ms*/
+//             readProcess(5000); // 1ms
 //             break;
 //         }
 //         case Main::Play:
@@ -366,8 +309,9 @@ void DrumRobot::recvLoopForThread()
 //         std::this_thread::sleep_until(recvLoopPeriod);
 //     }
 // }
+*/
 
-// void DrumRobot::readProcess(int periodMicroSec)
+/* void DrumRobot::readProcess(int periodMicroSec)
 // {
 //     // std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motors["L_wrist"]);
 //     // std::shared_ptr<GenericMotor> motor = motors["L_wrist"];
@@ -417,125 +361,12 @@ void DrumRobot::recvLoopForThread()
 //     }
 //     }
 // }
+*/
 
-// void DrumRobot::sendPlayProcess(int periodMicroSec, string musicName)
+/* void DrumRobot::sendPlayProcess(int periodMicroSec, string musicName)
 // {
-//     auto currentTime = chrono::system_clock::now();
-//     auto elapsedTime = chrono::duration_cast<chrono::microseconds>(currentTime - SendStandard);
-//     // auto elapsedTimeMaxon = chrono::duration_cast<chrono::microseconds>(currentTime - SendMaxon);
-    
-//     switch (state.play.load())
-//     {
-//     case PlaySub::ReadMusicSheet:
-//     {
-//         // 파일을 처음 열 때만
-//         if (openFlag == 1)
-//         {
-//             openFlag = 0; // 파일 열기 상태 초기화
-//             std::string currentFile = basePath + musicName + std::to_string(fileIndex) + ".txt";
-//             inputFile.open(currentFile); // 파일 열기
-            
-//             if (!inputFile.is_open()) // 파일 열기 실패
-//             {
-//                 if(pathManager.measureMatrix.rows() > 1)
-//                 {
-//                     // 악보 남음
-//                     state.play = PlaySub::GenerateTrajectory;
-//                     break;
-//                 }
-//                 else
-//                 {
-//                     if (pathManager.trajectoryQueue.empty())
-//                     {
-//                         // 연주 종료
-//                         std::cout << "Play is Over\n";
-//                         state.main = Main::AddStance;
-//                         state.play = PlaySub::ReadMusicSheet;
-//                         canManager.isPlay = false;
-//                         setAddStanceFlag("goToHome");
-//                         usleep(500*1000);     // 0.5s
-//                         break; // 파일 열지 못했으므로 상태 변경 후 종료
-//                     }
-//                     else
-//                     {
-//                         state.play = PlaySub::SolveIK;
-//                         break;
-//                     }
-//                 }
-//             }
-//         }
 
-//         // 파일에서 읽고 measureMatrix가 2.4초 이상이 되도록 추가
-//         if (pathManager.readMeasure(inputFile, bpmFlag) == true)
-//         {
-//             state.play = PlaySub::GenerateTrajectory; // GenerateTrajectory 상태로 전환
-//             break;
-//         }
-//         else    // 파일 끝에 도달한 경우
-//         {
-//             inputFile.close(); // 파일 닫기
-//             fileIndex++;       // 다음 파일로 이동
-//             openFlag = 1;      // 파일 열 준비
-
-//             state.play = PlaySub::ReadMusicSheet;
-//             break;
-//         }
-
-//         state.play = PlaySub::SolveIK;
-
-//         break;
-    
-//     }
-//     case PlaySub::GenerateTrajectory:
-//     {
-//         pathManager.lineOfScore++;
-//         pathManager.generateTrajectory();
-//         if (pathManager.lineOfScore > preCreatedLine)
-//         {
-//             state.play = PlaySub::SolveIK;
-//         }
-//         else
-//         {
-//             state.play = PlaySub::ReadMusicSheet;
-//         }
-
-//         break;
-//     }
-//     case PlaySub::SolveIK:
-//     {
-//         // 정해진 개수만큼 커맨드 생성
-//         if (pathManager.solveIKandPushConmmand())
-//         {
-//             state.play = PlaySub::TimeCheck;
-//         }
-//         else
-//         {
-//             state.play = PlaySub::ReadMusicSheet;
-//         }
-
-//         break;
-//     }
-//     case PlaySub::TimeCheck:
-//     {
-//         if (elapsedTime.count() >= periodMicroSec)  
-//         {
-//             state.play = PlaySub::SetCANFrame;  // 5ms마다 CAN Frame 설정
-//             SendStandard = currentTime;         // 시간 초기화
-//             SendMaxon = currentTime;             // 시간 초기화
-//         }
-//         break;
-//     }
-//     case PlaySub::SetCANFrame:
-//     {
-//         bool isSafe;
-//         isSafe = canManager.setCANFrame();
-//         if (!isSafe)
-//         {
-//             state.main = Main::Error;
-//         }
-//         state.play = PlaySub::SendCANFrame;
-//         break;
-//     }
+/
 //     case PlaySub::SendCANFrame:
 //     {
 //         bool isWriteError = false;
@@ -582,8 +413,9 @@ void DrumRobot::recvLoopForThread()
 //     }
 //     }
 // }
+*/
 
-// void DrumRobot::sendAddStanceProcess(int periodMicroSec)
+/* void DrumRobot::sendAddStanceProcess(int periodMicroSec)
 // {
 //     auto currentTime = chrono::system_clock::now();
 //     auto elapsedTime = chrono::duration_cast<chrono::microseconds>(currentTime - addStandard);
@@ -764,6 +596,7 @@ void DrumRobot::recvLoopForThread()
 //     }
 //     }
 // }
+*/
 
 // ////////////////////////////////////////////////////////////////////////////////
 // /*                                STATE UTILITY                               */

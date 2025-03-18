@@ -26,7 +26,7 @@ public:
     // speed [erpm]
     void comm_can_set_spd(TMotor &motor, struct can_frame *frame, float spd_erpm);
     // pos [rad]
-    void comm_can_set_pos(TMotor &motor, struct can_frame *frame, float pos);
+    void setPositionCANFrame(TMotor &motor, struct can_frame *frame, float pos);
 
 private:
 };
@@ -78,7 +78,7 @@ public:
     void getCSPMode(MaxonMotor &motor, struct can_frame *frame);
     void getTorqueOffset(MaxonMotor &motor, struct can_frame *frame);
     void getPosOffset(MaxonMotor &motor, struct can_frame *frame);
-    void getTargetPosition(MaxonMotor &motor, struct can_frame *frame, float p_des_radians);
+    void setPositionCANFrame(MaxonMotor &motor, struct can_frame *frame, float p_des_radians);
 
     // HMM 모드 관련 명령 구성 메서드.
     void getHomeMode(MaxonMotor &motor, struct can_frame *frame);
@@ -99,7 +99,7 @@ public:
 
     // CST 모드 관련 명령 구성 메서드.
     void getCSTMode(MaxonMotor &motor, struct can_frame *frame);
-    void getTargetTorque(MaxonMotor &motor, struct can_frame *frame, int targetTorque);
+    void setTorqueCANFrame(MaxonMotor &motor, struct can_frame *frame, int targetTorque);
     void setTargetTorque(MaxonMotor &motor, struct can_frame *frame, int targetTorque);
 };
 
