@@ -33,10 +33,14 @@ int Functions::getComNumberByHostname() {
     }
 }
 
-void Functions::restCanPort(int com_number)
+void Functions::restCanPort()
 {
+    //shy-desktop -> 1반환
+    //shy-MINIPC-VC66-C2 -> 2반환
+    int com_number = getComNumberByHostname();   //com_number = 1 드럼로봇 컴퓨터 com_number = 2 테스트 환경 컴퓨터
+
     char can1_on[100], can2_on[100], can3_on[100], can1_off[100], can2_off[100], can3_off[100];
-    //com_number = 1 드럼로봇 컴퓨터 com_number = 2 테스트 환경 컴퓨터 
+
     // Reset the commands based on com_number
     if (com_number == 1) {
         //sudo uhubctl 이 명령어 실행하면 포트 검색가능
@@ -100,6 +104,7 @@ void Functions::restCanPort(int com_number)
     sleep(2);
 }
 
+// CSV 파일에 생성 및 초기값 저장
 void Functions::openCSVFile()
 {
     for (int i = 1; i < 100; i++)

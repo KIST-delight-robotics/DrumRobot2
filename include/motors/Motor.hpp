@@ -62,9 +62,6 @@ public:
 struct TMotorData
 {
     float position;
-    int32_t spd;
-    int32_t acl;
-    bool isBrake;
 };
 
 class TMotor : public GenericMotor
@@ -106,8 +103,6 @@ struct MaxonData
 {
     float torque;
     float position;
-    double WristState;
-    bool isHit = false;
 };
 
 class MaxonMotor : public GenericMotor

@@ -25,9 +25,9 @@ public:
 
     // restart CAN Port
     int getComNumberByHostname();
-    void restCanPort(int com_number);
+    void restCanPort();
 
-    /*save csv file*/
+    // save csv file
     std::chrono::high_resolution_clock::time_point start;  
     const std::string basePath = "../../DrumRobot_data/";  // 기본 경로
     std::string file_name = "data";
