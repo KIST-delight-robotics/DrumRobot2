@@ -742,7 +742,7 @@ bool CanManager::sendForCheck_Fixed(std::shared_ptr<GenericMotor> motor)
             std::cout << "Fixed Motor Position : " << motor->fixedMotorPosition << "rad\tCurrent Motor Position : " << tMotor->motorPosition << "rad\n";
             return false;
         }
-        tservocmd.comm_can_set_pos(*tMotor, &tMotor->sendFrame, motor->fixedMotorPosition);
+        // tservocmd.comm_can_set_pos(*tMotor, &tMotor->sendFrame, motor->fixedMotorPosition);
 
         if (!sendMotorFrame(tMotor))
         {
@@ -756,7 +756,7 @@ bool CanManager::sendForCheck_Fixed(std::shared_ptr<GenericMotor> motor)
             motor->fixedMotorPosition = maxonMotor->motorPosition;
             motor->isfixed = true;
         }
-        maxoncmd.getTargetPosition(*maxonMotor, &maxonMotor->sendFrame, maxonMotor->fixedMotorPosition);
+        // maxoncmd.getTargetPosition(*maxonMotor, &maxonMotor->sendFrame, maxonMotor->fixedMotorPosition);
 
         if (!sendMotorFrame(maxonMotor))
         {

@@ -439,7 +439,7 @@ void PathManager::getArr(vector<float> &arr)
                     TMotorData newData;
                     newData.position = Qt[motorMapping[entry.first]];
                     tMotor->commandBuffer.push(newData);
-                    std:cout << newData.position << "\n";
+                    std::cout << newData.position << "\n";
                 }
                 else if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(entry.second))
                 {
@@ -460,7 +460,7 @@ void PathManager::getArr(vector<float> &arr)
                     TMotorData newData;
                     newData.position = Q1[motorMapping[entry.first]];
                     tMotor->commandBuffer.push(newData);
-                    std:cout << newData.position << "\n";
+                    std::cout << newData.position << "\n";
                 }
                 else if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(entry.second))
                 {
