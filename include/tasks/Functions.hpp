@@ -24,7 +24,7 @@ public:
     ~Functions();
 
     // restart CAN Port
-    int get_com_number_by_hostname();
+    int getComNumberByHostname();
     void restCanPort(int com_number);
 
     /*save csv file*/
@@ -38,5 +38,5 @@ public:
     void appendToCSV_State(const std::string& filename, string state, string sub_state);
 
 private:
-    std::map<std::string, std::shared_ptr<GenericMotor>> &motors;
+    std::map<std::string, std::shared_ptr<GenericMotor>> &motors;   // data 기록하기 위해 필요
 };

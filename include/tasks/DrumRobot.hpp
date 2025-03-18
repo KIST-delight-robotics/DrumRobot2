@@ -31,10 +31,8 @@
 #include "../include/managers/TestManager.hpp"
 #include "../include/USBIO_advantech/USBIO_advantech.hpp"
 #include "../include/tasks/Functions.hpp"
-// #include "../include/managers/SignalHandler.hpp"
 
 using namespace std;
-
 
 class DrumRobot
 {

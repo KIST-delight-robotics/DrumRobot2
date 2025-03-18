@@ -12,7 +12,7 @@ Functions::~Functions()
 
 }
 
-int Functions::get_com_number_by_hostname() {
+int Functions::getComNumberByHostname() {
     char hostname[1024];
     
     // 호스트 이름을 가져오기

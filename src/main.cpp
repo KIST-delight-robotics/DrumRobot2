@@ -16,8 +16,6 @@
 #include "../include/managers/GuiManager.hpp"
 #include "../include/USBIO_advantech/USBIO_advantech.hpp"
 #include "../include/tasks/Functions.hpp"
-// #include "../include/managers/SignalHandler.hpp"
-
 
 using namespace std;
 
@@ -34,7 +32,6 @@ bool setThreadPriority(std::thread &th, int priority, int policy = SCHED_FIFO)
     return true;
 }
 
-
 int main(int argc, char *argv[])
 {
     // Create Share Resource
@@ -44,22 +41,17 @@ int main(int argc, char *argv[])
 
     Functions fun(motors);
     CanManager canManager(motors, fun);
-    // SignalHandler signalHandler(state, canManager, motors, usbio, fun);
     PathManager pathManager(state, canManager, motors, usbio, fun);
     TestManager testManager(state, canManager, motors, usbio, fun);
     DrumRobot drumRobot(state, canManager, pathManager, testManager, motors, usbio, fun);
     GuiManager guiManager(state, canManager, motors);
 
-
-
     //shy-desktop -> 1반환
     //shy-MINIPC-VC66-C2 -> 2반환
-    // int com_number = canManager.get_com_number_by_hostname();
-    int com_number = fun.get_com_number_by_hostname();
+    int comNumber = fun.getComNumberByHostname();
 
     // 포트를 비활성화하고 다시 활성화
-    // canManager.restCanPort(com_number);
-    fun.restCanPort(com_number);
+    fun.restCanPort(comNumber);
 
     // Create Threads
     std::thread stateThread(&DrumRobot::stateMachine, &drumRobot);
