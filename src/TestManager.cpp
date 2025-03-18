@@ -80,10 +80,10 @@ void TestManager::SendTestProcess(int periodMicroSec)
             {
                 std::cout << "Mode : Go to target point\n";
             }
-            std::cout << "\n[Current Q Values] [Target Q Values] (Radian)\n";
+            std::cout << "\n[Current Q Values]\t\t[Target Q Values]\n";
             for (int i = 0; i < 10; i++)
             {
-                std::cout << "Q[" << i << "] : " << c_MotorAngle[i] << "\t<->\t" << q[i] << std::endl;
+                std::cout << "Q[" << i << "] : " << c_MotorAngle[i] << "(" << c_MotorAngle[i]*180.0/M_PI << ")\t<->\t" << q[i] << "(" << q[i]*180.0/M_PI << ")\n";
             }
 
             std::cout << "\ntime : " << t << "s";
@@ -101,8 +101,17 @@ void TestManager::SendTestProcess(int periodMicroSec)
                     std::cout << "Joint " << i << " brake off\n";
                 }
             }
+
+            if (canManager.isCSTL)
+            {
+                std::cout << "CST True\n Kp : " << canManager.Kp << " Kd : "  << canManager.Kd << "\n";
+            }
+            else
+            {
+                std::cout << "CST False\n";
+            }
             
-            std::cout << "\nSelect Motor to Change Value (0-8) / Run (9) / Time (10) / Extra Time (11) / Repeat(12) / Brake (13) / initialize test (14) / Sin Profile (15) / break on off (16) / Exit (-1): ";
+            std::cout << "\nSelect Motor to Change Value (0-8) / Run (9) / Time (10) / Extra Time (11) / Repeat(12) / Brake (13) / initialize test (14) / Sin Profile (15) / break on off (16) / CST(17) / Exit (-1): ";
             std::cin >> userInput;
 
             if (userInput == -1)
@@ -220,6 +229,26 @@ void TestManager::SendTestProcess(int periodMicroSec)
                     extra_time = 0.0;
                 }
             }
+            else if (userInput == 16)
+            {
+                std::cout << "Kp : ";
+                std::cin >> canManager.Kp;
+                std::cout << "Kd : ";
+                std::cin >> canManager.Kd;
+            }
+            else if (userInput == 17)
+            {
+                if (canManager.isCSTL)
+                {
+                    canManager.isCSTL = false;
+                    std::cout << "CST False";
+                }
+                else
+                {
+                    canManager.isCSTL = true;
+                    std::cout << "CST True";
+                }
+            }
 
             // else if (userInput == 16)
             // {
@@ -267,8 +296,6 @@ void TestManager::SendTestProcess(int periodMicroSec)
             
             float c_MotorAngle[10] = {0};
             getMotorPos(c_MotorAngle);
-
-            curMode = "CSP";
 
             for (int i = 0; i < 10; i++)
             {
@@ -320,7 +347,7 @@ void TestManager::SendTestProcess(int periodMicroSec)
                                 q[8] = makeWristAngle(0, hit_time, i * dt, 3, intensity, maxonMotor->hitting, maxonMotor->hittingPos);
                             }
                         }
-                        else
+                        else if (hitMode == 3)
                         {
                             if (repeatCnt == repeat)
                             {
@@ -333,6 +360,22 @@ void TestManager::SendTestProcess(int periodMicroSec)
                             else
                             {
                                 q[8] = makeWristAngle_CST(0, hit_time, i * dt, 3, intensity, maxonMotor->hitting, maxonMotor->hittingPos);
+                            }
+                        }
+                        else
+                        {
+                            if (!canManager.isCST) canManager.isCST = true;
+                            if (repeatCnt == repeat)
+                            {
+                                q[8] = makeWristAngle_TC(0, hit_time, i * dt, 1, intensity, maxonMotor->hitting, maxonMotor->hittingPos);    
+                            }
+                            else if (repeatCnt == 0)
+                            {
+                                q[8] = makeWristAngle_TC(0, hit_time, i * dt, 2, intensity, maxonMotor->hitting, maxonMotor->hittingPos);
+                            }
+                            else
+                            {
+                                q[8] = makeWristAngle_TC(0, hit_time, i * dt, 3, intensity, maxonMotor->hitting, maxonMotor->hittingPos);
                             }
                         }
 
@@ -348,6 +391,7 @@ void TestManager::SendTestProcess(int periodMicroSec)
                     {
                         repeatCnt = 0;
                         hitTest = false;
+                        // canManager.isCST = false;
                         break;
                     }
                     else
@@ -1956,6 +2000,231 @@ float TestManager::makeWristAngle_CST(float t1, float t2, float t, int state, in
 
 }
 
+float TestManager::makeWristAngle_TC(float t1, float t2, float t, int state, int intensity, bool &hitting, float hittingPos)
+{
+    float wrist_q = 0.0;
+    float t_press = std::min(0.1 * (t2 - t1), 0.05); // 0.08 -> 0.05
+    float t_lift = std::max(0.8 * (t2 - t1), t2 - t1 - 0.1);
+    float t_stay;
+    t2 - t1 < 0.15 ? t_stay = 0.45 * (t2 - t1) : t_stay = 0.47 * (t2 - t1) - 0.05;
+    static float t_release = std::min(0.2 * (t2 - t1), 0.1);
+    float t_contact = t2 - t1;
+    float t_hitting = 0.0;
+    float wristLiftAngle;
+    t2 - t1 < 0.5 ? wristLiftAngle = (-100 * ((t2 - t1) - 0.5) * ((t2 - t1) - 0.5) + 40) * M_PI / 180.0 : wristLiftAngle = 40  * M_PI / 180.0;
+    float wristStayAngle = 15.0 * M_PI / 180.0;
+    float wristContactAngle = -1.0 * std::min((t2 - t1) * 5.0 * M_PI / 180.0 / 0.5, 5.0 * M_PI / 180.0);
+
+    float intensityFactor = 0.4 * intensity + 0.2; // 1 : 약하게   2 : 기본    3 : 강하게
+    wristLiftAngle = wristLiftAngle * intensityFactor;
+
+    static bool hittingTimeCheck = true;
+
+    MatrixXd A;
+    MatrixXd b;
+    MatrixXd A_1;
+    MatrixXd sol;
+
+    if(hitting)
+    {
+        if (hittingTimeCheck)
+        {
+            t_hitting = t;
+            hittingTimeCheck = false;
+        }
+
+        if (state == 1)
+        {
+            // Contact - Stay
+            A.resize(4, 4);
+            b.resize(4, 1);
+            if (t <= t_release)
+            {
+                if (t_hitting > t_press)
+                {
+                    A << 1, 0, 0, 0,
+                    1, t_press, t_press * t_press, t_press * t_press * t_press,
+                    0, 1, 0, 0,
+                    0, 1, 2 * t_press, 3 * t_press * t_press;
+                    b << hittingPos, wristStayAngle, 0, 0;
+                }
+                else
+                {
+                    t_release = t_hitting + t_press;
+                    A << 1, t_hitting, t_hitting * t_hitting, t_hitting * t_hitting * t_hitting,
+                    1, t_release, t_release * t_release, t_release * t_release * t_release,
+                    0, 1, 2 * t_hitting, 3 * t_hitting * t_hitting,
+                    0, 1, 2 * t_release, 3 * t_release * t_release;
+                    b << hittingPos, wristStayAngle, 0, 0;
+                }
+                A_1 = A.inverse();
+                sol = A_1 * b;
+                wrist_q = sol(0, 0) + sol(1, 0) * t + sol(2, 0) * t * t + sol(3, 0) * t * t * t;
+            }
+            else
+            {
+                hitting = false;
+                hittingTimeCheck = true;
+                wrist_q = wristStayAngle;
+            }
+        }
+        else if (state == 2)
+        {
+            wrist_q = hittingPos;
+        }
+        else if (state == 3)
+        {
+            // Contact - Lift - Hit
+            if (t < t_stay)
+            {
+                A.resize(4, 4);
+                b.resize(4, 1);
+                if (t_hitting > t_stay)
+                {
+                    A << 1, 0, 0, 0,
+                    1, t_stay, t_stay * t_stay, t_stay * t_stay * t_stay,
+                    0, 1, 0, 0,
+                    0, 1, 2 * t_stay, 3 * t_stay * t_stay;
+                    b << hittingPos, wristLiftAngle, 0, 0;
+                }
+                else
+                {
+                    A << 1, t_hitting, t_hitting * t_hitting, t_hitting * t_hitting * t_hitting,
+                    1, t_stay, t_stay * t_stay, t_stay * t_stay * t_stay,
+                    0, 1, 2 * t_hitting, 3 * t_hitting * t_hitting,
+                    0, 1, 2 * t_stay, 3 * t_stay * t_stay;
+                    b << hittingPos, wristLiftAngle, 0, 0;
+                }
+                A_1 = A.inverse();
+                sol = A_1 * b;
+                wrist_q = sol(0, 0) + sol(1, 0) * t + sol(2, 0) * t * t + sol(3, 0) * t * t * t;
+            }
+            else if (t < t_lift)
+            {
+                hitting = false;
+                hittingTimeCheck = true;
+                wrist_q = wristLiftAngle;
+            }
+            else if (t <= t_contact)
+            {
+                wrist_q = hittingPos;
+            }
+        }
+    }
+    else
+    {
+        if (state == 0)
+        {
+            // Stay
+            wrist_q = wristStayAngle;
+        }
+        else if (state == 1)
+        {
+            t_release = t_hitting + t_press;
+            // Contact - Stay
+            A.resize(3, 3);
+            b.resize(3, 1);
+            if (t < t_press)
+            {
+                A << 1, 0, 0,
+                1, t_press, t_press * t_press,
+                0, 1, 2 * t_press;
+                b << 0, wristContactAngle, 0;
+                A_1 = A.inverse();
+                sol = A_1 * b;
+                wrist_q = sol(0, 0) + sol(1, 0) * t + sol(2, 0) * t * t;
+                
+            }
+            else if (t <= t_release)
+            {
+                A.resize(4, 4);
+                b.resize(4, 1);
+                A << 1, t_press, t_press * t_press, t_press * t_press * t_press,
+                    1, t_release, t_release * t_release, t_release * t_release * t_release,
+                    0, 1, 2 * t_press, 3 * t_press * t_press,
+                    0, 1, 2 * t_release, 3 * t_release * t_release;
+                b << wristContactAngle, wristStayAngle, 0, 0;
+                A_1 = A.inverse();
+                sol = A_1 * b;
+                wrist_q = sol(0, 0) + sol(1, 0) * t + sol(2, 0) * t * t + sol(3, 0) * t * t * t;
+            }
+            else
+            {
+                wrist_q = wristStayAngle;
+            }
+        }
+        else if (state == 2)
+        {
+            
+            // Stay - Lift - Hit
+            if (t < t_stay)
+            {
+                // Stay
+                wrist_q = wristStayAngle;
+            }
+            else if (t < t_lift)
+            {
+                A.resize(4, 4);
+                b.resize(4, 1);
+                A << 1, t_stay, t_stay * t_stay, t_stay * t_stay * t_stay,
+                    1, t_lift, t_lift * t_lift, t_lift * t_lift * t_lift,
+                    0, 1, 2 * t_stay, 3 * t_stay * t_stay,
+                    0, 1, 2 * t_lift, 3 * t_lift * t_lift;
+                b << wristStayAngle, wristLiftAngle, 0, 0;
+                A_1 = A.inverse();
+                sol = A_1 * b;
+                wrist_q = sol(0, 0) + sol(1, 0) * t + sol(2, 0) * t * t + sol(3, 0) * t * t * t;
+            }
+            else if (t <= t_contact)
+            {
+                canManager.isHitL = true;
+                canManager.isCSTL = true;
+            }
+        }
+        else if (state == 3)
+        {
+            // Contact - Lift - Hit
+            if (t < t_press)
+            {
+                A.resize(3, 3);
+                b.resize(3, 1);
+                A << 1, 0, 0,
+                    1, t_press, t_press * t_press,
+                    0, 1, 2 * t_press;
+                b << 0, wristContactAngle, 0;
+                A_1 = A.inverse();
+                sol = A_1 * b;
+                wrist_q = sol(0, 0) + sol(1, 0) * t + sol(2, 0) * t * t;
+            }
+            else if (t < t_stay)
+            {
+                A.resize(4, 4);
+                b.resize(4, 1);
+                A << 1, t_press, t_press * t_press, t_press * t_press * t_press,
+                    1, t_stay, t_stay * t_stay, t_stay * t_stay * t_stay,
+                    0, 1, 2 * t_press, 3 * t_press * t_press,
+                    0, 1, 2 * t_stay, 3 * t_stay * t_stay;
+                b << wristContactAngle, wristLiftAngle, 0, 0;
+                A_1 = A.inverse();
+                sol = A_1 * b;
+                wrist_q = sol(0, 0) + sol(1, 0) * t + sol(2, 0) * t * t + sol(3, 0) * t * t * t;
+            }
+            else if (t < t_lift)
+            {
+                // Stay
+                wrist_q = wristLiftAngle;
+            }
+            else if (t <= t_contact)
+            {
+                canManager.isHitL = true;
+            }
+        }
+    }
+
+    return wrist_q;
+
+}
+
 tuple <double, int, int> TestManager::CSTHitLoop()
 {
     string userInput;
@@ -1977,7 +2246,6 @@ tuple <double, int, int> TestManager::CSTHitLoop()
         cout << "\nRepeat   : " << repeat;
         cout << "\nState    :" << state;
         cout << "\nIntensity    : " << intensity;
-        cout << "\nBack Torque   : " << canManager.backTorque;
         if (hitMode == 1)
         {
             cout << "\nHitting Mode   : Detect Hitting";
@@ -1990,6 +2258,10 @@ tuple <double, int, int> TestManager::CSTHitLoop()
         {
             cout << "\nHitting Mode   : CST Hitting";
         }
+        else
+        {
+            cout << "\nHitting Mode   : Torque Control";
+        }
         cout << "\n-----------------------------------";
         cout << "\nSetting Parameters";
         cout << "\n[t] : Time / [r] Repeat / [i] intensity / [m] Mode / [b] back torque / [g] Run";
@@ -2001,14 +2273,6 @@ tuple <double, int, int> TestManager::CSTHitLoop()
             cout << "\nEnter Hit Time     : ";
             cin >> t;
         }
-        else if (userInput == "b")
-        {
-            float temp;
-            cout << "\nRange : 1 ~ 500";
-            cout << "\nEnter Back Torque     : ";
-            cin >> temp;
-            canManager.backTorque = temp * -1;
-        }
         else if(userInput == "r")
         {
             cout << "\nEnter Repeat Count     : ";
@@ -2016,8 +2280,15 @@ tuple <double, int, int> TestManager::CSTHitLoop()
         }
         else if (userInput == "m")
         {
-            cout << "\n[1] Detect Hitting / [2] 기존 방식 / [3] CST Hitting \nMode Select  : ";
+            cout << "\n[1] Detect Hitting / [2] 기존 방식 / [3] CST Hitting / [4] Torque Control \nMode Select  : ";
             cin >> hitMode;
+            if (hitMode == 4)
+            {
+                cout << "\nEnter Normal Kp, Kd(space_seperated)     : ";
+                cin >> canManager.Kp_normal >> canManager.Kd_normal;
+                cout << "\nEnter Hit Kp, Kd(space_seperated)     : ";
+                cin >> canManager.Kp_hit >> canManager.Kd_hit;
+            }
         }
         else if (userInput == "i")
         {

@@ -62,8 +62,11 @@ public:
     bool isCSTR = false;
     bool isCSTL = false;
     float wristStayAngle;
-    float backTorque = -10;
-    bool torqueOff = false;
+    bool torqueControl = false;
+    float Kp_normal;
+    float Kd_normal;
+    float Kp_hit;
+    float Kd_hit;
 
     MatrixXd wristAnglesR;                               ///< 오른팔의 각 악기별 타격 시 손목 각도.
     MatrixXd wristAnglesL;                                ///< 왼팔의 각 악기별 타격 시 손목 각도.
@@ -72,7 +75,7 @@ public:
     float currentPosition = 0.0;
 
     // tMotor 제어 주기 결정
-    const double DTSECOND = 0.005;
+    const double DTSECOND = 0.001;
 
     void initializeCAN();
 
@@ -132,6 +135,8 @@ public:
         {"maxonForTest", 9},
         {"R_foot", 10},
         {"L_foot", 11}};
+
+    double Kp = 100, Kd = 1, pre_err = 0.0;
 
 private:
 

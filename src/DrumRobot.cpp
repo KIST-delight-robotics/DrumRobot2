@@ -39,7 +39,7 @@ void DrumRobot::stateMachine()
     while (state.main != Main::Shutdown)
     {
         stateMachinePeriod = std::chrono::steady_clock::now();
-        stateMachinePeriod += std::chrono::microseconds(5000);    // 주기 : 5ms
+        stateMachinePeriod += std::chrono::microseconds(1000);    // 주기 : 5ms
 
         switch (state.main.load())
         {
@@ -165,13 +165,13 @@ void DrumRobot::sendLoopForThread()
         case Main::AddStance:
         {
             unfixedMotor();
-            sendAddStanceProcess(5000);
+            sendAddStanceProcess(1000);
             break;
         }
         case Main::Test:
         {
             //unfixedMotor();
-            testManager.SendTestProcess(5000);
+            testManager.SendTestProcess(1000);
             break;
         }
         case Main::Pause:
@@ -280,14 +280,14 @@ void DrumRobot::readProcess(int periodMicroSec)
         break;
     case ReadSub::UpdateMotorInfo:
     {
-        // if ((!settingInitPos) || state.main == Main::Test) // test 모드에서 에러 검출 안함
-        // {
-        //     canManager.distributeFramesToMotors(false);
-        // }
-        if (!settingInitPos)    // test 모드에서 에러 검출함
+        if ((!settingInitPos) || state.main == Main::Test) // test 모드에서 에러 검출 안함
         {
             canManager.distributeFramesToMotors(false);
         }
+        // if (!settingInitPos)    // test 모드에서 에러 검출함
+        // {
+        //     canManager.distributeFramesToMotors(false);
+        // }
         else
         {
             bool isSafe = canManager.distributeFramesToMotors(true);

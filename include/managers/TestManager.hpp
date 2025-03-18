@@ -131,6 +131,7 @@ private:
     void TestStick(const std::string selectedMotor, int des_tff, float tffThreshold, float posThreshold, int backTorqueUnit);
     float makeWristAngle(float t1, float t2, float t, int state, int intensity, bool &hitting, float hittingPos);
     float makeWristAngle_CST(float t1, float t2, float t, int state, int intensity, bool &hitting, float hittingPos);
+    float makeWristAngle_TC(float t1, float t2, float t, int state, int intensity, bool &hitting, float hittingPos);
     tuple <double, int, int> CSTHitLoop();
 
     void unfixedMotor();
