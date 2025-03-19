@@ -97,6 +97,7 @@ void DrumRobot::sendLoopForThread()
         {
             state.main = Main::Error;
         }
+
         //  모든 모터가 고정 상태인지 체크
         bool allMotorsStagnant = !fixFlags.empty();
         for (const auto& flag : fixFlags)
@@ -152,10 +153,18 @@ void DrumRobot::recvLoopForThread()
         recvLoopPeriod = std::chrono::steady_clock::now();
         recvLoopPeriod += std::chrono::microseconds(50000);  // 주기 : 100us
 
+        canManager.readFramesFromAllSockets(); 
+        bool isSafe = canManager.distributeFramesToMotors(true);
+        if (!isSafe)
+        {
+            state.main = Main::Error;
+        }
 
         std::this_thread::sleep_until(recvLoopPeriod);
     }
 }
+
+
 /* void DrumRobot::sendLoopForThread()
 // {
 //     initializePathManager();
