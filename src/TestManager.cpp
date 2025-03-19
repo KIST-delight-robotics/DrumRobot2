@@ -510,7 +510,7 @@ void TestManager::SendTestProcess(int periodMicroSec)
         case TestSub::SetCANFrame:
         {
             bool isSafe;
-            isSafe = canManager.setCANFrame_TEST();
+            // isSafe = canManager.setCANFrame_TEST();
             if (!isSafe)
             {
                 state.main = Main::Error;
@@ -1197,7 +1197,7 @@ void TestManager::CSTLoop()
         chrono::microseconds elapsed_time = chrono::duration_cast<chrono::microseconds>(internal - external);
         if (elapsed_time.count() >= 5000)
         {
-            maxoncmd.getTargetTorque(*selectedMotor, &frame, 1);
+            // maxoncmd.getTargetTorque(*selectedMotor, &frame, 1);
             canManager.txFrame(motors["maxonForTest"], frame);
 
             maxoncmd.getSync(&frame);
@@ -1424,7 +1424,7 @@ void TestManager::TestStick(const std::string selectedMotor, int des_tff, float 
         if (elapsed_time.count() >= 5000)
         {
             index++;
-            maxoncmd.getTargetTorque(*maxonMotor, &frame, des_tff);
+            // maxoncmd.getTargetTorque(*maxonMotor, &frame, des_tff);
             canManager.txFrame(motors[selectedMotor], frame);
 
             maxoncmd.getSync(&frame);
@@ -1452,7 +1452,7 @@ void TestManager::TestStick(const std::string selectedMotor, int des_tff, float 
         }
         if (index >= 1000) 
         {
-            maxoncmd.getTargetTorque(*maxonMotor, &frame, 0);
+            // maxoncmd.getTargetTorque(*maxonMotor, &frame, 0);
             canManager.txFrame(motors[selectedMotor], frame);
 
             maxoncmd.getSync(&frame);

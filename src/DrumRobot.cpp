@@ -41,7 +41,6 @@ void DrumRobot::stateMachine()
         {
             case Main::Ideal:
             {
-                clearBufferforRecord();
                 idealStateRoutine();
                 break;
             }
@@ -115,12 +114,12 @@ void DrumRobot::sendLoopForThread()
         {
             state.main = Main::Error;
         }
+
+        // flagObj.setFixationFlag("fixed");
         
         std::this_thread::sleep_until(sendLoopPeriod);
     }
 }
-
-
 
 void DrumRobot::recvLoopForThread()
 {
@@ -553,6 +552,43 @@ void DrumRobot::recvLoopForThread()
 //     }
 // }
 */
+
+////////////////////////////////////////////////////////////////////////////////
+/*                                 SYSTEM                                     */
+////////////////////////////////////////////////////////////////////////////////
+
+void DrumRobot::clearBufferforRecord()
+{
+    for (auto &motor_pair : motors)
+    {
+        if (std::shared_ptr<TMotor> tMotor = std::dynamic_pointer_cast<TMotor>(motor_pair.second))
+        {
+            tMotor->clearCommandBuffer();
+            tMotor->clearReceiveBuffer();
+        }
+        else if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motor_pair.second))
+        {
+            maxonMotor->clearCommandBuffer();
+            maxonMotor->clearReceiveBuffer();
+        }
+    }
+}
+
+void DrumRobot::clearMotorsCommandBuffer()
+{
+    for (const auto &motorPair : motors)
+    {
+
+        if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motorPair.second))
+        {
+            maxonMotor->clearCommandBuffer();
+        }
+        else if (std::shared_ptr<TMotor> tMotor = std::dynamic_pointer_cast<TMotor>(motorPair.second))
+        {
+            tMotor->clearCommandBuffer();
+        }
+    }
+}
 
 // ////////////////////////////////////////////////////////////////////////////////
 // /*                                STATE UTILITY                               */
@@ -1484,43 +1520,6 @@ void DrumRobot::deactivateControlTask()
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/*                                 SYSTEM                                     */
-////////////////////////////////////////////////////////////////////////////////
-
-void DrumRobot::clearBufferforRecord()
-{
-    for (auto &motor_pair : motors)
-    {
-        if (std::shared_ptr<TMotor> tMotor = std::dynamic_pointer_cast<TMotor>(motor_pair.second))
-        {
-            tMotor->clearCommandBuffer();
-            tMotor->clearReceiveBuffer();
-        }
-        else if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motor_pair.second))
-        {
-            maxonMotor->clearCommandBuffer();
-            maxonMotor->clearReceiveBuffer();
-        }
-    }
-}
-
-void DrumRobot::clearMotorsCommandBuffer()
-{
-    for (const auto &motorPair : motors)
-    {
-
-        if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motorPair.second))
-        {
-            maxonMotor->clearCommandBuffer();
-        }
-        else if (std::shared_ptr<TMotor> tMotor = std::dynamic_pointer_cast<TMotor>(motorPair.second))
-        {
-            tMotor->clearCommandBuffer();
-        }
-    }
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /*                              Ideal State                                  */
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1641,11 +1640,11 @@ void FlagClass::setAddStanceFlag(string flagName)
 {
     if (flagName == "goToHome")
     {
-        addStanceFlag = GOTOHOME;
+        addStanceFlag = ISHOME;
     }
     else if (flagName == "goToReady")
     {
-        addStanceFlag = GOTOREADY;
+        addStanceFlag = ISREADY;
     }
     else
     {
@@ -1655,25 +1654,25 @@ void FlagClass::setAddStanceFlag(string flagName)
 
 string FlagClass::getAddStanceFlag()
 {
-    if (addStanceFlag == GOTOHOME)
+    if (addStanceFlag == ISHOME)
     {
         return "goToHome";
     }
-    else if (addStanceFlag == GOTOREADY)
+    else if (addStanceFlag == ISREADY)
     {
         return "goToReady";
     }
 }
 
-void FlagClass::setRobotFlag(string flagName)
+void FlagClass::setFixationFlag(string flagName)
 {
-    if (flagName == "isHome")
+    if (flagName == "moving")
     {
-        robotFlag = ISHOME;
+        isFixed = false;
     }
-    else if (flagName == "isReady")
+    else if (flagName == "fixed")
     {
-        robotFlag = ISREADY;
+        isFixed = true;
     }
     else
     {
@@ -1681,14 +1680,7 @@ void FlagClass::setRobotFlag(string flagName)
     }
 }
 
-string FlagClass::getRobotFlag()
+bool FlagClass::getFixationFlag()
 {
-    if (robotFlag == ISHOME)
-    {
-        return "isHome";
-    }
-    else if (robotFlag == ISREADY)
-    {
-        return "isReady";
-    }
+    return isFixed;
 }
