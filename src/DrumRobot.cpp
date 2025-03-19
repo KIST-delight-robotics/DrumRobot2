@@ -892,7 +892,7 @@ void DrumRobot::sendPlayProcess()
             if (bpmOfScore <= 0)
             {
                 std::cout << "music bpm = " << bpmOfScore << "\n";
-                pathManager.initVal();  // 일단 두고 봄
+                pathManager.initialValue();
             }
             else
             {
@@ -906,7 +906,7 @@ void DrumRobot::sendPlayProcess()
             // 충돌 회피 알고리즘 자리
 
             lineOfScore++;
-            pathManager.generateTrajectory();
+            pathManager.generateTrajectory(measureMatrix);
 
             if (lineOfScore > preCreatedLine)
             {
@@ -927,7 +927,7 @@ void DrumRobot::sendPlayProcess()
                 // 충돌 회피 알고리즘 자리
 
                 lineOfScore++;
-                pathManager.generateTrajectory();
+                pathManager.generateTrajectory(measureMatrix);
 
                 if (lineOfScore > preCreatedLine)
                 {

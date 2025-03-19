@@ -147,85 +147,78 @@ void PathManager::setReadyAngle()
 /*                                  Play                                      */
 ////////////////////////////////////////////////////////////////////////////////
 
-bool PathManager::readMeasure(ifstream &inputFile, bool &bpmFlag)
+// bool PathManager::readMeasure(ifstream &inputFile, bool &bpmFlag)
+// {
+//     string row;
+//     double timeSum = 0.0;
+
+//     for (int i = 1; i < measureMatrix.rows(); i++)
+//     {
+//         timeSum += measureMatrix(i, 1);
+//     }
+
+//     // timeSum이 threshold를 넘으면 true 반환
+//     if (timeSum >= threshold)
+//     {
+//         std::cout << "\n//////////////////////////////// Read Measure : " << lineOfScore + 1 << "\n";
+//         // std::cout << measureMatrix;
+//         // std::cout << "\n ////////////// time sum : " << timeSum << "\n";
+
+//         return true;
+//     }
+
+//     while (getline(inputFile, row))
+//     {
+//         istringstream iss(row);
+//         string item;
+//         vector<string> items;
+
+//         while (getline(iss, item, '\t'))
+//         {
+//             item = trimWhitespace(item);
+//             items.push_back(item);
+//         }
+
+//         if (!bpmFlag)
+//         {
+//             cout << "music";
+//             bpmOfScore = stod(items[0].substr(4));
+//             cout << " bpm = " << bpmOfScore << "\n";
+//             bpmFlag = 1;
+
+//             initialValue();
+//         }
+//         else
+//         {
+//             measureMatrix.conservativeResize(measureMatrix.rows() + 1, measureMatrix.cols());
+//             for (int i = 0; i < 8; i++)
+//             {
+//                 measureMatrix(measureMatrix.rows() - 1, i) = stod(items[i]);
+//             }
+
+//             // total time 누적
+//             totalTime += measureMatrix(measureMatrix.rows() - 1, 1);
+//             measureMatrix(measureMatrix.rows() - 1, 8) = totalTime * 100.0 / bpmOfScore;
+
+//             // timeSum 누적
+//             timeSum += measureMatrix(measureMatrix.rows() - 1, 1);
+
+//             // timeSum이 threshold를 넘으면 true 반환
+//             if (timeSum >= threshold)
+//             {
+//                 std::cout << "\n//////////////////////////////// Read Measure : " << lineOfScore + 1 << "\n";
+//                 // std::cout << measureMatrix;
+//                 // std::cout << "\n ////////////// time sum : " << timeSum << "\n";
+
+//                 return true;
+//             }
+//         }
+//     }
+//     return false;
+// }
+
+void PathManager::generateTrajectory(MatrixXd measureMatrix)
 {
-    string row;
-    double timeSum = 0.0;
-
-    for (int i = 1; i < measureMatrix.rows(); i++)
-    {
-        timeSum += measureMatrix(i, 1);
-    }
-
-    // timeSum이 threshold를 넘으면 true 반환
-    if (timeSum >= threshold)
-    {
-        std::cout << "\n//////////////////////////////// Read Measure : " << lineOfScore + 1 << "\n";
-        // std::cout << measureMatrix;
-        // std::cout << "\n ////////////// time sum : " << timeSum << "\n";
-
-        return true;
-    }
-
-    while (getline(inputFile, row))
-    {
-        istringstream iss(row);
-        string item;
-        vector<string> items;
-
-        while (getline(iss, item, '\t'))
-        {
-            item = trimWhitespace(item);
-            items.push_back(item);
-        }
-
-        if (!bpmFlag)
-        {
-            cout << "music";
-            bpmOfScore = stod(items[0].substr(4));
-            cout << " bpm = " << bpmOfScore << "\n";
-            bpmFlag = 1;
-
-            initVal();
-        }
-        else
-        {
-            measureMatrix.conservativeResize(measureMatrix.rows() + 1, measureMatrix.cols());
-            for (int i = 0; i < 8; i++)
-            {
-                measureMatrix(measureMatrix.rows() - 1, i) = stod(items[i]);
-            }
-
-            // total time 누적
-            totalTime += measureMatrix(measureMatrix.rows() - 1, 1);
-            measureMatrix(measureMatrix.rows() - 1, 8) = totalTime * 100.0 / bpmOfScore;
-
-            // timeSum 누적
-            timeSum += measureMatrix(measureMatrix.rows() - 1, 1);
-
-            // timeSum이 threshold를 넘으면 true 반환
-            if (timeSum >= threshold)
-            {
-                std::cout << "\n//////////////////////////////// Read Measure : " << lineOfScore + 1 << "\n";
-                // std::cout << measureMatrix;
-                // std::cout << "\n ////////////// time sum : " << timeSum << "\n";
-
-                return true;
-            }
-        }
-    }
-    return false;
-}
-
-void PathManager::generateTrajectory()
-{
-    // Predict Collision
-    aNumOfLine = 0;
-    int C = predictCollision(measureMatrix);
-
-    // std::string fileName = "CollisionDetection";
-    // fun.appendToCSV_DATA(fileName, C, aNumOfLine, 0.0);  // 충돌 OX, 탐색시간(us), 확인 줄
-
     // position
     pair<VectorXd, VectorXd> initialPosition, finalPosition;
     VectorXd initialPositionR(3);
@@ -274,8 +267,8 @@ void PathManager::generateTrajectory()
         sR = timeScaling(0.0f, finalTimeR - initialTimeR, tR);
         sL = timeScaling(0.0f, finalTimeL - initialTimeL, tL);
         
-        Pt.endEffectorR = makePath(initialPositionR, finalPositionR, sR);
-        Pt.endEffectorL = makePath(initialPositionL, finalPositionL, sL);
+        Pt.trajectoryR = makePath(initialPositionR, finalPositionR, sR);
+        Pt.trajectoryL = makePath(initialPositionL, finalPositionL, sL);
 
         // 타격 시 손목 각도
         Pt.wristAngleR = tR*(finalWristAngle(0) - initialWristAngle(0))/(finalTimeR - initialTimeR) + initialWristAngle(0);
@@ -285,15 +278,15 @@ void PathManager::generateTrajectory()
 
         // std::string fileName;
         // fileName = "Trajectory_R";
-        // fun.appendToCSV_DATA(fileName, Pt.endEffectorR[0], Pt.endEffectorR[1], Pt.endEffectorR[2]);
+        // fun.appendToCSV_DATA(fileName, Pt.trajectoryR[0], Pt.trajectoryR[1], Pt.trajectoryR[2]);
         // fileName = "Trajectory_L";
-        // fun.appendToCSV_DATA(fileName, Pt.endEffectorL[0], Pt.endEffectorL[1], Pt.endEffectorL[2]);
+        // fun.appendToCSV_DATA(fileName, Pt.trajectoryL[0], Pt.trajectoryL[1], Pt.trajectoryL[2]);
         // fileName = "Wrist";
         // fun.appendToCSV_DATA(fileName, Pt.wristAngleR, Pt.wristAngleL, 0.0);
 
         if (i == 0)
         {
-            waistMinMax = waistRange(Pt.endEffectorR, Pt.endEffectorL);
+            waistMinMax = waistRange(Pt.trajectoryR, Pt.trajectoryL);
         }
     }
 
@@ -486,30 +479,22 @@ string PathManager::trimWhitespace(const std::string &str)
     return str.substr(first, (last - first + 1));
 }
 
-void PathManager::initVal()
+void PathManager::initialValue()
 {
-    measureMatrix.resize(1, 9);
-    measureMatrix = MatrixXd::Zero(1, 9);
-
     measureState.resize(2, 3);
     measureState = MatrixXd::Zero(2, 3);
     measureState(0, 1) = 1.0;
     measureState(1, 1) = 1.0;
 
+    roundSum = 0.0;
     lineData.resize(1, 12);
     lineData = MatrixXd::Zero(1, 12);
-
-    lineOfScore = 0;
-    threshold = 2.4;
-    roundSum = 0.0;
-    totalTime = 0.0;
 
     indexSolveIK = 0;
     q0_t1 = readyArr[0];
     q0_t0 = readyArr[0];
     nextq0_t1 = readyArr[0];
     clearBrake();
-
 }
 
 void PathManager::parseMeasure(MatrixXd &measureMatrix)
@@ -2975,7 +2960,7 @@ void PathManager::solveIK(VectorXd &q, double q0)
     nextP = trajectoryQueue.front();
     trajectoryQueue.pop();
 
-    q = IKFixedWaist(nextP.endEffectorR, nextP.endEffectorL, q0, nextP.wristAngleR, nextP.wristAngleL);
+    q = IKFixedWaist(nextP.trajectoryR, nextP.trajectoryL, q0, nextP.wristAngleR, nextP.wristAngleL);
 }
 
 VectorXd PathManager::IKFixedWaist(VectorXd &pR, VectorXd &pL, double theta0, double theta7, double theta8)

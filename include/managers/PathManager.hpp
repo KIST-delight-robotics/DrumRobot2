@@ -71,13 +71,13 @@ public:
     
     /////////////////////////////////////////////////////////////////////////// Play
 
-    int lineOfScore = 0;  ///< 악보를 읽고 궤적을 생성하고 있는 줄
-    MatrixXd measureMatrix; ///< 궤적을 생성하기 위해 읽은 악보 부분 (마디)
+    // int lineOfScore = 0;  ///< 악보를 읽고 궤적을 생성하고 있는 줄
+    // MatrixXd measureMatrix; ///< 궤적을 생성하기 위해 읽은 악보 부분 (마디)
 
     // 궤적 저장할 구조체
     typedef struct {
-        VectorXd endEffectorR; ///< 오른팔 스틱 끝 좌표 (x, y, z)
-        VectorXd endEffectorL; ///< 왼팔 스틱 끝 좌표 (x, y, z)
+        VectorXd trajectoryR; ///< 오른팔 스틱 끝 좌표 (x, y, z)
+        VectorXd trajectoryL; ///< 왼팔 스틱 끝 좌표 (x, y, z)
 
         double wristAngleR;  ///> IK를 풀기 위한 오른 손목 각도
         double wristAngleL;  ///> IK를 풀기 위한 왼 손목 각도
@@ -85,7 +85,7 @@ public:
     queue<Position> trajectoryQueue;
 
     bool readMeasure(ifstream& inputFile, bool &bpmFlag);
-    void generateTrajectory();
+    void generateTrajectory(MatrixXd measureMatrix);
     bool solveIKandPushConmmand();
     
     /////////////////////////////////////////////////////////////////////////// AddStance
@@ -121,7 +121,7 @@ public:
 
     vector<float> FK();
 
-    void initVal();
+    void initialValue();
 
 private:
     TMotorCommandParser TParser; ///< T 모터 명령어 파서.
@@ -164,9 +164,11 @@ private:
     MatrixXd wristAnglesL;                                ///< 왼팔의 각 악기별 타격 시 손목 각도.
 
     /////////////////////////////////////////////////////////////////////////// Play (read measure)
-    float bpmOfScore = 0;       ///< txt 악보의 BPM 정보.
-    double threshold = 2.4;     ///< 한번에 읽을 악보의 크기. [s]
-    double totalTime = 0.0;     ///< 악보를 읽는 동안 누적 시간. [s]
+    // float bpmOfScore = 0;       ///< txt 악보의 BPM 정보.
+    // double threshold = 2.4;     ///< 한번에 읽을 악보의 크기. [s]
+    // double totalTime = 0.0;     ///< 악보를 읽는 동안 누적 시간. [s]
+
+    double bpmOfScore = 0;      ///< 악보의 BPM 정보.
 
     
     string trimWhitespace(const std::string &str);
