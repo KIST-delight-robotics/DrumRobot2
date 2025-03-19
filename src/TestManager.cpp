@@ -11,7 +11,7 @@ TestManager::TestManager(State &stateRef, CanManager &canManagerRef, std::map<st
     standardTime = chrono::system_clock::now();
 }
 
-void TestManager::SendTestProcess(FlagClass& flagObj)
+void TestManager::SendTestProcess()
 {
     auto currentTime = chrono::system_clock::now();
     auto elapsedTime = chrono::duration_cast<chrono::microseconds>(currentTime - standardTime);
@@ -372,11 +372,6 @@ void TestManager::SendTestProcess(FlagClass& flagObj)
                 getArr(q);
             }
 
-            while(!flagObj.getFixationFlag())
-            {
-                std::cout << "Waiting for moving done" << std::endl;
-                std::this_thread::sleep_for(std::chrono::milliseconds(100));
-            }
             state.test = TestSub::Done;
             break;
         }
