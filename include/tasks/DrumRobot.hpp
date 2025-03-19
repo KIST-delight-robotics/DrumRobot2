@@ -41,8 +41,10 @@ public:
     ~FlagClass();
 
     // AddStance
+    const int ISSTART = 0;
     const int ISHOME = 1;
     const int ISREADY = 2;
+    const int ISSHUTDOWN = 3;
 
     void setAddStanceFlag(string flagName);
     string getAddStanceFlag();
@@ -53,7 +55,7 @@ public:
 
 private:
 
-    int addStanceFlag = 0;
+    int addStanceFlag = ISSTART;
     bool isFixed = false;
 };
 
@@ -104,7 +106,7 @@ private:
 
     // State Utility 메소드들
     void displayAvailableCommands(string flagName) const;
-    void processInput(const std::string &input);
+    void processInput(const std::string &input, string flagName);
     void idealStateRoutine();
     void checkUserInput();
     int kbhit();
@@ -140,7 +142,7 @@ private:
     int maxonMotorCount = 0;    // 1 이상이면 virtual Maxon Motor 쓰기 위해 기록
     void initializePathManager();
     void clearMotorsSendBuffer();
-    void sendPlayProcess(int periodMicroSec, string musicName);
+    void sendPlayProcess();
     void sendAddStanceProcess();
     void unfixedMotor();
     void clearMotorsCommandBuffer();

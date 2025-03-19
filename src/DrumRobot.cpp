@@ -51,6 +51,14 @@ void DrumRobot::stateMachine()
             }
             case Main::Play:
             {
+                sendPlayProcess();
+                break;
+            }
+            case Main::Test:
+            {
+                std::cout << "\n Test Mode \n"; 
+                sleep(1);
+                state.main = Main::Ideal;
                 break;
             }
             case Main::Error:
@@ -551,43 +559,6 @@ void DrumRobot::recvLoopForThread()
 //     }
 // }
 */
-
-////////////////////////////////////////////////////////////////////////////////
-/*                                 SYSTEM                                     */
-////////////////////////////////////////////////////////////////////////////////
-
-void DrumRobot::clearBufferforRecord()
-{
-    for (auto &motor_pair : motors)
-    {
-        if (std::shared_ptr<TMotor> tMotor = std::dynamic_pointer_cast<TMotor>(motor_pair.second))
-        {
-            tMotor->clearCommandBuffer();
-            tMotor->clearReceiveBuffer();
-        }
-        else if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motor_pair.second))
-        {
-            maxonMotor->clearCommandBuffer();
-            maxonMotor->clearReceiveBuffer();
-        }
-    }
-}
-
-void DrumRobot::clearMotorsCommandBuffer()
-{
-    for (const auto &motorPair : motors)
-    {
-
-        if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motorPair.second))
-        {
-            maxonMotor->clearCommandBuffer();
-        }
-        else if (std::shared_ptr<TMotor> tMotor = std::dynamic_pointer_cast<TMotor>(motorPair.second))
-        {
-            tMotor->clearCommandBuffer();
-        }
-    }
-}
 
 // ////////////////////////////////////////////////////////////////////////////////
 // /*                                STATE UTILITY                               */
@@ -1360,7 +1331,8 @@ bool DrumRobot::initializePos(const std::string &input)
         setMaxonMotorMode("CSP");
 
         state.main = Main::AddStance;
-        flagObj.setAddStanceFlag("goToHome");
+        flagObj.setAddStanceFlag("isHome");
+        flagObj.setFixationFlag("moving");
 
         return false;
     }
@@ -1528,24 +1500,17 @@ void DrumRobot::displayAvailableCommands(string flagName) const
 
     if (state.main == Main::Ideal)
     {
-        if (isHome)
+        if (flagName == "isHome")
         {
             std::cout << "- r : Move to Ready Pos\n";
             std::cout << "- t : Start Test\n";
             std::cout << "- s : Shut down the system\n";
         }
-        else if (isReady)
+        else if (flagName == "isReady")
         {
-            std::cout << "- p : Play Drum\n";
+            std::cout << "- p : Play Drumming\n";
             std::cout << "- t : Start Test\n";
             std::cout << "- h : Move to Home Pos\n";
-            std::cout << "- m : Mode Select\n";
-            std::cout << "- v : Release Time Value\n";
-        }
-        else if (isRestart)
-        {
-            std::cout << "- h : Move to Home Pos\n";
-            std::cout << "- t : Start Test\n";
         }
     }
     else
@@ -1554,23 +1519,36 @@ void DrumRobot::displayAvailableCommands(string flagName) const
     }
 }
 
-void DrumRobot::processInput(const std::string &input)
+void DrumRobot::processInput(const std::string &input, string flagName)
 {
-    if (input == "r" && isHome)
+    if (input == "r" && flagName == "isHome")
     {
+        flagObj.setAddStanceFlag("isReady");
+        flagObj.setFixationFlag("moving");
         state.main = Main::AddStance;
     }
-    else if (input == "p" && isReady)
+    else if (input == "p" && flagName == "isReady")
     {
+        flagObj.setAddStanceFlag("isHome"); // 연주가 끝난 후 Home 으로 돌아옴
+        flagObj.setFixationFlag("moving");
         state.main = Main::Play;
     }
-    else if (input == "h" && isReady)
+    else if (input == "h" && flagName == "isReady")
     {
+        flagObj.setAddStanceFlag("isHome");
+        flagObj.setFixationFlag("moving");
         state.main = Main::AddStance;
     }
-    else if (input == "s" && isHome)
+    else if (input == "s" && flagName == "isHome")
     {
+        flagObj.setAddStanceFlag("isShutDown");
+        flagObj.setFixationFlag("moving");
         state.main = Main::AddStance;
+    }
+    else if (input == "t")
+    {
+        // 이거 어렵다...
+        state.main = Main::Test;
     }
     else
     {
@@ -1580,19 +1558,27 @@ void DrumRobot::processInput(const std::string &input)
 
 void DrumRobot::idealStateRoutine()
 {
-    int ret = system("clear");
-    if (ret == -1)
-        std::cout << "system clear error" << endl;
+    if (flagObj.getFixationFlag())
+    {
+        int ret = system("clear");
+        if (ret == -1)
+            std::cout << "system clear error" << endl;
 
-    string flag = flagObj.getAddStanceFlag();
-    displayAvailableCommands(flag);
+        string flag = flagObj.getAddStanceFlag();
 
-    std::string input;
+        displayAvailableCommands(flag);
 
-    std::cout << "Enter command: ";
-    std::getline(std::cin, input);
+        std::string input;
 
-    processInput(input);    
+        std::cout << "Enter command: ";
+        std::getline(std::cin, input);
+
+        processInput(input, flag); 
+    }
+    else
+    {
+        usleep(100);
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1601,24 +1587,203 @@ void DrumRobot::idealStateRoutine()
 
 void DrumRobot::sendAddStanceProcess()
 {
-    // clearBufferforRecord();
-    // clearMotorsCommandBuffer();
+    // clearBufferforRecord();  // 아래 system 함수들
+    // clearMotorsCommandBuffer();  // 이거 왜 하지??? 
 
     string flag = flagObj.getAddStanceFlag();
 
-    if (flag == "goToHome")
+    if (flag == "isHome")
     {
         pathManager.getArr(pathManager.homeArr);
     }
-    else if (flag == "goToReady")
+    else if (flag == "isReady")
     {
         pathManager.getArr(pathManager.readyArr);
     }
+    else if (flag == "isShutDown")
+    {
+        pathManager.getArr(pathManager.backArr);
+    }
 
     state.main = Main::Ideal;
+}
 
-    // canManager.clearReadBuffers();
-    // 전부 보내고 나서 실행해야 하는 함수
+////////////////////////////////////////////////////////////////////////////////
+/*                              Play State                                    */
+////////////////////////////////////////////////////////////////////////////////
+
+void DrumRobot::sendPlayProcess()
+{
+    {
+        // 처음 파일을 열 때
+        std::cout << "enter music name : ";
+        std::getline(std::cin, musicName);
+    }
+
+    {
+        // 
+    }
+    
+
+    bpmFlag = 0;
+    fileIndex = 0;
+    openFlag = 1;
+
+        // 파일을 처음 열 때만
+        if (openFlag == 1)
+        {
+            openFlag = 0; // 파일 열기 상태 초기화
+            std::string currentFile = basePath + musicName + std::to_string(fileIndex) + ".txt";
+            inputFile.open(currentFile); // 파일 열기
+            
+            if (!inputFile.is_open()) // 파일 열기 실패
+            {
+                if(pathManager.measureMatrix.rows() > 1)
+                {
+                    // 악보 남음
+                    state.play = PlaySub::GenerateTrajectory;
+                    break;
+                }
+                else
+                {
+                    if (pathManager.trajectoryQueue.empty())
+                    {
+                        // 연주 종료
+                        std::cout << "Play is Over\n";
+                        state.main = Main::AddStance;
+                        state.play = PlaySub::ReadMusicSheet;
+                        canManager.isPlay = false;
+                        setAddStanceFlag("goToHome");
+                        usleep(500*1000);     // 0.5s
+                        break; // 파일 열지 못했으므로 상태 변경 후 종료
+                    }
+                    else
+                    {
+                        state.play = PlaySub::SolveIK;
+                        break;
+                    }
+                }
+            }
+        }
+
+        // 파일에서 읽고 measureMatrix가 2.4초 이상이 되도록 추가
+        if (pathManager.readMeasure(inputFile, bpmFlag) == true)
+        {
+            state.play = PlaySub::GenerateTrajectory; // GenerateTrajectory 상태로 전환
+            break;
+        }
+        else    // 파일 끝에 도달한 경우
+        {
+            inputFile.close(); // 파일 닫기
+            fileIndex++;       // 다음 파일로 이동
+            openFlag = 1;      // 파일 열 준비
+
+            state.play = PlaySub::ReadMusicSheet;
+            break;
+        }
+
+        state.play = PlaySub::SolveIK;
+
+        break;
+    
+    }
+    case PlaySub::GenerateTrajectory:
+    {
+        pathManager.lineOfScore++;
+        pathManager.generateTrajectory();
+        if (pathManager.lineOfScore > preCreatedLine)
+        {
+            state.play = PlaySub::SolveIK;
+        }
+        else
+        {
+            state.play = PlaySub::ReadMusicSheet;
+        }
+
+        break;
+    }
+    case PlaySub::SolveIK:
+    {
+        // 정해진 개수만큼 커맨드 생성
+        if (pathManager.solveIKandPushConmmand())
+        {
+            state.play = PlaySub::TimeCheck;
+        }
+        else
+        {
+            state.play = PlaySub::ReadMusicSheet;
+        }
+
+        break;
+    }
+    case PlaySub::TimeCheck:
+    {
+        if (elapsedTime.count() >= periodMicroSec)  
+        {
+            state.play = PlaySub::SetCANFrame;  // 5ms마다 CAN Frame 설정
+            SendStandard = currentTime;         // 시간 초기화
+            SendMaxon = currentTime;             // 시간 초기화
+        }
+        break;
+    }
+    case PlaySub::SetCANFrame:
+    {
+        bool isSafe;
+        isSafe = canManager.setCANFrame();
+        if (!isSafe)
+        {
+            state.main = Main::Error;
+        }
+        state.play = PlaySub::SendCANFrame;
+        break;
+    }
+    case PlaySub::SendCANFrame:
+    {
+        bool isWriteError = false;
+        for (auto &motor_pair : motors)
+        {
+            shared_ptr<GenericMotor> motor = motor_pair.second;
+
+            if (!canManager.sendMotorFrame(motor))
+            {
+                isWriteError = true;
+            }
+
+            // if (std::shared_ptr<TMotor> tMotor = std::dynamic_pointer_cast<TMotor>(motor_pair.second))
+            // {
+            //     usbio.setUSBIO4761(motorMapping[motor_pair.first], tMotor->brakeState);
+            // }
+        }
+
+        if (maxonMotorCount != 0)
+        {
+            maxoncmd.getSync(&virtualMaxonMotor->sendFrame);
+
+            if (!canManager.sendMotorFrame(virtualMaxonMotor))
+            {
+                isWriteError = true;
+            };
+        }
+
+        if (isWriteError)
+        {
+            state.main = Main::Error;
+        }
+        else
+        {
+            state.play = PlaySub::SolveIK;
+        }
+
+        // brake
+        if(!usbio.outputUSBIO4761())
+        {
+            cout << "brake Error\n";
+        }
+        break;
+    }
+    }
+
+    state.main = Main::Ideal;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1637,13 +1802,17 @@ FlagClass::~FlagClass()
 
 void FlagClass::setAddStanceFlag(string flagName)
 {
-    if (flagName == "goToHome")
+    if (flagName == "isHome")
     {
         addStanceFlag = ISHOME;
     }
-    else if (flagName == "goToReady")
+    else if (flagName == "isReady")
     {
         addStanceFlag = ISREADY;
+    }
+    else if (flagName == "isShutDown")
+    {
+        addStanceFlag = ISSHUTDOWN;
     }
     else
     {
@@ -1655,11 +1824,15 @@ string FlagClass::getAddStanceFlag()
 {
     if (addStanceFlag == ISHOME)
     {
-        return "goToHome";
+        return "isHome";
     }
     else if (addStanceFlag == ISREADY)
     {
-        return "goToReady";
+        return "isReady";
+    }
+    else if (addStanceFlag == ISSHUTDOWN)
+    {
+        return "isShutDown";
     }
 }
 
@@ -1683,3 +1856,41 @@ bool FlagClass::getFixationFlag()
 {
     return isFixed;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/*                                 SYSTEM                                     */
+////////////////////////////////////////////////////////////////////////////////
+/*
+void DrumRobot::clearBufferforRecord()
+{
+    for (auto &motor_pair : motors)
+    {
+        if (std::shared_ptr<TMotor> tMotor = std::dynamic_pointer_cast<TMotor>(motor_pair.second))
+        {
+            tMotor->clearCommandBuffer();
+            tMotor->clearReceiveBuffer();
+        }
+        else if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motor_pair.second))
+        {
+            maxonMotor->clearCommandBuffer();
+            maxonMotor->clearReceiveBuffer();
+        }
+    }
+}
+
+void DrumRobot::clearMotorsCommandBuffer()
+{
+    for (const auto &motorPair : motors)
+    {
+
+        if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motorPair.second))
+        {
+            maxonMotor->clearCommandBuffer();
+        }
+        else if (std::shared_ptr<TMotor> tMotor = std::dynamic_pointer_cast<TMotor>(motorPair.second))
+        {
+            tMotor->clearCommandBuffer();
+        }
+    }
+}
+*/
