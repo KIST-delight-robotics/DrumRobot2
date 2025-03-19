@@ -438,6 +438,7 @@ void PathManager::getArr(vector<float> &arr)
                 {
                     TMotorData newData;
                     newData.position = Qt[motorMapping[entry.first]];
+                    newData.mode = "ss";
                     tMotor->commandBuffer.push(newData);
                     std::cout << newData.position << "\n";
                 }

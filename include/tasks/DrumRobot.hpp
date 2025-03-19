@@ -41,23 +41,20 @@ public:
     ~FlagClass();
 
     // AddStance
-    const int GOTOHOME = 1;
-    const int GOTOREADY = 2;
+    const int ISHOME = 1;
+    const int ISREADY = 2;
 
     void setAddStanceFlag(string flagName);
     string getAddStanceFlag();
 
-    // Robot
-    const int ISHOME = 1;
-    const int ISREADY = 2;
-
-    void setRobotFlag(string flagName);
-    string getRobotFlag();
+    // fixed
+    void setFixationFlag(string flagName);
+    bool getFixationFlag();
 
 private:
 
     int addStanceFlag = 0;
-    int robotFlag = 0;
+    bool isFixed = false;
 };
 
 class DrumRobot
@@ -140,7 +137,7 @@ private:
 
     // Send Thread Loop 메소드들
     int writeFailCount;
-    int maxonMotorCount = 0;
+    int maxonMotorCount = 0;    // 1 이상이면 virtual Maxon Motor 쓰기 위해 기록
     void initializePathManager();
     void clearMotorsSendBuffer();
     void sendPlayProcess(int periodMicroSec, string musicName);
