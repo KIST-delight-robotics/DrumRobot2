@@ -35,72 +35,76 @@ void TestManager::SendTestProcess()
         if(method == 1)
         {
             std::cout << "관절각도값조절해보자고 ㅋㅋ" << "\n";
-            sleep(5);
-
-            int userInput = 100;
-            int ret = system("clear");
-            if (ret == -1) std::cout << "system clear error" << endl;
-
-            float c_MotorAngle[10] = {0};
-            getMotorPos(c_MotorAngle);
-
-            std::cout << "\n[Current Q Values] [Target Q Values] (Radian)\n";
-            for (int i = 0; i < 10; i++)
+            sleep(2);
+            while(1)
             {
-                std::cout << "Q[" << i << "] : " << c_MotorAngle[i] << "\t<->\t" << q[i] << std::endl;
-            }
+                int userInput = 100;
+                int ret = system("clear");
+                if (ret == -1) std::cout << "system clear error" << endl;
 
-            std::cout << "\ntime : " << t << "s";
-            std::cout << "\nnumber of repeat : " << n_repeat << std::endl << std::endl;
+                float c_MotorAngle[10] = {0};
+                getMotorPos(c_MotorAngle);
 
-            
-            std::cout << "\nSelect Motor to Change Value (0-8) / Run (9) / Time (10) / Extra Time (11) / Repeat(12) / break on off (13) / Exit (-1): ";
-            std::cin >> userInput;
-
-            if (userInput == -1)
-            {
-                break;
-            }
-            else if (userInput < 9)
-            {
-                float degree_angle;
-                
-                std::cout << "\nRange : " << jointRangeMin[userInput] << "~" << jointRangeMax[userInput] << "(Degree)\n";
-                std::cout << "Enter q[" << userInput << "] Values (Degree) : ";
-                std::cin >> degree_angle;
-                q[userInput] = degree_angle * M_PI / 180.0;
-            }
-            else if (userInput == 9)
-            {
-                for (auto &motor_pair : motors)
+                std::cout << "\n[Current Q Values] [Target Q Values] (Radian)\n";
+                for (int i = 0; i < 10; i++)
                 {
-                    if (std::shared_ptr<TMotor> tMotor = std::dynamic_pointer_cast<TMotor>(motor_pair.second))
-                    {
-                        tMotor->clearCommandBuffer();
-                        tMotor->clearReceiveBuffer();
-                    }
-                    else if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motor_pair.second))
-                    {
-                        maxonMotor->clearCommandBuffer();
-                        maxonMotor->clearReceiveBuffer();
-                    }
-                    getArr(q);
+                    std::cout << "Q[" << i << "] : " << c_MotorAngle[i] << "\t<->\t" << q[i] << std::endl;
                 }
-            }
-            else if (userInput == 10)
-            {
-                std::cout << "time : ";
-                std::cin >> t;
-            }
-            else if (userInput == 11)
-            {
-                std::cout << "extra time : ";
-                std::cin >> extra_time;
-            }
-            else if (userInput == 12)
-            {
-                std::cout << "number of repeat : ";
-                std::cin >> n_repeat;
+
+                std::cout << "\ntime : " << t << "s";
+                std::cout << "\nnumber of repeat : " << n_repeat << std::endl << std::endl;
+
+                
+                std::cout << "\nSelect Motor to Change Value (0-8) / Run (9) / Time (10) / Extra Time (11) / Repeat(12) / break on off (13) / Exit (-1): ";
+                std::cin >> userInput;
+
+                if (userInput == -1)
+                {
+                    break;
+                }
+                else if (userInput < 9)
+                {
+                    float degree_angle;
+                    
+                    std::cout << "\nRange : " << jointRangeMin[userInput] << "~" << jointRangeMax[userInput] << "(Degree)\n";
+                    std::cout << "Enter q[" << userInput << "] Values (Degree) : ";
+                    std::cin >> degree_angle;
+                    q[userInput] = degree_angle * M_PI / 180.0;
+                }
+                else if (userInput == 9)
+                {
+                    for (auto &motor_pair : motors)
+                    {
+                        if (std::shared_ptr<TMotor> tMotor = std::dynamic_pointer_cast<TMotor>(motor_pair.second))
+                        {
+                            tMotor->clearCommandBuffer();
+                            tMotor->clearReceiveBuffer();
+                        }
+                        else if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motor_pair.second))
+                        {
+                            maxonMotor->clearCommandBuffer();
+                            maxonMotor->clearReceiveBuffer();
+                        }
+                        getArr(q);
+                    }
+                }
+                else if (userInput == 10)
+                {
+                    std::cout << "time : ";
+                    std::cin >> t;
+                }
+                else if (userInput == 11)
+                {
+                    std::cout << "extra time : ";
+                    std::cin >> extra_time;
+                }
+                else if (userInput == 12)
+                {
+                    std::cout << "number of repeat : ";
+                    std::cin >> n_repeat;
+                }
+        
+
             }
         }
         else if (method == 2)
