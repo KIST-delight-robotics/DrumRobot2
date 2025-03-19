@@ -927,9 +927,8 @@ void DrumRobot::sendPlayProcess()
     }
     else                        // 파일 열기 실패
     {
+        if (endOfScore)                     // 종료 코드 확인 -> 남은 궤적 생성
         {
-            // 종료 코드 확인 -> 남은 궤적 생성
-
             while(1)    // 끝날 때까지
             {
                 // 충돌 회피 알고리즘 자리
@@ -937,21 +936,25 @@ void DrumRobot::sendPlayProcess()
                 lineOfScore++;
                 pathManager.generateTrajectory(measureMatrix);
 
-                if (lineOfScore > preCreatedLine)
+                // if (lineOfScore > preCreatedLine)
+                // {
+                //     pathManager.solveIKandPushConmmand();
+                // }
+
                 {
-                    pathManager.solveIKandPushConmmand();
+                    break;
                 }
             }
             std::cout << "Play is Over\n";
             state.main = Main::Ideal;
         }
+        else if (flagObj.getFixationFlag())  // fixed -> 비정상 종료
         {
-            // fixed -> 비정상 종료
             std::cout << "Play is Over\n";
             state.main = Main::Ideal;
         }
+        else                                // 다음 악보 생성될 때까지 대기
         {
-            // 다음 악보 생성될 때까지 대기
             usleep(100);
         }
     }
