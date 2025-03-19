@@ -84,15 +84,32 @@ void DrumRobot::stateMachine()
 
 void DrumRobot::sendLoopForThread()
 {
+    bool fixFlag = false;
     
     while (state.main != Main::Shutdown)
     {
         sendLoopPeriod = std::chrono::steady_clock::now();
         sendLoopPeriod += std::chrono::microseconds(5000);  // 주기 : 5msec
         
-        if (!canManager.setCANFrame())
+        std::map<std::string, bool> fixFlags; // 각 모터의 고정 상태 저장
+
+        if (!canManager.setCANFrame(fixFlags))
         {
             state.main = Main::Error;
+        }
+        //  모든 모터가 고정 상태인지 체크
+        bool allMotorsStagnant = !fixFlags.empty();
+        for (const auto& flag : fixFlags)
+        {
+            if (!flag.second)  // 하나라도 false이면 전체가 고정된 것이 아님
+            {
+                allMotorsStagnant = false;
+                break;
+            }
+        }
+        if (allMotorsStagnant)
+        {
+            flagObj.setFixationFlag("fixed");
         }
 
         bool isWriteError = false;
@@ -122,7 +139,7 @@ void DrumRobot::sendLoopForThread()
             state.main = Main::Error;
         }
 
-        // flagObj.setFixationFlag("fixed");
+        flagObj.setFixationFlag("fixed");
         
         std::this_thread::sleep_until(sendLoopPeriod);
     }
