@@ -56,8 +56,7 @@ void DrumRobot::stateMachine()
             }
             case Main::Test:
             {
-                std::cout << "\n Test Mode \n"; 
-                sleep(1);
+                testManager.SendTestProcess(0);
                 state.main = Main::Ideal;
                 break;
             }
@@ -1670,9 +1669,11 @@ void DrumRobot::sendPlayProcess()
 
         while(readMeasure(inputFile))    // 한마디 분량 미만으로 남을 때까지
         {
-            // 충돌 회피 알고리즘
-            
+            // 충돌 회피 알고리즘 자리
+
             pathManager.generateTrajectory();
+
+
 
 
         }
