@@ -730,11 +730,17 @@ void DrumRobot::idealStateRoutine()
 {
     if (flagObj.getFixationFlag())
     {
+        string flag = flagObj.getAddStanceFlag();
+
+        if (flag == "isShutDown")
+        {
+            state.main = Main::Shutdown;
+            return;
+        }
+
         int ret = system("clear");
         if (ret == -1)
             std::cout << "system clear error" << endl;
-
-        string flag = flagObj.getAddStanceFlag();
 
         displayAvailableCommands(flag);
 
@@ -929,7 +935,7 @@ void DrumRobot::sendPlayProcess()
     {
         if (endOfScore)                     // 종료 코드 확인 -> 남은 궤적 생성
         {
-            while(1)    // 끝날 때까지
+            while(measureMatrix.rows() > 1)    // 끝날 때까지
             {
                 // 충돌 회피 알고리즘 자리
 
@@ -940,18 +946,18 @@ void DrumRobot::sendPlayProcess()
                 // {
                 //     pathManager.solveIKandPushConmmand();
                 // }
-
-                {
-                    break;
-                }
             }
             std::cout << "Play is Over\n";
-            state.main = Main::Ideal;
+            flagObj.setAddStanceFlag("isHome");
+            flagObj.setFixationFlag("moving");
+            state.main = Main::AddStance;
         }
         else if (flagObj.getFixationFlag())  // fixed -> 비정상 종료
         {
             std::cout << "Play is Over\n";
-            state.main = Main::Ideal;
+            flagObj.setAddStanceFlag("isHome");
+            flagObj.setFixationFlag("moving");
+            state.main = Main::AddStance;
         }
         else                                // 다음 악보 생성될 때까지 대기
         {

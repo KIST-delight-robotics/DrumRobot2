@@ -295,6 +295,8 @@ void PathManager::generateTrajectory(MatrixXd &measureMatrix)
     intensity(1) = measureMatrix(0, 5);
 
     saveLineData(n, waistMinMax, intensity, finalWristAngle);
+
+    usleep(1000000);
 }
 
 bool PathManager::solveIKandPushConmmand()
