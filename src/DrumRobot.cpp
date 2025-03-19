@@ -954,10 +954,8 @@ void DrumRobot::sendPlayProcess()
         }
         else if (flagObj.getFixationFlag())  // fixed -> 비정상 종료
         {
-            std::cout << "Play is Over\n";
-            flagObj.setAddStanceFlag("isHome");
-            flagObj.setFixationFlag("moving");
-            state.main = Main::AddStance;
+            std::cout << "Error : not find " << currentFile << "\n";
+            state.main = Main::Error;
         }
         else                                // 다음 악보 생성될 때까지 대기
         {
