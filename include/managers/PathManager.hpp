@@ -121,7 +121,7 @@ public:
 
     vector<float> FK();
 
-    void initialValue();
+    void initializeValue(int bpm);
 
 private:
     TMotorCommandParser TParser; ///< T 모터 명령어 파서.

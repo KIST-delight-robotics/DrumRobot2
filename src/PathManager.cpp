@@ -186,7 +186,7 @@ void PathManager::setReadyAngle()
 //             cout << " bpm = " << bpmOfScore << "\n";
 //             bpmFlag = 1;
 
-//             initialValue();
+//             initializeValue();
 //         }
 //         else
 //         {
@@ -479,8 +479,10 @@ string PathManager::trimWhitespace(const std::string &str)
     return str.substr(first, (last - first + 1));
 }
 
-void PathManager::initialValue()
+void PathManager::initializeValue(int bpm)
 {
+    bpmOfScore = bpm;
+
     measureState.resize(2, 3);
     measureState = MatrixXd::Zero(2, 3);
     measureState(0, 1) = 1.0;
@@ -489,6 +491,7 @@ void PathManager::initialValue()
     roundSum = 0.0;
     lineData.resize(1, 12);
     lineData = MatrixXd::Zero(1, 12);
+    lineData(0, 0) = -1;
 
     indexSolveIK = 0;
     q0_t1 = readyArr[0];
@@ -834,7 +837,7 @@ VectorXd PathManager::makePath(VectorXd Pi, VectorXd Pf, float s)
 
 void PathManager::saveLineData(int n, VectorXd waistMinMax, VectorXd intensity, VectorXd finalWristAngle)
 {
-    if (lineOfScore == 1)
+    if (lineData(0, 0) == -1)
     {
         lineData(0, 0) = n;
         lineData(0, 1) = waistMinMax(0);
