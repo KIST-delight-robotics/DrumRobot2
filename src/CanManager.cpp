@@ -834,6 +834,7 @@ bool CanManager::setCANFrame(std::map<std::string, bool>& fixFlags)
 
             if (maxonMotor->commandBuffer.size() > 1)
             {
+                fixFlags[motorName] = false;
                 maxonMotor->commandBuffer.pop();
             }
 
@@ -851,13 +852,14 @@ bool CanManager::setCANFrame(std::map<std::string, bool>& fixFlags)
 
             if (tMotor->commandBuffer.size() > 1)
             {
+                fixFlags[motorName] = false;
                 tMotor->commandBuffer.pop();
             }
 
             setTMotorCANFrame(tMotor, tData);
         }
     }
-    
+
     return true;
 }
 
