@@ -784,6 +784,11 @@ void DrumRobot::sendAddStanceProcess()
 
 void DrumRobot::initializePlay()
 {
+    fileIndex = 0;
+
+    measureMatrix.resize(1, 9);
+    measureMatrix = MatrixXd::Zero(1, 9);
+
     lineOfScore = 0;        ///< 현재 악보 읽은 줄.
     measureTotalTime = 0.0;     ///< 악보를 읽는 동안 누적 시간. [s]
 }
@@ -830,8 +835,8 @@ bool DrumRobot::readMeasure(ifstream& inputFile)
     if (timeSum >= measureThreshold)
     {
         std::cout << "\n//////////////////////////////// Read Measure : " << lineOfScore + 1 << "\n";
-        // std::cout << measureMatrix;
-        // std::cout << "\n ////////////// time sum : " << timeSum << "\n";
+        std::cout << measureMatrix;
+        std::cout << "\n ////////////// time sum : " << timeSum << "\n";
 
         return true;
     }
@@ -865,8 +870,8 @@ bool DrumRobot::readMeasure(ifstream& inputFile)
         if (timeSum >= measureThreshold)
         {
             std::cout << "\n//////////////////////////////// Read Measure : " << lineOfScore + 1 << "\n";
-            // std::cout << measureMatrix;
-            // std::cout << "\n ////////////// time sum : " << timeSum << "\n";
+            std::cout << measureMatrix;
+            std::cout << "\n ////////////// time sum : " << timeSum << "\n";
 
             return true;
         }
@@ -890,7 +895,8 @@ void DrumRobot::sendPlayProcess()
         if (fileIndex == 0) // 처음 파일을 열 때
         {
             bpmOfScore = readBpm(inputFile);
-            if (bpmOfScore <= 0)
+
+            if (bpmOfScore > 0)
             {
                 std::cout << "music bpm = " << bpmOfScore << "\n";
                 pathManager.initializeValue(bpmOfScore);
@@ -898,6 +904,7 @@ void DrumRobot::sendPlayProcess()
             else
             {
                 std::cout << "\n bpm Read Error !!! \n";
+                inputFile.close(); // 파일 닫기
                 return;
             }
         }
@@ -907,7 +914,7 @@ void DrumRobot::sendPlayProcess()
             // 충돌 회피 알고리즘 자리
 
             lineOfScore++;
-            // pathManager.generateTrajectory(measureMatrix);
+            pathManager.generateTrajectory(measureMatrix);
 
             // if (lineOfScore > preCreatedLine)
             // {

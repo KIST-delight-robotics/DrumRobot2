@@ -85,7 +85,7 @@ public:
     queue<Position> trajectoryQueue;
 
     bool readMeasure(ifstream& inputFile, bool &bpmFlag);
-    void generateTrajectory(MatrixXd measureMatrix);
+    void generateTrajectory(MatrixXd &measureMatrix);
     bool solveIKandPushConmmand();
     
     /////////////////////////////////////////////////////////////////////////// AddStance

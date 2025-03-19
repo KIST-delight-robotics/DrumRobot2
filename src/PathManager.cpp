@@ -217,7 +217,7 @@ void PathManager::setReadyAngle()
 //     return false;
 // }
 
-void PathManager::generateTrajectory(MatrixXd measureMatrix)
+void PathManager::generateTrajectory(MatrixXd &measureMatrix)
 {
     // position
     pair<VectorXd, VectorXd> initialPosition, finalPosition;
