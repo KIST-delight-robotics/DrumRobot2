@@ -23,7 +23,7 @@ public:
     // For CAN communication
     uint32_t nodeId;
     int socket;
-    bool isConected;
+    bool isConected = false;
 
     // Motors Feature
     float cwDir;

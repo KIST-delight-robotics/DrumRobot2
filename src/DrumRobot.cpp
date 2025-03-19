@@ -19,14 +19,8 @@ DrumRobot::DrumRobot(State &stateRef,
       usbio(usbioRef),
       fun(funRef)
 {
-    ReadStandard = chrono::system_clock::now();
-    SendStandard = chrono::system_clock::now();
-    addStandard = chrono::system_clock::now();
-
     sendLoopPeriod = std::chrono::steady_clock::now();
     recvLoopPeriod = std::chrono::steady_clock::now();
-    stateMachinePeriod = std::chrono::steady_clock::now();
-
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -704,7 +698,8 @@ void DrumRobot::processInput(const std::string &input, string flagName)
     }
     else if (input == "p" && flagName == "isReady")
     {
-        flagObj.setAddStanceFlag("isHome"); // 연주가 끝난 후 Home 으로 돌아옴
+        initializePlay();
+        // flagObj.setAddStanceFlag("isHome"); // 연주가 끝난 후 Home 으로 돌아옴
         flagObj.setFixationFlag("moving");
         state.main = Main::Play;
     }
@@ -786,6 +781,12 @@ void DrumRobot::sendAddStanceProcess()
 ////////////////////////////////////////////////////////////////////////////////
 /*                              Play State                                    */
 ////////////////////////////////////////////////////////////////////////////////
+
+void DrumRobot::initializePlay()
+{
+    lineOfScore = 0;        ///< 현재 악보 읽은 줄.
+    measureTotalTime = 0.0;     ///< 악보를 읽는 동안 누적 시간. [s]
+}
 
 string DrumRobot::trimWhitespace(const std::string &str)
 {
@@ -892,7 +893,7 @@ void DrumRobot::sendPlayProcess()
             if (bpmOfScore <= 0)
             {
                 std::cout << "music bpm = " << bpmOfScore << "\n";
-                pathManager.initVal();  // 일단 두고 봄
+                pathManager.initializeValue(bpmOfScore);
             }
             else
             {
@@ -906,12 +907,12 @@ void DrumRobot::sendPlayProcess()
             // 충돌 회피 알고리즘 자리
 
             lineOfScore++;
-            pathManager.generateTrajectory();
+            // pathManager.generateTrajectory(measureMatrix);
 
-            if (lineOfScore > preCreatedLine)
-            {
-                pathManager.solveIKandPushConmmand();
-            }
+            // if (lineOfScore > preCreatedLine)
+            // {
+            //     pathManager.solveIKandPushConmmand();
+            // }
         }
 
         inputFile.close(); // 파일 닫기
@@ -927,7 +928,7 @@ void DrumRobot::sendPlayProcess()
                 // 충돌 회피 알고리즘 자리
 
                 lineOfScore++;
-                pathManager.generateTrajectory();
+                pathManager.generateTrajectory(measureMatrix);
 
                 if (lineOfScore > preCreatedLine)
                 {
