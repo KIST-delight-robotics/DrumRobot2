@@ -1,7 +1,9 @@
 CC = g++
 CFLAGS = -Wall -O2 -g -std=c++17 -fPIC
 INCLUDE = -I./include -I./lib -I./include/USBIO_advantech -I./include/path_manager -I./include/motors -I./include/tasks
-LDFLAGS = -lm -lpthread -lstdc++fs -L./lib -lUSBIO_64 -Wl,-rpath,/home/shy/DrumRobot_v1.0/lib -lbiodaq
+LDFLAGS = -lm -lpthread -lstdc++fs -L./lib -lUSBIO_64 -Wl,-rpath,/home/shy/DrumRobot_v1.0/lib
+
+
 
 SRCDIR = ./src
 OBJDIR = ./obj
