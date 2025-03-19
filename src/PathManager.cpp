@@ -296,6 +296,10 @@ void PathManager::generateTrajectory(MatrixXd &measureMatrix)
 
     saveLineData(n, waistMinMax, intensity, finalWristAngle);
 
+    
+    std::cout << measureMatrix;
+    std::cout << "\n ////////////// \n";
+
     usleep(1000000);
 }
 
@@ -395,9 +399,9 @@ void PathManager::getArr(vector<float> &arr)
     VectorXd Vmax = VectorXd::Zero(10);
 
     float dt = canManager.DTSECOND; // 0.005
-    float t = 2.0;                // 2초동안 실행
+    float T = 2.0;                // 2초동안 실행
     float extraTime = 1.0;       // 이전 시간 1초
-    int n = (int)(t / dt);
+    int n = (int)(T / dt);
     int extraN = (int)(extraTime / dt);
 
     getMotorPos();
@@ -408,7 +412,7 @@ void PathManager::getArr(vector<float> &arr)
         Q2(i) = arr[i];
     }
 
-    Vmax = calVmax(Q1, Q2, accMax, t);
+    Vmax = calVmax(Q1, Q2, accMax, T);
 
     for (int k = 0; k < 10; k++)
     {
@@ -421,10 +425,10 @@ void PathManager::getArr(vector<float> &arr)
         if (k > extraN)
         {
             // 이동
-            int index = k - extraN;
+            float t = (k - extraN) * T / n;
 
             // Make Array
-            Qt = makeProfile(Q1, Q2, Vmax, accMax, t * index / n, t);
+            Qt = makeProfile(Q1, Q2, Vmax, accMax, t, T);
 
             // Send to Buffer
             for (auto &entry : motors)
@@ -432,13 +436,16 @@ void PathManager::getArr(vector<float> &arr)
                 if (std::shared_ptr<TMotor> tMotor = std::dynamic_pointer_cast<TMotor>(entry.second))
                 {
                     TMotorData newData;
-                    newData.position = Qt[motorMapping[entry.first]];
+                    newData.position = tMotor->jointAngleToMotorPosition(Qt[motorMapping[entry.first]]);
+                    newData.mode = "Position";
                     tMotor->commandBuffer.push(newData);
                 }
                 else if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(entry.second))
                 {
                     MaxonData newData;
-                    newData.position = Qt[motorMapping[entry.first]];
+                    newData.position = maxonMotor->jointAngleToMotorPosition(Qt[motorMapping[entry.first]]);
+                    newData.torque = 0;
+                    newData.mode = "Position";
                     maxonMotor->commandBuffer.push(newData);
                 }
             }
@@ -446,19 +453,21 @@ void PathManager::getArr(vector<float> &arr)
         else
         {
             // 현재 위치 유지
-            // Send to Buffer
             for (auto &entry : motors)
             {
                 if (std::shared_ptr<TMotor> tMotor = std::dynamic_pointer_cast<TMotor>(entry.second))
                 {
                     TMotorData newData;
-                    newData.position = Q1[motorMapping[entry.first]];
+                    newData.position = tMotor->jointAngleToMotorPosition(Q1[motorMapping[entry.first]]);
+                    newData.mode = "Position";
                     tMotor->commandBuffer.push(newData);
                 }
                 else if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(entry.second))
                 {
                     MaxonData newData;
-                    newData.position = Q1[motorMapping[entry.first]];
+                    newData.position = maxonMotor->jointAngleToMotorPosition(Q1[motorMapping[entry.first]]);
+                    newData.torque = 0;
+                    newData.mode = "Position";
                     maxonMotor->commandBuffer.push(newData);
                 }
             }

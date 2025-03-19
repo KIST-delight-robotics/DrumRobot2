@@ -578,9 +578,7 @@ void DrumRobot::stateMachine()
 }
 
 void DrumRobot::sendLoopForThread()
-{
-    bool fixFlag = false;
-    
+{   
     while (state.main != Main::Shutdown)
     {
         sendLoopPeriod = std::chrono::steady_clock::now();
@@ -649,7 +647,7 @@ void DrumRobot::recvLoopForThread()
         recvLoopPeriod += std::chrono::microseconds(50000);  // 주기 : 100us
 
         canManager.readFramesFromAllSockets(); 
-        bool isSafe = canManager.distributeFramesToMotors(true);
+        bool isSafe = canManager.distributeFramesToMotors(false);
         if (!isSafe)
         {
             state.main = Main::Error;
@@ -840,9 +838,9 @@ bool DrumRobot::readMeasure(ifstream& inputFile)
     // timeSum이 threshold를 넘으면 true 반환
     if (timeSum >= measureThreshold)
     {
-        std::cout << "\n//////////////////////////////// Read Measure : " << lineOfScore + 1 << "\n";
-        std::cout << measureMatrix;
-        std::cout << "\n ////////////// time sum : " << timeSum << "\n";
+        // std::cout << "\n//////////////////////////////// Read Measure : " << lineOfScore + 1 << "\n";
+        // std::cout << measureMatrix;
+        // std::cout << "\n ////////////// time sum : " << timeSum << "\n";
 
         return true;
     }
@@ -875,9 +873,9 @@ bool DrumRobot::readMeasure(ifstream& inputFile)
         // timeSum이 threshold를 넘으면 true 반환
         if (timeSum >= measureThreshold)
         {
-            std::cout << "\n//////////////////////////////// Read Measure : " << lineOfScore + 1 << "\n";
-            std::cout << measureMatrix;
-            std::cout << "\n ////////////// time sum : " << timeSum << "\n";
+            // std::cout << "\n//////////////////////////////// Read Measure : " << lineOfScore + 1 << "\n";
+            // std::cout << measureMatrix;
+            // std::cout << "\n ////////////// time sum : " << timeSum << "\n";
 
             return true;
         }
@@ -920,6 +918,7 @@ void DrumRobot::sendPlayProcess()
             // 충돌 회피 알고리즘 자리
 
             lineOfScore++;
+            std::cout << "\n//////////////////////////////// Read Measure : " << lineOfScore << "\n";
             pathManager.generateTrajectory(measureMatrix);
 
             // if (lineOfScore > preCreatedLine)
@@ -933,7 +932,11 @@ void DrumRobot::sendPlayProcess()
     }
     else                        // 파일 열기 실패
     {
-        if (endOfScore)                     // 종료 코드 확인 -> 남은 궤적 생성
+        if (fileIndex == 0)                     // 악보 이름 오타
+        {
+            return;
+        }
+        else if (endOfScore)                     // 종료 코드 확인 -> 남은 궤적 생성
         {
             while(measureMatrix.rows() > 1)    // 끝날 때까지
             {

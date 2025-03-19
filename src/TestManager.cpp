@@ -544,23 +544,22 @@ void TestManager::getArr(float arr[])
                 Qi = makeProfile(Q2, Q1, Vmax, acc_max, t*k/n, t);
             }
 
-
-
             // Send to Buffer
             for (auto &entry : motors)
             {
                 if (std::shared_ptr<TMotor> tMotor = std::dynamic_pointer_cast<TMotor>(entry.second))
                 {
                     TMotorData newData;
-                    newData.position = Qi[motorMapping[entry.first]];
-
+                    newData.position = tMotor->jointAngleToMotorPosition(Qi[motorMapping[entry.first]]);
+                    newData.mode = "Position";
                     tMotor->commandBuffer.push(newData);
                 }
                 else if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(entry.second))
                 {
                     MaxonData newData;
-                    newData.position = Qi[motorMapping[entry.first]];
+                    newData.position = maxonMotor->jointAngleToMotorPosition(Qi[motorMapping[entry.first]]);
                     newData.torque = torque;
+                    newData.mode = "Position";
                     maxonMotor->commandBuffer.push(newData);
                 }
             }
