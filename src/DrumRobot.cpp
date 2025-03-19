@@ -389,7 +389,7 @@ void DrumRobot::initializeDrumRobot()
     std::string input;
 
     initializePathManager();
-    initializeMotors(); // Tmotor
+    initializeMotors();
     initializeCanManager();
     motorSettingCmd(); // 손목
     canManager.setSocketNonBlock();
@@ -406,6 +406,40 @@ void DrumRobot::initializeDrumRobot()
         std::cout << "Enter command: ";
         std::getline(std::cin, input);
     } while (initializePos(input));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/*                                    Exit                                    */
+////////////////////////////////////////////////////////////////////////////////
+
+void DrumRobot::deactivateControlTask()
+{
+    struct can_frame frame;
+
+    canManager.setSocketsTimeout(0, 500000);
+
+    for (auto &motorPair : motors)
+    {
+        std::string name = motorPair.first;
+        auto &motor = motorPair.second;
+
+        // 타입에 따라 적절한 캐스팅과 초기화 수행
+        if (std::shared_ptr<TMotor> tMotor = std::dynamic_pointer_cast<TMotor>(motor))
+        {
+            tservocmd.comm_can_set_cb(*tMotor, &tMotor->sendFrame, 0);
+            canManager.sendMotorFrame(tMotor);
+            std::cout << "Exiting for motor [" << name << "]" << std::endl;
+        }
+        else if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motor))
+        {
+            maxoncmd.getQuickStop(*maxonMotor, &frame);
+            canManager.txFrame(motor, frame);
+
+            maxoncmd.getSync(&frame);
+            canManager.txFrame(motor, frame);
+            std::cout << "Exiting for motor [" << name << "]" << std::endl;
+        }
+    }
 }
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -493,40 +527,6 @@ void DrumRobot::setMaxonMotorMode(std::string targetMode)
                 maxoncmd.getCSPMode(*maxonMotor, &frame);
                 canManager.sendAndRecv(motor, frame);
             }
-        }
-    }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/*                                  Exit                                      */
-////////////////////////////////////////////////////////////////////////////////
-
-void DrumRobot::deactivateControlTask()
-{
-    struct can_frame frame;
-
-    canManager.setSocketsTimeout(0, 500000);
-
-    for (auto &motorPair : motors)
-    {
-        std::string name = motorPair.first;
-        auto &motor = motorPair.second;
-
-        // 타입에 따라 적절한 캐스팅과 초기화 수행
-        if (std::shared_ptr<TMotor> tMotor = std::dynamic_pointer_cast<TMotor>(motor))
-        {
-            tservocmd.comm_can_set_cb(*tMotor, &tMotor->sendFrame, 0);
-            canManager.sendMotorFrame(tMotor);
-            std::cout << "Exiting for motor [" << name << "]" << std::endl;
-        }
-        else if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motor))
-        {
-            maxoncmd.getQuickStop(*maxonMotor, &frame);
-            canManager.txFrame(motor, frame);
-
-            maxoncmd.getSync(&frame);
-            canManager.txFrame(motor, frame);
-            std::cout << "Exiting for motor [" << name << "]" << std::endl;
         }
     }
 }
@@ -666,7 +666,7 @@ void DrumRobot::recvLoopForThread()
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/*                              Ideal State                                  */
+/*                                Ideal State                                 */
 ////////////////////////////////////////////////////////////////////////////////
 
 void DrumRobot::displayAvailableCommands(string flagName) const
@@ -787,14 +787,90 @@ void DrumRobot::sendAddStanceProcess()
 /*                              Play State                                    */
 ////////////////////////////////////////////////////////////////////////////////
 
+string DrumRobot::trimWhitespace(const std::string &str)
+{
+    size_t first = str.find_first_not_of(" \t");
+    if (std::string::npos == first)
+    {
+        return str;
+    }
+    size_t last = str.find_last_not_of(" \t");
+    return str.substr(first, (last - first + 1));
+}
+
 double DrumRobot::readBpm(ifstream& inputFile)
 {
+    string row;
+    getline(inputFile, row);
+    istringstream iss(row);
+    string item;
+    vector<string> items;
 
+    while (getline(iss, item, '\t'))
+    {
+        item = trimWhitespace(item);
+        items.push_back(item);
+    }
+
+    return stod(items[0].substr(4));
 }
 
 bool DrumRobot::readMeasure(ifstream& inputFile)
 {
+    string row;
+    double timeSum = 0.0;
 
+    for (int i = 1; i < measureMatrix.rows(); i++)
+    {
+        timeSum += measureMatrix(i, 1);
+    }
+
+    // timeSum이 threshold를 넘으면 true 반환
+    if (timeSum >= measureThreshold)
+    {
+        std::cout << "\n//////////////////////////////// Read Measure : " << lineOfScore + 1 << "\n";
+        // std::cout << measureMatrix;
+        // std::cout << "\n ////////////// time sum : " << timeSum << "\n";
+
+        return true;
+    }
+
+    while (getline(inputFile, row))
+    {
+        istringstream iss(row);
+        string item;
+        vector<string> items;
+
+        while (getline(iss, item, '\t'))
+        {
+            item = trimWhitespace(item);
+            items.push_back(item);
+        }
+
+        measureMatrix.conservativeResize(measureMatrix.rows() + 1, measureMatrix.cols());
+        for (int i = 0; i < 8; i++)
+        {
+            measureMatrix(measureMatrix.rows() - 1, i) = stod(items[i]);
+        }
+
+        // total time 누적
+        measureTotalTime += measureMatrix(measureMatrix.rows() - 1, 1);
+        measureMatrix(measureMatrix.rows() - 1, 8) = measureTotalTime * 100.0 / bpmOfScore;
+
+        // timeSum 누적
+        timeSum += measureMatrix(measureMatrix.rows() - 1, 1);
+
+        // timeSum이 threshold를 넘으면 true 반환
+        if (timeSum >= measureThreshold)
+        {
+            std::cout << "\n//////////////////////////////// Read Measure : " << lineOfScore + 1 << "\n";
+            // std::cout << measureMatrix;
+            // std::cout << "\n ////////////// time sum : " << timeSum << "\n";
+
+            return true;
+        }
+    }
+    return false;
 }
 
 void DrumRobot::sendPlayProcess()
@@ -815,7 +891,12 @@ void DrumRobot::sendPlayProcess()
             bpmOfScore = readBpm(inputFile);
             if (bpmOfScore <= 0)
             {
-                std::cout << "\n BPM Read Error !!! \n";
+                std::cout << "music bpm = " << bpmOfScore << "\n";
+                pathManager.initVal();  // 일단 두고 봄
+            }
+            else
+            {
+                std::cout << "\n bpm Read Error !!! \n";
                 return;
             }
         }

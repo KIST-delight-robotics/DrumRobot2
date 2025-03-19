@@ -121,6 +121,8 @@ public:
 
     vector<float> FK();
 
+    void initVal();
+
 private:
     TMotorCommandParser TParser; ///< T 모터 명령어 파서.
     MaxonCommandParser MParser;  ///< Maxon 모터 명령어 파서
@@ -166,7 +168,7 @@ private:
     double threshold = 2.4;     ///< 한번에 읽을 악보의 크기. [s]
     double totalTime = 0.0;     ///< 악보를 읽는 동안 누적 시간. [s]
 
-    void initVal();
+    
     string trimWhitespace(const std::string &str);
 
     /////////////////////////////////////////////////////////////////////////// Play (parse measure)

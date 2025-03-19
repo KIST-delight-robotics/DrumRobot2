@@ -147,6 +147,7 @@ private:
     void unfixedMotor();
     void clearMotorsCommandBuffer();
     
+    string trimWhitespace(const std::string &str);
     double readBpm(ifstream& inputFile);
     bool readMeasure(ifstream& inputFile);
     MatrixXd measureMatrix;     ///< 궤적을 생성하기 위해 읽은 악보 부분 (마디)
