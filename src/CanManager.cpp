@@ -815,43 +815,52 @@ bool CanManager::checkAllMotors_Fixed()
 /*                                Functions for Thread Case                                      */
 //////////////////////////////////////////////////////////////////////////////////////////////
 
-bool CanManager::setCANFrame()
+bool CanManager::setCANFrame(std::map<std::string, bool>& fixFlags)
 {
     for (auto &motor_pair : motors)
     {
         std::shared_ptr<GenericMotor> motor = motor_pair.second;
+        std::string motorName = motor_pair.first;
 
-        //MaxonMotor
+        // MaxonMotor
         if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motor))
         {
             if (maxonMotor->commandBuffer.empty()) continue;
 
             MaxonData mData = maxonMotor->commandBuffer.front();
-            
-            if (maxonMotor->commandBuffer.size() > 1) 
+
+            // 버퍼 크기가 1이면 고정 상태
+            fixFlags[motorName] = (maxonMotor->commandBuffer.size() == 1);
+
+            if (maxonMotor->commandBuffer.size() > 1)
             {
                 maxonMotor->commandBuffer.pop();
             }
-            
+
             setMaxonCANFrame(maxonMotor, mData);
         }
-        //TMotor
+        // TMotor
         else if (std::shared_ptr<TMotor> tMotor = std::dynamic_pointer_cast<TMotor>(motor))
         {
             if (tMotor->commandBuffer.empty()) continue;
 
             TMotorData tData = tMotor->commandBuffer.front();
 
-            if (tMotor->commandBuffer.size() > 1) 
+            //버퍼 크기가 1이면 고정 상태
+            fixFlags[motorName] = (tMotor->commandBuffer.size() == 1);
+
+            if (tMotor->commandBuffer.size() > 1)
             {
                 tMotor->commandBuffer.pop();
             }
+
             setTMotorCANFrame(tMotor, tData);
         }
     }
-
+    
     return true;
 }
+
 
 void CanManager::setMaxonCANFrame(std::shared_ptr<MaxonMotor> maxonMotor, const MaxonData &mData)
 {

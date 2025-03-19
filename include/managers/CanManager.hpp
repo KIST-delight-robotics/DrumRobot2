@@ -109,8 +109,8 @@ public:
 
     void setSocketNonBlock();
     void setSocketBlock();
-    
-    bool setCANFrame();
+
+    bool setCANFrame(std::map<std::string, bool>& fixFlags);
     void setMaxonCANFrame(std::shared_ptr<MaxonMotor> maxonMotor, const MaxonData &mData);
     void setTMotorCANFrame(std::shared_ptr<TMotor> tMotor, const TMotorData &tData);
 
