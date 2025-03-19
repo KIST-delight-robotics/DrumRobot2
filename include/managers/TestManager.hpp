@@ -8,6 +8,7 @@
 #include "../include/tasks/SystemState.hpp"
 #include "../include/USBIO_advantech/USBIO_advantech.hpp"
 #include "../include/tasks/Functions.hpp"
+#include "../include/tasks/DrumRobot.hpp"
 #include <map>
 #include <memory>
 #include <string>
@@ -37,7 +38,7 @@ class TestManager
 public:
     TestManager(State &stateRef, CanManager &canManagerRef, std::map<std::string, std::shared_ptr<GenericMotor>> &motorsRef, USBIO &usbioRef, Functions &funRef);
 
-    void SendTestProcess(int periodMicroSec);
+    void SendTestProcess(FlagClass& flagObj);
     void MaxonEnable();
     void setMaxonMode(std::string targetMode);
 
@@ -100,7 +101,7 @@ private:
     void getArr(float arr[]);
 
     // setQ
-    bool sin_flag = false;
+
     bool brake_flag[7] = {false, false, false, false, false, false, false};
     bool single_brake_flag[7] = {false, false, false, false, false, false, false};
     float brake_start_time[7] = {2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0};

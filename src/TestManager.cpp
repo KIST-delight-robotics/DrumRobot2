@@ -11,7 +11,7 @@ TestManager::TestManager(State &stateRef, CanManager &canManagerRef, std::map<st
     standardTime = chrono::system_clock::now();
 }
 
-void TestManager::SendTestProcess(int periodMicroSec)
+void TestManager::SendTestProcess(FlagClass& flagObj)
 {
     auto currentTime = chrono::system_clock::now();
     auto elapsedTime = chrono::duration_cast<chrono::microseconds>(currentTime - standardTime);
@@ -24,7 +24,8 @@ void TestManager::SendTestProcess(int periodMicroSec)
             int ret = system("clear");
             if (ret == -1)
                 std::cout << "system clear error" << endl;
-
+            
+            ////////////////////////////////////////////////////////////////////////////////////////////////
             float c_MotorAngle[10];
             getMotorPos(c_MotorAngle);
 
@@ -35,8 +36,9 @@ void TestManager::SendTestProcess(int periodMicroSec)
                 std::cout << "Q[" << i << "] : " << c_MotorAngle[i] << "\t\t" << c_MotorAngle[i] * 180.0 / M_PI << "\n";
             }
             FK(c_MotorAngle); // 현재 q값에 대한 FK 진행
+            ////////////////////////////////////////////////////////////////////////////////////////////////
 
-            std::cout << "\nSelect Method (1 - 관절각도값 조절, 2 - 좌표값 조절, 3 - 손목 모터, 4 - TABlE TEST, -1 - 나가기) : ";
+            std::cout << "\nSelect Method (1 - 관절각도값 조절, 2 - 좌표값 조절, 3 - 손목 모터, -1 - 나가기) : ";
             std::cin >> method;
             
             if (method == 1)
@@ -51,19 +53,16 @@ void TestManager::SendTestProcess(int periodMicroSec)
             {
                 state.test = TestSub::TestMaxon;
             }
-            else if (method == 4)
-            {
-                testTable();
-            }
             else if (method == -1)
             {
-                state.main = Main::Ideal;
+                return;
             }
 
             break;
         }
         case TestSub::SetQValue:
         {
+
             int userInput = 100;
             int ret = system("clear");
             if (ret == -1)
@@ -72,14 +71,6 @@ void TestManager::SendTestProcess(int periodMicroSec)
             float c_MotorAngle[10] = {0};
             getMotorPos(c_MotorAngle);
 
-            if(sin_flag)
-            {
-                std::cout << "Mode : Sin Wave\n";
-            }
-            else
-            {
-                std::cout << "Mode : Go to target point\n";
-            }
             std::cout << "\n[Current Q Values] [Target Q Values] (Radian)\n";
             for (int i = 0; i < 10; i++)
             {
@@ -87,22 +78,10 @@ void TestManager::SendTestProcess(int periodMicroSec)
             }
 
             std::cout << "\ntime : " << t << "s";
-            if(!sin_flag) std::cout << " + " << extra_time << "s";
             std::cout << "\nnumber of repeat : " << n_repeat << std::endl << std::endl;
 
-            for (int i = 0; i < 7; i++)
-            {
-                if (brake_flag[i])
-                {
-                    std::cout << "Joint " << i << " brake on : " << brake_start_time[i] << "s ~ " << brake_end_time[i] << "s\n";
-                }
-                else
-                {
-                    std::cout << "Joint " << i << " brake off\n";
-                }
-            }
             
-            std::cout << "\nSelect Motor to Change Value (0-8) / Run (9) / Time (10) / Extra Time (11) / Repeat(12) / Brake (13) / initialize test (14) / Sin Profile (15) / break on off (16) / Exit (-1): ";
+            std::cout << "\nSelect Motor to Change Value (0-8) / Run (9) / Time (10) / Extra Time (11) / Repeat(12) / break on off (13) / Exit (-1): ";
             std::cin >> userInput;
 
             if (userInput == -1)
@@ -152,109 +131,42 @@ void TestManager::SendTestProcess(int periodMicroSec)
                 std::cout << "number of repeat : ";
                 std::cin >> n_repeat;
             }
-            else if (userInput == 13)
+          /*else if (userInput == 13)
             {
-                int input_brake;
-                std::cout << "Select joint : ";
-                std::cin >> input_brake;
+                bool usbio_output = false;
 
-                if(input_brake < 7)
+                std::cout << "Current brake states:" << std::endl;
+                for (int i = 0; i < 7; i++)
                 {
-                    if(brake_flag[input_brake])
-                    {
-                        brake_flag[input_brake] = false;
-                    }
-                    else
-                    {
-                        brake_flag[input_brake] = true;
-
-                        std::cout << "brake start time (0~" << t+extra_time << ") : ";
-                        std::cin >> brake_start_time[input_brake];
-
-                        std::cout << "brake end time (" << brake_start_time[input_brake] << "~" << t+extra_time << ") : ";
-                        std::cin >> brake_end_time[input_brake];
-                    }
+                    std::cout << "Brake " << i << ": " << (single_brake_flag[i] ? "Active" : "Inactive") << std::endl;
                 }
-            }
-            else if (userInput == 14)
-            {
-                for (int i = 0; i <= 6; ++i)
+
+                int break_num;
+                cin >> break_num;
+
+                if(!single_brake_flag[break_num])
                 {
-                    brake_flag[i] = false;
-                    float degree_angle;
-                    
-                    // 1과 2는 90도, 나머지는 0도로 설정
-                    if (i == 1 || i == 2) {
-                        degree_angle = 90.0;
-                    } else {
-                        degree_angle = 0.0;
-                    }
-                    
-                    std::cout << "\nRange : " << jointRangeMin[i] << "~" << jointRangeMax[i] << "(Degree)\n";
-                    std::cout << "Enter q[" << i << "] Values (Degree) : " << degree_angle << "\n";
-                    
-                    // degree 값을 radian으로 변환하여 q 배열에 저장
-                    q[i] = degree_angle * M_PI / 180.0;
-                }
-                t = 4.0;
-                extra_time = 1.0;
-                n_repeat = 1;
-                sin_flag = false;
-
-                state.test = TestSub::FillBuf;
-                usleep(5000);
-                unfixedMotor();
-
-            }
-
-            else if (userInput == 15)
-            {
-                if(sin_flag)
-                {
-                    sin_flag = false;
-                    extra_time = 1.0;
+                    usbio.setUSBIO4761(break_num % 7, true);
+                    usbio_output = usbio.outputUSBIO4761();
+                    single_brake_flag[break_num] = true;
                 }
                 else
                 {
-                    sin_flag = true;
-                    extra_time = 0.0;
+                    usbio.setUSBIO4761(break_num % 7, false);
+                    usbio_output = usbio.outputUSBIO4761();
+                    single_brake_flag[break_num] = false;
                 }
+
+                if(!usbio_output)
+                {
+                    std::cout << "OUTPUT Error" << endl;
+                    usleep(5000000);
+                    break;
+                }
+
             }
+            */
 
-            // else if (userInput == 16)
-            // {
-            //     bool usbio_output = false;
-
-            //     std::cout << "Current brake states:" << std::endl;
-            //     for (int i = 0; i < 7; i++)
-            //     {
-            //         std::cout << "Brake " << i << ": " << (single_brake_flag[i] ? "Active" : "Inactive") << std::endl;
-            //     }
-
-            //     int break_num;
-            //     cin >> break_num;
-
-            //     if(!single_brake_flag[break_num])
-            //     {
-            //         usbio.setUSBIO4761(break_num % 7, true);
-            //         usbio_output = usbio.outputUSBIO4761();
-            //         single_brake_flag[break_num] = true;
-            //     }
-            //     else
-            //     {
-            //         usbio.setUSBIO4761(break_num % 7, false);
-            //         usbio_output = usbio.outputUSBIO4761();
-            //         single_brake_flag[break_num] = false;
-            //     }
-
-            //     if(!usbio_output)
-            //     {
-            //         std::cout << "OUTPUT Error" << endl;
-            //         usleep(5000000);
-            //         break;
-            //     }
-
-            // }
             break;
         }
         case TestSub::TestMaxon:
@@ -443,7 +355,7 @@ void TestManager::SendTestProcess(int periodMicroSec)
             else if (method == 2)
             {
                 vector<float> Qf(7);
-                Qf = ikfun_final(R_xyz, L_xyz, partLength, s, z0); // IK함수는 손목각도가 0일 때를 기준으로 풀림
+                Qf = ikfun_final(R_xyz, L_xyz, partLength, s, z0);  // IK함수는 손목각도가 0일 때를 기준으로 풀림
                 Qf.push_back(0.0);                                  // 오른쪽 손목 각도
                 Qf.push_back(0.0);                                  // 왼쪽 손목 각도
                 for (int i = 0; i < 9; i++)
@@ -459,130 +371,21 @@ void TestManager::SendTestProcess(int periodMicroSec)
             {
                 getArr(q);
             }
-            
-            state.test = TestSub::CheckBuf;
-            break;
-        }
-        case TestSub::CheckBuf:
-        {
-            bool allBuffersEmpty = true;
-            for (const auto &motor_pair : motors)
-            {
-                if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motor_pair.second))
-                {
-                    if (!maxonMotor->commandBuffer.empty())
-                    {
-                        allBuffersEmpty = false;
-                        break;
-                    }
-                }
-                else if (std::shared_ptr<TMotor> tMotor = std::dynamic_pointer_cast<TMotor>(motor_pair.second))
-                {
-                    if (!tMotor->commandBuffer.empty())
-                    {
-                        allBuffersEmpty = false;
-                        break;
-                    }
-                }
-            }
 
-            if (!allBuffersEmpty)
-                state.test = TestSub::TimeCheck;
-            else
-                state.test = TestSub::Done;
-            break;
-        }
-        case TestSub::TimeCheck:
-        {
-            if (elapsedTime.count() >= periodMicroSec)  
+            while(!flagObj.getFixationFlag())
             {
-                // struct can_frame frame;
-                // std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motors["L_wrist"]);
-                // std::shared_ptr<GenericMotor> motor = motors["L_wrist"];
-                // maxoncmd.getCheck(*maxonMotor, &frame);
-                // canManager.sendAndRecv(motor, frame);
-
-                state.test = TestSub::SetCANFrame;  // 5ms마다 CAN Frame 설정
-                standardTime = currentTime;         // 시간 초기화
+                std::cout << "Waiting for moving done" << std::endl;
+                std::this_thread::sleep_for(std::chrono::milliseconds(100));
             }
-            break;
-        }
-        case TestSub::SetCANFrame:
-        {
-            bool isSafe;
-            // isSafe = canManager.setCANFrame_TEST();
-            if (!isSafe)
-            {
-                state.main = Main::Error;
-            }
-            state.test = TestSub::SendCANFrame;
-            break;
-        }
-        case TestSub::SendCANFrame:
-        {
-            bool needSync = false;
-            bool isWriteError = false;
-            for (auto &motor_pair : motors)
-            {
-                shared_ptr<GenericMotor> motor = motor_pair.second;
-
-                if (!canManager.sendMotorFrame(motor))
-                {
-                    isWriteError = true;
-                }
-
-                if (std::shared_ptr<TMotor> tMotor = std::dynamic_pointer_cast<TMotor>(motor_pair.second))
-                {
-                    usbio.setUSBIO4761(motorMapping[motor_pair.first], tMotor->brakeState);
-                }
-
-                if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motor_pair.second))
-                {
-                    virtualMaxonMotor = maxonMotor;
-                    needSync = true;
-                }
-            }
-
-            if (needSync)
-            {
-                maxoncmd.getSync(&virtualMaxonMotor->sendFrame);
-                if (!canManager.sendMotorFrame(virtualMaxonMotor))
-                {
-                    isWriteError = true;
-                }
-            }
-            if (isWriteError)
-            {
-                state.main = Main::Error;
-            }
-            else
-            {
-                state.test = TestSub::CheckBuf;
-            }
-
-            // brake
-            if(!usbio.outputUSBIO4761())
-            {
-                cout << "brake Error\n";
-            }
-
+            state.test = TestSub::Done;
             break;
         }
         case TestSub::Done:
         {
-            //usleep(5000);
-            
+
             if (method == 1)
             {
                 state.test = TestSub::SetQValue;
-                
-                // std::ostringstream fileNameOut;
-                // fileNameOut << std::fixed << std::setprecision(1); // 소숫점 1자리까지 표시
-                // fileNameOut << "../../READ/Test_0704_P" << q[5]
-                //             << "_spd" << speed_test
-                //             << "_BrakeTime" << brake_start_time;
-                // std::string fileName = fileNameOut.str();
-                // parse_and_save_to_csv(fileName);
             }
             else if (method == 2)
             {
@@ -1011,22 +814,17 @@ void TestManager::getArr(float arr[])
     {
         for (int k = 1; k <= n + n_p; ++k)
         {
-            if(!sin_flag)
+            // Make Vector
+            if ((i%2) == 0)
             {
-                // Make Vector
-                if ((i%2) == 0)
-                {
-                    Qi = makeProfile(Q1, Q2, Vmax, acc_max, t*k/n, t);
-                }
-                else
-                {
-                    Qi = makeProfile(Q2, Q1, Vmax, acc_max, t*k/n, t);
-                }
+                Qi = makeProfile(Q1, Q2, Vmax, acc_max, t*k/n, t);
             }
             else
             {
-                Qi = sinProfile(Q1, Q2, t*k/n, t);
+                Qi = makeProfile(Q2, Q1, Vmax, acc_max, t*k/n, t);
             }
+
+
 
             // Send to Buffer
             for (auto &entry : motors)
@@ -2021,93 +1819,6 @@ tuple <double, int, int> TestManager::CSTHitLoop()
 /*                              TEST Function                                  */
 /////////////////////////////////////////////////////////////////////////////////
 
-void TestManager::testTable()
-{
-    srand(time(NULL));
-    std::ifstream tableFile;
-    std::string tablePath = "/home/shy/DrumRobot2_TABLE/";    // 테이블 위치
-
-    int n, sum = 0;
-    double P[6] = {0};
-    int P_index[6] = {0};
-    double R[2][6] = {{-0.35, 0.45, 0.55, -0.35, 0.45, 0.55}, {0.8, 0.35, 0.65, 0.8, 0.35, 0.65}};
-    double dx = 0.05;
-    
-    std::cout << "\n 반복 횟수 : ";
-    std::cin >> n;
-
-    std::chrono::system_clock::time_point start = std::chrono::system_clock::now();
-    for (int i = 0; i < n; i++)
-    {
-        // 랜덤 위치
-        for (int j = 0; j < 6; j++)
-        {
-            // if (j == 0)
-            // {
-            //     std::cout << "\n 오른팔 좌표 :";
-            // }
-            // else if (j == 3)
-            // {
-            //     std::cout << "\n 왼팔 좌표 :";
-            // }
-
-            P[j] = R[0][j] + R[1][j]*((rand()%1000)/1000.0);
-            // std::cout << "\t" << P[j];
-        }
-
-        // 인덱스 공간으로 변환
-        for (int j = 0; j < 6; j++)
-        {
-            P_index[j] = floor((P[j] - R[0][j])/dx + 0.5);
-        }
-
-        std::string fileName = tablePath + "TABLE_" + std::to_string(P_index[0]+1) + "_" + std::to_string(P_index[1]+1) +".txt";
-        tableFile.open(fileName); // 파일 열기
-        
-        if (tableFile.is_open())
-        {
-            string row;
-
-            for (int j = 0; j < P_index[3]+1; j++)
-            {
-                getline(tableFile, row);
-            }
-
-            istringstream iss(row);
-            string item;
-
-            for (int j = 0; j < P_index[2]+1; j++)
-            {
-                getline(iss, item, '\t');
-            }
-
-            item = trimWhitespace(item);
-
-            char hex1 = item.at(2*P_index[5] + 1);
-            char hex2 = item.at(2*P_index[5]);
-
-            if (hex2TableData(hex1, hex2, P_index[4]))
-            {
-                sum++;
-            }
-
-            // std::cout << "\n data : " << hex2TableData(hex1, hex2, P_index[4]) << "\n";
-            // sleep(1);
-        }
-        else
-        {
-            std::cout << "\n table file open error \n";
-        }
-
-        tableFile.close(); // 파일 닫기
-    }
-
-    std::chrono::duration<double>sec = std::chrono::system_clock::now() - start;
-    std::cout << "\n 실행 시간 : " << sec.count()*1000 << " ms\n";
-    std::cout << "\n 충돌 횟수 : " << sum << "\n";
-    sleep(10);
-}
-
 string TestManager::trimWhitespace(const std::string &str)
 {
     size_t first = str.find_first_not_of(" \t");
@@ -2117,122 +1828,4 @@ string TestManager::trimWhitespace(const std::string &str)
     }
     size_t last = str.find_last_not_of(" \t");
     return str.substr(first, (last - first + 1));
-}
-
-bool TestManager::hex2TableData(char hex1, char hex2, int index)
-{
-    char hex;
-    bool bin[4];
-
-    if (index < 4)
-    {
-        hex = hex1;
-    }
-    else
-    {
-        hex = hex2;
-        index = index - 4;
-    }
-
-    switch(hex)
-    {
-    case '0':
-        bin[0] = false;
-        bin[1] = false;
-        bin[2] = false;
-        bin[3] = false;
-    break;
-    case '1':
-        bin[0] = true;
-        bin[1] = false;
-        bin[2] = false;
-        bin[3] = false;
-    break;
-    case '2':
-        bin[0] = false;
-        bin[1] = true;
-        bin[2] = false;
-        bin[3] = false;
-    break;
-    case '3':
-        bin[0] = true;
-        bin[1] = true;
-        bin[2] = false;
-        bin[3] = false;
-    break;
-    case '4':
-        bin[0] = false;
-        bin[1] = false;
-        bin[2] = true;
-        bin[3] = false;
-    break;
-    case '5':
-        bin[0] = true;
-        bin[1] = false;
-        bin[2] = true;
-        bin[3] = false;
-    break;
-    case '6':
-        bin[0] = false;
-        bin[1] = true;
-        bin[2] = true;
-        bin[3] = false;
-    break;
-    case '7':
-        bin[0] = true;
-        bin[1] = true;
-        bin[2] = true;
-        bin[3] = false;
-    break;
-    case '8':
-        bin[0] = false;
-        bin[1] = false;
-        bin[2] = false;
-        bin[3] = true;
-    break;
-    case '9':
-        bin[0] = true;
-        bin[1] = false;
-        bin[2] = false;
-        bin[3] = true;
-    break;
-    case 'A':
-        bin[0] = false;
-        bin[1] = true;
-        bin[2] = false;
-        bin[3] = true;
-    break;
-    case 'B':
-        bin[0] = true;
-        bin[1] = true;
-        bin[2] = false;
-        bin[3] = true;
-    break;
-    case 'C':
-        bin[0] = false;
-        bin[1] = false;
-        bin[2] = true;
-        bin[3] = true;
-    break;
-    case 'D':
-        bin[0] = true;
-        bin[1] = false;
-        bin[2] = true;
-        bin[3] = true;
-    break;
-    case 'E':
-        bin[0] = false;
-        bin[1] = true;
-        bin[2] = true;
-        bin[3] = true;
-    break;
-    case 'F':
-        bin[0] = true;
-        bin[1] = true;
-        bin[2] = true;
-        bin[3] = true;
-    break;
-    }
-
-    return bin[index];
 }
