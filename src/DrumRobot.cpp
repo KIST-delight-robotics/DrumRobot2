@@ -109,6 +109,7 @@ void DrumRobot::sendLoopForThread()
                 isWriteError = true;
             };
         }
+        //flag 관리
 
         if (isWriteError)
         {
