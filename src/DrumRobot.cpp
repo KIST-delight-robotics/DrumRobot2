@@ -1629,16 +1629,56 @@ void DrumRobot::sendAddStanceProcess()
 /*                              Play State                                    */
 ////////////////////////////////////////////////////////////////////////////////
 
+double DrumRobot::readBpm(ifstream& inputFile)
+{
+
+}
+
+bool DrumRobot::readMeasure(ifstream& inputFile)
+{
+
+}
+
 void DrumRobot::sendPlayProcess()
 {
+    if (fileIndex == 0) // 처음 파일을 열 때
     {
-        // 처음 파일을 열 때
         std::cout << "enter music name : ";
         std::getline(std::cin, musicName);
     }
 
+    std::string currentFile = basePath + musicName + std::to_string(fileIndex) + ".txt";
+    inputFile.open(currentFile); // 파일 열기
+
+    if (inputFile.is_open())    // 파일 열기 성공
     {
-        // 
+        if (fileIndex == 0) // 처음 파일을 열 때
+        {
+            bpmOfScore = readBpm(inputFile);
+            // bpm 못 읽으면 error
+        }
+        fileIndex++;    // 다음 파일 열 준비
+
+        while(readMeasure(inputFile))    // 한마디 분량 미만으로 남을 때까지
+        {
+            // 충돌 회피 알고리즘
+            
+            pathManager.generateTrajectory();
+
+
+        }
+    }
+    else                        // 파일 열기 실패
+    {
+        {
+            // 종료 코드 확인 -> 남은 궤적 생성
+        }
+        {
+            // fixed -> 비정상 종료
+        }
+        {
+            // 아니면 기다려
+        }
     }
     
 

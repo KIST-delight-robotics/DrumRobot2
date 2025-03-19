@@ -146,6 +146,13 @@ private:
     void sendAddStanceProcess();
     void unfixedMotor();
     void clearMotorsCommandBuffer();
+    
+    double readBpm(ifstream& inputFile);
+    bool readMeasure(ifstream& inputFile);
+    MatrixXd measureMatrix; ///< 궤적을 생성하기 위해 읽은 악보 부분 (마디)
+    double bpmOfScore = 0;       ///< txt 악보의 BPM 정보.
+    double measureThreshold = 2.4;     ///< 한번에 읽을 악보의 크기. [s]
+    double measureTotalTime = 0.0;     ///< 악보를 읽는 동안 누적 시간. [s]
 
     bool initializePos(const std::string &input);
 
