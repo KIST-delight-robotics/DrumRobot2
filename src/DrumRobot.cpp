@@ -558,7 +558,7 @@ void DrumRobot::stateMachine()
             }
             case Main::Test:
             {
-                testManager.SendTestProcess(flagObj);  
+                testManager.SendTestProcess();  
                 state.main = Main::Ideal;
                 break;
             }

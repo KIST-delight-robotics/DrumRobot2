@@ -75,6 +75,7 @@ public:
     void recvLoopForThread();
     
     void initializeDrumRobot();
+    
 
 private:
     State &state;
