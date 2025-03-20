@@ -80,10 +80,7 @@ void Functions::restCanPort()
         snprintf(can3_on, sizeof(can3_on), " ");  // Empty command
     } 
     else if(com_number == 3){
-
-        std::cout << "김태황 컴퓨터이다" << "\n";
-        usleep(500000);
-
+        return;
     }
     else{
         fprintf(stderr, "Invalid com_number: %d\n", com_number);
