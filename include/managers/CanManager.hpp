@@ -53,7 +53,51 @@ public:
     std::map<std::string, int> sockets;      ///< 모터와 통신하는 소켓의 맵.
     std::map<std::string, bool> isConnected; ///< 모터의 연결 상태를 나타내는 맵.
     std::vector<std::string> ifnames;
-    int errorCnt = 0;
+
+    // tMotor 제어 주기 결정
+    const double DTSECOND = 0.005;
+
+    map<std::string, int> motorMapping = { ///< 각 관절에 해당하는 정보 [이름, CAN ID]
+        {"waist", 0},
+        {"R_arm1", 1},
+        {"L_arm1", 2},
+        {"R_arm2", 3},
+        {"R_arm3", 4},
+        {"L_arm2", 5},
+        {"L_arm3", 6},
+        {"R_wrist", 7},
+        {"L_wrist", 8},
+        {"maxonForTest", 9},
+        {"R_foot", 10},
+        {"L_foot", 11}};
+
+    
+    //////////////////////////////////////// Initialize
+    void initializeCAN();
+
+    //////////////////////////////////////// Setting
+    void checkCanPortsStatus();
+    void setSocketNonBlock();
+    void setSocketBlock();
+    bool txFrame(std::shared_ptr<GenericMotor> &motor, struct can_frame &frame);
+    bool rxFrame(std::shared_ptr<GenericMotor> &motor, struct can_frame &frame);
+    bool sendAndRecv(std::shared_ptr<GenericMotor> &motor, struct can_frame &frame);
+    bool recvToBuff(std::shared_ptr<GenericMotor> &motor, int readCount);
+
+    void setSocketsTimeout(int sec, int usec);
+    void setMotorsSocket();
+
+    //////////////////////////////////////// Send
+    int errorCnt = 0;   // 수신 에러 카운트
+
+    bool sendMotorFrame(std::shared_ptr<GenericMotor> motor);
+    bool setCANFrame(std::map<std::string, bool>& fixFlags);
+
+    //////////////////////////////////////// Receive
+    void readFramesFromAllSockets();
+    bool distributeFramesToMotors(bool setlimit);
+
+    //////////////////////////////////////// 토크 제어 관련
     int maxonCnt = 0;
     bool isHitR = false;
     bool isHitL = false;
@@ -71,69 +115,7 @@ public:
     // SDO communication으로 받아오는 현재 위치 값
     float currentPosition = 0.0;
 
-    // tMotor 제어 주기 결정
-    const double DTSECOND = 0.005;
-
-    void initializeCAN();
-
-    void setSocketsTimeout(int sec, int usec);
-    void flushCanBuffer(int socket);
-    void resetCanFilter(int socket);
-    void checkCanPortsStatus();
-
-    void setMotorsSocket();
-
-    bool sendAndRecv(std::shared_ptr<GenericMotor> &motor, struct can_frame &frame);
-
-    bool sendFromBuff(std::shared_ptr<GenericMotor> &motor);
-
-    bool sendMotorFrame(std::shared_ptr<GenericMotor> motor);
-
-    bool checkMaxon();
-
-    bool checkAllMotors_Fixed();
-
-    bool sendForCheck_Fixed(std::shared_ptr<GenericMotor> motor);
-
-    bool recvToBuff(std::shared_ptr<GenericMotor> &motor, int readCount);
-
-    bool txFrame(std::shared_ptr<GenericMotor> &motor, struct can_frame &frame);
-
-    bool rxFrame(std::shared_ptr<GenericMotor> &motor, struct can_frame &frame);
-
-    void readFramesFromAllSockets();
-
-    bool distributeFramesToMotors(bool setlimit);
-
-    void clearReadBuffers();
-
-    void setSocketNonBlock();
-    void setSocketBlock();
-
-    bool setCANFrame(std::map<std::string, bool>& fixFlags);
-    void setMaxonCANFrame(std::shared_ptr<MaxonMotor> maxonMotor, const MaxonData &mData);
-    void setTMotorCANFrame(std::shared_ptr<TMotor> tMotor, const TMotorData &tData);
-
-
-    bool safetyCheck_Tmotor(std::shared_ptr<TMotor> tMotor, TMotorData tData);
-    bool safetyCheck_T(std::shared_ptr<GenericMotor> &motor);
-    bool safetyCheck_M(std::shared_ptr<GenericMotor> &motor);
-
     bool dct_fun(shared_ptr<MaxonMotor> maxonMotor);
-
-    map<std::string, int> motorMapping = { ///< 각 관절에 해당하는 정보 [이름, CAN ID]
-        {"waist", 0},
-        {"R_arm1", 1},
-        {"L_arm1", 2},
-        {"R_arm2", 3},
-        {"R_arm3", 4},
-        {"L_arm2", 5},
-        {"L_arm3", 6},
-        {"R_wrist", 7},
-        {"L_wrist", 8},
-        {"maxonForTest", 9},
-        {"R_foot", 10},
-        {"L_foot", 11}};
 
 private:
 
@@ -146,15 +128,32 @@ private:
 
     std::map<int, std::vector<can_frame>> tempFrames;
 
+    //////////////////////////////////////// Initialize
     bool getCanPortStatus(const char *port);
     void activateCanPort(const char *port);
+    void listAndActivateAvailableCANPorts();
+    int createSocket(const std::string &ifname);
+
+    //////////////////////////////////////// Setting
+    void flushCanBuffer(int socket);
+    void resetCanFilter(int socket);
+    
+    void clearReadBuffers();
+    void clearCanBuffer(int canSocket);
+    int setSocketTimeout(int socket, int sec, int usec);
+
+    //////////////////////////////////////// Send
+    void setMaxonCANFrame(std::shared_ptr<MaxonMotor> maxonMotor, const MaxonData &mData);
+    void setTMotorCANFrame(std::shared_ptr<TMotor> tMotor, const TMotorData &tData);
+    bool safetyCheckSecdT(std::shared_ptr<TMotor> tMotor, TMotorData tData);
+
     void deactivateCanPort(const char *port);
     void deactivateAllCanPorts();
-    void listAndActivateAvailableCANPorts();
 
-    int createSocket(const std::string &ifname);
-    int setSocketTimeout(int socket, int sec, int usec);
-    void clearCanBuffer(int canSocket);
+    //////////////////////////////////////// Receive
+    bool safetyCheckRecvT(std::shared_ptr<GenericMotor> &motor);
+    bool safetyCheckRecvM(std::shared_ptr<GenericMotor> &motor);
+    
 };
 
 #endif // CAN_SOCKET_UTILS_H

@@ -51,7 +51,7 @@ void DrumRobot::initializeMotors()
     for (auto &motor_pair : motors)
     {
         auto &motor = motor_pair.second;
-        int can_id = motorMapping[motor_pair.first];
+        int can_id = canManager.motorMapping[motor_pair.first];
 
         // 타입에 따라 적절한 캐스팅과 초기화 수행
         if (std::shared_ptr<TMotor> tMotor = std::dynamic_pointer_cast<TMotor>(motor))
@@ -321,54 +321,11 @@ bool DrumRobot::initializePos(const std::string &input)
             {
                 tservocmd.comm_can_set_origin(*tMotor, &tMotor->sendFrame, 0);
                 canManager.sendMotorFrame(tMotor);
-                tMotor->finalMotorPosition = tMotor->jointAngleToMotorPosition(tMotor->initialJointAngle);
-
-                // if (tMotor->myName == "waist")
-                // {
-                //     tservocmd.comm_can_set_origin(*tMotor, &tMotor->sendFrame, 0);
-                //     canManager.sendMotorFrame(tMotor);
-                //     tMotor->finalMotorPosition = tMotor->jointAngleToMotorPosition(tMotor->initialJointAngle);
-                // }
-                // else if (tMotor->myName == "R_arm1")
-                // {
-                //     tservocmd.comm_can_set_origin(*tMotor, &tMotor->sendFrame, 0);
-                //     canManager.sendMotorFrame(tMotor);
-                //     tMotor->finalMotorPosition = tMotor->jointAngleToMotorPosition(tMotor->initialJointAngle);
-                // }
-                // else if (tMotor->myName == "L_arm1")
-                // {
-                //     tservocmd.comm_can_set_origin(*tMotor, &tMotor->sendFrame, 0);
-                //     canManager.sendMotorFrame(tMotor);
-                //     tMotor->finalMotorPosition = tMotor->jointAngleToMotorPosition(tMotor->initialJointAngle);
-                // }
-                // else if (tMotor->myName == "R_arm2")
-                // {
-                //     tservocmd.comm_can_set_origin(*tMotor, &tMotor->sendFrame, 0);
-                //     canManager.sendMotorFrame(tMotor);
-                //     tMotor->finalMotorPosition = tMotor->jointAngleToMotorPosition(tMotor->initialJointAngle);
-                // }
-                // else if (tMotor->myName == "L_arm2")
-                // {
-                //     tservocmd.comm_can_set_origin(*tMotor, &tMotor->sendFrame, 0);
-                //     canManager.sendMotorFrame(tMotor);
-                //     tMotor->finalMotorPosition = tMotor->jointAngleToMotorPosition(tMotor->initialJointAngle);
-                // }
-                // else if (tMotor->myName == "R_arm3")
-                // {
-                //     tservocmd.comm_can_set_origin(*tMotor, &tMotor->sendFrame, 0);
-                //     canManager.sendMotorFrame(tMotor);
-                //     tMotor->finalMotorPosition = tMotor->jointAngleToMotorPosition(tMotor->initialJointAngle);
-                // }
-                // else if (tMotor->myName == "L_arm3")
-                // {
-                //     tservocmd.comm_can_set_origin(*tMotor, &tMotor->sendFrame, 0);
-                //     canManager.sendMotorFrame(tMotor);
-                //     tMotor->finalMotorPosition = tMotor->jointAngleToMotorPosition(tMotor->initialJointAngle);
-                // }
+                tMotor->finalMotorPosition = 0.0;
             }
             else if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motorPair.second))
             {
-                maxonMotor->finalMotorPosition = maxonMotor->jointAngleToMotorPosition(maxonMotor->initialJointAngle);
+                maxonMotor->finalMotorPosition = 0.0;
             }
         }
         std::cout << "set zero and offset setting ~ ~ ~\n";
@@ -379,7 +336,6 @@ bool DrumRobot::initializePos(const std::string &input)
 
         state.main = Main::AddStance;
         flagObj.setAddStanceFlag("isHome");
-        flagObj.setFixationFlag("moving");
 
         return false;
     }
@@ -390,7 +346,6 @@ bool DrumRobot::initializePos(const std::string &input)
 
         // state.main = Main::AddStance;
         // flagObj.setAddStanceFlag("isHome");
-        // flagObj.setFixationFlag("moving");
 
         // return false;
         return true;
@@ -566,11 +521,13 @@ void DrumRobot::stateMachine()
             }
             case Main::AddStance:
             {
+                flagObj.setFixationFlag("moving");
                 sendAddStanceProcess();
                 break;
             }
             case Main::Play:
             {
+                flagObj.setFixationFlag("moving");
                 sendPlayProcess();
                 break;
             }
@@ -726,25 +683,21 @@ void DrumRobot::processInput(const std::string &input, string flagName)
     if (input == "r" && flagName == "isHome")
     {
         flagObj.setAddStanceFlag("isReady");
-        flagObj.setFixationFlag("moving");
         state.main = Main::AddStance;
     }
     else if (input == "p" && flagName == "isReady")
     {
         initializePlayState();
-        flagObj.setFixationFlag("moving");
         state.main = Main::Play;
     }
     else if (input == "h" && flagName == "isReady")
     {
         flagObj.setAddStanceFlag("isHome");
-        flagObj.setFixationFlag("moving");
         state.main = Main::AddStance;
     }
     else if (input == "s" && flagName == "isHome")
     {
         flagObj.setAddStanceFlag("isShutDown");
-        flagObj.setFixationFlag("moving");
         state.main = Main::AddStance;
     }
     else if (input == "t")
@@ -799,18 +752,7 @@ void DrumRobot::sendAddStanceProcess()
 
     string flag = flagObj.getAddStanceFlag();
 
-    if (flag == "isHome")
-    {
-        pathManager.getArr(pathManager.homeArr);
-    }
-    else if (flag == "isReady")
-    {
-        pathManager.getArr(pathManager.readyArr);
-    }
-    else if (flag == "isShutDown")
-    {
-        pathManager.getArr(pathManager.backArr);
-    }
+    pathManager.pushAddStancePath(flag);
 
     state.main = Main::Ideal;
 }
@@ -961,8 +903,6 @@ void DrumRobot::sendPlayProcess()
             if (lineOfScore > preCreatedLine)
             {
                 pathManager.solveIKandPushConmmand();
-
-                flagObj.setFixationFlag("moving");
             }
         }
 
@@ -992,8 +932,6 @@ void DrumRobot::sendPlayProcess()
                 if (lineOfScore > preCreatedLine)
                 {
                     pathManager.solveIKandPushConmmand();
-
-                    flagObj.setFixationFlag("moving");
                 }
             }
             std::cout << "Play is Over\n";

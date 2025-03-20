@@ -98,20 +98,6 @@ private:
     std::chrono::_V2::steady_clock::time_point sendLoopPeriod;
     std::chrono::_V2::steady_clock::time_point recvLoopPeriod;
 
-    map<std::string, int> motorMapping = { ///< 각 관절에 해당하는 정보 [이름, CAN ID]
-        {"waist", 0},
-        {"R_arm1", 1},
-        {"L_arm1", 2},
-        {"R_arm2", 3},
-        {"R_arm3", 4},
-        {"L_arm2", 5},
-        {"L_arm3", 6},
-        {"R_wrist", 7},
-        {"L_wrist", 8},
-        {"maxonForTest", 9},
-        {"R_foot", 10},
-        {"L_foot", 11}};
-
     // 로봇 고정했을 때 각 모터의 관절각      Waist   Rarm1   Larm1   Rarm2   Rarm3   Larm2   Larm3   Rwrist   Lwrist   maxonForTest   Rfoot   Lfoot   [deg]
     const float initialJointAngles[12] = {10.0,   90.0,   90.0,   0.0,    135.0,  0.0,    135.0,   -90.0,   -90.0,    0.0,           0.0,    0.0};
 

@@ -71,9 +71,6 @@ public:
     
     /////////////////////////////////////////////////////////////////////////// Play
 
-    // int lineOfScore = 0;  ///< 악보를 읽고 궤적을 생성하고 있는 줄
-    // MatrixXd measureMatrix; ///< 궤적을 생성하기 위해 읽은 악보 부분 (마디)
-
     // 궤적 저장할 구조체
     typedef struct {
         VectorXd trajectoryR; ///< 오른팔 스틱 끝 좌표 (x, y, z)
@@ -84,27 +81,13 @@ public:
     }Position;
     queue<Position> trajectoryQueue;
 
-    // bool readMeasure(ifstream& inputFile, bool &bpmFlag);
     void initializeValue(int bpm);
     void generateTrajectory(MatrixXd &measureMatrix);
     void solveIKandPushConmmand();
     
     /////////////////////////////////////////////////////////////////////////// AddStance
 
-    //   Ready Pos Array   :  waist         , R_arm1        , L_arm1        , R_arm2        , R_arm3        , L_arm2        , L_arm3        , R_wrist       , L_wrist       , maxonForTest
-    //                       { 0            , 90            , 90            , 45            , 75            , 45            , 75            , 30            , 30            , 30                  } [deg]
-    vector<float> readyArr = { 0            , M_PI / 2.0    , M_PI / 2.0    , M_PI * 0.25   , M_PI / 2.4    , M_PI * 0.25   , M_PI / 2.4    , M_PI / 6.0    , M_PI / 6.0    , 10.0 * M_PI / 180.0};
-
-    //   Home Pos Array    : waist          , R_arm1        , L_arm1        , R_arm2    , R_arm3         , L_arm2    , L_arm3         , R_wrist        , L_wrist        , maxonForTest
-    //                      { 10            , 90            , 90            , 0         , 135            , 0         , 135            , 60             , 60             , 90        } [deg]
-    vector<float> homeArr = { M_PI / 18.0   , M_PI / 2.0    , M_PI / 2.0    , 0         , M_PI * (0.75)  , 0         , M_PI * (0.75)  , M_PI / 3.0   , M_PI / 3.0   , M_PI / 2.0};
-
-    //   Back Pos Array    : waist      , R_arm1        , L_arm1        , R_arm2    , R_arm3    , L_arm2    , L_arm3    , R_wrist       , L_wrist
-    //                      { 0         , 135           , 45            , 0         , 0         , 0         , 0         , 90            , 90         } [deg]
-    vector<float> backArr = { 0         ,M_PI * 0.75    , M_PI * 0.25   , 0         , 0         , 0         , 0         , M_PI / 2.0    , M_PI / 2.0 };
-
-    void getArr(vector<float> &arr);
-    vector<float> makeHomeArr(int cnt);
+    void pushAddStancePath(string flagName);
 
     /////////////////////////////////////////////////////////////////////////// brake
     //                      q0  q1  q2  q3  q4  q5  q6  q7
@@ -114,9 +97,7 @@ public:
     void clearBrake(); // 모든 brake끄기
 
     /////////////////////////////////////////////////////////////////////////// 기타
-    double q1_state[2] = {readyArr[1], readyArr[1]};
-    double q2_state[2] = {readyArr[2], readyArr[2]};
-
+    
     int hitMode = 1; // 1 : CSP 2 : CSP & Detect 3: CSP & Detect & CST
     float releaseTimeVal = 1; // 드럼 스틱 release time에 곱하는 배수
 
@@ -131,19 +112,6 @@ private:
     std::map<std::string, std::shared_ptr<GenericMotor>> &motors; ///< 연결된 모터들의 정보입니다.
     USBIO &usbio;
     Functions &fun;
-
-    map<std::string, int> motorMapping = { ///< 각 관절에 해당하는 정보 [이름, CAN ID]
-        {"waist", 0},
-        {"R_arm1", 1},
-        {"L_arm1", 2},
-        {"R_arm2", 3},
-        {"R_arm3", 4},
-        {"L_arm2", 5},
-        {"L_arm3", 6},
-        {"R_wrist", 7},
-        {"L_wrist", 8},
-        {"maxonForTest", 9}};
-
 
     typedef struct{
 
@@ -263,17 +231,6 @@ private:
 
     }HitParameter;
 
-    float makeElbowAngle(float t1, float t2, float t, int state, HitParameter param, int intensity, bool targetChangeFlag);
-    float makeWristAngle(float t1, float t2, float t, int state, HitParameter param, int intensity, bool targetChangeFlag);
-    float makeWristAngle_TEST_R(float t1, float t2, float t, int state, HitParameter param, int intensity, bool targetChangeFlag, bool &hitting, float hittingPos, bool wristDir);
-    float makeWristAngle_TEST_L(float t1, float t2, float t, int state, HitParameter param, int intensity, bool targetChangeFlag, bool &hitting, float hittingPos, bool wristDir);
-    float makeWristAngle_TEST_R_Fast(float t1, float t2, float t, int state, HitParameter param, int intensity, bool targetChangeFlag, bool &hitting, float hittingPos, bool wristDir);
-    float makeWristAngle_TEST_L_Fast(float t1, float t2, float t, int state, HitParameter param, int intensity, bool targetChangeFlag, bool &hitting, float hittingPos, bool wristDir);
-    float makeWristAngle_TEST_R_CST(float t1, float t2, float t, int state, HitParameter param, int intensity, bool targetChangeFlag, bool &hitting, float hittingPos, bool wristDir);
-    float makeWristAngle_TEST_L_CST(float t1, float t2, float t, int state, HitParameter param, int intensity, bool targetChangeFlag, bool &hitting, float hittingPos, bool wristDir);
-
-    HitParameter getHitParameter(float t1, float t2, int hitState, HitParameter preParam, int intensity);
-    VectorXd makeHitTrajetory(float t1, float t2, float t, int hitState, int wristIntesity, bool targetChangeFlag, bool wristDir);
 
     HitParameter preParametersR, preParametersL, preParametersTmp;
 
@@ -287,22 +244,6 @@ private:
 
     void getHitAngle(VectorXd &q, int index);
 
-    /////////////////////////////////////////////////////////////////////////// Play (dijkstra)
-    double imin, imax, fmin, fmax;
-    double preq0_t1;
-    void updateRange(const VectorXd& output, double& min, double& max);
-    struct Node {
-        int x_idx;
-        double y_val;
-        double cost;
-        bool operator>(const Node &other) const {
-            return cost > other.cost;
-        }
-    };
-    int y_to_index(double y, double global_y_min, double step_size);
-    double select_top10_with_median(const vector<double>& y_vals, double current_y, double y_min, double y_max);
-    double dijkstra_top10_with_median(const vector<double>& x_values, const vector<pair<double, double>>& y_ranges, double start_y);
-
     /////////////////////////////////////////////////////////////////////////// AddStance
     vector<float> currentMotorAngle = {0, 0, 0, 0, 0, 0, 0, 0, 0}; ///< 경로 생성 시 사용되는 현재 모터 위치 값
 
@@ -310,7 +251,7 @@ private:
     VectorXd calVmax(VectorXd &q1, VectorXd &q2, float acc, float t2);
     // q1[rad], q2[rad], Vmax[rad/s], acc[rad/s^2], t[s], t2[s]
     VectorXd makeProfile(VectorXd &q1, VectorXd &q2, VectorXd &Vmax, float acc, float t, float t2);
-    void getMotorPos();
+    VectorXd getMotorPos();
 
     /////////////////////////////////////////////////////////////////////////// Detect Collision
     int aNumOfLine = 0;
@@ -319,4 +260,9 @@ private:
     MatrixXd getOneDrumPosition(int InstNum, char RL);
     bool checkTable(VectorXd PR, VectorXd PL, double hitR, double hitL);
     bool hex2TableData(char hex1, char hex2, int index);
+
+    VectorXd readyAngle;
+    VectorXd homeAngle;
+    VectorXd shutdownAngle;
+
 };

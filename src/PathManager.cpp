@@ -101,6 +101,9 @@ void PathManager::getDrumPositoin()
 
 void PathManager::setReadyAngle()
 {
+    //////////////////////////////////////// Ready Angle
+    readyAngle.resize(9);
+
     VectorXd defaultInstrumentR;    /// 오른팔 시작 위치
     VectorXd defaultInstrumentL;    /// 왼팔 시작 위치
 
@@ -130,17 +133,32 @@ void PathManager::setReadyAngle()
 
     for (int i = 0; i < qk.size(); ++i)
     {
-        readyArr[i] = qk(i);
+        readyAngle(i) = qk(i);
     }
 
     HitParameter param;
-    readyArr[4] += param.elbowStayAngle;
-    readyArr[6] += param.elbowStayAngle;
-    readyArr[7] += param.wristStayAngle;
-    readyArr[8] += param.wristStayAngle;
-    // readyArr[8] = param.wristStayAngle;     // for Test
-    // readyArr[9] = param.wristStayAngle;
-    
+    readyAngle(4) += param.elbowStayAngle;
+    readyAngle(6) += param.elbowStayAngle;
+    readyAngle(7) += param.wristStayAngle;
+    readyAngle(8) += param.wristStayAngle;
+
+    //////////////////////////////////////// Home Angle
+    homeAngle.resize(9);
+    //              waist          R_arm1         L_arm1
+    homeAngle << 10*M_PI/180.0,  90*M_PI/180.0,  90*M_PI/180.0,
+    //              R_arm2         R_arm3         L_arm2
+                0*M_PI/180.0,  135*M_PI/180.0,  0*M_PI/180.0,
+    //              L_arm3         R_wrist        L_wrist
+                135*M_PI/180.0, 60*M_PI/180.0, 60*M_PI/180.0;
+
+    //////////////////////////////////////// Shutdown Angle
+    shutdownAngle.resize(9);
+        //              waist          R_arm1         L_arm1
+    shutdownAngle << 0*M_PI/180.0, 135*M_PI/180.0, 45*M_PI/180.0,
+    //                  R_arm2         R_arm3         L_arm2
+                    0*M_PI/180.0,  0*M_PI/180.0,   0*M_PI/180.0,
+    //                  L_arm3         R_wrist        L_wrist
+                    0*M_PI/180.0,  90*M_PI/180.0,  90*M_PI/180.0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -271,27 +289,61 @@ VectorXd PathManager::makeProfile(VectorXd &q1, VectorXd &q2, VectorXd &Vmax, fl
     return Qi;
 }
 
-void PathManager::getMotorPos()
+VectorXd PathManager::getMotorPos()
 {
-    // 각 모터의 현재위치 값 불러오기 ** CheckMotorPosition 이후에 해야함(변수값을 불러오기만 해서 갱신 필요)
+    VectorXd Qf = VectorXd::Zero(9);
+
+    // finalMotorPosition 가져오기
     for (auto &entry : motors)
     {
+        int can_id = canManager.motorMapping[entry.first];
+
         if (std::shared_ptr<TMotor> tMotor = std::dynamic_pointer_cast<TMotor>(entry.second))
         {
-            currentMotorAngle[motorMapping[entry.first]] = tMotor->motorPositionToJointAngle(tMotor->finalMotorPosition);
+            // currentMotorAngle[can_id] = tMotor->motorPositionToJointAngle(tMotor->finalMotorPosition);
+            Qf(can_id) = tMotor->motorPositionToJointAngle(tMotor->finalMotorPosition);
         }
         if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(entry.second))
         {
-            currentMotorAngle[motorMapping[entry.first]] = maxonMotor->motorPositionToJointAngle(maxonMotor->finalMotorPosition);
+            // currentMotorAngle[can_id] = maxonMotor->motorPositionToJointAngle(maxonMotor->finalMotorPosition);
+            Qf(can_id) = maxonMotor->motorPositionToJointAngle(maxonMotor->finalMotorPosition);
         }
     }
+
+    return Qf;
 }
 
-void PathManager::getArr(vector<float> &arr)
+void PathManager::pushAddStancePath(string flagName)
 {
+    VectorXd Q1 = VectorXd::Zero(9);
+    VectorXd Q2 = VectorXd::Zero(9);
+
+    // finalMotorPosition -> 마지막 명령값에서 이어서 생성
+    Q1 = getMotorPos();
+
+    if (flagName == "isHome")
+    {
+        for (int i = 0; i < 9; i++)
+        {
+            Q1(i) = readyAngle(i);
+        }
+    }
+    else if (flagName == "isReady")
+    {
+        for (int i = 0; i < 9; i++)
+        {
+            Q1(i) = homeAngle(i);
+        }
+    }
+    else if (flagName == "isShutDown")
+    {
+        for (int i = 0; i < 9; i++)
+        {
+            Q1(i) = shutdownAngle(i);
+        }
+    }
+
     const float accMax = 100.0; // rad/s^2
-    VectorXd Q1 = VectorXd::Zero(10);
-    VectorXd Q2 = VectorXd::Zero(10);
     VectorXd Qt = VectorXd::Zero(10);
     VectorXd Vmax = VectorXd::Zero(10);
 
@@ -300,14 +352,6 @@ void PathManager::getArr(vector<float> &arr)
     float extraTime = 1.0;       // 이전 시간 1초
     int n = (int)(T / dt);
     int extraN = (int)(extraTime / dt);
-
-    getMotorPos();
-
-    for (int i = 0; i < 10; i++)
-    {
-        Q1(i) = currentMotorAngle[i];
-        Q2(i) = arr[i];
-    }
 
     Vmax = calVmax(Q1, Q2, accMax, T);
 
@@ -330,10 +374,12 @@ void PathManager::getArr(vector<float> &arr)
             // Send to Buffer
             for (auto &entry : motors)
             {
+                int can_id = canManager.motorMapping[entry.first];
+
                 if (std::shared_ptr<TMotor> tMotor = std::dynamic_pointer_cast<TMotor>(entry.second))
                 {
                     TMotorData newData;
-                    newData.position = tMotor->jointAngleToMotorPosition(Qt[motorMapping[entry.first]]);
+                    newData.position = tMotor->jointAngleToMotorPosition(Qt[can_id]);
                     newData.mode = "Position";
                     tMotor->commandBuffer.push(newData);
 
@@ -342,7 +388,7 @@ void PathManager::getArr(vector<float> &arr)
                 else if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(entry.second))
                 {
                     MaxonData newData;
-                    newData.position = maxonMotor->jointAngleToMotorPosition(Qt[motorMapping[entry.first]]);
+                    newData.position = maxonMotor->jointAngleToMotorPosition(Qt[can_id]);
                     newData.torque = 0;
                     newData.mode = "Position";
                     maxonMotor->commandBuffer.push(newData);
@@ -356,17 +402,19 @@ void PathManager::getArr(vector<float> &arr)
             // 현재 위치 유지
             for (auto &entry : motors)
             {
+                int can_id = canManager.motorMapping[entry.first];
+
                 if (std::shared_ptr<TMotor> tMotor = std::dynamic_pointer_cast<TMotor>(entry.second))
                 {
                     TMotorData newData;
-                    newData.position = tMotor->jointAngleToMotorPosition(Q1[motorMapping[entry.first]]);
+                    newData.position = tMotor->jointAngleToMotorPosition(Q1[can_id]);
                     newData.mode = "Position";
                     tMotor->commandBuffer.push(newData);
                 }
                 else if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(entry.second))
                 {
                     MaxonData newData;
-                    newData.position = maxonMotor->jointAngleToMotorPosition(Q1[motorMapping[entry.first]]);
+                    newData.position = maxonMotor->jointAngleToMotorPosition(Q1[can_id]);
                     newData.torque = 0;
                     newData.mode = "Position";
                     maxonMotor->commandBuffer.push(newData);
@@ -395,9 +443,9 @@ void PathManager::initializeValue(int bpm)
     lineData(0, 0) = -1;
 
     indexSolveIK = 0;
-    q0_t1 = readyArr[0];
-    q0_t0 = readyArr[0];
-    nextq0_t1 = readyArr[0];
+    q0_t1 = readyAngle(0);
+    q0_t0 = readyAngle(0);
+    nextq0_t1 = readyAngle(0);
     clearBrake();
 }
 
@@ -1088,8 +1136,6 @@ VectorXd PathManager::IKFixedWaist(VectorXd &pR, VectorXd &pL, double theta0, do
 {
     VectorXd Qf;
     PartLength partLength;
-    q1_state[0] = q1_state[1];
-    q2_state[0] = q2_state[1];
 
     float XR = pR(0), YR = pR(1), ZR = pR(2);
     float XL = pL(0), YL = pL(1), ZL = pL(2);
@@ -1179,10 +1225,6 @@ VectorXd PathManager::IKFixedWaist(VectorXd &pR, VectorXd &pL, double theta0, do
     Qf.resize(9);
     Qf << theta0, theta1, theta2, theta3, theta4, theta5, theta6, theta7, theta8;
 
-    // cout << "\ntheta1: " << theta1 << "\ttheta2: " << theta2 << endl;
-    q1_state[1] = Qf(1);
-    q2_state[1] = Qf(2);
-
     return Qf;
 }
 
@@ -1190,10 +1232,12 @@ void PathManager::pushConmmandBuffer(VectorXd &Qi)
 {
     for (auto &entry : motors)
     {
+        int can_id = canManager.motorMapping[entry.first];
+
         if (std::shared_ptr<TMotor> tMotor = std::dynamic_pointer_cast<TMotor>(entry.second))
         {
             TMotorData newData;
-            newData.position = tMotor->jointAngleToMotorPosition(Qi[motorMapping[entry.first]]);
+            newData.position = tMotor->jointAngleToMotorPosition(Qi[can_id]);
             newData.mode = "Position";
             tMotor->commandBuffer.push(newData);
 
@@ -1202,7 +1246,7 @@ void PathManager::pushConmmandBuffer(VectorXd &Qi)
         else if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(entry.second))
         {
             MaxonData newData;
-            newData.position = maxonMotor->jointAngleToMotorPosition(Qi[motorMapping[entry.first]]);
+            newData.position = maxonMotor->jointAngleToMotorPosition(Qi[can_id]);
             newData.torque = 0;
             newData.mode = "Position";
             maxonMotor->commandBuffer.push(newData);
@@ -1410,15 +1454,18 @@ vector<float> PathManager::FK()
     {
         auto &name = motorPair.first;
         auto &motor = motorPair.second;
+
+        int can_id = canManager.motorMapping[name];
+
         if (std::shared_ptr<TMotor> tMotor = std::dynamic_pointer_cast<TMotor>(motor))
         {
-            theta[motorMapping[name]] = tMotor->jointAngle;
-            cout << name << " : " << theta[motorMapping[name]] << "\n";
+            theta[can_id] = tMotor->jointAngle;
+            cout << name << " : " << theta[can_id] << "\n";
         }
         if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motor))
         {
-            theta[motorMapping[name]] = maxonMotor->jointAngle;
-            cout << name << " : " << theta[motorMapping[name]] << "\n";
+            theta[can_id] = maxonMotor->jointAngle;
+            cout << name << " : " << theta[can_id] << "\n";
         }
     }
     float r1 = partLength.upperArm, r2 = partLength.lowerArm, l1 = partLength.upperArm, l2 = partLength.lowerArm, stick = partLength.stick;

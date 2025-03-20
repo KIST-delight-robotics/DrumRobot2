@@ -229,13 +229,15 @@ void TestManager::getMotorPos(float c_MotorAngle[])
     // 각 모터의 현재위치 값 불러오기 ** CheckMotorPosition 이후에 해야함(변수값을 불러오기만 해서 갱신 필요)
     for (auto &entry : motors)
     {
+        int can_id = canManager.motorMapping[entry.first];
+
         if (std::shared_ptr<TMotor> tMotor = std::dynamic_pointer_cast<TMotor>(entry.second))
         {
-            c_MotorAngle[motorMapping[entry.first]] = tMotor->jointAngle;
+            c_MotorAngle[can_id] = tMotor->jointAngle;
         }
         if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(entry.second))
         {
-            c_MotorAngle[motorMapping[entry.first]] = maxonMotor->jointAngle;
+            c_MotorAngle[can_id] = maxonMotor->jointAngle;
         }
     }
 }
@@ -547,17 +549,19 @@ void TestManager::getArr(float arr[])
             // Send to Buffer
             for (auto &entry : motors)
             {
+                int can_id = canManager.motorMapping[entry.first];
+
                 if (std::shared_ptr<TMotor> tMotor = std::dynamic_pointer_cast<TMotor>(entry.second))
                 {
                     TMotorData newData;
-                    newData.position = tMotor->jointAngleToMotorPosition(Qi[motorMapping[entry.first]]);
+                    newData.position = tMotor->jointAngleToMotorPosition(Qi[can_id]);
                     newData.mode = "Position";
                     tMotor->commandBuffer.push(newData);
                 }
                 else if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(entry.second))
                 {
                     MaxonData newData;
-                    newData.position = maxonMotor->jointAngleToMotorPosition(Qi[motorMapping[entry.first]]);
+                    newData.position = maxonMotor->jointAngleToMotorPosition(Qi[can_id]);
                     newData.torque = torque;
                     newData.mode = "Position";
                     maxonMotor->commandBuffer.push(newData);
