@@ -6,7 +6,7 @@ CanManager::CanManager(std::map<std::string, std::shared_ptr<GenericMotor>> &mot
     : motors(motorsRef), fun(funRef)
 {
 }
-//hi i am taehwang
+
 CanManager::~CanManager()
 {
     // 모든 소켓 닫기
@@ -21,6 +21,7 @@ CanManager::~CanManager()
     sockets.clear();
 }
 
+<<<<<<< HEAD
 ////////////////////////////////////////////////////////////////////////////////////////////////
 /*                                Settign Functions [Public]                                 */
 //////////////////////////////////////////////////////////////////////////////////////////////
@@ -106,6 +107,11 @@ void CanManager::setMaxonMode(shared_ptr<MaxonMotor> maxonMotor, string maxonMod
 ////////////////////////////////////////////////////////////////////////////////////////////////
 /*                                Settign Functions [Private]                                 */
 //////////////////////////////////////////////////////////////////////////////////////////////
+=======
+////////////////////////////////////////////////////////////////////////////////
+/*                          Initialize Functions                              */
+////////////////////////////////////////////////////////////////////////////////
+>>>>>>> 5c3ea04e205865795c50abdefc68e556ae74fa5c
 
 bool CanManager::getCanPortStatus(const char *port)
 {
@@ -140,46 +146,9 @@ bool CanManager::getCanPortStatus(const char *port)
     return false;
 }
 
-int CanManager::createSocket(const std::string &ifname)
-{
-    int result;
-    struct sockaddr_can addr;
-    struct ifreq ifr;
-
-    int localSocket = socket(PF_CAN, SOCK_RAW, CAN_RAW); // 지역 변수로 소켓 생성
-    if (localSocket < 0)
-    {
-        return ERR_SOCKET_CREATE_FAILURE;
-    }
-
-    memset(&ifr, 0, sizeof(struct ifreq));
-    memset(&addr, 0, sizeof(struct sockaddr_can));
-
-    strcpy(ifr.ifr_name, ifname.c_str());
-    result = ioctl(localSocket, SIOCGIFINDEX, &ifr);
-    if (result < 0)
-    {
-        close(localSocket);
-        return ERR_SOCKET_CREATE_FAILURE;
-    }
-
-    addr.can_ifindex = ifr.ifr_ifindex;
-    addr.can_family = AF_CAN;
-
-    if (bind(localSocket, (struct sockaddr *)&addr, sizeof(addr)) < 0)
-    {
-        close(localSocket);
-        return ERR_SOCKET_CREATE_FAILURE;
-    }
-
-    return localSocket; // 생성된 소켓 디스크립터 반환
-}
-
 void CanManager::activateCanPort(const char *port)
 {
     char command1[100], command2[100], command3[100], command4[100];
-
-
 
     snprintf(command4, sizeof(command4), "sudo ip link set %s down", port);
     snprintf(command1, sizeof(command1), "sudo ip link set %s type can bitrate 1000000 restart-ms 100", port);
@@ -198,58 +167,6 @@ void CanManager::activateCanPort(const char *port)
     }
 
     sleep(2);
-}
-
-void CanManager::deactivateCanPort(const char *port)
-{
-    char command[100];
-    snprintf(command, sizeof(command), "sudo ip link set %s down", port);
-
-    int ret = system(command);
-
-    if (ret != 0)
-    {
-        fprintf(stderr, "Failed to deactivate port: %s\n", port);
-    }
-}
-
-void CanManager::deactivateAllCanPorts()
-{
-    FILE *fp = popen("ip link show | grep can", "r");
-    if (fp == nullptr)
-    {
-        perror("No available CAN port");
-        return;
-    }
-
-    char output[1024];
-    while (fgets(output, sizeof(output) - 1, fp) != nullptr)
-    {
-        std::string line(output);
-        std::istringstream iss(line);
-        std::string skip, port;
-        iss >> skip >> port;
-
-        // 콜론 제거
-        if (!port.empty() && port.back() == ':')
-        {
-            port.pop_back();
-        }
-
-        // 포트 이름이 유효한지 확인
-        if (!port.empty() && port.find("can") == 0)
-        {
-            deactivateCanPort(port.c_str());
-        }
-    }
-
-    if (feof(fp) == 0)
-    {
-        perror("fgets failed");
-        printf("Errno: %d\n", errno);
-    }
-
-    pclose(fp);
 }
 
 void CanManager::listAndActivateAvailableCANPorts()
@@ -306,6 +223,160 @@ void CanManager::listAndActivateAvailableCANPorts()
     {
         printf("No CAN port found. Exiting...\n");
     }
+}
+
+int CanManager::createSocket(const std::string &ifname)
+{
+    int result;
+    struct sockaddr_can addr;
+    struct ifreq ifr;
+
+    int localSocket = socket(PF_CAN, SOCK_RAW, CAN_RAW); // 지역 변수로 소켓 생성
+    if (localSocket < 0)
+    {
+        return ERR_SOCKET_CREATE_FAILURE;
+    }
+
+    memset(&ifr, 0, sizeof(struct ifreq));
+    memset(&addr, 0, sizeof(struct sockaddr_can));
+
+    strcpy(ifr.ifr_name, ifname.c_str());
+    result = ioctl(localSocket, SIOCGIFINDEX, &ifr);
+    if (result < 0)
+    {
+        close(localSocket);
+        return ERR_SOCKET_CREATE_FAILURE;
+    }
+
+    addr.can_ifindex = ifr.ifr_ifindex;
+    addr.can_family = AF_CAN;
+
+    if (bind(localSocket, (struct sockaddr *)&addr, sizeof(addr)) < 0)
+    {
+        close(localSocket);
+        return ERR_SOCKET_CREATE_FAILURE;
+    }
+
+    return localSocket; // 생성된 소켓 디스크립터 반환
+}
+
+void CanManager::initializeCAN()
+{
+    listAndActivateAvailableCANPorts();
+    for (const auto &ifname : this->ifnames)
+    {
+        std::cout << "Processing interface: " << ifname << std::endl;
+        int hsocket = createSocket(ifname);
+        if (hsocket < 0)
+        {
+            std::cerr << "Socket creation error for interface: " << ifname << std::endl;
+        }
+        sockets[ifname] = hsocket;
+        isConnected[ifname] = true;
+        std::cout << "Socket created for " << ifname << ": " << hsocket << std::endl;
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/*                            Setting Functions                               */
+////////////////////////////////////////////////////////////////////////////////
+
+void CanManager::flushCanBuffer(int socket)
+{
+    // 버퍼 초기화 (필터 설정으로 모든 패킷 필터링)
+    struct can_filter filter = {0};
+    setsockopt(socket, SOL_CAN_RAW, CAN_RAW_FILTER, &filter, sizeof(filter));
+}
+
+void CanManager::resetCanFilter(int socket)
+{
+    // 기본 상태로 CAN 필터 재설정
+    setsockopt(socket, SOL_CAN_RAW, CAN_RAW_FILTER, NULL, 0);
+}
+
+void CanManager::checkCanPortsStatus()
+{
+    for (const auto &ifname : this->ifnames)
+    {
+        isConnected[ifname] = getCanPortStatus(ifname.c_str());
+
+        if (!isConnected[ifname])
+        {
+            std::cout << "Port " << ifname << " is NOT CONNECTED" << std::endl;
+        }
+    }
+
+    // 모든 포트가 연결된 경우 1, 아니면 0 반환
+}
+
+void CanManager::setSocketNonBlock()
+{
+    for (auto &socket : sockets)
+    {                                                 // sockets는 std::map<std::string, int> 타입
+        int flags = fcntl(socket.second, F_GETFL, 0); // 현재 플래그를 가져옴
+        if (flags < 0)
+            continue;                                      // 에러 체크
+        fcntl(socket.second, F_SETFL, flags | O_NONBLOCK); // 논블록 플래그 추가
+    }
+}
+
+void CanManager::setSocketBlock()
+{
+    for (auto &socket : sockets)
+    {
+        int flags = fcntl(socket.second, F_GETFL, 0);
+        if (flags < 0)
+            continue;
+        fcntl(socket.second, F_SETFL, flags & ~O_NONBLOCK); // 논블록 플래그 제거
+    }
+}
+
+bool CanManager::txFrame(std::shared_ptr<GenericMotor> &motor, struct can_frame &frame)
+{
+    if (write(motor->socket, &frame, sizeof(frame)) != sizeof(frame))
+    {
+        perror("CAN write error");
+        return false;
+    }
+    return true;
+}
+
+bool CanManager::rxFrame(std::shared_ptr<GenericMotor> &motor, struct can_frame &frame)
+{
+
+    if (read(motor->socket, &frame, sizeof(frame)) != sizeof(frame))
+    {
+        std::cout << "CAN read error: " << motor->myName << "\n";
+        return false;
+    }
+    return true;
+}
+
+bool CanManager::sendAndRecv(std::shared_ptr<GenericMotor> &motor, struct can_frame &frame)
+{
+    if (!txFrame(motor, frame) || !rxFrame(motor, frame))
+    {
+        perror("Send and receive error");
+        return false;
+    }
+    return true;
+}
+
+bool CanManager::recvToBuff(std::shared_ptr<GenericMotor> &motor, int readCount)
+{
+    struct can_frame frame;
+    for (int i = 0; i < readCount; i++)
+    {
+        if (rxFrame(motor, frame))
+        {
+            motor->recieveBuffer.push(frame);
+        }
+        else
+        {
+            return false;
+        }
+    }
+    return true;
 }
 
 void CanManager::clearReadBuffers()
@@ -381,101 +452,16 @@ int CanManager::setSocketTimeout(int socket, int sec, int usec)
     return 0;
 }
 
-void CanManager::setSocketNonBlock()
+void CanManager::setSocketsTimeout(int sec, int usec)
 {
-    for (auto &socket : sockets)
-    {                                                 // sockets는 std::map<std::string, int> 타입
-        int flags = fcntl(socket.second, F_GETFL, 0); // 현재 플래그를 가져옴
-        if (flags < 0)
-            continue;                                      // 에러 체크
-        fcntl(socket.second, F_SETFL, flags | O_NONBLOCK); // 논블록 플래그 추가
-    }
-}
-
-void CanManager::setSocketBlock()
-{
-    for (auto &socket : sockets)
+    for (const auto &socketPair : sockets)
     {
-        int flags = fcntl(socket.second, F_GETFL, 0);
-        if (flags < 0)
-            continue;
-        fcntl(socket.second, F_SETFL, flags & ~O_NONBLOCK); // 논블록 플래그 제거
-    }
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////
-/*                                Utility Functions                                          */
-//////////////////////////////////////////////////////////////////////////////////////////////
-
-bool CanManager::txFrame(std::shared_ptr<GenericMotor> &motor, struct can_frame &frame)
-{
-    if (write(motor->socket, &frame, sizeof(frame)) != sizeof(frame))
-    {
-        perror("CAN write error");
-        return false;
-    }
-    return true;
-}
-
-bool CanManager::rxFrame(std::shared_ptr<GenericMotor> &motor, struct can_frame &frame)
-{
-
-    if (read(motor->socket, &frame, sizeof(frame)) != sizeof(frame))
-    {
-        std::cout << "CAN read error: " << motor->myName << "\n";
-        return false;
-    }
-    return true;
-}
-
-bool CanManager::sendAndRecv(std::shared_ptr<GenericMotor> &motor, struct can_frame &frame)
-{
-    if (!txFrame(motor, frame) || !rxFrame(motor, frame))
-    {
-        perror("Send and receive error");
-        return false;
-    }
-    return true;
-}
-
-bool CanManager::sendFromBuff(std::shared_ptr<GenericMotor> &motor)
-{
-    std::cout << "Erase this function\n";
-    return true;
-}
-
-bool CanManager::sendMotorFrame(std::shared_ptr<GenericMotor> motor)
-{
-    struct can_frame frame;
-
-    if (write(motor->socket, &motor->sendFrame, sizeof(frame)) != sizeof(frame))
-    {
-        errorCnt++;
-        if (errorCnt > 5)
+        int socket_fd = socketPair.second;
+        if (setSocketTimeout(socket_fd, sec, usec) != 0)
         {
-            deactivateAllCanPorts();
-            std::cout << "Go to Error state by CAN write error " << motor->myName << "\n";
-            return false;
+            std::cerr << "Failed to set socket timeout for " << socketPair.first << std::endl;
         }
     }
-    return true;
-}
-
-bool CanManager::recvToBuff(std::shared_ptr<GenericMotor> &motor, int readCount)
-{
-    struct can_frame frame;
-    for (int i = 0; i < readCount; i++)
-    {
-        if (rxFrame(motor, frame))
-        {
-            motor->recieveBuffer.push(frame);
-        }
-        else
-        {
-            return false;
-        }
-    }
-    return true;
 }
 
 void CanManager::setMotorsSocket()
@@ -577,171 +563,118 @@ void CanManager::setMotorsSocket()
     }
 }
 
-// void CanManager::readFramesFromAllSockets()
-// {
-//     struct can_frame frame;
-//     for (const auto &socketPair : sockets)
-//     {
-//         int socket_fd = socketPair.second;
-//         tempFrames[socket_fd].clear();
-        
-//         while (read(socket_fd, &frame, sizeof(frame)) == sizeof(frame))
-//         {
-//             if (tempFrames[socket_fd].empty()) {
-//                 tempFrames[socket_fd].push_back(frame);
-//             } else {
-//                 tempFrames[socket_fd][0] = frame;
-//             }
-//         }
-//     }
-// }
+////////////////////////////////////////////////////////////////////////////////
+/*                             Send Functions                                 */
+////////////////////////////////////////////////////////////////////////////////
 
-// void CanManager::readFramesFromAllSockets()
-// {
-//     struct can_frame frame;
-//     for (const auto &socketPair : sockets)
-//     {
-//         int socket_fd = socketPair.second;
-//         while (read(socket_fd, &frame, sizeof(frame)) == sizeof(frame))
-//         {
-//             tempFrames[socket_fd].push_back(frame);
-//         }
-//     }
-// }
-
-void CanManager::readFramesFromAllSockets()
+void CanManager::setMaxonCANFrame(std::shared_ptr<MaxonMotor> maxonMotor, const MaxonData &mData)
 {
-    struct can_frame frame;
-
-    for (const auto &socketPair : sockets)
+    if (mData.mode == "Position")
     {
-        int socket_fd = socketPair.second;
-
-        // Non-blocking 모드 설정
-        fcntl(socket_fd, F_SETFL, O_NONBLOCK);
-
-        while (true)
-        {
-            ssize_t bytesRead = read(socket_fd, &frame, sizeof(frame));
-
-            if (bytesRead == sizeof(frame))
-            {
-                tempFrames[socket_fd].push_back(frame); // 정상적으로 읽었으면 저장
-            }
-            else if (bytesRead == -1 && errno == EWOULDBLOCK)
-            {
-                // 읽을 데이터가 없으면 루프 종료 (non-blocking에서는 EWOULDBLOCK 발생 가능)
-                break;
-            }
-            else
-            {
-                // 기타 오류 발생 시 처리
-                perror("read error");
-                break;
-            }
-        }
+        maxoncmd.setPositionCANFrame(*maxonMotor, &maxonMotor->sendFrame, mData.position);
+    }
+    else if (mData.mode == "Torque")
+    {
+        maxoncmd.setTorqueCANFrame(*maxonMotor, &maxonMotor->sendFrame, mData.torque);
+    }
+    else if (mData.mode == "Speed")
+    {
+        return;
     }
 }
 
-bool CanManager::distributeFramesToMotors(bool setlimit)
+void CanManager::setTMotorCANFrame(std::shared_ptr<TMotor> tMotor, const TMotorData &tData)
+{
+    if (tData.mode == "Position")
+    {
+        tservocmd.setPositionCANFrame(*tMotor, &tMotor->sendFrame, tData.position);
+
+        fun.appendToCSV_DATA(fun.file_name, (float)tMotor->nodeId + SEND_SIGN, tMotor->motorPositionToJointAngle(tData.position), 0);
+    }
+    else if (tData.mode == "Idle")
+    {
+        return;
+    }
+}
+
+bool CanManager::safetyCheckSecdT(std::shared_ptr<TMotor> tMotor, TMotorData tData)
+{
+    bool isSafe = true;
+    float diff_angle = tData.position - tMotor->jointAngle;
+
+    if (abs(diff_angle) > POS_DIFF_LIMIT)
+    {
+        std::cout << "\nSet CAN Frame Error : Safety Check (" << tMotor->myName << ")" << endl;
+        std::cout << "Desired Joint Angle : " << tData.position * 180.0 / M_PI << "deg\tCurrent Joint Angle : " << tMotor->jointAngle * 180.0 / M_PI << "deg\n";
+        isSafe = false;
+    }
+    else if (tMotor->rMin > tData.position)
+    {
+        std::cout << "\nSet CAN Frame Error : Out of Min Range (" << tMotor->myName << ")" << endl;
+        std::cout << "Desired Joint Angle : " << tData.position * 180.0 / M_PI << "deg\n";
+        isSafe = false;
+    }
+    else if (tMotor->rMax < tData.position)
+    {
+        std::cout << "\nSet CAN Frame Error : Out of Max Range (" << tMotor->myName << ")" << endl;
+        std::cout << "Desired Joint Angle : " << tData.position * 180.0 / M_PI << "deg\n";
+        isSafe = false;
+    }
+
+    return isSafe;
+}
+
+bool CanManager::setCANFrame(std::map<std::string, bool>& fixFlags)
 {
     for (auto &motor_pair : motors)
     {
-        auto &motor = motor_pair.second;
+        std::shared_ptr<GenericMotor> motor = motor_pair.second;
+        std::string motorName = motor_pair.first;
 
-        if (std::shared_ptr<TMotor> tMotor = std::dynamic_pointer_cast<TMotor>(motor))
+        // MaxonMotor
+        if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motor))
         {
-            // TMotor 처리
-            for (auto &frame : tempFrames[motor->socket])
+            if (maxonMotor->commandBuffer.empty()) continue;
+
+            MaxonData mData = maxonMotor->commandBuffer.front();
+
+            // 버퍼 크기가 1이면 고정 상태
+            fixFlags[motorName] = (maxonMotor->commandBuffer.size() == 1);
+
+            if (maxonMotor->commandBuffer.size() > 1)
             {
-                if ((frame.can_id & 0xFF) == tMotor->nodeId)
-                {
-                    std::tuple<int, float, float, float, int8_t, int8_t> parsedData = tservocmd.motor_receive(&frame);
-                    
-                    tMotor->motorPosition = std::get<1>(parsedData);
-                    tMotor->motorVelocity = std::get<2>(parsedData);
-                    tMotor->motorCurrent = std::get<3>(parsedData);
-
-                    // tMotor->jointAngle = std::get<1>(parsedData) * tMotor->cwDir * tMotor->timingBeltRatio + tMotor->initialJointAngle;
-                    tMotor->jointAngle = tMotor->motorPositionToJointAngle(std::get<1>(parsedData));
-                    
-                    // std::cout << tMotor->jointAngle << std::endl;
-                    tMotor->recieveBuffer.push(frame);
-
-                    fun.appendToCSV_DATA(fun.file_name, (float)tMotor->nodeId, tMotor->motorPosition, tMotor->motorCurrent);
-                    
-                    if (setlimit)
-                    {
-                        bool isSafe = safetyCheck_T(motor);
-                        if (!isSafe)
-                        {
-                            return false;
-                        }
-                    }
-                }
+                fixFlags[motorName] = false;
+                maxonMotor->commandBuffer.pop();
             }
+
+            setMaxonCANFrame(maxonMotor, mData);
         }
-        else if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motor))
+        // TMotor
+        else if (std::shared_ptr<TMotor> tMotor = std::dynamic_pointer_cast<TMotor>(motor))
         {
-            // MaxonMotor 처리
-            for (auto &frame : tempFrames[motor->socket])
+            if (tMotor->commandBuffer.empty()) continue;
+
+            TMotorData tData = tMotor->commandBuffer.front();
+
+            //버퍼 크기가 1이면 고정 상태
+            fixFlags[motorName] = (tMotor->commandBuffer.size() == 1);
+
+            if (tMotor->commandBuffer.size() > 1)
             {
-                // // Maxon모터에서 1ms마다 SDO 응답 확인
-                // if (frame.can_id == (0x580 + maxonMotor->nodeId)) {
-                //     if (frame.data[1] == 0x64 && frame.data[2] == 0x60 && frame.data[3] == 0x00) { 
-                //         int32_t pos_enc = frame.data[4] | (frame.data[5] << 8) | (frame.data[6] << 16) | (frame.data[7] << 24);
-
-                //         float pos_degrees = (static_cast<float>(pos_enc) * 360.0f) / (35.0f * 4096.0f);
-                //         float pos_radians = pos_degrees * (M_PI / 180.0f);  
-                //         maxonMotor->motorPosition = pos_radians;
-
-                //         fun.appendToCSV_DATA("q8손목", (float)maxonMotor->nodeId, maxonMotor->motorPosition, 0);
-                //         currentPosition = maxonMotor->motorPosition; // 현재 위치 값 해당 변수에 덮어쓰기
-                //     }
-                // }
-
-                if (frame.can_id == maxonMotor->rxPdoIds[0])
-                {
-                    // getCheck(*maxonMotor ,&frame);
-                    std::tuple<int, float, float, unsigned char> parsedData = maxoncmd.parseRecieveCommand(*maxonMotor, &frame);
-                    
-                    maxonMotor->motorPosition = std::get<1>(parsedData);
-                    maxonMotor->motorTorque = std::get<2>(parsedData);
-                    maxonMotor->statusBit = std::get<3>(parsedData);
-                    maxonMotor->positionValues.push(std::get<1>(parsedData));
-                    if ((maxonMotor->positionValues).size() >= maxonMotor->maxIndex)
-                    {
-                        maxonMotor->positionValues.pop();
-                    }
-
-                    // maxonMotor->jointAngle = std::get<1>(parsedData) * maxonMotor->cwDir + maxonMotor->initialJointAngle;
-                    maxonMotor->jointAngle = maxonMotor->motorPositionToJointAngle(std::get<1>(parsedData));
-                    maxonMotor->recieveBuffer.push(frame);
-                    
-                    fun.appendToCSV_DATA(fun.file_name, (float)maxonMotor->nodeId, maxonMotor->motorPosition, maxonMotor->motorTorque);
-
-                    // fun.appendToCSV_DATA("손목데이터", (float)maxonMotor->nodeId, maxonMotor->motorPosition, maxonMotor->motorTorque);
-
-
-                    if (setlimit)
-                    {
-                        bool isSafe = safetyCheck_M(motor);
-                        if (!isSafe)
-                        {
-                            return false;
-                        }
-                    }
-                }
+                fixFlags[motorName] = false;
+                tMotor->commandBuffer.pop();
             }
+
+            setTMotorCANFrame(tMotor, tData);
         }
     }
-    tempFrames.clear(); // 프레임 분배 후 임시 배열 비우기
 
     return true;
 }
 
-bool CanManager::sendForCheck_Fixed(std::shared_ptr<GenericMotor> motor)
+void CanManager::deactivateCanPort(const char *port)
 {
+<<<<<<< HEAD
     float desiredTorque;
     clearReadBuffers();
 
@@ -754,24 +687,16 @@ bool CanManager::sendForCheck_Fixed(std::shared_ptr<GenericMotor> motor)
         }
 
         fun.appendToCSV_DATA(fun.file_name, (float)tMotor->nodeId + SEND_SIGN, motor->fixedMotorPosition,  motor->fixedMotorPosition - tMotor->motorPosition);
+=======
+    char command[100];
+    snprintf(command, sizeof(command), "sudo ip link set %s down", port);
+>>>>>>> 5c3ea04e205865795c50abdefc68e556ae74fa5c
 
-        // safety check
-        float diff_angle = motor->fixedMotorPosition - tMotor->motorPosition;
-        if (abs(diff_angle) > POS_DIFF_LIMIT)
-        {
-            std::cout << "\nMotor Fixed Error : Safety Check (" << tMotor->myName << ")\n";
-            std::cout << "Fixed Motor Position : " << motor->fixedMotorPosition << "rad\tCurrent Motor Position : " << tMotor->motorPosition << "rad\n";
-            return false;
-        }
-        tservocmd.comm_can_set_pos(*tMotor, &tMotor->sendFrame, motor->fixedMotorPosition);
+    int ret = system(command);
 
-        if (!sendMotorFrame(tMotor))
-        {
-            return false;
-        };
-    }
-    else if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motor))
+    if (ret != 0)
     {
+<<<<<<< HEAD
         if (motor->isfixed == false)
         {
             motor->fixedMotorPosition = maxonMotor->motorPosition;
@@ -856,198 +781,54 @@ bool CanManager::sendForCheck_Fixed(std::shared_ptr<GenericMotor> motor)
         //maxoncmd.getTargetPosition(*maxonMotor, &maxonMotor->sendFrame, maxonMotor->fixedMotorPosition);
 
         fun.appendToCSV_DATA(fun.file_name, (float)maxonMotor->nodeId + SEND_SIGN, maxonMotor->fixedMotorPosition, maxonMotor->fixedMotorPosition - maxonMotor->motorPosition);
+=======
+        fprintf(stderr, "Failed to deactivate port: %s\n", port);
+>>>>>>> 5c3ea04e205865795c50abdefc68e556ae74fa5c
     }
-    return true;
 }
 
-bool CanManager::checkMaxon()
+void CanManager::deactivateAllCanPorts()
 {
-    for (auto &motorPair : motors)
+    FILE *fp = popen("ip link show | grep can", "r");
+    if (fp == nullptr)
     {
-        std::string name = motorPair.first;
-        auto &motor = motorPair.second;
-
-        struct can_frame frame;
-        clearReadBuffers();
-
-        if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motor))
-        {
-            maxoncmd.getSync(&frame);
-            txFrame(motor, frame);
-        }
+        perror("No available CAN port");
+        return;
     }
-    return true;
-}
 
-bool CanManager::checkAllMotors_Fixed()
-{
-    for (auto &motorPair : motors)
+    char output[1024];
+    while (fgets(output, sizeof(output) - 1, fp) != nullptr)
     {
-        std::string name = motorPair.first;
-        auto &motor = motorPair.second;
-        if (!motor->isError)
+        std::string line(output);
+        std::istringstream iss(line);
+        std::string skip, port;
+        iss >> skip >> port;
+
+        // 콜론 제거
+        if (!port.empty() && port.back() == ':')
         {
-            if (!sendForCheck_Fixed(motor))
-            {
-                return false;
-            }
+            port.pop_back();
+        }
+
+        // 포트 이름이 유효한지 확인
+        if (!port.empty() && port.find("can") == 0)
+        {
+            deactivateCanPort(port.c_str());
         }
     }
-    return true;
-}
 
-////////////////////////////////////////////////////////////////////////////////////////////////
-/*                                Functions for Thread Case                                      */
-//////////////////////////////////////////////////////////////////////////////////////////////
-
-bool CanManager::setCANFrame()
-{
-    static bool CSTModeR = false;
-    static bool CSTModeL = false;
-
-    vector<float> Pos(9);
-    for (auto &motor_pair : motors)
+    if (feof(fp) == 0)
     {
-        if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motor_pair.second))
-        {
-            shared_ptr<GenericMotor> motor = motor_pair.second;
-
-            MaxonData mData = maxonMotor->commandBuffer.front();
-            float desiredPosition = maxonMotor->jointAngleToMotorPosition(mData.position);
-            float desiredTorque = -400;
-            
-            maxonMotor->commandBuffer.pop();
-
-            if (maxonMotor->myName == "R_wrist")
-            {
-                if (isCSTR && !CSTModeR)
-                {
-                    maxoncmd.getCSTMode(*maxonMotor, &maxonMotor->sendFrame);
-                    sendMotorFrame(maxonMotor);
-
-                    maxoncmd.getShutdown(*maxonMotor, &maxonMotor->sendFrame);
-                    sendMotorFrame(maxonMotor);
-
-                    maxoncmd.getEnable(*maxonMotor, &maxonMotor->sendFrame);
-                    sendMotorFrame(maxonMotor);
-                    
-                    CSTModeR = true;
-                }
-                else if (!isCSTR && CSTModeR)
-                {
-                    maxoncmd.getCSPMode(*maxonMotor, &maxonMotor->sendFrame);
-                    sendMotorFrame(maxonMotor);
-
-                    maxoncmd.getShutdown(*maxonMotor, &maxonMotor->sendFrame);
-                    sendMotorFrame(maxonMotor);
-
-                    maxoncmd.getEnable(*maxonMotor, &maxonMotor->sendFrame);
-                    sendMotorFrame(maxonMotor);
-                    CSTModeR = false;
-                }
-
-                if(dct_fun(maxonMotor) && isHitR && maxonMotor->hitting == false)
-                {
-                    fun.appendToCSV_DATA("hittingDetectR", 1, 0, 0);
-
-                    maxonMotor->hitting = true;
-                    if (isHitR) isHitR = false;
-                    maxonMotor->hittingPos = maxonMotor->positionValues.back() + maxonMotor->initialJointAngle - maxonMotor->hittingDrumAngle;
-                    desiredPosition = maxonMotor->positionValues.back();
-                }
-                else
-                {
-                    fun.appendToCSV_DATA("hittingDetectR", 0, 0, 0);
-                }
-
-                if(isCSTR && CSTModeR)
-                {
-                    maxoncmd.getTargetTorque(*maxonMotor, &maxonMotor->sendFrame, desiredTorque);
-                }
-                else
-                {
-                    maxoncmd.getTargetPosition(*maxonMotor, &maxonMotor->sendFrame, desiredPosition);
-                }
-            }
-            else if (maxonMotor->myName == "L_wrist")
-            {
-                if (isCSTL && !CSTModeL)
-                {
-                    maxoncmd.getCSTMode(*maxonMotor, &maxonMotor->sendFrame);
-                    sendMotorFrame(maxonMotor);
-
-                    maxoncmd.getShutdown(*maxonMotor, &maxonMotor->sendFrame);
-                    sendMotorFrame(maxonMotor);
-
-                    maxoncmd.getEnable(*maxonMotor, &maxonMotor->sendFrame);
-                    sendMotorFrame(maxonMotor);
-                    
-                    CSTModeL = true;
-                }
-                else if (!isCSTL && CSTModeL)
-                {
-                    maxoncmd.getCSPMode(*maxonMotor, &maxonMotor->sendFrame);
-                    sendMotorFrame(maxonMotor);
-
-                    maxoncmd.getShutdown(*maxonMotor, &maxonMotor->sendFrame);
-                    sendMotorFrame(maxonMotor);
-
-                    maxoncmd.getEnable(*maxonMotor, &maxonMotor->sendFrame);
-                    sendMotorFrame(maxonMotor);
-                    CSTModeL = false;
-                }
-
-                if(dct_fun(maxonMotor) && isHitL && maxonMotor->hitting == false)
-                {
-                    fun.appendToCSV_DATA("hittingDetectL", 1, 0, 0);
-                    
-                    maxonMotor->hitting = true;
-                    if (isHitL) isHitL = false;
-                    maxonMotor->hittingPos = maxonMotor->positionValues.back() + maxonMotor->initialJointAngle - maxonMotor->hittingDrumAngle;
-                    desiredPosition = maxonMotor->positionValues.back();
-                }
-                else
-                {
-                    fun.appendToCSV_DATA("hittingDetectL", 0, 0, 0);
-                }
-
-                if(isCSTL && CSTModeL)
-                {
-                    maxoncmd.getTargetTorque(*maxonMotor, &maxonMotor->sendFrame, desiredTorque);
-                }
-                else
-                {
-                    maxoncmd.getTargetPosition(*maxonMotor, &maxonMotor->sendFrame, desiredPosition);
-                }
-            }
-
-            fun.appendToCSV_DATA(fun.file_name, (float)maxonMotor->nodeId + SEND_SIGN, desiredPosition, desiredPosition - maxonMotor->motorPosition);
-        }
-        else if (std::shared_ptr<TMotor> tMotor = std::dynamic_pointer_cast<TMotor>(motor_pair.second))
-        {
-            TMotorData tData = tMotor->commandBuffer.front();
-            float desiredPosition;
-
-            tMotor->commandBuffer.pop();
-            // desiredPosition = (tData.position - tMotor->initialJointAngle) * tMotor->cwDir / tMotor->timingBeltRatio;
-            desiredPosition = tMotor->jointAngleToMotorPosition(tData.position);
-
-            if(!safetyCheck_Tmotor(tMotor, tData))
-            {
-                return false;
-            }
-            tservocmd.comm_can_set_pos(*tMotor, &tMotor->sendFrame, desiredPosition);
-            tMotor->brakeState = tData.isBrake;
-
-            fun.appendToCSV_DATA(fun.file_name, (float)tMotor->nodeId + SEND_SIGN, desiredPosition, desiredPosition - tMotor->motorPosition);
-        }
+        perror("fgets failed");
+        printf("Errno: %d\n", errno);
     }
 
-    return true;
+    pclose(fp);
 }
 
-bool CanManager::setCANFrame_TEST()
+bool CanManager::sendMotorFrame(std::shared_ptr<GenericMotor> motor)
 {
+<<<<<<< HEAD
     vector<float> Pos(9);
     for (auto &motor_pair : motors)
     {
@@ -1159,56 +940,27 @@ bool CanManager::setCANFrame_TEST()
             fun.appendToCSV_DATA(fun.file_name, (float)maxonMotor->nodeId + SEND_SIGN, desiredPosition, desiredPosition - maxonMotor->motorPosition);
         }
         else if (std::shared_ptr<TMotor> tMotor = std::dynamic_pointer_cast<TMotor>(motor_pair.second))
+=======
+    if (write(motor->socket, &motor->sendFrame, sizeof(motor->sendFrame)) != sizeof(motor->sendFrame))
+    {
+        errorCnt++;
+        if (errorCnt > 5)
+>>>>>>> 5c3ea04e205865795c50abdefc68e556ae74fa5c
         {
-            TMotorData tData = tMotor->commandBuffer.front();
-            float desiredPosition;
-
-            tMotor->commandBuffer.pop();
-            // desiredPosition = (tData.position - tMotor->initialJointAngle) * tMotor->cwDir / tMotor->timingBeltRatio;
-            desiredPosition = tMotor->jointAngleToMotorPosition(tData.position);
-
-            if(!safetyCheck_Tmotor(tMotor, tData))
-            {
-                return false;
-            }
-            tservocmd.comm_can_set_pos(*tMotor, &tMotor->sendFrame, desiredPosition);
-            tMotor->brakeState = tData.isBrake;
-
-            fun.appendToCSV_DATA(fun.file_name, (float)tMotor->nodeId + SEND_SIGN, desiredPosition, desiredPosition - tMotor->motorPosition);
+            //이거 잘 작동하는지 확인할 필요는 있음 // 김태황
+            deactivateAllCanPorts();
+            std::cout << "Go to Error state by CAN write error " << motor->myName << "\n";
+            return false;
         }
     }
-
     return true;
 }
 
-bool CanManager::safetyCheck_Tmotor(std::shared_ptr<TMotor> tMotor, TMotorData tData)
-{
-    bool isSafe = true;
-    float diff_angle = tData.position - tMotor->jointAngle;
+////////////////////////////////////////////////////////////////////////////////
+/*                            Receive Functions                               */
+////////////////////////////////////////////////////////////////////////////////
 
-    if (abs(diff_angle) > POS_DIFF_LIMIT)
-    {
-        std::cout << "\nSet CAN Frame Error : Safety Check (" << tMotor->myName << ")" << endl;
-        std::cout << "Desired Joint Angle : " << tData.position * 180.0 / M_PI << "deg\tCurrent Joint Angle : " << tMotor->jointAngle * 180.0 / M_PI << "deg\n";
-        isSafe = false;
-    }
-    else if (tMotor->rMin > tData.position)
-    {
-        std::cout << "\nSet CAN Frame Error : Out of Min Range (" << tMotor->myName << ")" << endl;
-        std::cout << "Desired Joint Angle : " << tData.position * 180.0 / M_PI << "deg\n";
-        isSafe = false;
-    }
-    else if (tMotor->rMax < tData.position)
-    {
-        std::cout << "\nSet CAN Frame Error : Out of Max Range (" << tMotor->myName << ")" << endl;
-        std::cout << "Desired Joint Angle : " << tData.position * 180.0 / M_PI << "deg\n";
-        isSafe = false;
-    }
-
-    return isSafe;
-}
-
-bool CanManager::safetyCheck_T(std::shared_ptr<GenericMotor> &motor)
+bool CanManager::safetyCheckRecvT(std::shared_ptr<GenericMotor> &motor)
 {
     bool isSafe = true;
 
@@ -1254,7 +1006,7 @@ bool CanManager::safetyCheck_T(std::shared_ptr<GenericMotor> &motor)
     return isSafe;
 }
 
-bool CanManager::safetyCheck_M(std::shared_ptr<GenericMotor> &motor)
+bool CanManager::safetyCheckRecvM(std::shared_ptr<GenericMotor> &motor)
 {
     bool isSafe = true;
 
@@ -1283,6 +1035,141 @@ bool CanManager::safetyCheck_M(std::shared_ptr<GenericMotor> &motor)
 
     return isSafe;
 }
+
+void CanManager::readFramesFromAllSockets()
+{
+    struct can_frame frame;
+
+    for (const auto &socketPair : sockets)
+    {
+        int socket_fd = socketPair.second;
+
+        // Non-blocking 모드 설정
+        fcntl(socket_fd, F_SETFL, O_NONBLOCK);
+
+        while (true)
+        {
+            ssize_t bytesRead = read(socket_fd, &frame, sizeof(frame));
+
+            if (bytesRead == sizeof(frame))
+            {
+                tempFrames[socket_fd].push_back(frame); // 정상적으로 읽었으면 저장
+            }
+            else if (bytesRead == -1 && errno == EWOULDBLOCK)
+            {
+                // 읽을 데이터가 없으면 루프 종료 (non-blocking에서는 EWOULDBLOCK 발생 가능)
+                break;
+            }
+            else
+            {
+                // 기타 오류 발생 시 처리
+                perror("read error");
+                break;
+            }
+        }
+    }
+}
+
+bool CanManager::distributeFramesToMotors(bool setlimit)
+{
+    for (auto &motor_pair : motors)
+    {
+        auto &motor = motor_pair.second;
+
+        if (std::shared_ptr<TMotor> tMotor = std::dynamic_pointer_cast<TMotor>(motor))
+        {
+            // TMotor 처리
+            for (auto &frame : tempFrames[motor->socket])
+            {
+                if ((frame.can_id & 0xFF) == tMotor->nodeId)
+                {
+                    std::tuple<int, float, float, float, int8_t, int8_t> parsedData = tservocmd.motor_receive(&frame);
+                    
+                    tMotor->motorPosition = std::get<1>(parsedData);
+                    tMotor->motorVelocity = std::get<2>(parsedData);
+                    tMotor->motorCurrent = std::get<3>(parsedData);
+
+                    // tMotor->jointAngle = std::get<1>(parsedData) * tMotor->cwDir * tMotor->timingBeltRatio + tMotor->initialJointAngle;
+                    tMotor->jointAngle = tMotor->motorPositionToJointAngle(std::get<1>(parsedData));
+                    
+                    // std::cout << tMotor->jointAngle << std::endl;
+                    tMotor->recieveBuffer.push(frame);
+
+                    fun.appendToCSV_DATA(fun.file_name, (float)tMotor->nodeId, tMotor->jointAngle, tMotor->motorCurrent);
+                    
+                    if (setlimit)
+                    {
+                        bool isSafe = safetyCheckRecvT(motor);
+                        if (!isSafe)
+                        {
+                            return false;
+                        }
+                    }
+                }
+            }
+        }
+        else if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motor))
+        {
+            // MaxonMotor 처리
+            for (auto &frame : tempFrames[motor->socket])
+            {
+                // // Maxon모터에서 1ms마다 SDO 응답 확인
+                // if (frame.can_id == (0x580 + maxonMotor->nodeId)) {
+                //     if (frame.data[1] == 0x64 && frame.data[2] == 0x60 && frame.data[3] == 0x00) { 
+                //         int32_t pos_enc = frame.data[4] | (frame.data[5] << 8) | (frame.data[6] << 16) | (frame.data[7] << 24);
+
+                //         float pos_degrees = (static_cast<float>(pos_enc) * 360.0f) / (35.0f * 4096.0f);
+                //         float pos_radians = pos_degrees * (M_PI / 180.0f);  
+                //         maxonMotor->motorPosition = pos_radians;
+
+                //         fun.appendToCSV_DATA("q8손목", (float)maxonMotor->nodeId, maxonMotor->motorPosition, 0);
+                //         currentPosition = maxonMotor->motorPosition; // 현재 위치 값 해당 변수에 덮어쓰기
+                //     }
+                // }
+
+                if (frame.can_id == maxonMotor->rxPdoIds[0])
+                {
+                    // getCheck(*maxonMotor ,&frame);
+                    std::tuple<int, float, float, unsigned char> parsedData = maxoncmd.parseRecieveCommand(*maxonMotor, &frame);
+                    
+                    maxonMotor->motorPosition = std::get<1>(parsedData);
+                    maxonMotor->motorTorque = std::get<2>(parsedData);
+                    maxonMotor->statusBit = std::get<3>(parsedData);
+                    maxonMotor->positionValues.push(std::get<1>(parsedData));
+                    if ((maxonMotor->positionValues).size() >= maxonMotor->maxIndex)
+                    {
+                        maxonMotor->positionValues.pop();
+                    }
+
+                    // maxonMotor->jointAngle = std::get<1>(parsedData) * maxonMotor->cwDir + maxonMotor->initialJointAngle;
+                    maxonMotor->jointAngle = maxonMotor->motorPositionToJointAngle(std::get<1>(parsedData));
+                    maxonMotor->recieveBuffer.push(frame);
+                    
+                    fun.appendToCSV_DATA(fun.file_name, (float)maxonMotor->nodeId, maxonMotor->motorPosition, maxonMotor->motorTorque);
+
+                    // fun.appendToCSV_DATA("손목데이터", (float)maxonMotor->nodeId, maxonMotor->motorPosition, maxonMotor->motorTorque);
+
+
+                    if (setlimit)
+                    {
+                        bool isSafe = safetyCheckRecvM(motor);
+                        if (!isSafe)
+                        {
+                            return false;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    tempFrames.clear(); // 프레임 분배 후 임시 배열 비우기
+
+    return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/*                              Hit Detection                                 */
+////////////////////////////////////////////////////////////////////////////////
 
 bool CanManager::dct_fun(shared_ptr<MaxonMotor> maxonMotor)
 {

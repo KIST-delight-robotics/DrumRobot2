@@ -24,10 +24,10 @@ public:
     ~Functions();
 
     // restart CAN Port
-    int get_com_number_by_hostname();
-    void restCanPort(int com_number);
+    int getComNumberByHostname();
+    void restCanPort();
 
-    /*save csv file*/
+    // save csv file
     std::chrono::high_resolution_clock::time_point start;  
     const std::string basePath = "../../DrumRobot_data/";  // 기본 경로
     std::string file_name = "data";
@@ -38,5 +38,5 @@ public:
     void appendToCSV_State(const std::string& filename, string state, string sub_state);
 
 private:
-    std::map<std::string, std::shared_ptr<GenericMotor>> &motors;
+    std::map<std::string, std::shared_ptr<GenericMotor>> &motors;   // data 기록하기 위해 필요
 };

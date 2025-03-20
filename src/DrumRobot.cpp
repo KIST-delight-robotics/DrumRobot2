@@ -19,140 +19,101 @@ DrumRobot::DrumRobot(State &stateRef,
       usbio(usbioRef),
       fun(funRef)
 {
-    ReadStandard = chrono::system_clock::now();
-    SendStandard = chrono::system_clock::now();
-    // SendMaxon = chrono::system_clock::now();
-    addStandard = chrono::system_clock::now();
-
     sendLoopPeriod = std::chrono::steady_clock::now();
     recvLoopPeriod = std::chrono::steady_clock::now();
-    stateMachinePeriod = std::chrono::steady_clock::now();
-
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/*                                SYSTEM LOOPS                                */
+/*                          Initialize DrumRobot                              */
 ////////////////////////////////////////////////////////////////////////////////
 
-void DrumRobot::stateMachine()
+void DrumRobot::initializePathManager()
 {
-    while (state.main != Main::Shutdown)
+    pathManager.getDrumPositoin();
+    pathManager.setReadyAngle();
+}
+
+void DrumRobot::initializeMotors()
+{
+    motors["waist"] = make_shared<TMotor>(0x00, "AK10_9");
+    motors["R_arm1"] = make_shared<TMotor>(0x01, "AK70_10");
+    motors["L_arm1"] = make_shared<TMotor>(0x02, "AK70_10");
+    motors["R_arm2"] = make_shared<TMotor>(0x03, "AK70_10");
+    motors["R_arm3"] = make_shared<TMotor>(0x04, "AK70_10");
+    motors["L_arm2"] = make_shared<TMotor>(0x05, "AK70_10");
+    motors["L_arm3"] = make_shared<TMotor>(0x06, "AK70_10");
+    motors["R_wrist"] = make_shared<MaxonMotor>(0x07);
+    motors["L_wrist"] = make_shared<MaxonMotor>(0x08); 
+    motors["maxonForTest"] = make_shared<MaxonMotor>(0x09);
+    motors["R_foot"] = make_shared<MaxonMotor>(0x0A);
+    motors["L_foot"] = make_shared<MaxonMotor>(0x0B);
+    
+    for (auto &motor_pair : motors)
     {
+<<<<<<< HEAD
         stateMachinePeriod = std::chrono::steady_clock::now();
         stateMachinePeriod += std::chrono::microseconds(1000);    // 주기 : 5ms
+=======
+        auto &motor = motor_pair.second;
+        int can_id = canManager.motorMapping[motor_pair.first];
+>>>>>>> 5c3ea04e205865795c50abdefc68e556ae74fa5c
 
-        switch (state.main.load())
+        // 타입에 따라 적절한 캐스팅과 초기화 수행
+        if (std::shared_ptr<TMotor> tMotor = std::dynamic_pointer_cast<TMotor>(motor))
         {
-        case Main::SystemInit:
-        {
-            initializeMotors(); //팔 T모터
-            initializecanManager();
-            motorSettingCmd(); //손목
-            canManager.setSocketNonBlock();
-            usbio.initUSBIO4761();
-            fun.openCSVFile();
-
-            std::cout << "System Initialize Complete [ Press Enter ]\n";
-            getchar();
-            state.main = Main::Ideal;
-            break;
-        }
-        case Main::Ideal:
-        {
-            clearBufferforRecord();
-            idealStateRoutine();
-            break;
-        }
-        case Main::Play:
-        {
-            checkUserInput();
-            break;
-        }
-        case Main::Test:
-        {
-            bool isWriteError = false;
-            if (state.test == TestSub::SelectParamByUser || state.test == TestSub::SetQValue || state.test == TestSub::SetXYZ || (state.test == TestSub::TestMaxon && !testManager.hitTest))
+            // 각 모터 이름에 따른 멤버 변수 설정
+            if (motor_pair.first == "waist")
             {
-                if (!canManager.checkAllMotors_Fixed()) // stateMachine() 주기가 5ms 라서 delay 필요 없음
-                {
-                    isWriteError = true;
-                }
+                tMotor->cwDir = 1.0f;
+                tMotor->rMin = jointRangeMin[can_id] * M_PI / 180.0f; // -90deg
+                tMotor->rMax = jointRangeMax[can_id] * M_PI / 180.0f;  // 90deg
+                tMotor->myName = "waist";
+                tMotor->initialJointAngle = initialJointAngles[can_id] * M_PI / 180.0f;
+                tMotor->currentLimit = 29.8;  // [A]    // ak10-9
+                tMotor->useFourBarLinkage = false;
             }
-            else
+            else if (motor_pair.first == "R_arm1")
             {
-                checkUserInput();
+                tMotor->cwDir = -1.0f;
+                tMotor->rMin = jointRangeMin[can_id] * M_PI / 180.0f;   // 0deg
+                tMotor->rMax = jointRangeMax[can_id] * M_PI / 180.0f; // 150deg
+                tMotor->myName = "R_arm1";
+                tMotor->initialJointAngle = initialJointAngles[can_id] * M_PI / 180.0f;
+                tMotor->currentLimit = 23.2;  // [A]    // ak70-10
+                tMotor->useFourBarLinkage = false;
             }
-
-            if (isWriteError)
+            else if (motor_pair.first == "L_arm1")
             {
-                state.main = Main::Error;
+                tMotor->cwDir = -1.0f;
+                tMotor->rMin = jointRangeMin[can_id] * M_PI / 180.0f;  // 30deg
+                tMotor->rMax = jointRangeMax[can_id] * M_PI / 180.0f; // 180deg
+                tMotor->myName = "L_arm1";
+                tMotor->initialJointAngle = initialJointAngles[can_id] * M_PI / 180.0f;
+                tMotor->currentLimit = 23.2;  // [A]    // ak70-10
+                tMotor->useFourBarLinkage = false;
             }
-            //checkUserInput();
-            break;
-        }
-        case Main::Pause:
-        {
-            checkUserInput();
-            break;
-        }
-        case Main::AddStance:
-        {
-            checkUserInput();
-            break;
-        }
-        case Main::Error:
-        {
-            state.main = Main::Shutdown;
-            break;
-        }
-        case Main::Shutdown:
-            break;
-        }
-        
-        std::this_thread::sleep_until(stateMachinePeriod);
-    }
-
-    if (usbio.useUSBIO)
-    {
-        usbio.exitUSBIO4761();
-    }
-    canManager.setSocketBlock();
-    deactivateControlTask();
-}
-
-void DrumRobot::sendLoopForThread()
-{
-    initializePathManager();
-    while (state.main != Main::Shutdown)
-    {
-        sendLoopPeriod = std::chrono::steady_clock::now();
-        sendLoopPeriod += std::chrono::microseconds(100);  // 주기 : 100us
-
-        switch (state.main.load())
-        {
-        case Main::SystemInit:
-        {
-            break;
-        }
-        case Main::Ideal:
-        {
-            bool isWriteError = false;
-            if (settingInitPos)
+            else if (motor_pair.first == "R_arm2")
             {
-               if (!canManager.checkAllMotors_Fixed())
-               {
-                   isWriteError = true;
-               }
+                tMotor->cwDir = 1.0f;
+                tMotor->rMin = jointRangeMin[can_id] * M_PI / 180.0f; // -60deg
+                tMotor->rMax = jointRangeMax[can_id] * M_PI / 180.0f;  // 90deg
+                tMotor->myName = "R_arm2";
+                tMotor->initialJointAngle = initialJointAngles[can_id] * M_PI / 180.0f;
+                tMotor->currentLimit = 23.2;  // [A]    // ak70-10
+                tMotor->useFourBarLinkage = false;
             }
-            // else
-            // {
-            //    canManager.checkMaxon();
-            // }
-            
-            if (isWriteError)
+            else if (motor_pair.first == "R_arm3")
             {
-               state.main = Main::Error;
+                tMotor->cwDir = -1.0f;
+                tMotor->rMin = jointRangeMin[can_id] * M_PI / 180.0f; // -30deg
+                tMotor->rMax = jointRangeMax[can_id] * M_PI / 180.0f; // 130deg
+                tMotor->myName = "R_arm3";
+                tMotor->initialJointAngle = initialJointAngles[can_id] * M_PI / 180.0f;
+                tMotor->currentLimit = 23.2;  // [A]    // ak70-10
+                tMotor->useFourBarLinkage = true;
+                tMotor->setInitialMotorAngle(tMotor->initialJointAngle);
             }
+<<<<<<< HEAD
             usleep(5000);   // sendLoopForThread() 주기가 100us 라서 delay 필요
             break;
         }
@@ -178,16 +139,31 @@ void DrumRobot::sendLoopForThread()
         {
             bool isWriteError = false;
             if (!canManager.checkAllMotors_Fixed())
+=======
+            else if (motor_pair.first == "L_arm2")
+>>>>>>> 5c3ea04e205865795c50abdefc68e556ae74fa5c
             {
-                isWriteError = true;
+                tMotor->cwDir = -1.0f;
+                tMotor->rMin = jointRangeMin[can_id] * M_PI / 180.0f; // -60deg
+                tMotor->rMax = jointRangeMax[can_id] * M_PI / 180.0f;  // 90deg
+                tMotor->myName = "L_arm2";
+                tMotor->initialJointAngle = initialJointAngles[can_id] * M_PI / 180.0f;
+                tMotor->currentLimit = 23.2;  // [A]    // ak70-10
+                tMotor->useFourBarLinkage = false;
             }
-            if (isWriteError)
+            else if (motor_pair.first == "L_arm3")
             {
-                state.main = Main::Error;
+                tMotor->cwDir = 1.0f;
+                tMotor->rMin = jointRangeMin[can_id] * M_PI / 180.0f; // -30 deg
+                tMotor->rMax = jointRangeMax[can_id] * M_PI / 180.0f; // 130 deg
+                tMotor->myName = "L_arm3";
+                tMotor->initialJointAngle = initialJointAngles[can_id] * M_PI / 180.0f;
+                tMotor->currentLimit = 23.2;  // [A]    // ak70-10
+                tMotor->useFourBarLinkage = true;
+                tMotor->setInitialMotorAngle(tMotor->initialJointAngle);
             }
-            usleep(5000);  // sendLoopForThread() 주기가 100us 라서 delay 필요
-            break;
         }
+<<<<<<< HEAD
         case Main::Error:
         {
             break;
@@ -289,788 +265,9 @@ void DrumRobot::readProcess(int periodMicroSec)
         //     canManager.distributeFramesToMotors(false);
         // }
         else
-        {
-            bool isSafe = canManager.distributeFramesToMotors(true);
-            if (!isSafe)
-            {
-                state.main = Main::Error;
-            }
-        }
-
-        state.read = ReadSub::TimeCheck;
-        break;
-    }
-    }
-}
-
-void DrumRobot::sendPlayProcess(int periodMicroSec, string musicName)
-{
-    auto currentTime = chrono::system_clock::now();
-    auto elapsedTime = chrono::duration_cast<chrono::microseconds>(currentTime - SendStandard);
-    // auto elapsedTimeMaxon = chrono::duration_cast<chrono::microseconds>(currentTime - SendMaxon);
-    
-    switch (state.play.load())
-    {
-    case PlaySub::ReadMusicSheet:
-    {
-        // 파일을 처음 열 때만
-        if (openFlag == 1)
-        {
-            openFlag = 0; // 파일 열기 상태 초기화
-            std::string currentFile = basePath + musicName + std::to_string(fileIndex) + ".txt";
-            inputFile.open(currentFile); // 파일 열기
-            
-            if (!inputFile.is_open()) // 파일 열기 실패
-            {
-                if(pathManager.measureMatrix.rows() > 1)
-                {
-                    // 악보 남음
-                    state.play = PlaySub::GenerateTrajectory;
-                    break;
-                }
-                else
-                {
-                    if (pathManager.trajectoryQueue.empty())
-                    {
-                        // 연주 종료
-                        std::cout << "Play is Over\n";
-                        state.main = Main::AddStance;
-                        state.play = PlaySub::ReadMusicSheet;
-                        canManager.isPlay = false;
-                        setAddStanceFlag("goToHome");
-                        usleep(500*1000);     // 0.5s
-                        break; // 파일 열지 못했으므로 상태 변경 후 종료
-                    }
-                    else
-                    {
-                        state.play = PlaySub::SolveIK;
-                        break;
-                    }
-                }
-            }
-        }
-
-        // 파일에서 읽고 measureMatrix가 2.4초 이상이 되도록 추가
-        if (pathManager.readMeasure(inputFile, bpmFlag) == true)
-        {
-            state.play = PlaySub::GenerateTrajectory; // GenerateTrajectory 상태로 전환
-            break;
-        }
-        else    // 파일 끝에 도달한 경우
-        {
-            inputFile.close(); // 파일 닫기
-            fileIndex++;       // 다음 파일로 이동
-            openFlag = 1;      // 파일 열 준비
-
-            state.play = PlaySub::ReadMusicSheet;
-            break;
-        }
-
-        state.play = PlaySub::SolveIK;
-
-        break;
-    
-    }
-    case PlaySub::GenerateTrajectory:
-    {
-        pathManager.lineOfScore++;
-        pathManager.generateTrajectory();
-        if (pathManager.lineOfScore > preCreatedLine)
-        {
-            state.play = PlaySub::SolveIK;
-        }
-        else
-        {
-            state.play = PlaySub::ReadMusicSheet;
-        }
-
-        break;
-    }
-    case PlaySub::SolveIK:
-    {
-        // 정해진 개수만큼 커맨드 생성
-        if (pathManager.solveIKandPushConmmand())
-        {
-            state.play = PlaySub::TimeCheck;
-        }
-        else
-        {
-            state.play = PlaySub::ReadMusicSheet;
-        }
-
-        break;
-    }
-    case PlaySub::TimeCheck:
-    {
-        if (elapsedTime.count() >= periodMicroSec)  
-        {
-            state.play = PlaySub::SetCANFrame;  // 5ms마다 CAN Frame 설정
-            SendStandard = currentTime;         // 시간 초기화
-            SendMaxon = currentTime;             // 시간 초기화
-        }
-        break;
-    }
-    case PlaySub::SetCANFrame:
-    {
-        bool isSafe;
-        isSafe = canManager.setCANFrame();
-        if (!isSafe)
-        {
-            state.main = Main::Error;
-        }
-        state.play = PlaySub::SendCANFrame;
-        break;
-    }
-    case PlaySub::SendCANFrame:
-    {
-        bool isWriteError = false;
-        for (auto &motor_pair : motors)
-        {
-            shared_ptr<GenericMotor> motor = motor_pair.second;
-
-            if (!canManager.sendMotorFrame(motor))
-            {
-                isWriteError = true;
-            }
-
-            // if (std::shared_ptr<TMotor> tMotor = std::dynamic_pointer_cast<TMotor>(motor_pair.second))
-            // {
-            //     usbio.setUSBIO4761(motorMapping[motor_pair.first], tMotor->brakeState);
-            // }
-        }
-
-        if (maxonMotorCount != 0)
-        {
-            maxoncmd.getSync(&virtualMaxonMotor->sendFrame);
-
-            if (!canManager.sendMotorFrame(virtualMaxonMotor))
-            {
-                isWriteError = true;
-            };
-        }
-
-        if (isWriteError)
-        {
-            state.main = Main::Error;
-        }
-        else
-        {
-            state.play = PlaySub::SolveIK;
-        }
-
-        // brake
-        if(!usbio.outputUSBIO4761())
-        {
-            cout << "brake Error\n";
-        }
-        break;
-    }
-    }
-}
-
-void DrumRobot::sendAddStanceProcess(int periodMicroSec)
-{
-    auto currentTime = chrono::system_clock::now();
-    auto elapsedTime = chrono::duration_cast<chrono::microseconds>(currentTime - addStandard);
-
-    switch (state.addstance.load())
-    {
-    case AddStanceSub::CheckCommand:
-    {
-        if (goToHome || goToReady || goToShutdown || goToSemiReady)
-        {
-            clearBufferforRecord();
-            clearMotorsCommandBuffer();
-            state.addstance = AddStanceSub::FillBuf;
-        }
-        else
-        {
-            state.main = Main::Ideal;
-        }
-        break;
-    }
-    case AddStanceSub::FillBuf:
-    {
-        if (goToReady)
-        {
-            std::cout << "Get Ready Pos Array ...\n";
-            pathManager.getArr(pathManager.readyArr);
-        }
-        else if (goToSemiReady)
-        {
-            std::cout << "Get Semi Ready Pos Array ...\n";
-            pathManager.getArr(pathManager.homeArr);
-            sleep(1);
-        }
-        else if (goToHome)
-        {
-            hommingCnt++;
-            vector<float> home_arr = pathManager.makeHomeArr(hommingCnt);
-            std::cout << "Get Home Pos Array " << hommingCnt << "...\n";
-            pathManager.getArr(home_arr);
-        }
-        else if (goToShutdown)
-        {
-            std::cout << "Get Back Pos Array ...\n";
-            pathManager.getArr(pathManager.backArr);
-        }
-
-        state.addstance = AddStanceSub::TimeCheck;
-        break;
-    }
-    case AddStanceSub::TimeCheck:
-    {
-        if (elapsedTime.count() >= periodMicroSec)  
-        {
-            state.addstance = AddStanceSub::CheckBuf;  // 5ms마다 SetCANFrame 실행
-            addStandard = currentTime;
-        }
-        break;
-    }
-    case AddStanceSub::CheckBuf:
-    {
-        bool allBuffersEmpty = true;
-
-        for (const auto &motor_pair : motors)
-        {
-            if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motor_pair.second))
-            {
-                if (!maxonMotor->commandBuffer.empty())
-                {
-                    allBuffersEmpty = false;
-                    break;
-                }
-            }
-            else if (std::shared_ptr<TMotor> tMotor = std::dynamic_pointer_cast<TMotor>(motor_pair.second))
-            {
-                if (!tMotor->commandBuffer.empty())
-                {
-                    allBuffersEmpty = false;
-                    break;
-                }
-            }
-        }
-
-        if (!allBuffersEmpty)
-        {
-            state.addstance = AddStanceSub::SetCANFrame;
-        }
-        else
-        {
-            if (goToShutdown)
-            {
-                state.main = Main::Shutdown;
-            }
-            else if (goToHome)
-            {
-                if (hommingCnt >= 2)
-                {
-                    state.addstance = AddStanceSub::CheckCommand;
-                    state.main = Main::Ideal;
-                    canManager.clearReadBuffers();
-                    setRobotFlag("isHome");
-                }
-                else
-                {
-                    state.addstance = AddStanceSub::FillBuf;
-                }
-            }
-            else if (goToReady)
-            {
-                state.addstance = AddStanceSub::CheckCommand;
-                state.main = Main::Ideal;
-                canManager.clearReadBuffers();
-                setRobotFlag("isReady");
-            }
-            else if (goToSemiReady)
-            {
-                state.addstance = AddStanceSub::CheckCommand;
-                state.main = Main::Ideal;
-                canManager.clearReadBuffers();
-                setRobotFlag("isHome");
-            }
-        }
-        break;
-    }
-    case AddStanceSub::SetCANFrame:
-    {
-        bool isSafe;
-        isSafe = canManager.setCANFrame();
-        if (!isSafe)
-        {
-            state.main = Main::Error;
-        }
-        state.addstance = AddStanceSub::SendCANFrame;
-        break;
-    }
-    case AddStanceSub::SendCANFrame:
-    {
-        bool isWriteError = false;
-        for (auto &motor_pair : motors)
-        {
-            shared_ptr<GenericMotor> motor = motor_pair.second;
-
-            if (!canManager.sendMotorFrame(motor))
-            {
-                isWriteError = true;
-            }
-
-            if (std::shared_ptr<TMotor> tMotor = std::dynamic_pointer_cast<TMotor>(motor_pair.second))
-            {
-                usbio.setUSBIO4761(motorMapping[motor_pair.first], tMotor->brakeState);
-            }
-        }
-
-        if (maxonMotorCount != 0)
-        {
-            maxoncmd.getSync(&virtualMaxonMotor->sendFrame);
-
-            if (!canManager.sendMotorFrame(virtualMaxonMotor))
-            {
-                isWriteError = true;
-            };
-        }
-
-        if (isWriteError)
-        {
-            state.main = Main::Error;
-        }
-        else
-        {
-            state.addstance = AddStanceSub::TimeCheck;
-        }
-
-        // brake
-        if(!usbio.outputUSBIO4761())
-        {
-            cout << "brake Error\n";
-        }
-        break;
-    }
-    }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/*                                STATE UTILITY                               */
-////////////////////////////////////////////////////////////////////////////////
-
-void DrumRobot::displayAvailableCommands() const
-{
-    std::cout << "Available Commands:\n";
-
-    if (state.main == Main::Ideal)
-    {
-        if (!settingInitPos)
-        {
-            std::cout << "- o : Set Zero & Offset setting\n";
-            std::cout << "- i : Offset setting\n";
-        }
-        else
-        {
-            if (isHome)
-            {
-                std::cout << "- r : Move to Ready Pos\n";
-                std::cout << "- t : Start Test\n";
-                std::cout << "- s : Shut down the system\n";
-            }
-            else if (isReady)
-            {
-                std::cout << "- p : Play Drum\n";
-                std::cout << "- t : Start Test\n";
-                std::cout << "- h : Move to Home Pos\n";
-                std::cout << "- m : Mode Select\n";
-                std::cout << "- v : Release Time Value\n";
-            }
-            else if (isRestart)
-            {
-                std::cout << "- h : Move to Home Pos\n";
-                std::cout << "- t : Start Test\n";
-            }
-        }
-    }
-    else
-    {
-        std::cout << "- s : Shut down the system\n";
-    }
-}
-
-bool DrumRobot::processInput(const std::string &input)
-{
-    if (state.main == Main::Ideal)
-    {
-        if (!settingInitPos)
-        {
-            if (input == "o")
-            {
-                // set zero
-                for (const auto &motorPair : motors)
-                {
-                    if (std::shared_ptr<TMotor> tMotor = std::dynamic_pointer_cast<TMotor>(motorPair.second))
-                    {
-                        if (tMotor->myName == "waist")
-                        {
-                            tservocmd.comm_can_set_origin(*tMotor, &tMotor->sendFrame, 0);
-                            canManager.sendMotorFrame(tMotor);
-                        }
-                        else if (tMotor->myName == "R_arm1")
-                        {
-                            tservocmd.comm_can_set_origin(*tMotor, &tMotor->sendFrame, 0);
-                            canManager.sendMotorFrame(tMotor);
-                        }
-                        else if (tMotor->myName == "L_arm1")
-                        {
-                            tservocmd.comm_can_set_origin(*tMotor, &tMotor->sendFrame, 0);
-                            canManager.sendMotorFrame(tMotor);
-                        }
-                        else if (tMotor->myName == "R_arm2")
-                        {
-                            tservocmd.comm_can_set_origin(*tMotor, &tMotor->sendFrame, 0);
-                            canManager.sendMotorFrame(tMotor);
-                        }
-                        else if (tMotor->myName == "L_arm2")
-                        {
-                            tservocmd.comm_can_set_origin(*tMotor, &tMotor->sendFrame, 0);
-                            canManager.sendMotorFrame(tMotor);
-                        }
-                        else if (tMotor->myName == "R_arm3")
-                        {
-                            tservocmd.comm_can_set_origin(*tMotor, &tMotor->sendFrame, 0);
-                            canManager.sendMotorFrame(tMotor);
-                        }
-                        else if (tMotor->myName == "L_arm3")
-                        {
-                            tservocmd.comm_can_set_origin(*tMotor, &tMotor->sendFrame, 0);
-                            canManager.sendMotorFrame(tMotor);
-                        }
-                    }   
-                }
-                std::cout << "set zero and offset setting ~ ~ ~\n";
-                sleep(2);   // setZero 명령이 확실히 실행된 후 fixed 함수 실행
-
-                maxonMotorEnable();
-                setMaxonMotorMode("CSP");
-
-                settingInitPos = true;
-
-                state.main = Main::AddStance;
-                setRobotFlag("MOVING");
-                setAddStanceFlag("goToSemiReady");
-
-                return true;
-            }
-            else if (input == "i")
-            {
-                maxonMotorEnable();
-                setMaxonMotorMode("CSP");
-
-                settingInitPos = true;
-                setRobotFlag("isRestart");
-
-                return true;
-            }
-        }
-        else
-        {
-            if (input == "r" && isHome)
-            {
-                state.main = Main::AddStance;
-                setRobotFlag("MOVING");
-                setAddStanceFlag("goToReady");
-
-                return true;
-            }
-            else if (input == "v" && isReady)
-            {
-                std::cout << "Release Time Value : " << pathManager.releaseTimeVal;
-                std::cout << "\nrange : 0.6 ~ 1.5 \n";
-                std::cout << "enter Release TIme Value : ";
-                cin >> pathManager.releaseTimeVal;
-                if (pathManager.releaseTimeVal < 0.6 || pathManager.releaseTimeVal > 1.5)
-                {
-                    std::cout << "Release Time Value Error";
-                }
-            }
-            else if (input == "m" && isReady)
-            {
-                int mode = 0;
-                std::cout << "1 : CSP hitting \n";
-                std::cout << "2 : CSP hitting Detect \n";
-                std::cout << "3 : CSP hitting Detect (fast ver) \n";
-                std::cout << "4 : CST hitting Detect \n";
-                std::cout << "enter hitting mode : ";
-                std::cin >> mode;
-
-                if (mode == 1)
-                {
-                    pathManager.hitMode = 1;
-                    canManager.isCST = false;
-                }
-                else if (mode == 2)
-                {
-                    pathManager.hitMode = 2;
-                    canManager.isCST = false;
-                }
-                else if (mode == 3)
-                {
-                    pathManager.hitMode = 3;
-                    canManager.isCST = false;  
-                }
-                else if (mode == 4)
-                {
-                    pathManager.hitMode = 4;
-                }
-            }
-            else if (input == "p" && isReady)
-            {
-                std::cout << "enter music name : ";
-                std::getline(std::cin, musicName);
-                
-                bpmFlag = 0;
-                fileIndex = 0;
-                openFlag = 1;
-                state.main = Main::Play;
-                canManager.isPlay = true;
-                setRobotFlag("MOVING");
-                return true;
-            }
-            else if (input == "h")
-            {
-                if (isReady || isRestart)
-                {
-                    state.main = Main::AddStance;
-                    setRobotFlag("MOVING");
-                    setAddStanceFlag("goToHome");
-
-                    return true;
-
-                }
-            }
-            else if (input == "s" && isHome)
-            {
-                state.main = Main::AddStance;
-                setRobotFlag("MOVING");
-                setAddStanceFlag("goToShutdown");
-
-                return true;
-            }
-            else if (input == "t")
-            {
-                state.main = Main::Test;
-
-                return true;
-            }
-        }
-    }
-    else
-    {
-        if (input == "s")
-        {
-            state.main = Main::Shutdown;
-        }
-    }
-
-    return false;
-}
-
-void DrumRobot::idealStateRoutine()
-{
-    int ret = system("clear");
-    if (ret == -1)
-        std::cout << "system clear error" << endl;
-
-    displayAvailableCommands();
-
-    std::string input;
-
-    std::cout << "Enter command: ";
-    std::getline(std::cin, input);
-
-
-    if (!processInput(input))
-        std::cout << "Invalid command or not allowed in current state!\n";
-
-    // usleep(2000);    // sleep_until()
-}
-
-void DrumRobot::checkUserInput()
-{
-    bool isWriteError = false;
-    if (kbhit())
-    {
-        char input = getchar();
-        if (state.main == Main::Play || state.main == Main::Pause)
-        {
-            if (input == 'q')
-            {
-                state.main = Main::Pause;
-
-                if (!canManager.checkAllMotors_Fixed())
-                {
-                    isWriteError = true;
-                }
-            }
-            else if(input == 's'){
-                pathManager.lineOfScore = 0;
-                state.main = Main::Shutdown;
-            }
-            else if (input == 'p') // restart의 의미, ready상태와 명령어 구분을 위함.
-            {
-                state.main = Main::Play;
-            }
-            else if (input == 'h')
-            {
-                state.play = PlaySub::ReadMusicSheet;
-                inputFile.close(); // 파일 닫기
-                while (!pathManager.trajectoryQueue.empty())
-                {
-                    pathManager.trajectoryQueue.pop();
-                }
-
-                state.main = Main::AddStance;
-                setAddStanceFlag("goToHome");
-            }
-        }
-        else if (state.main == Main::Error)
-        {
-            state.main = Main::Shutdown;
-        }
-    }
-    if (isWriteError)
-    {
-        state.main = Main::Error;
-    }
-    // usleep(5000);    // sleep_until()
-}
-
-int DrumRobot::kbhit()
-{
-    struct termios oldt, newt;
-    int ch;
-    int oldf;
-
-    tcgetattr(STDIN_FILENO, &oldt);
-    newt = oldt;
-    newt.c_lflag &= ~(ICANON | ECHO);
-    tcsetattr(STDIN_FILENO, TCSANOW, &newt);
-    oldf = fcntl(STDIN_FILENO, F_GETFL, 0);
-    fcntl(STDIN_FILENO, F_SETFL, oldf | O_NONBLOCK);
-
-    ch = getchar();
-
-    tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
-    fcntl(STDIN_FILENO, F_SETFL, oldf);
-
-    if (ch != EOF)
-    {
-        ungetc(ch, stdin);
-        return 1;
-    }
-
-    return 0;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/*                                 SYSTEM                                     */
-////////////////////////////////////////////////////////////////////////////////
-
-void DrumRobot::initializeMotors()
-{
-    motors["waist"] = make_shared<TMotor>(0x00, "AK10_9");
-    motors["R_arm1"] = make_shared<TMotor>(0x01, "AK70_10");
-    motors["L_arm1"] = make_shared<TMotor>(0x02, "AK70_10");
-    motors["R_arm2"] = make_shared<TMotor>(0x03, "AK70_10");
-    motors["R_arm3"] = make_shared<TMotor>(0x04, "AK70_10");
-    motors["L_arm2"] = make_shared<TMotor>(0x05, "AK70_10");
-    motors["L_arm3"] = make_shared<TMotor>(0x06, "AK70_10");
-    motors["R_wrist"] = make_shared<MaxonMotor>(0x07);
-    motors["L_wrist"] = make_shared<MaxonMotor>(0x08); 
-    motors["maxonForTest"] = make_shared<MaxonMotor>(0x09);
-    motors["R_foot"] = make_shared<MaxonMotor>(0x0A);
-    motors["L_foot"] = make_shared<MaxonMotor>(0x0B);
-    
-    for (auto &motor_pair : motors)
-    {
-        auto &motor = motor_pair.second;
-        int can_id = motorMapping[motor_pair.first];
-
-        // 타입에 따라 적절한 캐스팅과 초기화 수행
-        if (std::shared_ptr<TMotor> tMotor = std::dynamic_pointer_cast<TMotor>(motor))
-        {
-            // 각 모터 이름에 따른 멤버 변수 설정
-            if (motor_pair.first == "waist")
-            {
-                tMotor->cwDir = 1.0f;
-                tMotor->rMin = jointRangeMin[can_id] * M_PI / 180.0f; // -90deg
-                tMotor->rMax = jointRangeMax[can_id] * M_PI / 180.0f;  // 90deg
-                tMotor->myName = "waist";
-                tMotor->initialJointAngle = initialJointAngles[can_id] * M_PI / 180.0f;
-                tMotor->currentLimit = 29.8;  // [A]    // ak10-9
-                tMotor->useFourBarLinkage = false;
-            }
-            else if (motor_pair.first == "R_arm1")
-            {
-                tMotor->cwDir = -1.0f;
-                tMotor->rMin = jointRangeMin[can_id] * M_PI / 180.0f;   // 0deg
-                tMotor->rMax = jointRangeMax[can_id] * M_PI / 180.0f; // 150deg
-                tMotor->myName = "R_arm1";
-                tMotor->initialJointAngle = initialJointAngles[can_id] * M_PI / 180.0f;
-                tMotor->currentLimit = 23.2;  // [A]    // ak70-10
-                tMotor->useFourBarLinkage = false;
-            }
-            else if (motor_pair.first == "L_arm1")
-            {
-                tMotor->cwDir = -1.0f;
-                tMotor->rMin = jointRangeMin[can_id] * M_PI / 180.0f;  // 30deg
-                tMotor->rMax = jointRangeMax[can_id] * M_PI / 180.0f; // 180deg
-                tMotor->myName = "L_arm1";
-                tMotor->initialJointAngle = initialJointAngles[can_id] * M_PI / 180.0f;
-                tMotor->currentLimit = 23.2;  // [A]    // ak70-10
-                tMotor->useFourBarLinkage = false;
-            }
-            else if (motor_pair.first == "R_arm2")
-            {
-                tMotor->cwDir = 1.0f;
-                tMotor->rMin = jointRangeMin[can_id] * M_PI / 180.0f; // -60deg
-                tMotor->rMax = jointRangeMax[can_id] * M_PI / 180.0f;  // 90deg
-                tMotor->myName = "R_arm2";
-                tMotor->initialJointAngle = initialJointAngles[can_id] * M_PI / 180.0f;
-                tMotor->currentLimit = 23.2;  // [A]    // ak70-10
-                tMotor->useFourBarLinkage = false;
-            }
-            else if (motor_pair.first == "R_arm3")
-            {
-                tMotor->cwDir = -1.0f;
-                tMotor->rMin = jointRangeMin[can_id] * M_PI / 180.0f; // -30deg
-                tMotor->rMax = jointRangeMax[can_id] * M_PI / 180.0f; // 130deg
-                tMotor->myName = "R_arm3";
-                tMotor->initialJointAngle = initialJointAngles[can_id] * M_PI / 180.0f;
-                tMotor->currentLimit = 23.2;  // [A]    // ak70-10
-                tMotor->useFourBarLinkage = true;
-                tMotor->setInitialMotorAngle(tMotor->initialJointAngle);
-            }
-            else if (motor_pair.first == "L_arm2")
-            {
-                tMotor->cwDir = -1.0f;
-                tMotor->rMin = jointRangeMin[can_id] * M_PI / 180.0f; // -60deg
-                tMotor->rMax = jointRangeMax[can_id] * M_PI / 180.0f;  // 90deg
-                tMotor->myName = "L_arm2";
-                tMotor->initialJointAngle = initialJointAngles[can_id] * M_PI / 180.0f;
-                tMotor->currentLimit = 23.2;  // [A]    // ak70-10
-                tMotor->useFourBarLinkage = false;
-            }
-            else if (motor_pair.first == "L_arm3")
-            {
-                tMotor->cwDir = 1.0f;
-                tMotor->rMin = jointRangeMin[can_id] * M_PI / 180.0f; // -30 deg
-                tMotor->rMax = jointRangeMax[can_id] * M_PI / 180.0f; // 130 deg
-                tMotor->myName = "L_arm3";
-                tMotor->initialJointAngle = initialJointAngles[can_id] * M_PI / 180.0f;
-                tMotor->currentLimit = 23.2;  // [A]    // ak70-10
-                tMotor->useFourBarLinkage = true;
-                tMotor->setInitialMotorAngle(tMotor->initialJointAngle);
-            }
-        }
+=======
         else if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motor))
+>>>>>>> 5c3ea04e205865795c50abdefc68e556ae74fa5c
         {
             // 각 모터 이름에 따른 멤버 변수 설정
             if (motor_pair.first == "R_wrist")
@@ -1145,111 +342,13 @@ void DrumRobot::initializeMotors()
             }
         }
     }
-};
+}
 
-void DrumRobot::initializecanManager()
+void DrumRobot::initializeCanManager()
 {
     canManager.initializeCAN();
     canManager.checkCanPortsStatus();
     canManager.setMotorsSocket();
-}
-
-void DrumRobot::deactivateControlTask()
-{
-    struct can_frame frame;
-
-    canManager.setSocketsTimeout(0, 500000);
-
-    for (auto &motorPair : motors)
-    {
-        std::string name = motorPair.first;
-        auto &motor = motorPair.second;
-
-        // 타입에 따라 적절한 캐스팅과 초기화 수행
-        if (std::shared_ptr<TMotor> tMotor = std::dynamic_pointer_cast<TMotor>(motor))
-        {
-            tservocmd.comm_can_set_cb(*tMotor, &tMotor->sendFrame, 0);
-            canManager.sendMotorFrame(tMotor);
-            std::cout << "Exiting for motor [" << name << "]" << std::endl;
-        }
-        else if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motor))
-        {
-            maxoncmd.getQuickStop(*maxonMotor, &frame);
-            canManager.txFrame(motor, frame);
-
-            maxoncmd.getSync(&frame);
-            canManager.txFrame(motor, frame);
-            std::cout << "Exiting for motor [" << name << "]" << std::endl;
-        }
-    }
-}
-
-void DrumRobot::clearBufferforRecord()
-{
-    for (auto &motor_pair : motors)
-    {
-        if (std::shared_ptr<TMotor> tMotor = std::dynamic_pointer_cast<TMotor>(motor_pair.second))
-        {
-            tMotor->clearCommandBuffer();
-            tMotor->clearReceiveBuffer();
-        }
-        else if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motor_pair.second))
-        {
-            maxonMotor->clearCommandBuffer();
-            maxonMotor->clearReceiveBuffer();
-        }
-    }
-}
-
-void DrumRobot::printCurrentPositions()
-{
-    for (auto &motorPair : motors)
-    {
-        std::string name = motorPair.first;
-        auto &motor = motorPair.second;
-        std::cout << "[" << std::hex << motor->nodeId << std::dec << "] ";
-        std::cout << name << " Pos: " << motor->motorPosition << endl;
-    }
-
-    vector<float> P(6);
-    P = pathManager.FK();
-
-    std::cout << "Right Hand Position : { " << P[0] << " , " << P[1] << " , " << P[2] << " }\n";
-    std::cout << "Left Hand Position : { " << P[3] << " , " << P[4] << " , " << P[5] << " }\n";
-}
-
-void DrumRobot::setMaxonMode(std::string targetMode)
-{
-    struct can_frame frame;
-    canManager.setSocketsTimeout(0, 10000);
-    for (const auto &motorPair : motors)
-    {
-        std::string name = motorPair.first;
-        std::shared_ptr<GenericMotor> motor = motorPair.second;
-        if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motorPair.second))
-        {
-            if (targetMode == "CSV")
-            {
-                maxoncmd.getCSVMode(*maxonMotor, &frame);
-                canManager.sendAndRecv(motor, frame);
-            }
-            else if (targetMode == "CST")
-            {
-                maxoncmd.getCSTMode(*maxonMotor, &frame);
-                canManager.sendAndRecv(motor, frame);
-            }
-            else if (targetMode == "HMM")
-            {
-                maxoncmd.getHomeMode(*maxonMotor, &frame);
-                canManager.sendAndRecv(motor, frame);
-            }
-            else if (targetMode == "CSP")
-            {
-                maxoncmd.getCSPMode(*maxonMotor, &frame);
-                canManager.sendAndRecv(motor, frame);
-            }
-        }
-    }
 }
 
 void DrumRobot::motorSettingCmd()
@@ -1267,13 +366,13 @@ void DrumRobot::motorSettingCmd()
 
     struct can_frame frame;
     canManager.setSocketsTimeout(2, 0);
+
     for (const auto &motorPair : motors)
     {
         std::string name = motorPair.first;
         std::shared_ptr<GenericMotor> motor = motorPair.second;
         if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motorPair.second))
         {
-
             // CSP Settings
             maxoncmd.getCSPMode(*maxonMotor, &frame);
             canManager.sendAndRecv(motor, frame);
@@ -1348,122 +447,113 @@ void DrumRobot::motorSettingCmd()
     }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/*                                 Send Thread Loop                           */
-////////////////////////////////////////////////////////////////////////////////
-
-void DrumRobot::initializePathManager()
+bool DrumRobot::initializePos(const std::string &input)
 {
-    pathManager.getDrumPositoin();
-    pathManager.setReadyAngle();
+    // set zero
+    if (input == "o")
+    {
+        for (const auto &motorPair : motors)
+        {
+            if (std::shared_ptr<TMotor> tMotor = std::dynamic_pointer_cast<TMotor>(motorPair.second))
+            {
+                tservocmd.comm_can_set_origin(*tMotor, &tMotor->sendFrame, 0);
+                canManager.sendMotorFrame(tMotor);
+                tMotor->finalMotorPosition = 0.0;
+            }
+            else if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motorPair.second))
+            {
+                maxonMotor->finalMotorPosition = 0.0;
+            }
+        }
+        std::cout << "set zero and offset setting ~ ~ ~\n";
+        sleep(2);   // Set Zero 명령이 확실히 실행된 후
+
+        maxonMotorEnable();
+        setMaxonMotorMode("CSP");
+
+        state.main = Main::AddStance;
+        flagObj.setAddStanceFlag("isHome");
+
+        return false;
+    }
+    else if (input == "i")
+    {
+        // maxonMotorEnable();
+        // setMaxonMotorMode("CSP");
+
+        // state.main = Main::AddStance;
+        // flagObj.setAddStanceFlag("isHome");
+
+        // return false;
+        return true;
+    }
+    else
+    {
+        std::cout << "Invalid command or not allowed in current state!\n";
+        return true;
+    }
 }
 
-void DrumRobot::clearMotorsSendBuffer()
+void DrumRobot::initializeDrumRobot()
 {
-    for (auto motor_pair : motors)
-        motor_pair.second->clearSendBuffer();
+    std::string input;
+
+    initializePathManager();
+    initializeMotors();
+    initializeCanManager();
+    motorSettingCmd(); // 손목
+    canManager.setSocketNonBlock();
+
+    usbio.initUSBIO4761();
+    fun.openCSVFile();
+
+    std::cout << "System Initialize Complete [ Press Commands ]\n";
+    std::cout << "- o : Set Zero & Offset setting\n";
+    std::cout << "- i : Offset setting\n";
+
+    do
+    {
+        std::cout << "Enter command: ";
+        std::getline(std::cin, input);
+    } while (initializePos(input));
 }
 
-void DrumRobot::clearMotorsCommandBuffer()
+////////////////////////////////////////////////////////////////////////////////
+/*                                    Exit                                    */
+////////////////////////////////////////////////////////////////////////////////
+
+void DrumRobot::deactivateControlTask()
 {
-    for (const auto &motorPair : motors)
+    struct can_frame frame;
+
+    canManager.setSocketsTimeout(0, 500000);
+
+    for (auto &motorPair : motors)
     {
         std::string name = motorPair.first;
-        std::shared_ptr<GenericMotor> motor = motorPair.second;
-        if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motorPair.second))
+        auto &motor = motorPair.second;
+
+        // 타입에 따라 적절한 캐스팅과 초기화 수행
+        if (std::shared_ptr<TMotor> tMotor = std::dynamic_pointer_cast<TMotor>(motor))
         {
-            maxonMotor->clearCommandBuffer();
+            tservocmd.comm_can_set_cb(*tMotor, &tMotor->sendFrame, 0);
+            canManager.sendMotorFrame(tMotor);
+            std::cout << "Exiting for motor [" << name << "]" << std::endl;
         }
-        else if (std::shared_ptr<TMotor> tMotor = std::dynamic_pointer_cast<TMotor>(motorPair.second))
+        else if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motor))
         {
-            tMotor->clearCommandBuffer();
+            maxoncmd.getQuickStop(*maxonMotor, &frame);
+            canManager.txFrame(motor, frame);
+
+            maxoncmd.getSync(&frame);
+            canManager.txFrame(motor, frame);
+            std::cout << "Exiting for motor [" << name << "]" << std::endl;
         }
     }
 }
 
-void DrumRobot::unfixedMotor()
-{
-    for (auto motor_pair : motors)
-        motor_pair.second->isfixed = false;
-}
-
 /////////////////////////////////////////////////////////////////////////////////
-/*                            flag setting                                     */
-/////////////////////////////////////////////////////////////////////////////////
-
-void DrumRobot::setRobotFlag(string flag)
-{
-
-    if (flag == "MOVING")
-    {
-        isHome = false;
-        isReady = false;
-        isRestart = false;
-    }
-    else if (flag == "isHome")
-    {
-        isHome = true;
-        isReady = false;
-        isRestart = false;
-    }
-    else if (flag == "isReady")
-    {
-        isHome = false;
-        isReady = true;
-        isRestart = false;
-    }
-    else if (flag == "isRestart")
-    {
-        isHome = false;
-        isReady = false;
-        isRestart = true;
-    }
-    else
-    {
-        cout << "Invalid flag\n";
-    }
-}
-
-void DrumRobot::setAddStanceFlag(string flag)
-{
-    if (flag == "goToReady")
-    {
-        goToReady = true;
-        goToHome = false;
-        goToSemiReady = false;
-        goToShutdown = false;
-    }
-    else if (flag == "goToHome")
-    {
-        goToReady = false;
-        goToHome = true;
-        goToShutdown = false;
-        goToSemiReady = false;
-
-        hommingCnt = 0;
-    }
-    else if (flag == "goToSemiReady")
-    {
-        goToReady = false;
-        goToHome = false;
-        goToSemiReady = true;
-        goToShutdown = false;
-    }
-    else if (flag == "goToShutdown")
-    {
-        goToReady = false;
-        goToHome = false;
-        goToShutdown = true;
-        goToSemiReady = false;
-    }
-    else
-    {
-        cout << "Invalid flag\n";
-    }
-}
-
-/////////////////////////////////////////////////////////////////////////////////
-/*                         Maxon Motor Function                               */
+/*                           Maxon Motor Function                             */
 /////////////////////////////////////////////////////////////////////////////////
 
 void DrumRobot::maxonMotorEnable()
@@ -1550,3 +640,558 @@ void DrumRobot::setMaxonMotorMode(std::string targetMode)
         }
     }
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/*                                   THREAD                                   */
+////////////////////////////////////////////////////////////////////////////////
+
+void DrumRobot::stateMachine()
+{
+    while (state.main != Main::Shutdown)
+    {
+        switch (state.main.load())
+        {
+            case Main::Ideal:
+            {
+                idealStateRoutine();
+                break;
+            }
+            case Main::AddStance:
+            {
+                flagObj.setFixationFlag("moving");
+                sendAddStanceProcess();
+                break;
+            }
+            case Main::Play:
+            {
+                flagObj.setFixationFlag("moving");
+                sendPlayProcess();
+                break;
+            }
+            case Main::Test:
+            {
+                testManager.SendTestProcess();  
+                state.main = Main::Ideal;
+                break;
+            }
+            case Main::Error:
+            {
+                state.main = Main::Shutdown;
+                break;
+            }
+            case Main::Shutdown:
+            {
+                break;
+            }
+        }
+    }
+
+    // Exit
+    if (usbio.useUSBIO)
+    {
+        usbio.exitUSBIO4761();
+    }
+    canManager.setSocketBlock();
+    deactivateControlTask();
+}
+
+void DrumRobot::sendLoopForThread()
+{   
+    bool wasFixed = false; // 이전 `fixed` 상태 추적
+
+    while (state.main != Main::Shutdown)
+    {
+        sendLoopPeriod = std::chrono::steady_clock::now();
+        sendLoopPeriod += std::chrono::microseconds(5000);  // 주기 : 5msec
+        
+        std::map<std::string, bool> fixFlags; // 각 모터의 고정 상태 저장
+        
+
+        if (!canManager.setCANFrame(fixFlags))
+        {
+            state.main = Main::Error;
+        }
+
+
+        static std::map<std::string, bool> prevFixFlags;
+        bool newData = false; // 버퍼 크기가 증가했는지 여부 추적
+
+        //  모든 모터가 고정 상태인지 체크
+        bool allMotorsStagnant = !fixFlags.empty();
+        for (const auto& flag : fixFlags)
+        {
+            if (!prevFixFlags[flag.first] && flag.second) // 이전 값이 false였다가 true가 된 경우
+            {
+                newData = true; // 버퍼가 다시 증가했음을 표시
+            }
+            prevFixFlags[flag.first] = flag.second; // 현재 상태를 prevFixFlags에 저장
+        }
+
+        if (allMotorsStagnant && !wasFixed)
+        {
+            flagObj.setFixationFlag("fixed");
+            wasFixed = true;
+        }
+        else if (newData) // 새로운 데이터가 들어오면 wasFixed 해제
+        {
+            wasFixed = false;
+        }
+
+        bool isWriteError = false;
+
+        for (auto &motor_pair : motors)
+        {
+            shared_ptr<GenericMotor> motor = motor_pair.second;
+
+            if (!canManager.sendMotorFrame(motor))
+            {
+                isWriteError = true;
+            }
+        }
+
+        if (maxonMotorCount != 0)
+        {
+            maxoncmd.getSync(&virtualMaxonMotor->sendFrame);
+
+            if (!canManager.sendMotorFrame(virtualMaxonMotor))
+            {
+                isWriteError = true;
+            };
+        }
+
+        if (isWriteError)
+        {
+            state.main = Main::Error;
+        }
+        
+        std::this_thread::sleep_until(sendLoopPeriod);
+    }
+}
+
+void DrumRobot::recvLoopForThread()
+{
+    while (state.main != Main::Shutdown)
+    {
+        recvLoopPeriod = std::chrono::steady_clock::now();
+        recvLoopPeriod += std::chrono::microseconds(50000);  // 주기 : 100us
+
+        canManager.readFramesFromAllSockets(); 
+        bool isSafe = canManager.distributeFramesToMotors(false);
+        if (!isSafe)
+        {
+            state.main = Main::Error;
+        }
+
+        std::this_thread::sleep_until(recvLoopPeriod);
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/*                                Ideal State                                 */
+////////////////////////////////////////////////////////////////////////////////
+
+void DrumRobot::displayAvailableCommands(string flagName) const
+{
+    std::cout << "Available Commands:\n";
+
+    if (state.main == Main::Ideal)
+    {
+        if (flagName == "isHome")
+        {
+            std::cout << "- r : Move to Ready Pos\n";
+            std::cout << "- t : Start Test\n";
+            std::cout << "- s : Shut down the system\n";
+        }
+        else if (flagName == "isReady")
+        {
+            std::cout << "- p : Play Drumming\n";
+            std::cout << "- t : Start Test\n";
+            std::cout << "- h : Move to Home Pos\n";
+        }
+    }
+    else
+    {
+        std::cout << "- s : Shut down the system\n";
+    }
+}
+
+void DrumRobot::processInput(const std::string &input, string flagName)
+{
+    if (input == "r" && flagName == "isHome")
+    {
+        flagObj.setAddStanceFlag("isReady");
+        state.main = Main::AddStance;
+    }
+    else if (input == "p" && flagName == "isReady")
+    {
+        initializePlayState();
+        state.main = Main::Play;
+    }
+    else if (input == "h" && flagName == "isReady")
+    {
+        flagObj.setAddStanceFlag("isHome");
+        state.main = Main::AddStance;
+    }
+    else if (input == "s" && flagName == "isHome")
+    {
+        flagObj.setAddStanceFlag("isShutDown");
+        state.main = Main::AddStance;
+    }
+    else if (input == "t")
+    {
+        state.main = Main::Test;
+    }
+    else
+    {
+        std::cout << "Invalid command or not allowed in current state!\n";
+    }
+}
+
+void DrumRobot::idealStateRoutine()
+{
+    if (flagObj.getFixationFlag())
+    {
+        string flag = flagObj.getAddStanceFlag();
+
+        if (flag == "isShutDown")
+        {
+            state.main = Main::Shutdown;
+            return;
+        }
+
+        int ret = system("clear");
+        if (ret == -1)
+            std::cout << "system clear error" << endl;
+
+        displayAvailableCommands(flag);
+
+        std::string input;
+
+        std::cout << "Enter command: ";
+        std::getline(std::cin, input);
+
+        processInput(input, flag); 
+    }
+    else
+    {
+        usleep(100);
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/*                            AddStance State                                 */
+////////////////////////////////////////////////////////////////////////////////
+
+void DrumRobot::sendAddStanceProcess()
+{
+    // clearBufferforRecord();  // 아래 system 함수들
+    // clearMotorsCommandBuffer();  // 이거 왜 하지??? 
+
+    string flag = flagObj.getAddStanceFlag();
+
+    pathManager.pushAddStancePath(flag);
+
+    state.main = Main::Ideal;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/*                              Play State                                    */
+////////////////////////////////////////////////////////////////////////////////
+
+void DrumRobot::initializePlayState()
+{
+    fileIndex = 0;
+
+    measureMatrix.resize(1, 9);
+    measureMatrix = MatrixXd::Zero(1, 9);
+
+    // endOfScore = false;
+    lineOfScore = 0;        ///< 현재 악보 읽은 줄.
+    measureTotalTime = 0.0;     ///< 악보를 읽는 동안 누적 시간. [s]
+}
+
+string DrumRobot::trimWhitespace(const std::string &str)
+{
+    size_t first = str.find_first_not_of(" \t");
+    if (std::string::npos == first)
+    {
+        return str;
+    }
+    size_t last = str.find_last_not_of(" \t");
+    return str.substr(first, (last - first + 1));
+}
+
+double DrumRobot::readBpm(ifstream& inputFile)
+{
+    string row;
+    getline(inputFile, row);
+    istringstream iss(row);
+    string item;
+    vector<string> items;
+
+    while (getline(iss, item, '\t'))
+    {
+        item = trimWhitespace(item);
+        items.push_back(item);
+    }
+
+    return stod(items[0].substr(4));
+}
+
+bool DrumRobot::readMeasure(ifstream& inputFile)
+{
+    string row;
+    double timeSum = 0.0;
+
+    for (int i = 1; i < measureMatrix.rows(); i++)
+    {
+        timeSum += measureMatrix(i, 1);
+    }
+
+    // timeSum이 threshold를 넘으면 true 반환
+    if (timeSum >= measureThreshold)
+    {
+        // std::cout << "\n//////////////////////////////// Read Measure : " << lineOfScore + 1 << "\n";
+        // std::cout << measureMatrix;
+        // std::cout << "\n ////////////// time sum : " << timeSum << "\n";
+
+        return true;
+    }
+
+    while (getline(inputFile, row))
+    {
+        istringstream iss(row);
+        string item;
+        vector<string> items;
+
+        while (getline(iss, item, '\t'))
+        {
+            item = trimWhitespace(item);
+            items.push_back(item);
+        }
+
+        measureMatrix.conservativeResize(measureMatrix.rows() + 1, measureMatrix.cols());
+        for (int i = 0; i < 8; i++)
+        {
+            measureMatrix(measureMatrix.rows() - 1, i) = stod(items[i]);
+        }
+
+        // total time 누적
+        measureTotalTime += measureMatrix(measureMatrix.rows() - 1, 1);
+        measureMatrix(measureMatrix.rows() - 1, 8) = measureTotalTime * 100.0 / bpmOfScore;
+
+        // timeSum 누적
+        timeSum += measureMatrix(measureMatrix.rows() - 1, 1);
+
+        // timeSum이 threshold를 넘으면 true 반환
+        if (timeSum >= measureThreshold)
+        {
+            // std::cout << "\n//////////////////////////////// Read Measure : " << lineOfScore + 1 << "\n";
+            // std::cout << measureMatrix;
+            // std::cout << "\n ////////////// time sum : " << timeSum << "\n";
+
+            return true;
+        }
+    }
+    return false;
+}
+
+void DrumRobot::sendPlayProcess()
+{
+    if (fileIndex == 0) // 처음 파일을 열 때
+    {
+        std::cout << "enter music name : ";
+        std::getline(std::cin, musicName);
+    }
+
+    std::string currentFile = basePath + musicName + std::to_string(fileIndex) + ".txt";
+    inputFile.open(currentFile); // 파일 열기
+
+    if (inputFile.is_open())    // 파일 열기 성공
+    {
+        if (fileIndex == 0) // 처음 파일을 열 때 -> bpm 확인
+        {
+            bpmOfScore = readBpm(inputFile);
+
+            if (bpmOfScore > 0)
+            {
+                std::cout << "music bpm = " << bpmOfScore << "\n";
+                pathManager.initializeValue(bpmOfScore);
+            }
+            else
+            {
+                std::cout << "\n bpm Read Error !!! \n";
+                inputFile.close(); // 파일 닫기
+                state.main = Main::Ideal;
+                return;
+            }
+        }
+        
+        while(readMeasure(inputFile))    // 한마디 분량 미만으로 남을 때까지
+        {
+            // 충돌 회피 알고리즘 자리
+
+            lineOfScore++;
+            // std::cout << "\n//////////////////////////////// Read Measure : " << lineOfScore << "\n";
+            // std::cout << measureMatrix;
+            // std::cout << "\n ////////////// \n";
+            pathManager.generateTrajectory(measureMatrix);
+
+            if (lineOfScore > preCreatedLine)
+            {
+                pathManager.solveIKandPushConmmand();
+            }
+        }
+
+        inputFile.close(); // 파일 닫기
+        fileIndex++;    // 다음 파일 열 준비
+    }
+    else                        // 파일 열기 실패
+    {
+        if (fileIndex == 0)                     // 악보 파일 없음
+        {
+            std::cout << "not find " << currentFile << "\n";
+            state.main = Main::Ideal;
+            return;
+        }
+        else if (endOfScore)                     // 종료 코드 확인 -> 남은 궤적 생성
+        {
+            while(measureMatrix.rows() > 1)    // 끝날 때까지
+            {
+                // 충돌 회피 알고리즘 자리
+
+                lineOfScore++;
+                // std::cout << "\n//////////////////////////////// Read Measure : " << lineOfScore << "\n";
+                // std::cout << measureMatrix;
+                // std::cout << "\n ////////////// \n";
+                pathManager.generateTrajectory(measureMatrix);
+
+                if (lineOfScore > preCreatedLine)
+                {
+                    pathManager.solveIKandPushConmmand();
+                }
+            }
+            std::cout << "Play is Over\n";
+            flagObj.setAddStanceFlag("isHome"); // 연주 종료 후 Home 으로 이동
+            state.main = Main::AddStance;
+        }
+        else if (flagObj.getFixationFlag())  // fixed -> 비정상 종료
+        {
+            std::cout << "Error : not find " << currentFile << "\n";
+            state.main = Main::Error;
+        }
+        else                                // 다음 악보 생성될 때까지 대기
+        {
+            usleep(100);
+        }
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/*                                  Flag                                      */
+////////////////////////////////////////////////////////////////////////////////
+
+FlagClass::FlagClass()
+{
+
+}
+
+FlagClass::~FlagClass()
+{
+
+}
+
+void FlagClass::setAddStanceFlag(string flagName)
+{
+    if (flagName == "isHome")
+    {
+        addStanceFlag = ISHOME;
+    }
+    else if (flagName == "isReady")
+    {
+        addStanceFlag = ISREADY;
+    }
+    else if (flagName == "isShutDown")
+    {
+        addStanceFlag = ISSHUTDOWN;
+    }
+    else
+    {
+        cout << "Invalid Flag Name\n";
+    }
+}
+
+string FlagClass::getAddStanceFlag()
+{
+    if (addStanceFlag == ISHOME)
+    {
+        return "isHome";
+    }
+    else if (addStanceFlag == ISREADY)
+    {
+        return "isReady";
+    }
+    else if (addStanceFlag == ISSHUTDOWN)
+    {
+        return "isShutDown";
+    }
+}
+
+void FlagClass::setFixationFlag(string flagName)
+{
+    if (flagName == "moving")
+    {
+        isFixed = false;
+    }
+    else if (flagName == "fixed")
+    {
+        isFixed = true;
+    }
+    else
+    {
+        cout << "Invalid Flag Name\n";
+    }
+}
+
+bool FlagClass::getFixationFlag()
+{
+    return isFixed;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/*                                 SYSTEM                                     */
+////////////////////////////////////////////////////////////////////////////////
+/*
+void DrumRobot::clearBufferforRecord()
+{
+    for (auto &motor_pair : motors)
+    {
+        if (std::shared_ptr<TMotor> tMotor = std::dynamic_pointer_cast<TMotor>(motor_pair.second))
+        {
+            tMotor->clearCommandBuffer();
+            tMotor->clearReceiveBuffer();
+        }
+        else if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motor_pair.second))
+        {
+            maxonMotor->clearCommandBuffer();
+            maxonMotor->clearReceiveBuffer();
+        }
+    }
+}
+
+void DrumRobot::clearMotorsCommandBuffer()
+{
+    for (const auto &motorPair : motors)
+    {
+
+        if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motorPair.second))
+        {
+            maxonMotor->clearCommandBuffer();
+        }
+        else if (std::shared_ptr<TMotor> tMotor = std::dynamic_pointer_cast<TMotor>(motorPair.second))
+        {
+            tMotor->clearCommandBuffer();
+        }
+    }
+}
+*/

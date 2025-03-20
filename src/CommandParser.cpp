@@ -93,7 +93,7 @@ void TMotorServoCommandParser::comm_can_set_spd(TMotor &motor, struct can_frame 
     frame->data[3] = spd_int & 0xFF;
 }
 
-void TMotorServoCommandParser::comm_can_set_pos(TMotor &motor, struct can_frame *frame, float pos){
+void TMotorServoCommandParser::setPositionCANFrame(TMotor &motor, struct can_frame *frame, float pos){
     frame->can_id = motor.nodeId |
                     ((uint32_t)CAN_PACKET_ID::CAN_PACKET_SET_POS << 8 | CAN_EFF_FLAG);
     frame->can_dlc = 4;
@@ -515,7 +515,7 @@ void MaxonCommandParser::getPosOffset(MaxonMotor &motor, struct can_frame *frame
     frame->data[7] = 0x00;
 }
 
-void MaxonCommandParser::getTargetPosition(MaxonMotor &motor, struct can_frame *frame, float p_des_radians)
+void MaxonCommandParser::setPositionCANFrame(MaxonMotor &motor, struct can_frame *frame, float p_des_radians)
 {
     // 라디안 값을 인코더 값으로 변환
     float p_des_degrees = p_des_radians * (180.0f / M_PI);                        // 라디안을 도로 변환
@@ -764,7 +764,7 @@ void MaxonCommandParser::getCSTMode(MaxonMotor &motor, struct can_frame *frame)
     frame->data[7] = 0x00;
 }
 
-void MaxonCommandParser::getTargetTorque(MaxonMotor &motor, struct can_frame *frame, int targetTorque)
+void MaxonCommandParser::setTorqueCANFrame(MaxonMotor &motor, struct can_frame *frame, int targetTorque)
 {
     unsigned char torByte0 = targetTorque & 0xFF;        // 하위 8비트
     unsigned char torByte1 = (targetTorque >> 8) & 0xFF; // 다음 8비트

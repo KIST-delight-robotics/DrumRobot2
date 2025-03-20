@@ -101,15 +101,18 @@ void PathManager::getDrumPositoin()
 
 void PathManager::setReadyAngle()
 {
-    VectorXd defaultInstrumentR; /// 오른팔 시작 위치
-    VectorXd defaultInstrumentL;  /// 왼팔 시작 위치
+    //////////////////////////////////////// Ready Angle
+    readyAngle.resize(9);
+
+    VectorXd defaultInstrumentR;    /// 오른팔 시작 위치
+    VectorXd defaultInstrumentL;    /// 왼팔 시작 위치
 
     VectorXd instrumentVector(18);
 
     defaultInstrumentR.resize(9);
     defaultInstrumentL.resize(9);
-    defaultInstrumentR << 1, 0, 0, 0, 0, 0, 0, 0, 0; // S
-    defaultInstrumentL << 1, 0, 0, 0, 0, 0, 0, 0, 0;  // S
+    defaultInstrumentR << 1, 0, 0, 0, 0, 0, 0, 0, 0;    // S
+    defaultInstrumentL << 1, 0, 0, 0, 0, 0, 0, 0, 0;    // S
 
     instrumentVector << defaultInstrumentR,
         defaultInstrumentL;
@@ -125,107 +128,329 @@ void PathManager::setReadyAngle()
     combined << wristAnglesR, MatrixXd::Zero(1, 9), MatrixXd::Zero(1, 9), wristAnglesL;
     MatrixXd defaultWristAngle = combined * instrumentVector;
 
-    VectorXd waistMinMax = waistRange(pR, pL);
-    VectorXd qk = IKFixedWaist(pR, pL, 0.5 * (waistMinMax(0) + waistMinMax(1)), defaultWristAngle(0), defaultWristAngle(1));
+    VectorXd waistVector = calWaistAngle(pR, pL);
+    VectorXd qk = IKFixedWaist(pR, pL, 0.5 * (waistVector(0) + waistVector(1)), defaultWristAngle(0), defaultWristAngle(1));
 
     for (int i = 0; i < qk.size(); ++i)
     {
-        readyArr[i] = qk(i);
+        readyAngle(i) = qk(i);
     }
 
     HitParameter param;
-    readyArr[4] += param.elbowStayAngle;
-    readyArr[6] += param.elbowStayAngle;
-    readyArr[7] += param.wristStayAngle;
-    readyArr[8] += param.wristStayAngle;
-    // readyArr[8] = param.wristStayAngle;     // for Test
-    // readyArr[9] = param.wristStayAngle;
-    
+    readyAngle(4) += param.elbowStayAngle;
+    readyAngle(6) += param.elbowStayAngle;
+    readyAngle(7) += param.wristStayAngle;
+    readyAngle(8) += param.wristStayAngle;
+
+    //////////////////////////////////////// Home Angle
+    homeAngle.resize(9);
+    //              waist          R_arm1         L_arm1
+    homeAngle << 10*M_PI/180.0,  90*M_PI/180.0,  90*M_PI/180.0,
+    //              R_arm2         R_arm3         L_arm2
+                0*M_PI/180.0,  135*M_PI/180.0,  0*M_PI/180.0,
+    //              L_arm3         R_wrist        L_wrist
+                135*M_PI/180.0, 60*M_PI/180.0, 60*M_PI/180.0;
+
+    //////////////////////////////////////// Shutdown Angle
+    shutdownAngle.resize(9);
+        //              waist          R_arm1         L_arm1
+    shutdownAngle << 0*M_PI/180.0, 135*M_PI/180.0, 45*M_PI/180.0,
+    //                  R_arm2         R_arm3         L_arm2
+                    0*M_PI/180.0,  0*M_PI/180.0,   0*M_PI/180.0,
+    //                  L_arm3         R_wrist        L_wrist
+                    0*M_PI/180.0,  90*M_PI/180.0,  90*M_PI/180.0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/*                                  Play                                      */
+/*                           AddStance FUNCTION                               */
 ////////////////////////////////////////////////////////////////////////////////
 
-bool PathManager::readMeasure(ifstream &inputFile, bool &bpmFlag)
+VectorXd PathManager::calVmax(VectorXd &q1, VectorXd &q2, float acc, float t2)
 {
-    string row;
-    double timeSum = 0.0;
+    VectorXd Vmax = VectorXd::Zero(10);
 
-    for (int i = 1; i < measureMatrix.rows(); i++)
+    for (int i = 0; i < 10; i++)
     {
-        timeSum += measureMatrix(i, 1);
-    }
+        double val;
+        double S = abs(q2(i) - q1(i)); // 수정됨, overflow방지
 
-    // timeSum이 threshold를 넘으면 true 반환
-    if (timeSum >= threshold)
-    {
-        std::cout << "\n//////////////////////////////// Read Measure : " << lineOfScore + 1 << "\n";
-        // std::cout << measureMatrix;
-        // std::cout << "\n ////////////// time sum : " << timeSum << "\n";
-
-        return true;
-    }
-
-    while (getline(inputFile, row))
-    {
-        istringstream iss(row);
-        string item;
-        vector<string> items;
-
-        while (getline(iss, item, '\t'))
+        if (S > t2 * t2 * acc / 4)
         {
-            item = trimWhitespace(item);
-            items.push_back(item);
-        }
-
-        if (!bpmFlag)
-        {
-            cout << "music";
-            bpmOfScore = stod(items[0].substr(4));
-            cout << " bpm = " << bpmOfScore << "\n";
-            bpmFlag = 1;
-
-            initVal();
+            // 가속도로 도달 불가능
+            // -1 반환
+            val = -1;
         }
         else
         {
-            measureMatrix.conservativeResize(measureMatrix.rows() + 1, measureMatrix.cols());
-            for (int i = 0; i < 8; i++)
+            // 2차 방정식 계수
+            double A = 1 / acc;
+            double B = -1 * t2;
+            double C = S;
+
+            // 2차 방정식 해
+            double sol1 = (-B + sqrt(B * B - 4 * A * C)) / 2 / A;
+            double sol2 = (-B - sqrt(B * B - 4 * A * C)) / 2 / A;
+
+            if (sol1 >= 0 && sol1 <= acc * t2 / 2)
             {
-                measureMatrix(measureMatrix.rows() - 1, i) = stod(items[i]);
+                val = sol1;
             }
-
-            // total time 누적
-            totalTime += measureMatrix(measureMatrix.rows() - 1, 1);
-            measureMatrix(measureMatrix.rows() - 1, 8) = totalTime * 100.0 / bpmOfScore;
-
-            // timeSum 누적
-            timeSum += measureMatrix(measureMatrix.rows() - 1, 1);
-
-            // timeSum이 threshold를 넘으면 true 반환
-            if (timeSum >= threshold)
+            else if (sol2 >= 0 && sol2 <= acc * t2 / 2)
             {
-                std::cout << "\n//////////////////////////////// Read Measure : " << lineOfScore + 1 << "\n";
-                // std::cout << measureMatrix;
-                // std::cout << "\n ////////////// time sum : " << timeSum << "\n";
+                val = sol2;
+            }
+            else
+            {
+                // 해가 범위 안에 없음
+                // -2 반환
+                val = -2;
+            }
+        }
 
-                return true;
+        Vmax(i) = val;
+    }
+
+    return Vmax;
+}
+
+VectorXd PathManager::makeProfile(VectorXd &q1, VectorXd &q2, VectorXd &Vmax, float acc, float t, float t2)
+{
+    VectorXd Qi = VectorXd::Zero(10);
+
+    for (int i = 0; i < 10; i++)
+    {
+        double val, S;
+        int sign;
+
+        S = q2(i) - q1(i);
+
+        // 부호 확인, 이동거리 양수로 변경
+        if (S < 0)
+        {
+            S = abs(S);
+            sign = -1;
+        }
+        else
+        {
+            sign = 1;
+        }
+
+        // 궤적 생성
+        if (S == 0)
+        {
+            // 정지
+            val = q1(i);
+        }
+        else if (Vmax(i) < 0)
+        {
+            // Vmax 값을 구하지 못했을 때 삼각형 프로파일 생성
+            double acc_tri = 4 * S / t2 / t2;
+
+            if (t < t2 / 2)
+            {
+                val = q1(i) + sign * 0.5 * acc_tri * t * t;
+            }
+            else if (t < t2)
+            {
+                val = q2(i) - sign * 0.5 * acc_tri * (t2 - t) * (t2 - t);
+            }
+            else
+            {
+                val = q2(i);
+            }
+        }
+        else
+        {
+            // 사다리꼴 프로파일
+            if (t < Vmax(i) / acc)
+            {
+                // 가속
+                val = q1(i) + sign * 0.5 * acc * t * t;
+            }
+            else if (t < S / Vmax(i))
+            {
+                // 등속
+                val = q1(i) + (sign * 0.5 * Vmax(i) * Vmax(i) / acc) + (sign * Vmax(i) * (t - Vmax(i) / acc));
+            }
+            else if (t < Vmax(i) / acc + S / Vmax(i))
+            {
+                // 감속
+                val = q2(i) - sign * 0.5 * acc * (S / Vmax(i) + Vmax(i) / acc - t) * (S / Vmax(i) + Vmax(i) / acc - t);
+            }
+            else
+            {
+                val = q2(i);
+            }
+        }
+
+        Qi(i) = val;
+    }
+
+    return Qi;
+}
+
+VectorXd PathManager::getMotorPos()
+{
+    VectorXd Qf = VectorXd::Zero(9);
+
+    // finalMotorPosition 가져오기
+    for (auto &entry : motors)
+    {
+        int can_id = canManager.motorMapping[entry.first];
+
+        if (std::shared_ptr<TMotor> tMotor = std::dynamic_pointer_cast<TMotor>(entry.second))
+        {
+            // currentMotorAngle[can_id] = tMotor->motorPositionToJointAngle(tMotor->finalMotorPosition);
+            Qf(can_id) = tMotor->motorPositionToJointAngle(tMotor->finalMotorPosition);
+        }
+        if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(entry.second))
+        {
+            // currentMotorAngle[can_id] = maxonMotor->motorPositionToJointAngle(maxonMotor->finalMotorPosition);
+            Qf(can_id) = maxonMotor->motorPositionToJointAngle(maxonMotor->finalMotorPosition);
+        }
+    }
+
+    return Qf;
+}
+
+void PathManager::pushAddStancePath(string flagName)
+{
+    VectorXd Q1 = VectorXd::Zero(9);
+    VectorXd Q2 = VectorXd::Zero(9);
+
+    // finalMotorPosition -> 마지막 명령값에서 이어서 생성
+    Q1 = getMotorPos();
+
+    if (flagName == "isHome")
+    {
+        for (int i = 0; i < 9; i++)
+        {
+            Q1(i) = readyAngle(i);
+        }
+    }
+    else if (flagName == "isReady")
+    {
+        for (int i = 0; i < 9; i++)
+        {
+            Q1(i) = homeAngle(i);
+        }
+    }
+    else if (flagName == "isShutDown")
+    {
+        for (int i = 0; i < 9; i++)
+        {
+            Q1(i) = shutdownAngle(i);
+        }
+    }
+
+    const float accMax = 100.0; // rad/s^2
+    VectorXd Qt = VectorXd::Zero(10);
+    VectorXd Vmax = VectorXd::Zero(10);
+
+    float dt = canManager.DTSECOND; // 0.005
+    float T = 2.0;                // 2초동안 실행
+    float extraTime = 1.0;       // 이전 시간 1초
+    int n = (int)(T / dt);
+    int extraN = (int)(extraTime / dt);
+
+    Vmax = calVmax(Q1, Q2, accMax, T);
+
+    for (int k = 0; k < 10; k++)
+    {
+        cout << "Q1[" << k << "] : " << Q1[k] * 180.0 / M_PI << " [deg] -> Q2[" << k << "] : " << Q2[k] * 180.0 / M_PI << " [deg]" << endl;
+        cout << "Vmax[" << k << "] : " << Vmax(k) << "[rad/s]\n\n";
+    }
+
+    for (int k = 1; k <= n + extraN; ++k)
+    {
+        if (k > extraN)
+        {
+            // 이동
+            float t = (k - extraN) * T / n;
+
+            // Make Array
+            Qt = makeProfile(Q1, Q2, Vmax, accMax, t, T);
+
+            // Send to Buffer
+            for (auto &entry : motors)
+            {
+                int can_id = canManager.motorMapping[entry.first];
+
+                if (std::shared_ptr<TMotor> tMotor = std::dynamic_pointer_cast<TMotor>(entry.second))
+                {
+                    TMotorData newData;
+                    newData.position = tMotor->jointAngleToMotorPosition(Qt[can_id]);
+                    newData.mode = "Position";
+                    tMotor->commandBuffer.push(newData);
+
+                    tMotor->finalMotorPosition = newData.position;
+                }
+                else if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(entry.second))
+                {
+                    MaxonData newData;
+                    newData.position = maxonMotor->jointAngleToMotorPosition(Qt[can_id]);
+                    newData.torque = 0;
+                    newData.mode = "Position";
+                    maxonMotor->commandBuffer.push(newData);
+
+                    maxonMotor->finalMotorPosition = newData.position;
+                }
+            }
+        }
+        else
+        {
+            // 현재 위치 유지
+            for (auto &entry : motors)
+            {
+                int can_id = canManager.motorMapping[entry.first];
+
+                if (std::shared_ptr<TMotor> tMotor = std::dynamic_pointer_cast<TMotor>(entry.second))
+                {
+                    TMotorData newData;
+                    newData.position = tMotor->jointAngleToMotorPosition(Q1[can_id]);
+                    newData.mode = "Position";
+                    tMotor->commandBuffer.push(newData);
+                }
+                else if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(entry.second))
+                {
+                    MaxonData newData;
+                    newData.position = maxonMotor->jointAngleToMotorPosition(Q1[can_id]);
+                    newData.torque = 0;
+                    newData.mode = "Position";
+                    maxonMotor->commandBuffer.push(newData);
+                }
             }
         }
     }
-    return false;
 }
 
-void PathManager::generateTrajectory()
+////////////////////////////////////////////////////////////////////////////////
+/*                              Play FUNCTION                                 */
+////////////////////////////////////////////////////////////////////////////////
+
+void PathManager::initializeValue(int bpm)
 {
-    // Predict Collision
-    aNumOfLine = 0;
-    int C = predictCollision(measureMatrix);
+    bpmOfScore = bpm;
 
-    // std::string fileName = "CollisionDetection";
-    // fun.appendToCSV_DATA(fileName, C, aNumOfLine, 0.0);  // 충돌 OX, 탐색시간(us), 확인 줄
+    measureState.resize(2, 3);
+    measureState = MatrixXd::Zero(2, 3);
+    measureState(0, 1) = 1.0;
+    measureState(1, 1) = 1.0;
 
+    roundSum = 0.0;
+    lineData.resize(1, 12);
+    lineData = MatrixXd::Zero(1, 12);
+    lineData(0, 0) = -1;
+
+    indexSolveIK = 0;
+    q0_t1 = readyAngle(0);
+    q0_t0 = readyAngle(0);
+    nextq0_t1 = readyAngle(0);
+    clearBrake();
+}
+
+void PathManager::generateTrajectory(MatrixXd &measureMatrix)
+{
     // position
     pair<VectorXd, VectorXd> initialPosition, finalPosition;
     VectorXd initialPositionR(3);
@@ -234,7 +459,7 @@ void PathManager::generateTrajectory()
     VectorXd finalPositionL(3);
     VectorXd initialWristAngle(2);
     VectorXd finalWristAngle(2);
-    VectorXd waistMinMax;
+    VectorXd waistVector;
     VectorXd intensity(2);
     float n, sR, sL;
     float dt = canManager.DTSECOND;
@@ -274,8 +499,8 @@ void PathManager::generateTrajectory()
         sR = timeScaling(0.0f, finalTimeR - initialTimeR, tR);
         sL = timeScaling(0.0f, finalTimeL - initialTimeL, tL);
         
-        Pt.endEffectorR = makePath(initialPositionR, finalPositionR, sR);
-        Pt.endEffectorL = makePath(initialPositionL, finalPositionL, sL);
+        Pt.trajectoryR = makePath(initialPositionR, finalPositionR, sR);
+        Pt.trajectoryL = makePath(initialPositionL, finalPositionL, sL);
 
         // 타격 시 손목 각도
         Pt.wristAngleR = tR*(finalWristAngle(0) - initialWristAngle(0))/(finalTimeR - initialTimeR) + initialWristAngle(0);
@@ -283,17 +508,19 @@ void PathManager::generateTrajectory()
 
         trajectoryQueue.push(Pt);
 
-        // std::string fileName;
-        // fileName = "Trajectory_R";
-        // fun.appendToCSV_DATA(fileName, Pt.endEffectorR[0], Pt.endEffectorR[1], Pt.endEffectorR[2]);
-        // fileName = "Trajectory_L";
-        // fun.appendToCSV_DATA(fileName, Pt.endEffectorL[0], Pt.endEffectorL[1], Pt.endEffectorL[2]);
-        // fileName = "Wrist";
-        // fun.appendToCSV_DATA(fileName, Pt.wristAngleR, Pt.wristAngleL, 0.0);
+        // 데이터 저장
+        std::string fileName;
+        fileName = "Trajectory_R";
+        fun.appendToCSV_DATA(fileName, Pt.trajectoryR[0], Pt.trajectoryR[1], Pt.trajectoryR[2]);
+        fileName = "Trajectory_L";
+        fun.appendToCSV_DATA(fileName, Pt.trajectoryL[0], Pt.trajectoryL[1], Pt.trajectoryL[2]);
+        fileName = "Wrist";
+        fun.appendToCSV_DATA(fileName, Pt.wristAngleR, Pt.wristAngleL, 0.0);
 
         if (i == 0)
         {
-            waistMinMax = waistRange(Pt.endEffectorR, Pt.endEffectorL);
+            // 허리 범위, 및 최적화 각도 계산
+            waistVector = calWaistAngle(Pt.trajectoryR, Pt.trajectoryL);
         }
     }
 
@@ -301,194 +528,55 @@ void PathManager::generateTrajectory()
     intensity(0) = measureMatrix(0, 4);
     intensity(1) = measureMatrix(0, 5);
 
-    saveLineData(n, waistMinMax, intensity, finalWristAngle);
+    saveLineData(n, waistVector, intensity, finalWristAngle);
 }
 
-bool PathManager::solveIKandPushConmmand()
+void PathManager::solveIKandPushConmmand()
 {
     VectorXd q;
-    // 정해진 개수만큼 커맨드 생성
-    if (indexSolveIK >= lineData(0, 0))
+    double q0;
+    int n = lineData(0, 0);
+
+    getWaistCoefficient();
+
+    for (int i = 0; i < n; i++)
     {
-        if (shadow_flag == 1) shadow_flag = 0;
-        indexSolveIK = 0;
+        // waist angle
+        q0 = getWaistAngle(i);
 
-        // 커맨드 생성 후 삭제
-        if (lineData.rows() >= 1)
+        // solve IK
+        solveIK(q, q0);
+
+        // push conmmand buffer
+        pushConmmandBuffer(q);
+
+        // 데이터 기록
+        for (int i = 0; i < 9; i++)
         {
-            MatrixXd tmpMatrix(lineData.rows() - 1, lineData.cols());
-            tmpMatrix = lineData.block(1, 0, tmpMatrix.rows(), tmpMatrix.cols());
-            lineData.resize(tmpMatrix.rows(), tmpMatrix.cols());
-            lineData = tmpMatrix;
+            std::string fileName = "solveIK_q" + to_string(i);
+            fun.appendToCSV_DATA(fileName, i, q(i), 0);
         }
-
-        // std::cout << "\n lineDate Over \n";
-
-        return false;
-    }
-    else
-    {
-        if (indexSolveIK == 0)
-        {
-            // 허리 계수 구하기
-            getWaistCoefficient();
-
-            // std::cout << "\n lineDate Start : \n";
-            // std::cout << lineData;
-        }
-        indexSolveIK++;
     }
 
-    // waist
-    double q0 = getWaistAngle(indexSolveIK);
-
-    // solve IK
-    solveIK(q, q0);
-
-    // wrist, elbow
-    getHitAngle(q, indexSolveIK);
-
-    // push motor obj
-    pushConmmandBuffer(q);
-
-    // 데이터 기록
-    // for (int i = 0; i < 9; i++)
-    // {
-    //     std::string fileName = "solveIK_q" + to_string(i);
-    //     fun.appendToCSV_DATA(fileName, i, q(i), 0);
-    // }
-
-    // brake (허리)
-    toBrake(0, q0_t0, q0_t1, q0_threshold);
+    // 커맨드 생성 후 첫 줄 삭제
+    if (lineData.rows() >= 1)
+    {
+        MatrixXd tmpMatrix(lineData.rows() - 1, lineData.cols());
+        tmpMatrix = lineData.block(1, 0, tmpMatrix.rows(), tmpMatrix.cols());
+        lineData.resize(tmpMatrix.rows(), tmpMatrix.cols());
+        lineData = tmpMatrix;
+    }
 
     // 마지막 줄에서 모든 브레이크 정리
-    if(lineData.rows() == 1){
+    if(lineData.rows() == 1)
+    {
         clearBrake();
-    }
-    
-    // // 데이터 기록
-    // for (int m = 0; m < 12; m++)
-    // {
-    //     if(m == 9){
-    //         fun.appendToCSV_DATA("q0_brake_status", m, q0_b, 0); // 허리 브레이크 결과 출력
-    //     }
-    //     else if(m == 10){
-    //         fun.appendToCSV_DATA("q1_brake_status", m, q1_b, 0); // 1번 어깨 브레이크 결과 출력
-    //     }
-    //     else if(m == 11){
-    //         fun.appendToCSV_DATA("q2_brake_status", m, q2_b, 0); // 2번 어깨 브레이크 결과 출력
-    //     }
-    //     else{
-    //         std::string fileName = "solveIK_q" + to_string(m);
-    //         fun.appendToCSV_DATA(fileName, m, q(m), 0);
-    //     }
-    // }
-
-    return true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/*                                AddStance                                   */
-////////////////////////////////////////////////////////////////////////////////
-
-void PathManager::getArr(vector<float> &arr)
-{
-    const float accMax = 100.0; // rad/s^2
-    VectorXd Q1 = VectorXd::Zero(10);
-    VectorXd Q2 = VectorXd::Zero(10);
-    VectorXd Qt = VectorXd::Zero(10);
-    VectorXd Vmax = VectorXd::Zero(10);
-
-    float dt = canManager.DTSECOND; // 0.005
-    float t = 2.0;                // 3초동안 실행
-    float extraTime = 1.0;       // 추가 시간 1초
-    int n = (int)(t / dt);
-    int extraN = (int)(extraTime / dt);
-
-    getMotorPos();
-
-    for (int i = 0; i < 10; i++)
-    {
-        Q1(i) = currentMotorAngle[i];
-        Q2(i) = arr[i];
-    }
-
-    Vmax = calVmax(Q1, Q2, accMax, t);
-
-    for (int k = 0; k < 10; k++)
-    {
-        cout << "Q1[" << k << "] : " << Q1[k] * 180.0 / M_PI << " [deg] -> Q2[" << k << "] : " << Q2[k] * 180.0 / M_PI << " [deg]" << endl;
-        cout << "Vmax[" << k << "] : " << Vmax(k) << "[rad/s]\n\n";
-    }
-
-    for (int k = 1; k <= n + extraN; ++k)
-    {
-        // Make Array
-        Qt = makeProfile(Q1, Q2, Vmax, accMax, t * k / n, t);
-
-        // Send to Buffer
-        for (auto &entry : motors)
-        {
-            if (std::shared_ptr<TMotor> tMotor = std::dynamic_pointer_cast<TMotor>(entry.second))
-            {
-                TMotorData newData;
-                newData.position = Qt[motorMapping[entry.first]];
-                newData.spd = 0;
-                newData.acl = 0;
-                newData.isBrake = false;
-                tMotor->commandBuffer.push(newData);
-            }
-            else if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(entry.second))
-            {
-                MaxonData newData;
-                newData.position = Qt[motorMapping[entry.first]];
-                newData.WristState = 0.5;
-                maxonMotor->commandBuffer.push(newData);
-            }
-        }
     }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /*                         Read & Parse Measure                               */
 ////////////////////////////////////////////////////////////////////////////////
-
-string PathManager::trimWhitespace(const std::string &str)
-{
-    size_t first = str.find_first_not_of(" \t");
-    if (std::string::npos == first)
-    {
-        return str;
-    }
-    size_t last = str.find_last_not_of(" \t");
-    return str.substr(first, (last - first + 1));
-}
-
-void PathManager::initVal()
-{
-    measureMatrix.resize(1, 9);
-    measureMatrix = MatrixXd::Zero(1, 9);
-
-    measureState.resize(2, 3);
-    measureState = MatrixXd::Zero(2, 3);
-    measureState(0, 1) = 1.0;
-    measureState(1, 1) = 1.0;
-
-    lineData.resize(1, 12);
-    lineData = MatrixXd::Zero(1, 12);
-
-    lineOfScore = 0;
-    threshold = 2.4;
-    roundSum = 0.0;
-    totalTime = 0.0;
-
-    indexSolveIK = 0;
-    q0_t1 = readyArr[0];
-    q0_t0 = readyArr[0];
-    nextq0_t1 = readyArr[0];
-    clearBrake();
-
-}
 
 void PathManager::parseMeasure(MatrixXd &measureMatrix)
 {
@@ -825,18 +913,19 @@ VectorXd PathManager::makePath(VectorXd Pi, VectorXd Pf, float s)
     return Ps;
 }
 
-void PathManager::saveLineData(int n, VectorXd waistMinMax, VectorXd intensity, VectorXd finalWristAngle)
+void PathManager::saveLineData(int n, VectorXd waistVector, VectorXd intensity, VectorXd finalWristAngle)
 {
-    if (lineOfScore == 1)
+    if (lineData(0, 0) == -1)
     {
-        lineData(0, 0) = n;
-        lineData(0, 1) = waistMinMax(0);
-        lineData(0, 2) = waistMinMax(1);
-        lineData(0, 3) = hitState(0);
-        lineData(0, 4) = hitState(1);
-        lineData(0, 5) = intensity(0);
-        lineData(0, 6) = intensity(1);
-        lineData(0, 7) = waistMinMax(2);
+        lineData(0, 0) = n;                         // 명령 개수
+        lineData(0, 1) = waistVector(2);            // q0 최적값
+        lineData(0, 2) = waistVector(0);            // q0 min
+        lineData(0, 3) = waistVector(1);            // q0 max
+
+        lineData(0, 4) = hitState(0);
+        lineData(0, 5) = hitState(1);
+        lineData(0, 6) = intensity(0);
+        lineData(0, 7) = intensity(1);
         lineData(0, 8) = hitState(2);
         lineData(0, 9) = hitState(3);
         lineData(0, 10) = finalWristAngle(0);
@@ -845,14 +934,15 @@ void PathManager::saveLineData(int n, VectorXd waistMinMax, VectorXd intensity, 
     else
     {
         lineData.conservativeResize(lineData.rows() + 1, lineData.cols());
-        lineData(lineData.rows() - 1, 0) = n;
-        lineData(lineData.rows() - 1, 1) = waistMinMax(0);
-        lineData(lineData.rows() - 1, 2) = waistMinMax(1);
-        lineData(lineData.rows() - 1, 3) = hitState(0);
-        lineData(lineData.rows() - 1, 4) = hitState(1);
-        lineData(lineData.rows() - 1, 5) = intensity(0);
-        lineData(lineData.rows() - 1, 6) = intensity(1);
-        lineData(lineData.rows() - 1, 7) = waistMinMax(2);
+        lineData(lineData.rows() - 1, 0) = n;                       // 명령 개수
+        lineData(lineData.rows() - 1, 1) = waistVector(2);          // q0 최적값
+        lineData(lineData.rows() - 1, 2) = waistVector(0);          // q0 min
+        lineData(lineData.rows() - 1, 3) = waistVector(1);          // q0 max
+
+        lineData(lineData.rows() - 1, 4) = hitState(0);
+        lineData(lineData.rows() - 1, 5) = hitState(1);
+        lineData(lineData.rows() - 1, 6) = intensity(0);
+        lineData(lineData.rows() - 1, 7) = intensity(1);
         lineData(lineData.rows() - 1, 8) = hitState(2);
         lineData(lineData.rows() - 1, 9) = hitState(3);
         lineData(lineData.rows() - 1, 10) = finalWristAngle(0);
@@ -860,7 +950,7 @@ void PathManager::saveLineData(int n, VectorXd waistMinMax, VectorXd intensity, 
     }
 }
 
-VectorXd PathManager::waistRange(VectorXd &pR, VectorXd &pL)
+VectorXd PathManager::calWaistAngle(VectorXd &pR, VectorXd &pL)
 {
     PartLength partLength;
 
@@ -1005,1920 +1095,6 @@ VectorXd PathManager::waistRange(VectorXd &pR, VectorXd &pL)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/*                              Wrist & Elbow                                 */
-////////////////////////////////////////////////////////////////////////////////
-
-VectorXd PathManager::makeHitTrajetory(float t1, float t2, float t, int state, int wristIntensity, bool targetChangeFlag, bool wristDir)
-{
-    VectorXd addAngle;
-
-    HitParameter param = getHitParameter(t1, t2, state, preParametersTmp, wristIntensity);
-    preParametersTmp = param;
-
-    addAngle.resize(2); // wrist, elbow
-    
-    if (hitMode == 2)
-    {
-        for (auto &entry : motors)
-        {
-            if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(entry.second))
-            {
-                if (maxonMotor->myName == "R_wrist"  && wristDir == 0)
-                {
-                    maxonMotor->hittingDrumAngle = lineData(0, 10);
-                    addAngle(0) = makeWristAngle_TEST_R(t1, t2, t, state, param, wristIntensity, targetChangeFlag, maxonMotor->hitting, maxonMotor->hittingPos, wristDir);
-                }
-                else if (maxonMotor->myName == "L_wrist"  && wristDir == 1)
-                {
-                    maxonMotor->hittingDrumAngle = lineData(0, 11);
-                    addAngle(0) = makeWristAngle_TEST_L(t1, t2, t, state, param, wristIntensity, targetChangeFlag, maxonMotor->hitting, maxonMotor->hittingPos, wristDir);
-                }
-            }
-        }
-    }
-    else if (hitMode == 3)
-    {
-        for (auto &entry : motors)
-        {
-            if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(entry.second))
-            {
-                if (maxonMotor->myName == "R_wrist"  && wristDir == 0)
-                {
-                    maxonMotor->hittingDrumAngle = lineData(0, 10);
-                    addAngle(0) = makeWristAngle_TEST_R_Fast(t1, t2, t, state, param, wristIntensity, targetChangeFlag, maxonMotor->hitting, maxonMotor->hittingPos, wristDir);
-                }
-                else if (maxonMotor->myName == "L_wrist"  && wristDir == 1)
-                {
-                    maxonMotor->hittingDrumAngle = lineData(0, 11);
-                    addAngle(0) = makeWristAngle_TEST_L_Fast(t1, t2, t, state, param, wristIntensity, targetChangeFlag, maxonMotor->hitting, maxonMotor->hittingPos, wristDir);
-                }
-            }
-        }
-    }
-    else if (hitMode == 4)
-    {
-        for (auto &entry : motors)
-        {
-            if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(entry.second))
-            {
-                if (maxonMotor->myName == "R_wrist"  && wristDir == 0)
-                {
-                    maxonMotor->hittingDrumAngle = lineData(0, 10);
-                    addAngle(0) = makeWristAngle_TEST_R_CST(t1, t2, t, state, param, wristIntensity, targetChangeFlag, maxonMotor->hitting, maxonMotor->hittingPos, wristDir);
-                }
-                else if (maxonMotor->myName == "L_wrist"  && wristDir == 1)
-                {
-                    maxonMotor->hittingDrumAngle = lineData(0, 11);
-                    addAngle(0) = makeWristAngle_TEST_L_CST(t1, t2, t, state, param, wristIntensity, targetChangeFlag, maxonMotor->hitting, maxonMotor->hittingPos, wristDir);
-                }
-            }
-        }
-    }
-    else if (hitMode == 1)
-    {
-        addAngle(0) = makeWristAngle(t1, t2, t, state, param, wristIntensity, targetChangeFlag);
-    }
-
-    // addAngle(0) = makeWristAngle(t1, t2, t, state, param, wristIntensity, targetChangeFlag);
-    addAngle(1) = makeElbowAngle(t1, t2, t, state, param, wristIntensity, targetChangeFlag);
-
-    return addAngle;
-}
-
-PathManager::HitParameter PathManager::getHitParameter(float t1, float t2, int hitState, HitParameter preParam, int intensity)
-{
-    HitParameter param;
-
-    param.elbowStayAngle = preParam.elbowStayAngle;
-    param.wristStayAngle = preParam.wristStayAngle;
-    canManager.wristStayAngle = param.wristStayAngle;
-
-    param.elbowLiftAngle = std::min((t2 - t1) * elbowLiftBaseAngle / baseTime, elbowLiftBaseAngle);
-    param.wristContactAngle = -1.0 * std::min((t2 - t1) * wristContactBaseAngle / baseTime, wristContactBaseAngle);
-    // param.wristLiftAngle = std::min((t2-t1)*wristLiftBaseAngle/baseTime, wristLiftBaseAngle);
-
-    t2 - t1 < 0.5 ? param.wristLiftAngle = (-100 * ((t2 - t1) - 0.5) * ((t2 - t1) - 0.5) + 30) * M_PI / 180.0 : param.wristLiftAngle = 30  * M_PI / 180.0;
-
-    param.elbowStayTime = std::max(0.5 * (t2 - t1), t2 - t1 - 0.2);
-    param.elbowLiftTime = std::max(0.5 * (t2 - t1), t2 - t1 - 0.2);
-
-    t2 - t1 < 0.15 ? param.wristStayTime = 0.45 * (t2 - t1) : param.wristStayTime = 0.47 * (t2 - t1) - 0.05;
-    if (intensity == 1)
-        param.wristLiftTime = std::max(0.5 * (t2 - t1), t2 - t1 - 0.25);
-    else if (intensity == 2)
-        param.wristLiftTime = std::max(0.6 * (t2 - t1), t2 - t1 - 0.2);
-    else
-        param.wristLiftTime = std::max(0.7 * (t2 - t1), t2 - t1 - 0.15);
-    param.wristContactTime = std::min(0.1 * (t2 - t1), 0.05); // 0.05 -> 0.025
-    param.wristReleaseTime = std::min(0.2 * (t2 - t1), 0.1);
-
-    return param;
-}
-
-float PathManager::makeWristAngle(float t1, float t2, float t, int state, HitParameter param, int intensity, bool targetChangeFlag)
-{
-    float wrist_q = 0.0;
-    float t_contact = param.wristContactTime;
-    float t_lift = param.wristLiftTime;
-    float t_stay = param.wristStayTime;
-    float t_release = param.wristReleaseTime;
-    float t_hit = t2 - t1;
-    float intensityFactor = 0.4 * intensity + 0.2; // 1 : 약하게   2 : 기본    3 : 강하게
-    float wristLiftAngle = param.wristLiftAngle * intensityFactor + (param.wristLiftAngle * 0.2  * targetChangeFlag);
-
-    MatrixXd A;
-    MatrixXd b;
-    MatrixXd A_1;
-    MatrixXd sol;
-    
-    if (state == 0)
-    {
-        // Stay
-        wrist_q = param.wristStayAngle;
-    }
-    else if (state == 1)
-    {
-        // Contact - Stay
-        if (t < t_contact)
-        {
-            A.resize(3, 3);
-            b.resize(3, 1);
-            A << 1, 0, 0,
-                1, t_contact, t_contact * t_contact,
-                0, 1, 2 * t_contact;
-            b << 0, param.wristContactAngle, 0;
-            A_1 = A.inverse();
-            sol = A_1 * b;
-            wrist_q = sol(0, 0) + sol(1, 0) * t + sol(2, 0) * t * t;
-        }
-        else if (t <= t_release)
-        {
-            A.resize(4, 4);
-            b.resize(4, 1);
-            A << 1, t_contact, t_contact * t_contact, t_contact * t_contact * t_contact,
-                1, t_release, t_release * t_release, t_release * t_release * t_release,
-                0, 1, 2 * t_contact, 3 * t_contact * t_contact,
-                0, 1, 2 * t_release, 3 * t_release * t_release;
-            b << param.wristContactAngle, param.wristStayAngle, 0, 0;
-            A_1 = A.inverse();
-            sol = A_1 * b;
-            wrist_q = sol(0, 0) + sol(1, 0) * t + sol(2, 0) * t * t + sol(3, 0) * t * t * t;
-        }
-        else
-        {
-            wrist_q = param.wristStayAngle;
-        }
-    }
-    else if (state == 2)
-    {
-        
-        // Stay - Lift - Hit
-        if (t < t_stay)
-        {
-            // Stay
-            wrist_q = param.wristStayAngle;
-        }
-        else if (t < t_lift)
-        {
-            A.resize(4, 4);
-            b.resize(4, 1);
-            A << 1, t_stay, t_stay * t_stay, t_stay * t_stay * t_stay,
-                1, t_lift, t_lift * t_lift, t_lift * t_lift * t_lift,
-                0, 1, 2 * t_stay, 3 * t_stay * t_stay,
-                0, 1, 2 * t_lift, 3 * t_lift * t_lift;
-            b << param.wristStayAngle, wristLiftAngle, 0, 0;
-            A_1 = A.inverse();
-            sol = A_1 * b;
-            wrist_q = sol(0, 0) + sol(1, 0) * t + sol(2, 0) * t * t + sol(3, 0) * t * t * t;
-        }
-        else if (t <= t_hit)
-        {
-            A.resize(3, 3);
-            b.resize(3, 1);
-            A << 1, t_lift, t_lift * t_lift,
-                1, t_hit, t_hit * t_hit,
-                0, 1, 2 * t_lift;
-            b << wristLiftAngle, 0, 0;
-            A_1 = A.inverse();
-            sol = A_1 * b;
-            wrist_q = sol(0, 0) + sol(1, 0) * t + sol(2, 0) * t * t;
-        }
-        else
-        {
-            wrist_q = 0.0;
-        }
-        
-    }
-    else if (state == 3)
-    {
-        // Contact - Lift - Hit
-        if (t < t_contact)
-        {
-            A.resize(3, 3);
-            b.resize(3, 1);
-            A << 1, 0, 0,
-                1, t_contact, t_contact * t_contact,
-                0, 1, 2 * t_contact;
-            b << 0, param.wristContactAngle, 0;
-            A_1 = A.inverse();
-            sol = A_1 * b;
-            wrist_q = sol(0, 0) + sol(1, 0) * t + sol(2, 0) * t * t;
-        }
-        else if (t < t_stay)
-        {
-            A.resize(4, 4);
-            b.resize(4, 1);
-            A << 1, t_contact, t_contact * t_contact, t_contact * t_contact * t_contact,
-                1, t_stay, t_stay * t_stay, t_stay * t_stay * t_stay,
-                0, 1, 2 * t_contact, 3 * t_contact * t_contact,
-                0, 1, 2 * t_stay, 3 * t_stay * t_stay;
-            b << param.wristContactAngle, wristLiftAngle, 0, 0;
-            A_1 = A.inverse();
-            sol = A_1 * b;
-            wrist_q = sol(0, 0) + sol(1, 0) * t + sol(2, 0) * t * t + sol(3, 0) * t * t * t;
-        }
-        else if (t < t_lift)
-        {
-            // Stay
-            wrist_q = wristLiftAngle;
-        }
-        else if (t <= t_hit)
-        {
-            A.resize(3, 3);
-            b.resize(3, 1);
-            A << 1, t_lift, t_lift * t_lift,
-                1, t_hit, t_hit * t_hit,
-                0, 1, 2 * t_lift;
-            b << wristLiftAngle, 0, 0;
-            A_1 = A.inverse();
-            sol = A_1 * b;
-            wrist_q = sol(0, 0) + sol(1, 0) * t + sol(2, 0) * t * t;
-        }
-        else
-        {
-            wrist_q = 0.0;
-        }
-    }
-    return wrist_q;
-}
-
-float PathManager::makeWristAngle_TEST_R(float t1, float t2, float t, int state, HitParameter param, int intensity, bool targetChangeFlag, bool &hitting, float hittingPos, bool wristDir)
-{
-    static float t_hitting = 0.0;
-    float wrist_q = 0.0;
-    float t_press = param.wristContactTime;
-    float t_lift = param.wristLiftTime;
-    float t_stay = param.wristStayTime;
-    float t_release = param.wristReleaseTime;
-    float t_contact = t2 - t1;
-    float intensityFactor = 0.4 * intensity + 0.2; // 1 : 약하게   2 : 기본    3 : 강하게
-    float wristLiftAngle = param.wristLiftAngle * intensityFactor + (param.wristLiftAngle * 0.2  * targetChangeFlag);
-
-    static bool hittingTimeCheck = true;
-
-    MatrixXd A;
-    MatrixXd b;
-    MatrixXd A_1;
-    MatrixXd sol;
-
-    if(hitting)
-    {
-        if (hittingTimeCheck)
-        {
-            t_hitting = t;
-            hittingTimeCheck = false;
-        }
-
-        if (state == 1)
-        {
-            // Contact - Stay
-            A.resize(4, 4);
-            b.resize(4, 1);
-            if (t <= t_release)
-            {
-                if (t_hitting > t_release)
-                {
-                    A << 1, 0, 0, 0,
-                    1, t_release, t_release * t_release, t_release * t_release * t_release,
-                    0, 1, 0, 0,
-                    0, 1, 2 * t_release, 3 * t_release * t_release;
-                    b << hittingPos, param.wristStayAngle, 0, 0;
-                }
-                else
-                {
-                    A << 1, t_hitting, t_hitting * t_hitting, t_hitting * t_hitting * t_hitting,
-                    1, t_release, t_release * t_release, t_release * t_release * t_release,
-                    0, 1, 2 * t_hitting, 3 * t_hitting * t_hitting,
-                    0, 1, 2 * t_release, 3 * t_release * t_release;
-                    b << hittingPos, param.wristStayAngle, 0, 0;
-                }
-                A_1 = A.inverse();
-                sol = A_1 * b;
-                wrist_q = sol(0, 0) + sol(1, 0) * t + sol(2, 0) * t * t + sol(3, 0) * t * t * t;
-            }
-            else
-            {
-                hitting = false;
-                hittingTimeCheck = true;
-                wrist_q = param.wristStayAngle;
-            }
-        }
-        else if (state == 2)
-        {
-            wrist_q = hittingPos;
-        }
-        else if (state == 3)
-        {
-            // Contact - Lift - Hit
-            if (t < t_stay)
-            {
-                A.resize(4, 4);
-                b.resize(4, 1);
-                if (t_hitting > t_stay)
-                {
-                    A << 1, 0, 0, 0,
-                    1, t_stay, t_stay * t_stay, t_stay * t_stay * t_stay,
-                    0, 1, 0, 0,
-                    0, 1, 2 * t_stay, 3 * t_stay * t_stay;
-                    b << hittingPos, wristLiftAngle, 0, 0;
-                }
-                else
-                {
-                    A << 1, t_hitting, t_hitting * t_hitting, t_hitting * t_hitting * t_hitting,
-                    1, t_stay, t_stay * t_stay, t_stay * t_stay * t_stay,
-                    0, 1, 2 * t_hitting, 3 * t_hitting * t_hitting,
-                    0, 1, 2 * t_stay, 3 * t_stay * t_stay;
-                    b << hittingPos, wristLiftAngle, 0, 0;
-                }
-                A_1 = A.inverse();
-                sol = A_1 * b;
-                wrist_q = sol(0, 0) + sol(1, 0) * t + sol(2, 0) * t * t + sol(3, 0) * t * t * t;
-            }
-            else if (t < t_lift)
-            {
-                hitting = false;
-                hittingTimeCheck = true;
-                wrist_q = wristLiftAngle;
-            }
-            else if (t <= t_contact)
-            {
-                wrist_q = hittingPos;
-            }
-        }
-    }
-    else
-    {
-        if (state == 0)
-        {
-            // Stay
-            wrist_q = param.wristStayAngle;
-        }
-        else if (state == 1)
-        {
-            // Contact - Stay
-            A.resize(3, 3);
-            b.resize(3, 1);
-            if (t < t_press)
-            {
-                A << 1, 0, 0,
-                1, t_press, t_press * t_press,
-                0, 1, 2 * t_press;
-                b << 0, param.wristContactAngle, 0;
-                A_1 = A.inverse();
-                sol = A_1 * b;
-                wrist_q = sol(0, 0) + sol(1, 0) * t + sol(2, 0) * t * t;
-                
-            }
-            else if (t <= t_release)
-            {
-                A.resize(4, 4);
-                b.resize(4, 1);
-                A << 1, t_press, t_press * t_press, t_press * t_press * t_press,
-                    1, t_release, t_release * t_release, t_release * t_release * t_release,
-                    0, 1, 2 * t_press, 3 * t_press * t_press,
-                    0, 1, 2 * t_release, 3 * t_release * t_release;
-                b << param.wristContactAngle, param.wristStayAngle, 0, 0;
-                A_1 = A.inverse();
-                sol = A_1 * b;
-                wrist_q = sol(0, 0) + sol(1, 0) * t + sol(2, 0) * t * t + sol(3, 0) * t * t * t;
-            }
-            else
-            {
-                wrist_q = param.wristStayAngle;
-            }
-        }
-        else if (state == 2)
-        {
-            
-            // Stay - Lift - Hit
-            if (t < t_stay)
-            {
-                // Stay
-                wrist_q = param.wristStayAngle;
-            }
-            else if (t < t_lift)
-            {
-                A.resize(4, 4);
-                b.resize(4, 1);
-                A << 1, t_stay, t_stay * t_stay, t_stay * t_stay * t_stay,
-                    1, t_lift, t_lift * t_lift, t_lift * t_lift * t_lift,
-                    0, 1, 2 * t_stay, 3 * t_stay * t_stay,
-                    0, 1, 2 * t_lift, 3 * t_lift * t_lift;
-                b << param.wristStayAngle, wristLiftAngle, 0, 0;
-                A_1 = A.inverse();
-                sol = A_1 * b;
-                wrist_q = sol(0, 0) + sol(1, 0) * t + sol(2, 0) * t * t + sol(3, 0) * t * t * t;
-            }
-            else if (t <= t_contact)
-            {
-                canManager.isHitR = true;
-                A.resize(3, 3);
-                b.resize(3, 1);
-                A << 1, t_lift, t_lift * t_lift,
-                    1, t_contact, t_contact * t_contact,
-                    0, 1, 2 * t_lift;
-                b << wristLiftAngle, 0, 0;
-                A_1 = A.inverse();
-                sol = A_1 * b;
-                wrist_q = sol(0, 0) + sol(1, 0) * t + sol(2, 0) * t * t;
-            }
-            else
-            {
-                wrist_q = 0.0;
-            }
-        }
-        else if (state == 3)
-        {
-            // Contact - Lift - Hit
-            if (t < t_press)
-            {
-                A.resize(3, 3);
-                b.resize(3, 1);
-                A << 1, 0, 0,
-                    1, t_press, t_press * t_press,
-                    0, 1, 2 * t_press;
-                b << 0, param.wristContactAngle, 0;
-                A_1 = A.inverse();
-                sol = A_1 * b;
-                wrist_q = sol(0, 0) + sol(1, 0) * t + sol(2, 0) * t * t;
-            }
-            else if (t < t_stay)
-            {
-                A.resize(4, 4);
-                b.resize(4, 1);
-                A << 1, t_press, t_press * t_press, t_press * t_press * t_press,
-                    1, t_stay, t_stay * t_stay, t_stay * t_stay * t_stay,
-                    0, 1, 2 * t_press, 3 * t_press * t_press,
-                    0, 1, 2 * t_stay, 3 * t_stay * t_stay;
-                b << param.wristContactAngle, wristLiftAngle, 0, 0;
-                A_1 = A.inverse();
-                sol = A_1 * b;
-                wrist_q = sol(0, 0) + sol(1, 0) * t + sol(2, 0) * t * t + sol(3, 0) * t * t * t;
-            }
-            else if (t < t_lift)
-            {
-                // Stay
-                wrist_q = wristLiftAngle;
-            }
-            else if (t <= t_contact)
-            {
-                canManager.isHitR = true;
-                A.resize(3, 3);
-                b.resize(3, 1);
-                A << 1, t_lift, t_lift * t_lift,
-                    1, t_contact, t_contact * t_contact,
-                    0, 1, 2 * t_lift;
-                b << wristLiftAngle, 0, 0;
-                A_1 = A.inverse();
-                sol = A_1 * b;
-                wrist_q = sol(0, 0) + sol(1, 0) * t + sol(2, 0) * t * t;
-            }
-            else
-            {
-                wrist_q = 0.0;
-            }
-        }
-    }
-
-    return wrist_q;
-}
-
-float PathManager::makeWristAngle_TEST_R_Fast(float t1, float t2, float t, int state, HitParameter param, int intensity, bool targetChangeFlag, bool &hitting, float hittingPos, bool wristDir)
-{
-    static float t_hitting = 0.0;
-    float wrist_q = 0.0;
-    float t_press = param.wristContactTime * releaseTimeVal;
-    float t_lift = param.wristLiftTime;
-    float t_stay = param.wristStayTime;
-    static float t_release = param.wristReleaseTime;
-    float t_contact = t2 - t1;
-    float intensityFactor = 0.4 * intensity + 0.2; // 1 : 약하게   2 : 기본    3 : 강하게
-    float wristLiftAngle = param.wristLiftAngle * intensityFactor + (param.wristLiftAngle * 0.2  * targetChangeFlag);
-
-    static bool hittingTimeCheck = true;
-
-    MatrixXd A;
-    MatrixXd b;
-    MatrixXd A_1;
-    MatrixXd sol;
-
-    if(hitting)
-    {
-        if (hittingTimeCheck)
-        {
-            t_hitting = t;
-            hittingTimeCheck = false;
-        }
-
-        if (state == 1)
-        {
-            // Contact - Stay
-            A.resize(4, 4);
-            b.resize(4, 1);
-            if (t <= t_release)
-            {
-                if (t_hitting > t_press)
-                {
-                    A << 1, 0, 0, 0,
-                    1, t_press, t_press * t_press, t_press * t_press * t_press,
-                    0, 1, 0, 0,
-                    0, 1, 2 * t_press, 3 * t_press * t_press;
-                    b << hittingPos, param.wristStayAngle, 0, 0;
-                }
-                else
-                {
-                    t_release = t_hitting + t_press;
-                    A << 1, t_hitting, t_hitting * t_hitting, t_hitting * t_hitting * t_hitting,
-                    1, t_release, t_release * t_release, t_release * t_release * t_release,
-                    0, 1, 2 * t_hitting, 3 * t_hitting * t_hitting,
-                    0, 1, 2 * t_release, 3 * t_release * t_release;
-                    b << hittingPos, param.wristStayAngle, 0, 0;
-                }
-                A_1 = A.inverse();
-                sol = A_1 * b;
-                wrist_q = sol(0, 0) + sol(1, 0) * t + sol(2, 0) * t * t + sol(3, 0) * t * t * t;
-            }
-            else
-            {
-                hitting = false;
-                hittingTimeCheck = true;
-                wrist_q = param.wristStayAngle;
-            }
-        }
-        else if (state == 2)
-        {
-            wrist_q = hittingPos;
-        }
-        else if (state == 3)
-        {
-            // Contact - Lift - Hit
-            if (t < t_stay)
-            {
-                A.resize(4, 4);
-                b.resize(4, 1);
-                if (t_hitting > t_stay)
-                {
-                    A << 1, 0, 0, 0,
-                    1, t_stay, t_stay * t_stay, t_stay * t_stay * t_stay,
-                    0, 1, 0, 0,
-                    0, 1, 2 * t_stay, 3 * t_stay * t_stay;
-                    b << hittingPos, wristLiftAngle, 0, 0;
-                }
-                else
-                {
-                    A << 1, t_hitting, t_hitting * t_hitting, t_hitting * t_hitting * t_hitting,
-                    1, t_stay, t_stay * t_stay, t_stay * t_stay * t_stay,
-                    0, 1, 2 * t_hitting, 3 * t_hitting * t_hitting,
-                    0, 1, 2 * t_stay, 3 * t_stay * t_stay;
-                    b << hittingPos, wristLiftAngle, 0, 0;
-                }
-                A_1 = A.inverse();
-                sol = A_1 * b;
-                wrist_q = sol(0, 0) + sol(1, 0) * t + sol(2, 0) * t * t + sol(3, 0) * t * t * t;
-            }
-            else if (t < t_lift)
-            {
-                hitting = false;
-                hittingTimeCheck = true;
-                wrist_q = wristLiftAngle;
-            }
-            else if (t <= t_contact)
-            {
-                wrist_q = hittingPos;
-            }
-        }
-    }
-    else
-    {
-        if (state == 0)
-        {
-            // Stay
-            wrist_q = param.wristStayAngle;
-        }
-        else if (state == 1)
-        {
-            t_release = t_hitting + t_press;
-            // Contact - Stay
-            A.resize(3, 3);
-            b.resize(3, 1);
-            if (t < t_press)
-            {
-                A << 1, 0, 0,
-                1, t_press, t_press * t_press,
-                0, 1, 2 * t_press;
-                b << 0, param.wristContactAngle, 0;
-                A_1 = A.inverse();
-                sol = A_1 * b;
-                wrist_q = sol(0, 0) + sol(1, 0) * t + sol(2, 0) * t * t;
-                
-            }
-            else if (t <= t_release)
-            {
-                A.resize(4, 4);
-                b.resize(4, 1);
-                A << 1, t_press, t_press * t_press, t_press * t_press * t_press,
-                    1, t_release, t_release * t_release, t_release * t_release * t_release,
-                    0, 1, 2 * t_press, 3 * t_press * t_press,
-                    0, 1, 2 * t_release, 3 * t_release * t_release;
-                b << param.wristContactAngle, param.wristStayAngle, 0, 0;
-                A_1 = A.inverse();
-                sol = A_1 * b;
-                wrist_q = sol(0, 0) + sol(1, 0) * t + sol(2, 0) * t * t + sol(3, 0) * t * t * t;
-            }
-            else
-            {
-                wrist_q = param.wristStayAngle;
-            }
-        }
-        else if (state == 2)
-        {
-            
-            // Stay - Lift - Hit
-            if (t < t_stay)
-            {
-                // Stay
-                wrist_q = param.wristStayAngle;
-            }
-            else if (t < t_lift)
-            {
-                A.resize(4, 4);
-                b.resize(4, 1);
-                A << 1, t_stay, t_stay * t_stay, t_stay * t_stay * t_stay,
-                    1, t_lift, t_lift * t_lift, t_lift * t_lift * t_lift,
-                    0, 1, 2 * t_stay, 3 * t_stay * t_stay,
-                    0, 1, 2 * t_lift, 3 * t_lift * t_lift;
-                b << param.wristStayAngle, wristLiftAngle, 0, 0;
-                A_1 = A.inverse();
-                sol = A_1 * b;
-                wrist_q = sol(0, 0) + sol(1, 0) * t + sol(2, 0) * t * t + sol(3, 0) * t * t * t;
-            }
-            else if (t <= t_contact)
-            {
-                canManager.isHitR = true;
-                A.resize(3, 3);
-                b.resize(3, 1);
-                A << 1, t_lift, t_lift * t_lift,
-                    1, t_contact, t_contact * t_contact,
-                    0, 1, 2 * t_lift;
-                b << wristLiftAngle, 0, 0;
-                A_1 = A.inverse();
-                sol = A_1 * b;
-                wrist_q = sol(0, 0) + sol(1, 0) * t + sol(2, 0) * t * t;
-            }
-            else
-            {
-                wrist_q = 0.0;
-            }
-        }
-        else if (state == 3)
-        {
-            // Contact - Lift - Hit
-            if (t < t_press)
-            {
-                A.resize(3, 3);
-                b.resize(3, 1);
-                A << 1, 0, 0,
-                    1, t_press, t_press * t_press,
-                    0, 1, 2 * t_press;
-                b << 0, param.wristContactAngle, 0;
-                A_1 = A.inverse();
-                sol = A_1 * b;
-                wrist_q = sol(0, 0) + sol(1, 0) * t + sol(2, 0) * t * t;
-            }
-            else if (t < t_stay)
-            {
-                A.resize(4, 4);
-                b.resize(4, 1);
-                A << 1, t_press, t_press * t_press, t_press * t_press * t_press,
-                    1, t_stay, t_stay * t_stay, t_stay * t_stay * t_stay,
-                    0, 1, 2 * t_press, 3 * t_press * t_press,
-                    0, 1, 2 * t_stay, 3 * t_stay * t_stay;
-                b << param.wristContactAngle, wristLiftAngle, 0, 0;
-                A_1 = A.inverse();
-                sol = A_1 * b;
-                wrist_q = sol(0, 0) + sol(1, 0) * t + sol(2, 0) * t * t + sol(3, 0) * t * t * t;
-            }
-            else if (t < t_lift)
-            {
-                // Stay
-                wrist_q = wristLiftAngle;
-            }
-            else if (t <= t_contact)
-            {
-                canManager.isHitR = true;
-                A.resize(3, 3);
-                b.resize(3, 1);
-                A << 1, t_lift, t_lift * t_lift,
-                    1, t_contact, t_contact * t_contact,
-                    0, 1, 2 * t_lift;
-                b << wristLiftAngle, 0, 0;
-                A_1 = A.inverse();
-                sol = A_1 * b;
-                wrist_q = sol(0, 0) + sol(1, 0) * t + sol(2, 0) * t * t;
-            }
-            else
-            {
-                wrist_q = 0.0;
-            }
-        }
-    }
-
-    return wrist_q;
-}
-
-float PathManager::makeWristAngle_TEST_R_CST(float t1, float t2, float t, int state, HitParameter param, int intensity, bool targetChangeFlag, bool &hitting, float hittingPos, bool wristDir)
-{
-    static float t_hitting = 0.0;
-    float wrist_q = 0.0;
-    float t_press = param.wristContactTime * releaseTimeVal;
-    float t_lift = param.wristLiftTime;
-    float t_stay = param.wristStayTime;
-    static float t_release = param.wristReleaseTime;
-    float t_contact = t2 - t1;
-    float intensityFactor = 0.4 * intensity + 0.2; // 1 : 약하게   2 : 기본    3 : 강하게
-    float wristLiftAngle = param.wristLiftAngle * intensityFactor + (param.wristLiftAngle * 0.2  * targetChangeFlag);
-
-    static bool hittingTimeCheck = true;
-
-    MatrixXd A;
-    MatrixXd b;
-    MatrixXd A_1;
-    MatrixXd sol;
-
-    if(hitting)
-    {
-        if (hittingTimeCheck)
-        {
-            t_hitting = t;
-            hittingTimeCheck = false;
-            canManager.isCSTR = false;
-        }
-
-        if (state == 1)
-        {
-            // Contact - Stay
-            A.resize(3, 3);
-            b.resize(3, 1);
-            if (t <= t_release)
-            {
-                if (t_hitting > t_press)
-                {
-                    wrist_q = param.wristStayAngle;
-                }
-                else
-                {
-                    t_release = t_hitting + t_press;
-                    A << 1, t_hitting, t_hitting * t_hitting,
-                    1, t_release, t_release * t_release,
-                    0, 1, 2 * t_release;
-                    b << hittingPos, param.wristStayAngle, 0;
-
-                    A_1 = A.inverse();
-                    sol = A_1 * b;
-                    wrist_q = sol(0, 0) + sol(1, 0) * t + sol(2, 0) * t * t;
-
-                }
-            }
-            else
-            {
-                hitting = false;
-                hittingTimeCheck = true;
-                wrist_q = param.wristStayAngle;
-            }
-        }
-        else if (state == 2)
-        {
-            if(t_hitting == t_contact)
-            {
-                wrist_q = hittingPos;
-            }
-            else
-            {
-                A.resize(3, 3);
-                b.resize(3, 1);
-                A << 1, t_hitting, t_hitting * t_hitting,
-                1, t_contact, t_contact * t_contact,
-                0, 1, 2 * t_contact;
-                b << hittingPos, param.wristStayAngle, 0;
-                   
-            }
-        }   
-        else if (state == 3)
-        {
-            // Contact - Lift - Hit
-            if (t < t_stay)
-            {
-                A.resize(4, 4);
-                b.resize(4, 1);
-                if (t_hitting > t_stay)
-                {
-                    A << 1, 0, 0, 0,
-                    1, t_stay, t_stay * t_stay, t_stay * t_stay * t_stay,
-                    0, 1, 0, 0,
-                    0, 1, 2 * t_stay, 3 * t_stay * t_stay;
-                    b << hittingPos, wristLiftAngle, 0, 0;
-                }
-                else
-                {
-                    A << 1, t_hitting, t_hitting * t_hitting, t_hitting * t_hitting * t_hitting,
-                    1, t_stay, t_stay * t_stay, t_stay * t_stay * t_stay,
-                    0, 1, 2 * t_hitting, 3 * t_hitting * t_hitting,
-                    0, 1, 2 * t_stay, 3 * t_stay * t_stay;
-                    b << hittingPos, wristLiftAngle, 0, 0;
-                }
-                A_1 = A.inverse();
-                sol = A_1 * b;
-                wrist_q = sol(0, 0) + sol(1, 0) * t + sol(2, 0) * t * t + sol(3, 0) * t * t * t;
-            }
-            else if (t < t_lift)
-            {
-                hitting = false;
-                hittingTimeCheck = true;
-                wrist_q = wristLiftAngle;
-            }
-            else if (t <= t_contact)
-            {
-                wrist_q = hittingPos;
-            }
-        }
-    }
-    else if (!hitting && !canManager.isCSTR)
-    {
-        if (state == 0)
-        {
-            // Stay
-            wrist_q = param.wristStayAngle;
-        }
-        else if (state == 1)
-        {
-            wrist_q = param.wristStayAngle;
-        }
-        else if (state == 2)
-        {
-            
-            // Stay - Lift - Hit
-            if (t < t_stay)
-            {
-                // Stay
-                wrist_q = param.wristStayAngle;
-            }
-            else if (t < t_lift)
-            {
-                A.resize(4, 4);
-                b.resize(4, 1);
-                A << 1, t_stay, t_stay * t_stay, t_stay * t_stay * t_stay,
-                    1, t_lift, t_lift * t_lift, t_lift * t_lift * t_lift,
-                    0, 1, 2 * t_stay, 3 * t_stay * t_stay,
-                    0, 1, 2 * t_lift, 3 * t_lift * t_lift;
-                b << param.wristStayAngle, wristLiftAngle, 0, 0;
-                A_1 = A.inverse();
-                sol = A_1 * b;
-                wrist_q = sol(0, 0) + sol(1, 0) * t + sol(2, 0) * t * t + sol(3, 0) * t * t * t;
-            }
-            else if (t <= t_contact)
-            {
-                canManager.isHitR = true;
-                canManager.isCSTR = true;
-            }
-        }
-        else if (state == 3)
-        {
-            // Contact - Lift - Hit
-            if (t < t_press)
-            {
-                A.resize(3, 3);
-                b.resize(3, 1);
-                A << 1, 0, 0,
-                    1, t_press, t_press * t_press,
-                    0, 1, 2 * t_press;
-                b << 0, param.wristContactAngle, 0;
-                A_1 = A.inverse();
-                sol = A_1 * b;
-                wrist_q = sol(0, 0) + sol(1, 0) * t + sol(2, 0) * t * t;
-            }
-            else if (t < t_stay)
-            {
-                A.resize(4, 4);
-                b.resize(4, 1);
-                A << 1, t_press, t_press * t_press, t_press * t_press * t_press,
-                    1, t_stay, t_stay * t_stay, t_stay * t_stay * t_stay,
-                    0, 1, 2 * t_press, 3 * t_press * t_press,
-                    0, 1, 2 * t_stay, 3 * t_stay * t_stay;
-                b << param.wristContactAngle, wristLiftAngle, 0, 0;
-                A_1 = A.inverse();
-                sol = A_1 * b;
-                wrist_q = sol(0, 0) + sol(1, 0) * t + sol(2, 0) * t * t + sol(3, 0) * t * t * t;
-            }
-            else if (t < t_lift)
-            {
-                // Stay
-                wrist_q = wristLiftAngle;
-            }
-            else if (t <= t_contact)
-            {
-                canManager.isHitR = true;
-                canManager.isCSTR = true;
-            }
-        }
-    }
-
-    return wrist_q;
-}
-
-float PathManager::makeWristAngle_TEST_L(float t1, float t2, float t, int state, HitParameter param, int intensity, bool targetChangeFlag, bool &hitting, float hittingPos, bool wristDir)
-{
-    static float t_hitting = 0.0;
-    float wrist_q = 0.0;
-    float t_press = param.wristContactTime;
-    float t_lift = param.wristLiftTime;
-    float t_stay = param.wristStayTime;
-    float t_release = param.wristReleaseTime;
-    float t_contact = t2 - t1;
-    float intensityFactor = 0.4 * intensity + 0.2; // 1 : 약하게   2 : 기본    3 : 강하게
-    float wristLiftAngle = param.wristLiftAngle * intensityFactor + (param.wristLiftAngle * 0.2  * targetChangeFlag);
-
-    static bool hittingTimeCheck = true;
-
-    MatrixXd A;
-    MatrixXd b;
-    MatrixXd A_1;
-    MatrixXd sol;
-
-    if(hitting)
-    {
-        if (hittingTimeCheck)
-        {
-            t_hitting = t;
-            hittingTimeCheck = false;
-        }
-
-        if (state == 1)
-        {
-            // Contact - Stay
-            A.resize(4, 4);
-            b.resize(4, 1);
-            if (t <= t_release)
-            {
-                if (t_hitting > t_release)
-                {
-                    A << 1, 0, 0, 0,
-                    1, t_release, t_release * t_release, t_release * t_release * t_release,
-                    0, 1, 0, 0,
-                    0, 1, 2 * t_release, 3 * t_release * t_release;
-                    b << hittingPos, param.wristStayAngle, 0, 0;
-                }
-                else
-                {
-                    A << 1, t_hitting, t_hitting * t_hitting, t_hitting * t_hitting * t_hitting,
-                    1, t_release, t_release * t_release, t_release * t_release * t_release,
-                    0, 1, 2 * t_hitting, 3 * t_hitting * t_hitting,
-                    0, 1, 2 * t_release, 3 * t_release * t_release;
-                    b << hittingPos, param.wristStayAngle, 0, 0;
-                }
-                A_1 = A.inverse();
-                sol = A_1 * b;
-                wrist_q = sol(0, 0) + sol(1, 0) * t + sol(2, 0) * t * t + sol(3, 0) * t * t * t;
-            }
-            else
-            {
-                hitting = false;
-                hittingTimeCheck = true;
-                wrist_q = param.wristStayAngle;
-            }
-        }
-        else if (state == 2)
-        {
-            wrist_q = hittingPos;
-        }
-        else if (state == 3)
-        {
-            // Contact - Lift - Hit
-            if (t < t_stay)
-            {
-                A.resize(4, 4);
-                b.resize(4, 1);
-                if (t_hitting > t_stay)
-                {
-                    A << 1, 0, 0, 0,
-                    1, t_stay, t_stay * t_stay, t_stay * t_stay * t_stay,
-                    0, 1, 0, 0,
-                    0, 1, 2 * t_stay, 3 * t_stay * t_stay;
-                    b << hittingPos, wristLiftAngle, 0, 0;
-                }
-                else
-                {
-                    A << 1, t_hitting, t_hitting * t_hitting, t_hitting * t_hitting * t_hitting,
-                    1, t_stay, t_stay * t_stay, t_stay * t_stay * t_stay,
-                    0, 1, 2 * t_hitting, 3 * t_hitting * t_hitting,
-                    0, 1, 2 * t_stay, 3 * t_stay * t_stay;
-                    b << hittingPos, wristLiftAngle, 0, 0;
-                }
-                A_1 = A.inverse();
-                sol = A_1 * b;
-                wrist_q = sol(0, 0) + sol(1, 0) * t + sol(2, 0) * t * t + sol(3, 0) * t * t * t;
-            }
-            else if (t < t_lift)
-            {
-                hitting = false;
-                hittingTimeCheck = true;
-                wrist_q = wristLiftAngle;
-            }
-            else if (t <= t_contact)
-            {
-                wrist_q = hittingPos;
-            }
-        }
-    }
-    else
-    {
-        if (state == 0)
-        {
-            // Stay
-            wrist_q = param.wristStayAngle;
-        }
-        else if (state == 1)
-        {
-            // Contact - Stay
-            A.resize(3, 3);
-            b.resize(3, 1);
-            if (t < t_press)
-            {
-                A << 1, 0, 0,
-                1, t_press, t_press * t_press,
-                0, 1, 2 * t_press;
-                b << 0, param.wristContactAngle, 0;
-                A_1 = A.inverse();
-                sol = A_1 * b;
-                wrist_q = sol(0, 0) + sol(1, 0) * t + sol(2, 0) * t * t;
-                
-            }
-            else if (t <= t_release)
-            {
-                A.resize(4, 4);
-                b.resize(4, 1);
-                A << 1, t_press, t_press * t_press, t_press * t_press * t_press,
-                    1, t_release, t_release * t_release, t_release * t_release * t_release,
-                    0, 1, 2 * t_press, 3 * t_press * t_press,
-                    0, 1, 2 * t_release, 3 * t_release * t_release;
-                b << param.wristContactAngle, param.wristStayAngle, 0, 0;
-                A_1 = A.inverse();
-                sol = A_1 * b;
-                wrist_q = sol(0, 0) + sol(1, 0) * t + sol(2, 0) * t * t + sol(3, 0) * t * t * t;
-            }
-            else
-            {
-                wrist_q = param.wristStayAngle;
-            }
-        }
-        else if (state == 2)
-        {
-            
-            // Stay - Lift - Hit
-            if (t < t_stay)
-            {
-                // Stay
-                wrist_q = param.wristStayAngle;
-            }
-            else if (t < t_lift)
-            {
-                A.resize(4, 4);
-                b.resize(4, 1);
-                A << 1, t_stay, t_stay * t_stay, t_stay * t_stay * t_stay,
-                    1, t_lift, t_lift * t_lift, t_lift * t_lift * t_lift,
-                    0, 1, 2 * t_stay, 3 * t_stay * t_stay,
-                    0, 1, 2 * t_lift, 3 * t_lift * t_lift;
-                b << param.wristStayAngle, wristLiftAngle, 0, 0;
-                A_1 = A.inverse();
-                sol = A_1 * b;
-                wrist_q = sol(0, 0) + sol(1, 0) * t + sol(2, 0) * t * t + sol(3, 0) * t * t * t;
-            }
-            else if (t <= t_contact)
-            {
-                canManager.isHitL = true;
-                A.resize(3, 3);
-                b.resize(3, 1);
-                A << 1, t_lift, t_lift * t_lift,
-                    1, t_contact, t_contact * t_contact,
-                    0, 1, 2 * t_lift;
-                b << wristLiftAngle, 0, 0;
-                A_1 = A.inverse();
-                sol = A_1 * b;
-                wrist_q = sol(0, 0) + sol(1, 0) * t + sol(2, 0) * t * t;
-            }
-            else
-            {
-                wrist_q = 0.0;
-            }
-        }
-        else if (state == 3)
-        {
-            // Contact - Lift - Hit
-            if (t < t_press)
-            {
-                A.resize(3, 3);
-                b.resize(3, 1);
-                A << 1, 0, 0,
-                    1, t_press, t_press * t_press,
-                    0, 1, 2 * t_press;
-                b << 0, param.wristContactAngle, 0;
-                A_1 = A.inverse();
-                sol = A_1 * b;
-                wrist_q = sol(0, 0) + sol(1, 0) * t + sol(2, 0) * t * t;
-            }
-            else if (t < t_stay)
-            {
-                A.resize(4, 4);
-                b.resize(4, 1);
-                A << 1, t_press, t_press * t_press, t_press * t_press * t_press,
-                    1, t_stay, t_stay * t_stay, t_stay * t_stay * t_stay,
-                    0, 1, 2 * t_press, 3 * t_press * t_press,
-                    0, 1, 2 * t_stay, 3 * t_stay * t_stay;
-                b << param.wristContactAngle, wristLiftAngle, 0, 0;
-                A_1 = A.inverse();
-                sol = A_1 * b;
-                wrist_q = sol(0, 0) + sol(1, 0) * t + sol(2, 0) * t * t + sol(3, 0) * t * t * t;
-            }
-            else if (t < t_lift)
-            {
-                // Stay
-                wrist_q = wristLiftAngle;
-            }
-            else if (t <= t_contact)
-            {
-                canManager.isHitL = true;
-                A.resize(3, 3);
-                b.resize(3, 1);
-                A << 1, t_lift, t_lift * t_lift,
-                    1, t_contact, t_contact * t_contact,
-                    0, 1, 2 * t_lift;
-                b << wristLiftAngle, 0, 0;
-                A_1 = A.inverse();
-                sol = A_1 * b;
-                wrist_q = sol(0, 0) + sol(1, 0) * t + sol(2, 0) * t * t;
-            }
-            else
-            {
-                wrist_q = 0.0;
-            }
-        }
-    }
-
-    return wrist_q;
-}
-
-float PathManager::makeWristAngle_TEST_L_Fast(float t1, float t2, float t, int state, HitParameter param, int intensity, bool targetChangeFlag, bool &hitting, float hittingPos, bool wristDir)
-{
-    static float t_hitting = 0.0;
-    float wrist_q = 0.0;
-    float t_press = param.wristContactTime * releaseTimeVal;
-    float t_lift = param.wristLiftTime;
-    float t_stay = param.wristStayTime;
-    static float t_release = param.wristReleaseTime;
-    float t_contact = t2 - t1;
-    float intensityFactor = 0.4 * intensity + 0.2; // 1 : 약하게   2 : 기본    3 : 강하게
-    float wristLiftAngle = param.wristLiftAngle * intensityFactor + (param.wristLiftAngle * 0.2  * targetChangeFlag);
-
-    static bool hittingTimeCheck = true;
-
-    MatrixXd A;
-    MatrixXd b;
-    MatrixXd A_1;
-    MatrixXd sol;
-
-    if(hitting)
-    {
-        if (hittingTimeCheck)
-        {
-            t_hitting = t;
-            hittingTimeCheck = false;
-        }
-
-        if (state == 1)
-        {
-            // Contact - Stay
-            A.resize(4, 4);
-            b.resize(4, 1);
-            if (t <= t_release)
-            {
-                if (t_hitting > t_press)
-                {
-                    A << 1, 0, 0, 0,
-                    1, t_press, t_press * t_press, t_press * t_press * t_press,
-                    0, 1, 0, 0,
-                    0, 1, 2 * t_press, 3 * t_press * t_press;
-                    b << hittingPos, param.wristStayAngle, 0, 0;
-                }
-                else
-                {
-                    t_release = t_hitting + t_press;
-                    A << 1, t_hitting, t_hitting * t_hitting, t_hitting * t_hitting * t_hitting,
-                    1, t_release, t_release * t_release, t_release * t_release * t_release,
-                    0, 1, 2 * t_hitting, 3 * t_hitting * t_hitting,
-                    0, 1, 2 * t_release, 3 * t_release * t_release;
-                    b << hittingPos, param.wristStayAngle, 0, 0;
-                }
-                A_1 = A.inverse();
-                sol = A_1 * b;
-                wrist_q = sol(0, 0) + sol(1, 0) * t + sol(2, 0) * t * t + sol(3, 0) * t * t * t;
-            }
-            else
-            {
-                hitting = false;
-                hittingTimeCheck = true;
-                wrist_q = param.wristStayAngle;
-            }
-        }
-        else if (state == 2)
-        {
-            wrist_q = hittingPos;
-        }
-        else if (state == 3)
-        {
-            // Contact - Lift - Hit
-            if (t < t_stay)
-            {
-                A.resize(4, 4);
-                b.resize(4, 1);
-                if (t_hitting > t_stay)
-                {
-                    A << 1, 0, 0, 0,
-                    1, t_stay, t_stay * t_stay, t_stay * t_stay * t_stay,
-                    0, 1, 0, 0,
-                    0, 1, 2 * t_stay, 3 * t_stay * t_stay;
-                    b << hittingPos, wristLiftAngle, 0, 0;
-                }
-                else
-                {
-                    A << 1, t_hitting, t_hitting * t_hitting, t_hitting * t_hitting * t_hitting,
-                    1, t_stay, t_stay * t_stay, t_stay * t_stay * t_stay,
-                    0, 1, 2 * t_hitting, 3 * t_hitting * t_hitting,
-                    0, 1, 2 * t_stay, 3 * t_stay * t_stay;
-                    b << hittingPos, wristLiftAngle, 0, 0;
-                }
-                A_1 = A.inverse();
-                sol = A_1 * b;
-                wrist_q = sol(0, 0) + sol(1, 0) * t + sol(2, 0) * t * t + sol(3, 0) * t * t * t;
-            }
-            else if (t < t_lift)
-            {
-                hitting = false;
-                hittingTimeCheck = true;
-                wrist_q = wristLiftAngle;
-            }
-            else if (t <= t_contact)
-            {
-                wrist_q = hittingPos;
-            }
-        }
-    }
-    else
-    {
-        if (state == 0)
-        {
-            // Stay
-            wrist_q = param.wristStayAngle;
-        }
-        else if (state == 1)
-        {
-            t_release = t_hitting + t_press;
-            // Contact - Stay
-            A.resize(3, 3);
-            b.resize(3, 1);
-            if (t < t_press)
-            {
-                A << 1, 0, 0,
-                1, t_press, t_press * t_press,
-                0, 1, 2 * t_press;
-                b << 0, param.wristContactAngle, 0;
-                A_1 = A.inverse();
-                sol = A_1 * b;
-                wrist_q = sol(0, 0) + sol(1, 0) * t + sol(2, 0) * t * t;
-                
-            }
-            else if (t <= t_release)
-            {
-                A.resize(4, 4);
-                b.resize(4, 1);
-                A << 1, t_press, t_press * t_press, t_press * t_press * t_press,
-                    1, t_release, t_release * t_release, t_release * t_release * t_release,
-                    0, 1, 2 * t_press, 3 * t_press * t_press,
-                    0, 1, 2 * t_release, 3 * t_release * t_release;
-                b << param.wristContactAngle, param.wristStayAngle, 0, 0;
-                A_1 = A.inverse();
-                sol = A_1 * b;
-                wrist_q = sol(0, 0) + sol(1, 0) * t + sol(2, 0) * t * t + sol(3, 0) * t * t * t;
-            }
-            else
-            {
-                wrist_q = param.wristStayAngle;
-            }
-        }
-        else if (state == 2)
-        {
-            
-            // Stay - Lift - Hit
-            if (t < t_stay)
-            {
-                // Stay
-                wrist_q = param.wristStayAngle;
-            }
-            else if (t < t_lift)
-            {
-                A.resize(4, 4);
-                b.resize(4, 1);
-                A << 1, t_stay, t_stay * t_stay, t_stay * t_stay * t_stay,
-                    1, t_lift, t_lift * t_lift, t_lift * t_lift * t_lift,
-                    0, 1, 2 * t_stay, 3 * t_stay * t_stay,
-                    0, 1, 2 * t_lift, 3 * t_lift * t_lift;
-                b << param.wristStayAngle, wristLiftAngle, 0, 0;
-                A_1 = A.inverse();
-                sol = A_1 * b;
-                wrist_q = sol(0, 0) + sol(1, 0) * t + sol(2, 0) * t * t + sol(3, 0) * t * t * t;
-            }
-            else if (t <= t_contact)
-            {
-                canManager.isHitL = true;
-                A.resize(3, 3);
-                b.resize(3, 1);
-                A << 1, t_lift, t_lift * t_lift,
-                    1, t_contact, t_contact * t_contact,
-                    0, 1, 2 * t_lift;
-                b << wristLiftAngle, 0, 0;
-                A_1 = A.inverse();
-                sol = A_1 * b;
-                wrist_q = sol(0, 0) + sol(1, 0) * t + sol(2, 0) * t * t;
-            }
-            else
-            {
-                wrist_q = 0.0;
-            }
-        }
-        else if (state == 3)
-        {
-            // Contact - Lift - Hit
-            if (t < t_press)
-            {
-                A.resize(3, 3);
-                b.resize(3, 1);
-                A << 1, 0, 0,
-                    1, t_press, t_press * t_press,
-                    0, 1, 2 * t_press;
-                b << 0, param.wristContactAngle, 0;
-                A_1 = A.inverse();
-                sol = A_1 * b;
-                wrist_q = sol(0, 0) + sol(1, 0) * t + sol(2, 0) * t * t;
-            }
-            else if (t < t_stay)
-            {
-                A.resize(4, 4);
-                b.resize(4, 1);
-                A << 1, t_press, t_press * t_press, t_press * t_press * t_press,
-                    1, t_stay, t_stay * t_stay, t_stay * t_stay * t_stay,
-                    0, 1, 2 * t_press, 3 * t_press * t_press,
-                    0, 1, 2 * t_stay, 3 * t_stay * t_stay;
-                b << param.wristContactAngle, wristLiftAngle, 0, 0;
-                A_1 = A.inverse();
-                sol = A_1 * b;
-                wrist_q = sol(0, 0) + sol(1, 0) * t + sol(2, 0) * t * t + sol(3, 0) * t * t * t;
-            }
-            else if (t < t_lift)
-            {
-                // Stay
-                wrist_q = wristLiftAngle;
-            }
-            else if (t <= t_contact)
-            {
-                canManager.isHitL = true;
-                A.resize(3, 3);
-                b.resize(3, 1);
-                A << 1, t_lift, t_lift * t_lift,
-                    1, t_contact, t_contact * t_contact,
-                    0, 1, 2 * t_lift;
-                b << wristLiftAngle, 0, 0;
-                A_1 = A.inverse();
-                sol = A_1 * b;
-                wrist_q = sol(0, 0) + sol(1, 0) * t + sol(2, 0) * t * t;
-            }
-            else
-            {
-                wrist_q = 0.0;
-            }
-        }
-    }
-
-    return wrist_q;
-}
-
-float PathManager::makeWristAngle_TEST_L_CST(float t1, float t2, float t, int state, HitParameter param, int intensity, bool targetChangeFlag, bool &hitting, float hittingPos, bool wristDir)
-{
-    static float t_hitting = 0.0;
-    float wrist_q = 0.0;
-    float t_press = param.wristContactTime * releaseTimeVal;
-    float t_lift = param.wristLiftTime;
-    float t_stay = param.wristStayTime;
-    static float t_release = param.wristReleaseTime;
-    float t_contact = t2 - t1;
-    float intensityFactor = 0.4 * intensity + 0.2; // 1 : 약하게   2 : 기본    3 : 강하게
-    float wristLiftAngle = param.wristLiftAngle * intensityFactor + (param.wristLiftAngle * 0.2  * targetChangeFlag);
-
-    static bool hittingTimeCheck = true;
-
-    MatrixXd A;
-    MatrixXd b;
-    MatrixXd A_1;
-    MatrixXd sol;
-
-    if(hitting)
-    {
-        if (hittingTimeCheck)
-        {
-            t_hitting = t;
-            hittingTimeCheck = false;
-            canManager.isCSTL = false;
-        }
-
-        if (state == 1)
-        {
-            A.resize(3, 3);
-            b.resize(3, 1);
-            // Contact - Stay
-            if (t <= t_release)
-            {
-                if (t_hitting > t_press)
-                {
-                    wrist_q = param.wristStayAngle;
-                }
-                else
-                {
-                    t_release = t_hitting + t_press;
-                    A << 1, t_hitting, t_hitting * t_hitting,
-                    1, t_release, t_release * t_release,
-                    0, 1, 2 * t_release;
-                    b << hittingPos, param.wristStayAngle, 0;
-
-                    A_1 = A.inverse();
-                    sol = A_1 * b;
-                    wrist_q = sol(0, 0) + sol(1, 0) * t + sol(2, 0) * t * t;
-                }
-            }
-            else
-            {
-                hitting = false;
-                hittingTimeCheck = true;
-                wrist_q = param.wristStayAngle;
-            }
-        }
-        else if (state == 2)
-        {
-            if(t_hitting == t_contact)
-            {
-                wrist_q = hittingPos;
-            }
-            else
-            {
-                A.resize(3, 3);
-                b.resize(3, 1);
-                A << 1, t_hitting, t_hitting * t_hitting,
-                1, t_contact, t_contact * t_contact,
-                0, 1, 2 * t_contact;
-                b << hittingPos, param.wristStayAngle, 0;
-                
-                A_1 = A.inverse();
-                sol = A_1 * b;
-                wrist_q = sol(0, 0) + sol(1, 0) * t + sol(2, 0) * t * t;
-                cout << state << "\n";
-                cout << t_hitting << "\n";
-                cout << A << "\n";
-                cout << b << "\n";
-                cout << A_1 << "\n";
-                cout << sol << "\n";
-                cout << "\n" << "\n";
-
-                if (A.determinant() == 0) {
-                std::cerr << "Error: Matrix A is singular!" << std::endl;
-                sleep(5);
-                return -1;
-                }       
-            }
-        }
-        else if (state == 3)
-        {
-            // Contact - Lift - Hit
-            if (t < t_stay)
-            {
-                A.resize(4, 4);
-                b.resize(4, 1);
-                if (t_hitting > t_stay)
-                {
-                    A << 1, 0, 0, 0,
-                    1, t_stay, t_stay * t_stay, t_stay * t_stay * t_stay,
-                    0, 1, 0, 0,
-                    0, 1, 2 * t_stay, 3 * t_stay * t_stay;
-                    b << hittingPos, wristLiftAngle, 0, 0;
-                }
-                else
-                {
-                    A << 1, t_hitting, t_hitting * t_hitting, t_hitting * t_hitting * t_hitting,
-                    1, t_stay, t_stay * t_stay, t_stay * t_stay * t_stay,
-                    0, 1, 2 * t_hitting, 3 * t_hitting * t_hitting,
-                    0, 1, 2 * t_stay, 3 * t_stay * t_stay;
-                    b << hittingPos, wristLiftAngle, 0, 0;
-                }
-                A_1 = A.inverse();
-                sol = A_1 * b;
-                wrist_q = sol(0, 0) + sol(1, 0) * t + sol(2, 0) * t * t + sol(3, 0) * t * t * t;
-            }
-            else if (t < t_lift)
-            {
-                hitting = false;
-                hittingTimeCheck = true;
-                wrist_q = wristLiftAngle;
-            }
-            else if (t <= t_contact)    // 여기 나중에 수정하기
-            {
-                wrist_q = hittingPos;
-            }
-        }
-    }
-    else if (!hitting && !canManager.isCSTL)
-    {
-        if (state == 0)
-        {
-            // Stay
-            wrist_q = param.wristStayAngle;
-        }
-        else if (state == 1)
-        {
-            wrist_q = param.wristStayAngle;
-        }
-        else if (state == 2)
-        {
-            
-            // Stay - Lift - Hit
-            if (t < t_stay)
-            {
-                // Stay
-                wrist_q = param.wristStayAngle;
-            }
-            else if (t < t_lift)
-            {
-                A.resize(4, 4);
-                b.resize(4, 1);
-                A << 1, t_stay, t_stay * t_stay, t_stay * t_stay * t_stay,
-                    1, t_lift, t_lift * t_lift, t_lift * t_lift * t_lift,
-                    0, 1, 2 * t_stay, 3 * t_stay * t_stay,
-                    0, 1, 2 * t_lift, 3 * t_lift * t_lift;
-                b << param.wristStayAngle, wristLiftAngle, 0, 0;
-                A_1 = A.inverse();
-                sol = A_1 * b;
-                wrist_q = sol(0, 0) + sol(1, 0) * t + sol(2, 0) * t * t + sol(3, 0) * t * t * t;
-            }
-            else if (t <= t_contact)
-            {
-                canManager.isHitL = true;
-                canManager.isCSTL = true;
-            }
-        }
-        else if (state == 3)
-        {
-            // Contact - Lift - Hit
-            if (t < t_press)
-            {
-                A.resize(3, 3);
-                b.resize(3, 1);
-                A << 1, 0, 0,
-                    1, t_press, t_press * t_press,
-                    0, 1, 2 * t_press;
-                b << 0, param.wristContactAngle, 0;
-                A_1 = A.inverse();
-                sol = A_1 * b;
-                wrist_q = sol(0, 0) + sol(1, 0) * t + sol(2, 0) * t * t;
-            }
-            else if (t < t_stay)
-            {
-                A.resize(4, 4);
-                b.resize(4, 1);
-                A << 1, t_press, t_press * t_press, t_press * t_press * t_press,
-                    1, t_stay, t_stay * t_stay, t_stay * t_stay * t_stay,
-                    0, 1, 2 * t_press, 3 * t_press * t_press,
-                    0, 1, 2 * t_stay, 3 * t_stay * t_stay;
-                b << param.wristContactAngle, wristLiftAngle, 0, 0;
-                A_1 = A.inverse();
-                sol = A_1 * b;
-                wrist_q = sol(0, 0) + sol(1, 0) * t + sol(2, 0) * t * t + sol(3, 0) * t * t * t;
-            }
-            else if (t < t_lift)
-            {
-                // Stay
-                wrist_q = wristLiftAngle;
-            }
-            else if (t <= t_contact)
-            {
-                canManager.isHitL = true;
-                canManager.isCSTL = true;
-            }
-        }
-    }
-
-    return wrist_q;
-}
-
-float PathManager::makeElbowAngle(float t1, float t2, float t, int state, HitParameter param, int intensity, bool targetChangeFlag)
-{
-    float elbow_q = 0.0;
-
-    float t_lift = param.elbowLiftTime;
-    float t_stay = param.elbowStayTime;
-    float t_hit = t2 - t1;
-    float intensityFactor = 0.4 * intensity + 0.2; // 1 : 약하게   2 : 기본    3 : 강하게
-    float elbowLiftAngle = param.elbowLiftAngle * intensityFactor + (param.elbowLiftAngle * 0.2 * targetChangeFlag);
-
-    MatrixXd A;
-    MatrixXd b;
-    MatrixXd A_1;
-    MatrixXd sol;
-
-    if (state == 0)
-    {
-        // Stay
-        elbow_q = param.elbowStayAngle;
-    }
-    else if (state == 1)
-    {
-        // Contact - Stay
-        if (t < t_stay)
-        {
-            A.resize(4, 4);
-            b.resize(4, 1);
-
-            A << 1, 0, 0, 0,
-                1, t_stay, t_stay * t_stay, t_stay * t_stay * t_stay,
-                0, 1, 0, 0,
-                0, 1, 2 * t_stay, 3 * t_stay * t_stay;
-
-            b << 0, param.elbowStayAngle, 0, 0;
-
-            A_1 = A.inverse();
-            sol = A_1 * b;
-
-            elbow_q = sol(0, 0) + sol(1, 0) * t + sol(2, 0) * t * t + sol(3, 0) * t * t * t;
-        }
-        else
-        {
-            elbow_q = param.elbowStayAngle;
-        }
-    }
-    else if (state == 2)
-    {
-        // Stay - Lift - Hit
-        if (t < t_lift)
-        {
-            A.resize(4, 4);
-            b.resize(4, 1);
-
-            A << 1, 0, 0, 0,
-                1, t_lift, t_lift * t_lift, t_lift * t_lift * t_lift,
-                0, 1, 0, 0,
-                0, 1, 2 * t_lift, 3 * t_lift * t_lift;
-
-            b << param.elbowStayAngle, elbowLiftAngle, 0, 0;
-
-            A_1 = A.inverse();
-            sol = A_1 * b;
-
-            elbow_q = sol(0, 0) + sol(1, 0) * t + sol(2, 0) * t * t + sol(3, 0) * t * t * t;
-        }
-        else if (t < t_hit)
-        {
-            A.resize(4, 4);
-            b.resize(4, 1);
-
-            A << 1, t_lift, t_lift * t_lift, t_lift * t_lift * t_lift,
-                1, t_hit, t_hit * t_hit, t_hit * t_hit * t_hit,
-                0, 1, 2 * t_lift, 3 * t_lift * t_lift,
-                0, 1, 2 * t_hit, 3 * t_hit * t_hit;
-
-            b << elbowLiftAngle, 0, 0, 0;
-
-            A_1 = A.inverse();
-            sol = A_1 * b;
-
-            elbow_q = sol(0, 0) + sol(1, 0) * t + sol(2, 0) * t * t + sol(3, 0) * t * t * t;
-        }
-        else
-        {
-            elbow_q = 0.0;
-        }
-    }
-    else if (state == 3)
-    {
-        // Contact - Lift - Hit
-        if (t < t_lift)
-        {
-            A.resize(4, 4);
-            b.resize(4, 1);
-
-            A << 1, 0, 0, 0,
-                1, t_lift, t_lift * t_lift, t_lift * t_lift * t_lift,
-                0, 1, 0, 0,
-                0, 1, 2 * t_lift, 3 * t_lift * t_lift;
-
-            b << 0, elbowLiftAngle, 0, 0;
-
-            A_1 = A.inverse();
-            sol = A_1 * b;
-
-            elbow_q = sol(0, 0) + sol(1, 0) * t + sol(2, 0) * t * t + sol(3, 0) * t * t * t;
-        }
-        else if (t < t_hit)
-        {
-            A.resize(4, 4);
-            b.resize(4, 1);
-
-            A << 1, t_lift, t_lift * t_lift, t_lift * t_lift * t_lift,
-                1, t_hit, t_hit * t_hit, t_hit * t_hit * t_hit,
-                0, 1, 2 * t_lift, 3 * t_lift * t_lift,
-                0, 1, 2 * t_hit, 3 * t_hit * t_hit;
-
-            b << elbowLiftAngle, 0, 0, 0;
-
-            A_1 = A.inverse();
-            sol = A_1 * b;
-
-            elbow_q = sol(0, 0) + sol(1, 0) * t + sol(2, 0) * t * t + sol(3, 0) * t * t * t;
-        }
-        else
-        {
-            elbow_q = 0.0;
-        }
-    }
-
-    return elbow_q;
-}
-
-void PathManager::getHitAngle(VectorXd &q, int index)
-{
-    VectorXd add_qR;
-    VectorXd add_qL;
-    int stateR = lineData(0, 3);
-    int stateL = lineData(0, 4);
-    float n = lineData(0, 0);
-    float next_n = 0;
-    float dt = canManager.DTSECOND;
-    float t = n * dt;
-
-    if (i_wristR >= nnR)
-    {
-        i_wristR = 0;
-        if (readyRflag)
-            readyRflag = 0;
-    }
-    else if (readyRflag)
-    {
-        i_wristR++;
-    }
-    if (i_wristL >= nnL)
-    {
-        i_wristL = 0;
-        if (readyLflag)
-            readyLflag = 0;
-    }
-    else if (readyLflag)
-    {
-        i_wristL++;
-    }
-
-    if (lineData.rows() > 2)
-    {
-        next_n = lineData(1, 0);
-
-        if (n * dt <= 0.2)
-        {
-            if (lineData(0, 3) == 1 && !readyRflag)
-            {
-                nnR = n + next_n;
-                ntR = nnR * dt;
-                readyRflag = 1;
-                if (lineData(1, 3) == 0)
-                {
-                    next_stateR = lineData(0, 3);
-                    next_intensityR = lineData(0, 5);
-                }
-                else if (lineData(1, 3) == 2)
-                {
-                    next_stateR = 3;
-                    next_intensityR = lineData(1, 5);
-                }
-            }
-            if (lineData(0, 4) == 1 && !readyLflag)
-            {
-                nnL = n + next_n;
-                ntL = nnL * dt;
-                readyLflag = 1;
-                if (lineData(1, 4) == 0)
-                {
-                    next_stateL = lineData(0, 4);
-                    next_intensityL = lineData(0, 6);
-                }
-                else if (lineData(1, 4) == 2)
-                {
-                    next_stateL = 3;
-                    next_intensityL = lineData(1, 6);
-                }
-            }
-        }
-
-        if (next_n * dt <= 0.2)
-        {
-            if (lineData(1, 3) == 2 && !readyRflag)
-            {
-                nnR = n + next_n;
-                ntR = nnR * dt;
-                readyRflag = 1;
-                if (lineData(0, 3) == 0)
-                {
-                    next_stateR = lineData(1, 3);
-                    next_intensityR = lineData(1, 5);
-                }
-                else if (lineData(0, 3) == 1)
-                {
-                    next_stateR = 3;
-                    next_intensityR = lineData(1, 5);
-                }
-            }
-
-            if (lineData(1, 4) == 2 && !readyLflag)
-            {
-                nnL = n + next_n;
-                ntL = nnL * dt;
-                readyLflag = 1;
-                if (lineData(0, 4) == 0)
-                {
-                    next_stateL = lineData(1, 4);
-                    next_intensityL = lineData(1, 6);
-                }
-                else if (lineData(0, 4) == 1)
-                {
-                    next_stateL = 3;
-                    next_intensityL = lineData(1, 6);
-                }
-            }
-        }
-    }
-
-    if (readyRflag)
-    {
-        preParametersTmp = preParametersR;
-        add_qR = makeHitTrajetory(0, ntR, i_wristR * dt, next_stateR, next_intensityR, lineData(0, 8), 0);
-        preParametersR = preParametersTmp;
-    }
-    else
-    {
-        preParametersTmp = preParametersR;
-        add_qR = makeHitTrajetory(0, t, index * dt, stateR, lineData(0, 5), lineData(0, 8), 0);
-        preParametersR = preParametersTmp;
-    }
-
-    if (readyLflag)
-    {
-        preParametersTmp = preParametersL;
-        add_qL = makeHitTrajetory(0, ntL, i_wristL * dt, next_stateL, next_intensityL, lineData(0, 9), 1);
-        preParametersL = preParametersTmp;
-    }
-    else
-    {
-        preParametersTmp = preParametersL;
-        add_qL = makeHitTrajetory(0, t, index * dt, stateL, lineData(0, 6), lineData(0, 9), 1);
-        preParametersL = preParametersTmp;
-    }
-
-    q(4) += add_qR(1);
-    q(6) += add_qL(1);
-    q(7) += add_qR(0);
-    q(8) += add_qL(0);
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /*                                Solve IK                                    */
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2953,15 +1129,13 @@ void PathManager::solveIK(VectorXd &q, double q0)
     nextP = trajectoryQueue.front();
     trajectoryQueue.pop();
 
-    q = IKFixedWaist(nextP.endEffectorR, nextP.endEffectorL, q0, nextP.wristAngleR, nextP.wristAngleL);
+    q = IKFixedWaist(nextP.trajectoryR, nextP.trajectoryL, q0, nextP.wristAngleR, nextP.wristAngleL);
 }
 
 VectorXd PathManager::IKFixedWaist(VectorXd &pR, VectorXd &pL, double theta0, double theta7, double theta8)
 {
     VectorXd Qf;
     PartLength partLength;
-    q1_state[0] = q1_state[1];
-    q2_state[0] = q2_state[1];
 
     float XR = pR(0), YR = pR(1), ZR = pR(2);
     float XL = pL(0), YL = pL(1), ZL = pL(2);
@@ -3051,10 +1225,6 @@ VectorXd PathManager::IKFixedWaist(VectorXd &pR, VectorXd &pL, double theta0, do
     Qf.resize(9);
     Qf << theta0, theta1, theta2, theta3, theta4, theta5, theta6, theta7, theta8;
 
-    // cout << "\ntheta1: " << theta1 << "\ttheta2: " << theta2 << endl;
-    q1_state[1] = Qf(1);
-    q2_state[1] = Qf(2);
-
     return Qf;
 }
 
@@ -3062,20 +1232,26 @@ void PathManager::pushConmmandBuffer(VectorXd &Qi)
 {
     for (auto &entry : motors)
     {
+        int can_id = canManager.motorMapping[entry.first];
+
         if (std::shared_ptr<TMotor> tMotor = std::dynamic_pointer_cast<TMotor>(entry.second))
         {
             TMotorData newData;
-            newData.position = Qi[motorMapping[entry.first]];
-            newData.spd = 0;
-            newData.acl = 0;
+            newData.position = tMotor->jointAngleToMotorPosition(Qi[can_id]);
+            newData.mode = "Position";
             tMotor->commandBuffer.push(newData);
+
+            tMotor->finalMotorPosition = newData.position;
         }
         else if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(entry.second))
         {
             MaxonData newData;
-            newData.position = Qi[motorMapping[entry.first]];
-            newData.WristState = 0; // 토크 제어 시 WristState 사용
+            newData.position = maxonMotor->jointAngleToMotorPosition(Qi[can_id]);
+            newData.torque = 0;
+            newData.mode = "Position";
             maxonMotor->commandBuffer.push(newData);
+
+            maxonMotor->finalMotorPosition = newData.position;
         }
     }
 }
@@ -3131,243 +1307,88 @@ vector<double> PathManager::cubicInterpolation(const vector<double> &q, const ve
     return m;
 }
 
-std::pair<double, vector<double>> PathManager::getQ0t2(int mode)
+std::pair<double, vector<double>> PathManager::getQ0t2()
 {
     VectorXd t_getQ0t2;     // getQ0t2() 함수 안에서 사용할 시간 벡터
     double dt = canManager.DTSECOND;
     vector<double> m_interpolation = {0.0, 0.0};
     double q0_t2 = 0.0;
 
-    switch (mode)
+    // 기울기 평균 + interpolation
+    t_getQ0t2.resize(6);
+    for (int i = 0; i < 6; i++)
     {
-        case 0:
+        if (i == 0)
         {
-            // 중앙값
-            q0_t2 = 0.5*(lineData(1,1) + lineData(1,2));
-            break;
+            t_getQ0t2(i) = t0;
         }
-        case 1:
+        else if (i == 1)
         {
-            // 다익스트라
-            double dt = canManager.DTSECOND;
-            t_getQ0t2.resize(6);
-            for (int i = 0; i < 6; i++)
-            {
-                if (i == 0)
-                {
-                    t_getQ0t2(i) = t0;
-                }
-                else if (i == 1)
-                {
-                    t_getQ0t2(i) = 0;
-                }
-                else if (lineData.rows() >= i-1)
-                {
-                    t_getQ0t2(i) = t_getQ0t2(i-1) + lineData(i-2,0)*dt;
-                }
-                else
-                {
-                    t_getQ0t2(i) = t_getQ0t2(i-1) + 1;
-                }
-            }
-            vector<double> x_values = {t_getQ0t2(0), t_getQ0t2(1)}; // 현재 x값과 다음 x값
-            vector<pair<double, double>> y_ranges = {{lineData(0,1), lineData(0,2)}, {lineData(1,1), lineData(1,2)}};
-            
-            try {
-                if(status == 1){
-                    q0_t1 = nextq0_t1;
-                }
-                q0_t2 = dijkstra_top10_with_median(x_values, y_ranges, q0_t1);
-                
-                if(abs(q0_t2 - q0_t1) <= q0_threshold){ // qthreshold 이하라면 안 움직이고 이보다 큰 것들만 움직이게 함.
-                    if(q0_t1 >= lineData(1,1) && q0_t1 <= lineData(1,2)){
-                        nextq0_t1 = q0_t1;
-                        q0_t2 = q0_t1;
-                        status = 1;
-                    }
-                    else{
-                        status = 0;
-                    }
-                }
-                else{
-                    status = 0;
-                }
-
-            } catch (const exception& e) {
-                cerr << e.what() << endl;
-            }
-            break;
+            t_getQ0t2(i) = 0;
         }
-        case 2:
+        else if (lineData.rows() >= i-1)
         {
-            // 기울기 평균
-            t_getQ0t2.resize(4);
-            for (int i = 0; i < 4; i++)
-            {
-                if (i == 0)
-                {
-                    t_getQ0t2(i) = 0;
-                }
-                else if (lineData.rows() >= i)
-                {
-                    t_getQ0t2(i) = t_getQ0t2(i-1) + lineData(i-1,0)*dt;
-                }
-                else
-                {
-                    t_getQ0t2(i) = t_getQ0t2(i-1) + 1;
-                }
-            }
-
-            VectorXd a(3);
-            for (int i = 0; i < 3; i++)
-            {
-                if (lineData.rows() > i+1)
-                {
-                    a(i) = (lineData(i+1,7) - q0_t1) / (t_getQ0t2(i+1)-t_getQ0t2(0));
-                }
-                else
-                {
-                    a(i) = (t_getQ0t2(i)-t_getQ0t2(0)) / (t_getQ0t2(i+1)-t_getQ0t2(0)) * a(i-1);
-                }
-            }
-
-            q0_t2 = a.sum()/3.0*(t_getQ0t2(1)-t_getQ0t2(0)) + q0_t1;
-
-            if (q0_t2 <= lineData(1,1) || q0_t2 >= lineData(1,2))
-            {
-                q0_t2 = 0.5*lineData(1,1) + 0.5*lineData(1,2);
-            }
-
-            break;
+            t_getQ0t2(i) = t_getQ0t2(i-1) + lineData(i-2,0)*dt;
         }
-        case 3:
+        else
         {
-            // 다익스트라 + interpolation
-            double dt = canManager.DTSECOND;
-            t_getQ0t2.resize(6);
-            for (int i = 0; i < 6; i++)
-            {
-                if (i == 0)
-                {
-                    t_getQ0t2(i) = t0;
-                }
-                else if (i == 1)
-                {
-                    t_getQ0t2(i) = 0;
-                }
-                else if (lineData.rows() >= i-1)
-                {
-                    t_getQ0t2(i) = t_getQ0t2(i-1) + lineData(i-2,0)*dt;
-                }
-                else
-                {
-                    t_getQ0t2(i) = t_getQ0t2(i-1) + 1;
-                }
-            }
-
-            // 다익스트라 평균 (다음, 다다음, 다다다음 값까지 봄)
-            try {
-                vector<double> x_values1 = {t_getQ0t2(1), t_getQ0t2(2)}; // 현재 x값과 다음 x값
-                vector<pair<double, double>> y_ranges1 = {{lineData(0,1), lineData(0,2)}, {lineData(1,1), lineData(1,2)}};
-                q0_t2 = dijkstra_top10_with_median(x_values1, y_ranges1, q0_t1);
-
-                vector<double> x_values2 = {t_getQ0t2(2), t_getQ0t2(3)}; // 다음 x값과 다다음 x값
-                vector<pair<double, double>> y_ranges2 = {{lineData(1,1), lineData(1,2)}, {lineData(2,1), lineData(2,2)}};
-                double q0_t3 = dijkstra_top10_with_median(x_values2, y_ranges2, q0_t2);
-
-                // vector<double> x_values3 = {t_getQ0t2(3), t_getQ0t2(4)}; // 다다음 x값과 다다다음 x값
-                // vector<pair<double, double>> y_ranges3 = {{lineData(2,1), lineData(2,2)}, {lineData(3,1), lineData(3,2)}};
-                // double q0_t4 = dijkstra_top10_with_median(x_values3, y_ranges3, q0_t3);
-                
-                // Interpolation
-                vector<double> y = {q0_t0, q0_t1, q0_t2, q0_t3};
-                vector<double> x = {t_getQ0t2(0), t_getQ0t2(1), t_getQ0t2(2), t_getQ0t2(3)};
-                m_interpolation = cubicInterpolation(y, x);
-
-            } catch (const exception& e) {
-                cerr << e.what() << endl;
-            }
-            break;
+            t_getQ0t2(i) = t_getQ0t2(i-1) + 1;
         }
-        case 4:
+    }
+
+    // t1 -> t2
+    VectorXd a(3);
+    for (int i = 0; i < 3; i++)
+    {
+        if (lineData.rows() > i+1)
         {
-            // 기울기 평균 + interpolation
-            double dt = canManager.DTSECOND;
-            t_getQ0t2.resize(6);
-            for (int i = 0; i < 6; i++)
-            {
-                if (i == 0)
-                {
-                    t_getQ0t2(i) = t0;
-                }
-                else if (i == 1)
-                {
-                    t_getQ0t2(i) = 0;
-                }
-                else if (lineData.rows() >= i-1)
-                {
-                    t_getQ0t2(i) = t_getQ0t2(i-1) + lineData(i-2,0)*dt;
-                }
-                else
-                {
-                    t_getQ0t2(i) = t_getQ0t2(i-1) + 1;
-                }
-            }
+            a(i) = (lineData(i+1,7) - q0_t1) / (t_getQ0t2(i+2)-t_getQ0t2(1));
+        }
+        else
+        {
+            a(i) = (t_getQ0t2(i+1)-t_getQ0t2(1)) / (t_getQ0t2(i+2)-t_getQ0t2(1)) * a(i-1);
+        }
+    }
 
-            // t1 -> t2
-            VectorXd a(3);
-            for (int i = 0; i < 3; i++)
-            {
-                if (lineData.rows() > i+1)
-                {
-                    a(i) = (lineData(i+1,7) - q0_t1) / (t_getQ0t2(i+2)-t_getQ0t2(1));
-                }
-                else
-                {
-                    a(i) = (t_getQ0t2(i+1)-t_getQ0t2(1)) / (t_getQ0t2(i+2)-t_getQ0t2(1)) * a(i-1);
-                }
-            }
+    q0_t2 = a.sum()/3.0*(t_getQ0t2(2)-t_getQ0t2(1)) + q0_t1;
 
-            q0_t2 = a.sum()/3.0*(t_getQ0t2(2)-t_getQ0t2(1)) + q0_t1;
+    if (q0_t2 <= lineData(1,1) || q0_t2 >= lineData(1,2))
+    {
+        q0_t2 = 0.5*lineData(1,1) + 0.5*lineData(1,2);
+    }
 
-            if (q0_t2 <= lineData(1,1) || q0_t2 >= lineData(1,2))
+    // t2 -> t3
+    double q0_t3;
+    if (lineData.rows() == 2)
+    {
+        q0_t3 = q0_t2;
+    }
+    else
+    {
+        for (int i = 0; i < 3; i++)
+        {
+            if (lineData.rows() > i+2)
             {
-                q0_t2 = 0.5*lineData(1,1) + 0.5*lineData(1,2);
-            }
-
-            // t2 -> t3
-            double q0_t3;
-            if (lineData.rows() == 2)
-            {
-                q0_t3 = q0_t2;
+                a(i) = (lineData(i+2,7) - q0_t1) / (t_getQ0t2(i+3)-t_getQ0t2(2));
             }
             else
             {
-                for (int i = 0; i < 3; i++)
-                {
-                    if (lineData.rows() > i+2)
-                    {
-                        a(i) = (lineData(i+2,7) - q0_t1) / (t_getQ0t2(i+3)-t_getQ0t2(2));
-                    }
-                    else
-                    {
-                        a(i) = (t_getQ0t2(i+2)-t_getQ0t2(2)) / (t_getQ0t2(i+3)-t_getQ0t2(2)) * a(i-1);
-                    }
-                }
-
-                q0_t3 = a.sum()/3.0*(t_getQ0t2(3)-t_getQ0t2(2)) + q0_t2;
-
-                if (q0_t3 <= lineData(2,1) || q0_t3 >= lineData(2,2))
-                {
-                    q0_t3 = 0.5*lineData(2,1) + 0.5*lineData(2,2);
-                }
+                a(i) = (t_getQ0t2(i+2)-t_getQ0t2(2)) / (t_getQ0t2(i+3)-t_getQ0t2(2)) * a(i-1);
             }
+        }
 
-            vector<double> y = {q0_t0, q0_t1, q0_t2, q0_t3};
-            vector<double> x = {t_getQ0t2(0), t_getQ0t2(1), t_getQ0t2(2), t_getQ0t2(3)};
-            m_interpolation = cubicInterpolation(y, x);
+        q0_t3 = a.sum()/3.0*(t_getQ0t2(3)-t_getQ0t2(2)) + q0_t2;
+
+        if (q0_t3 <= lineData(2,1) || q0_t3 >= lineData(2,2))
+        {
+            q0_t3 = 0.5*lineData(2,1) + 0.5*lineData(2,2);
         }
     }
+
+    vector<double> y = {q0_t0, q0_t1, q0_t2, q0_t3};
+    vector<double> x = {t_getQ0t2(0), t_getQ0t2(1), t_getQ0t2(2), t_getQ0t2(3)};
+    m_interpolation = cubicInterpolation(y, x);
+
     return {q0_t2, m_interpolation};
 }
 
@@ -3387,7 +1408,7 @@ void PathManager::getWaistCoefficient()
     }
     else
     {
-        std::pair<double, vector<double>> output = getQ0t2(4); // 0: 중앙값, 1: 다익스트라, 2: 기울기평균, 3: 다익스트라 + 보간법, 4: 기울기평균 + 보간법
+        std::pair<double, vector<double>> output = getQ0t2();
         q0_t2 = output.first;
         m = output.second; 
     }
@@ -3419,195 +1440,6 @@ double PathManager::getWaistAngle(int index)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/*                           AddStance FUNCTION                               */
-////////////////////////////////////////////////////////////////////////////////
-
-VectorXd PathManager::calVmax(VectorXd &q1, VectorXd &q2, float acc, float t2)
-{
-    VectorXd Vmax = VectorXd::Zero(10);
-
-    for (int i = 0; i < 10; i++)
-    {
-        double val;
-        double S = abs(q2(i) - q1(i)); // 수정됨, overflow방지
-
-        if (S > t2 * t2 * acc / 4)
-        {
-            // 가속도로 도달 불가능
-            // -1 반환
-            val = -1;
-        }
-        else
-        {
-            // 2차 방정식 계수
-            double A = 1 / acc;
-            double B = -1 * t2;
-            double C = S;
-
-            // 2차 방정식 해
-            double sol1 = (-B + sqrt(B * B - 4 * A * C)) / 2 / A;
-            double sol2 = (-B - sqrt(B * B - 4 * A * C)) / 2 / A;
-
-            if (sol1 >= 0 && sol1 <= acc * t2 / 2)
-            {
-                val = sol1;
-            }
-            else if (sol2 >= 0 && sol2 <= acc * t2 / 2)
-            {
-                val = sol2;
-            }
-            else
-            {
-                // 해가 범위 안에 없음
-                // -2 반환
-                val = -2;
-            }
-        }
-
-        Vmax(i) = val;
-    }
-
-    return Vmax;
-}
-
-VectorXd PathManager::makeProfile(VectorXd &q1, VectorXd &q2, VectorXd &Vmax, float acc, float t, float t2)
-{
-    VectorXd Qi = VectorXd::Zero(10);
-
-    for (int i = 0; i < 10; i++)
-    {
-        double val, S;
-        int sign;
-
-        S = q2(i) - q1(i);
-
-        // 부호 확인, 이동거리 양수로 변경
-        if (S < 0)
-        {
-            S = abs(S);
-            sign = -1;
-        }
-        else
-        {
-            sign = 1;
-        }
-
-        // 궤적 생성
-        if (S == 0)
-        {
-            // 정지
-            val = q1(i);
-        }
-        else if (Vmax(i) < 0)
-        {
-            // Vmax 값을 구하지 못했을 때 삼각형 프로파일 생성
-            double acc_tri = 4 * S / t2 / t2;
-
-            if (t < t2 / 2)
-            {
-                val = q1(i) + sign * 0.5 * acc_tri * t * t;
-            }
-            else if (t < t2)
-            {
-                val = q2(i) - sign * 0.5 * acc_tri * (t2 - t) * (t2 - t);
-            }
-            else
-            {
-                val = q2(i);
-            }
-        }
-        else
-        {
-            // 사다리꼴 프로파일
-            if (t < Vmax(i) / acc)
-            {
-                // 가속
-                val = q1(i) + sign * 0.5 * acc * t * t;
-            }
-            else if (t < S / Vmax(i))
-            {
-                // 등속
-                val = q1(i) + (sign * 0.5 * Vmax(i) * Vmax(i) / acc) + (sign * Vmax(i) * (t - Vmax(i) / acc));
-            }
-            else if (t < Vmax(i) / acc + S / Vmax(i))
-            {
-                // 감속
-                val = q2(i) - sign * 0.5 * acc * (S / Vmax(i) + Vmax(i) / acc - t) * (S / Vmax(i) + Vmax(i) / acc - t);
-            }
-            else
-            {
-                val = q2(i);
-            }
-        }
-
-        Qi(i) = val;
-    }
-
-    return Qi;
-}
-
-void PathManager::getMotorPos()
-{
-    // 각 모터의 현재위치 값 불러오기 ** CheckMotorPosition 이후에 해야함(변수값을 불러오기만 해서 갱신 필요)
-    for (auto &entry : motors)
-    {
-        if (std::shared_ptr<TMotor> tMotor = std::dynamic_pointer_cast<TMotor>(entry.second))
-        {
-            currentMotorAngle[motorMapping[entry.first]] = tMotor->jointAngle;
-        }
-        if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(entry.second))
-        {
-            currentMotorAngle[motorMapping[entry.first]] = maxonMotor->jointAngle;
-        }
-    }
-}
-
-vector<float> PathManager::makeHomeArr(int cnt)
-{
-    vector<float> homeArrOneStep = {0, 0, 0, 0, 0, 0, 0, 0, 0};
-
-    if (cnt == 1)
-    {
-        getMotorPos();
-
-        for (int i = 0; i < 10; i++)
-        {
-            homeArrOneStep[i] = currentMotorAngle[i];
-        }
-        homeArrOneStep[1] = 135 * M_PI / 180.0;
-        homeArrOneStep[2] = 45 * M_PI / 180.0;
-        homeArrOneStep[7] = 90 * M_PI / 180.0;
-        homeArrOneStep[8] = 90 * M_PI / 180.0;
-    }
-    // else if (cnt == 2)
-    // {
-    //     getMotorPos();
-
-    //     for (int i = 0; i < 9; i++)
-    //     {
-    //         home_arr[i] = c_MotorAngle[i];
-    //     }
-    //     home_arr[1] = 135 * M_PI / 180.0;
-    //     home_arr[2] = 45 * M_PI / 180.0;
-    //     home_arr[7] = 90 * M_PI / 180.0;
-    //     home_arr[8] = 90 * M_PI / 180.0;
-    // }
-    else if (cnt == 2)
-    {
-        for (int i = 0; i < 9; i++)
-        {
-            homeArrOneStep[i] = homeArr[i];
-        }
-    }
-    else
-    {
-        std::cout << "Invalid Home Cnt";
-    }
-
-    return homeArrOneStep;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /*                            SYSTEM FUNCTION                                 */
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -3622,15 +1454,18 @@ vector<float> PathManager::FK()
     {
         auto &name = motorPair.first;
         auto &motor = motorPair.second;
+
+        int can_id = canManager.motorMapping[name];
+
         if (std::shared_ptr<TMotor> tMotor = std::dynamic_pointer_cast<TMotor>(motor))
         {
-            theta[motorMapping[name]] = tMotor->jointAngle;
-            cout << name << " : " << theta[motorMapping[name]] << "\n";
+            theta[can_id] = tMotor->jointAngle;
+            cout << name << " : " << theta[can_id] << "\n";
         }
         if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motor))
         {
-            theta[motorMapping[name]] = maxonMotor->jointAngle;
-            cout << name << " : " << theta[motorMapping[name]] << "\n";
+            theta[can_id] = maxonMotor->jointAngle;
+            cout << name << " : " << theta[can_id] << "\n";
         }
     }
     float r1 = partLength.upperArm, r2 = partLength.lowerArm, l1 = partLength.upperArm, l2 = partLength.lowerArm, stick = partLength.stick;
@@ -3647,160 +1482,8 @@ vector<float> PathManager::FK()
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/*                                DIJKSTRA                                    */
-////////////////////////////////////////////////////////////////////////////////
-
-int PathManager::y_to_index(double y, double global_y_min, double step_size)
-{
-    return static_cast<int>(round((y - global_y_min) / step_size));
-}
-
-double PathManager::select_top10_with_median(const vector<double> &y_vals, double current_y, double y_min, double y_max)
-{
-    vector<double> distances;
-    for (double y : y_vals)
-    {
-        distances.push_back(abs(y - current_y));
-    }
-
-    // 거리 정렬 및 인덱스 추적
-    vector<int> sorted_idx(y_vals.size());
-    iota(sorted_idx.begin(), sorted_idx.end(), 0);
-    sort(sorted_idx.begin(), sorted_idx.end(), [&](int i, int j)
-         { return distances[i] < distances[j]; });
-
-    // 상위 n% 거리 추출
-    int top_10_limit = max(1, static_cast<int>(ceil(sorted_idx.size() * 0.1)));
-    vector<double> top_10_y_vals;
-    for (int i = 0; i < top_10_limit; ++i)
-    {
-        top_10_y_vals.push_back(y_vals[sorted_idx[i]]);
-    }
-
-    // y 범위 중앙값 계산
-    double y_mid = (y_min + y_max) / 2;
-
-    // 중앙값과 가장 가까운 값을 선택
-    auto closest = min_element(top_10_y_vals.begin(), top_10_y_vals.end(), [&](double a, double b)
-                               { return abs(a - y_mid) < abs(b - y_mid); });
-
-    return *closest;
-}
-
-double PathManager::dijkstra_top10_with_median(const vector<double> &x_values, const vector<pair<double, double>> &y_ranges, double start_y)
-{
-    int n = x_values.size(); // x 값의 개수
-    double step_size = 0.01; // y 값 간격
-
-    // y 범위의 전역 최소 및 최대값
-    double global_y_min = y_ranges[0].first;
-    double global_y_max = y_ranges[0].second;
-    for (const auto &range : y_ranges)
-    {
-        global_y_min = min(global_y_min, range.first);
-        global_y_max = max(global_y_max, range.second);
-    }
-
-    int max_steps = ceil((global_y_max - global_y_min) / step_size) + 1;
-
-    // 초기값 유효성 확인
-    if (start_y < y_ranges[0].first || start_y > y_ranges[0].second)
-    {
-        throw runtime_error("초기값이 유효하지 않습니다. 시작 범위는 [" + to_string(y_ranges[0].first) + ", " + to_string(y_ranges[0].second) + "]입니다.");
-    }
-
-    // 거리 및 이전 노드 저장
-    vector<vector<double>> dist(n, vector<double>(max_steps, INFINITY));
-    vector<vector<pair<int, double>>> prev(n, vector<pair<int, double>>(max_steps, {-1, -1}));
-
-    // 시작 노드 초기화
-    dist[0][y_to_index(start_y, global_y_min, step_size)] = 0;
-
-    // 우선순위 큐
-    priority_queue<Node, vector<Node>, greater<Node>> pq;
-    pq.push(Node{0, start_y, 0});
-
-    // 다익스트라 알고리즘 실행
-    while (!pq.empty())
-    {
-        Node current = pq.top();
-        pq.pop();
-
-        int x_idx = current.x_idx;
-        double y_val = current.y_val;
-        double current_cost = current.cost;
-
-        if (x_idx == n - 1)
-        {
-            continue; // 마지막 x 값에서는 경로 갱신만 수행
-        }
-
-        // 다음 x 값의 y 범위 확인
-        int next_x_idx = x_idx + 1;
-        double y_min_next = y_ranges[next_x_idx].first;
-        double y_max_next = y_ranges[next_x_idx].second;
-
-        vector<double> next_y_vals;
-        for (double next_y = y_min_next; next_y <= y_max_next; next_y += step_size)
-        {
-            next_y_vals.push_back(next_y);
-        }
-
-        // 상위 10% 거리와 중앙값 근처의 y 값을 선택
-        double selected_y = select_top10_with_median(next_y_vals, y_val, y_min_next, y_max_next);
-        double next_cost = current_cost + abs(selected_y - y_val);
-        int next_y_idx = y_to_index(selected_y, global_y_min, step_size);
-
-        if (dist[next_x_idx][next_y_idx] > next_cost)
-        {
-            dist[next_x_idx][next_y_idx] = next_cost;
-            prev[next_x_idx][next_y_idx] = {x_idx, y_val};
-            pq.push(Node{next_x_idx, selected_y, next_cost});
-        }
-    }
-
-    // 최적 경로 역추적
-    vector<pair<double, double>> optimal_path;
-    int best_y_idx = min_element(dist[n - 1].begin(), dist[n - 1].end()) - dist[n - 1].begin();
-    double current_y = global_y_min + (best_y_idx * step_size);
-    int current_x = n - 1;
-
-    while (current_x >= 0)
-    {
-        optimal_path.push_back({x_values[current_x], current_y});
-        auto prev_node = prev[current_x][y_to_index(current_y, global_y_min, step_size)];
-        if (prev_node.first == -1)
-        {
-            break;
-        }
-        current_x = prev_node.first;
-        current_y = prev_node.second;
-    }
-
-    reverse(optimal_path.begin(), optimal_path.end());
-    return optimal_path.back().second;
-}
-
-void PathManager::updateRange(const VectorXd &output, double &min, double &max)
-{
-    min = output(1);
-    max = output(0);
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /*                                Brake                                       */
 ////////////////////////////////////////////////////////////////////////////////
-
-void PathManager::toBrake(double motornum, double nowval, double nextval, double threshold)
-{
-    if(abs(nowval - nextval) <= threshold){
-        brakeArr[motornum] = 1;
-    }
-    else{
-        brakeArr[motornum] = 0;
-    }
-    usbio.setUSBIO4761(motornum, brakeArr[motornum]);
-}
 
 void PathManager::clearBrake()  // 모든 brake끄기
 {
@@ -3814,6 +1497,17 @@ void PathManager::clearBrake()  // 모든 brake끄기
 ////////////////////////////////////////////////////////////////////////////////
 /*                              Collision                                     */
 ////////////////////////////////////////////////////////////////////////////////
+
+string PathManager::trimWhitespace(const std::string &str)
+{
+    size_t first = str.find_first_not_of(" \t");
+    if (std::string::npos == first)
+    {
+        return str;
+    }
+    size_t last = str.find_last_not_of(" \t");
+    return str.substr(first, (last - first + 1));
+}
 
 int PathManager::predictCollision(MatrixXd measureMatrix)
 {

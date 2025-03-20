@@ -20,10 +20,13 @@ using namespace std;
 class GenericMotor
 {
 public:
+    GenericMotor(uint32_t nodeId);
+    virtual ~GenericMotor() = default;
+
     // For CAN communication
     uint32_t nodeId;
     int socket;
-    bool isConected;
+    bool isConected = false;
 
     // Motors Feature
     float cwDir;
@@ -35,16 +38,11 @@ public:
     float jointAngle;
     float initialJointAngle;
 
-    // Fixed
-    bool isError = false;
-    float fixedMotorPosition;
-    bool isfixed = false;
-
-    // parseSendCommand()
+    // parseSendCommand() -> 현재 사용 안함
     float desPos, desVel, desTor;
 
-    // int32_t spd = 0; // ERPM
-    // int32_t acl = 0; // ERPA
+    // 명령의 최종 위치 저장
+    float finalMotorPosition;
 
     std::queue<can_frame> sendBuffer;
     std::queue<can_frame> recieveBuffer;
@@ -52,19 +50,21 @@ public:
     struct can_frame sendFrame;
     struct can_frame recieveFrame;
 
-    GenericMotor(uint32_t nodeId);
-    virtual ~GenericMotor() = default;
-
     void clearSendBuffer();
     void clearReceiveBuffer();
+
+    ///////////////////////////////////////////////////////////
+
+    // Fixed
+    bool isError = false;
+    float fixedMotorPosition;
+    bool isfixed = false;
 };
 
 struct TMotorData
 {
     float position;
-    int32_t spd;
-    int32_t acl;
-    bool isBrake;
+    std::string mode;
 };
 
 class TMotor : public GenericMotor
@@ -73,24 +73,16 @@ public:
     TMotor(uint32_t nodeId, const std::string &motorType);
     
     std::string motorType;
-    // Gear ratio
-    std::map<std::string, int> R_Ratio = {
-        {"AK80_64", 64},
-        {"AK70_10", 10},
-        {"AK10_9", 9}
-    };
-    const int PolePairs = 21;
 
-    // current [A]
-    float currentLimit;
+    // Receive
     float motorCurrent;
+
+    // Current Limit
+    float currentLimit;
     int currentErrorCnt = 0;
 
-    // brake
-    bool brakeState;
-
+    // commandBuffer
     std::queue<TMotorData> commandBuffer;
-
     void clearCommandBuffer();
 
     bool useFourBarLinkage;
@@ -106,8 +98,7 @@ struct MaxonData
 {
     float torque;
     float position;
-    double WristState;
-    bool isHit = false;
+    std::string mode;
 };
 
 class MaxonMotor : public GenericMotor
@@ -121,33 +112,28 @@ public:
     uint32_t txPdoIds[4];
     uint32_t rxPdoIds[4];
 
+    // Receive
     float motorTorque;
-
-    queue<double> positionValues; // 포지션 값 저장을 위한 queue
-    int maxIndex = 5;
-
-    bool stay = false;
-    bool isPositionMode = false;
-    bool atPosition = false;
-    bool positioning = false;
-
-    bool checked = false;
-
     unsigned char statusBit;
-    float bumperLocation = 0.0;
 
     // 타격 감지용 변수
-    bool hitting = false;
-    float hittingPos;
-    float hittingDrumAngle = 0;
+    queue<double> positionValues; // 포지션 값 저장을 위한 queue
+    int maxIndex = 5;
+    bool hitting = false; // 드럼이 실제로 타격일 때 켜짐
+    float hittingPos = 0; // 타격 시점의 각도
+    float hittingDrumAngle = 0; // 드럼 별 타격 각도
+    bool isHit = false; // 타격 궤적 시작 (내려가는 궤적)
+    bool drumReached = false; // 올라오는 궤적 시작
 
+<<<<<<< HEAD
     bool isHit = false;
     bool drumReached = false;
 
+=======
+    // commandBuffer
+>>>>>>> 5c3ea04e205865795c50abdefc68e556ae74fa5c
     queue<MaxonData> commandBuffer;
-    queue<float> wrist_BackArr;
     void clearCommandBuffer();
-    void clearWrist_BackArr();
 
     float jointAngleToMotorPosition(float jointAngle);
     float motorPositionToJointAngle(float motorPosition);
