@@ -165,11 +165,13 @@ void PathManager::setReadyAngle()
 /*                           AddStance FUNCTION                               */
 ////////////////////////////////////////////////////////////////////////////////
 
+// getWaistCoefficient
+
 VectorXd PathManager::calVmax(VectorXd &q1, VectorXd &q2, float acc, float t2)
 {
     VectorXd Vmax = VectorXd::Zero(10);
 
-    for (int i = 0; i < 10; i++)
+    for (int i = 0; i < 9; i++)
     {
         double val;
         double S = abs(q2(i) - q1(i)); // 수정됨, overflow방지
@@ -217,7 +219,7 @@ VectorXd PathManager::makeProfile(VectorXd &q1, VectorXd &q2, VectorXd &Vmax, fl
 {
     VectorXd Qi = VectorXd::Zero(10);
 
-    for (int i = 0; i < 10; i++)
+    for (int i = 0; i < 9; i++)
     {
         double val, S;
         int sign;
@@ -317,6 +319,8 @@ void PathManager::pushAddStancePath(string flagName)
 {
     VectorXd Q1 = VectorXd::Zero(9);
     VectorXd Q2 = VectorXd::Zero(9);
+    VectorXd Qt = VectorXd::Zero(9);
+    float dt = canManager.DTSECOND; // 0.005
 
     // finalMotorPosition -> 마지막 명령값에서 이어서 생성
     Q1 = getMotorPos();
@@ -325,29 +329,28 @@ void PathManager::pushAddStancePath(string flagName)
     {
         for (int i = 0; i < 9; i++)
         {
-            Q1(i) = readyAngle(i);
+            Q2(i) = homeAngle(i);
         }
     }
     else if (flagName == "isReady")
     {
         for (int i = 0; i < 9; i++)
         {
-            Q1(i) = homeAngle(i);
+            Q2(i) = readyAngle(i);
         }
     }
     else if (flagName == "isShutDown")
     {
         for (int i = 0; i < 9; i++)
         {
-            Q1(i) = shutdownAngle(i);
+            Q2(i) = shutdownAngle(i);
         }
     }
 
     const float accMax = 100.0; // rad/s^2
-    VectorXd Qt = VectorXd::Zero(10);
+    
     VectorXd Vmax = VectorXd::Zero(10);
-
-    float dt = canManager.DTSECOND; // 0.005
+    
     float T = 2.0;                // 2초동안 실행
     float extraTime = 1.0;       // 이전 시간 1초
     int n = (int)(T / dt);
@@ -355,7 +358,7 @@ void PathManager::pushAddStancePath(string flagName)
 
     Vmax = calVmax(Q1, Q2, accMax, T);
 
-    for (int k = 0; k < 10; k++)
+    for (int k = 0; k < 9; k++)
     {
         cout << "Q1[" << k << "] : " << Q1[k] * 180.0 / M_PI << " [deg] -> Q2[" << k << "] : " << Q2[k] * 180.0 / M_PI << " [deg]" << endl;
         cout << "Vmax[" << k << "] : " << Vmax(k) << "[rad/s]\n\n";
