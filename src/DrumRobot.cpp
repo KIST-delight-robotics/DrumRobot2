@@ -603,31 +603,44 @@ void DrumRobot::stateMachine()
 
 void DrumRobot::sendLoopForThread()
 {   
+    bool wasFixed = false; // 이전 `fixed` 상태 추적
+
     while (state.main != Main::Shutdown)
     {
         sendLoopPeriod = std::chrono::steady_clock::now();
         sendLoopPeriod += std::chrono::microseconds(5000);  // 주기 : 5msec
         
         std::map<std::string, bool> fixFlags; // 각 모터의 고정 상태 저장
+        
 
         if (!canManager.setCANFrame(fixFlags))
         {
             state.main = Main::Error;
         }
 
+
+        static std::map<std::string, bool> prevFixFlags;
+        bool newData = false; // 버퍼 크기가 증가했는지 여부 추적
+
         //  모든 모터가 고정 상태인지 체크
         bool allMotorsStagnant = !fixFlags.empty();
         for (const auto& flag : fixFlags)
         {
-            if (!flag.second)  // 하나라도 false이면 전체가 고정된 것이 아님
+            if (!prevFixFlags[flag.first] && flag.second) // 이전 값이 false였다가 true가 된 경우
             {
-                allMotorsStagnant = false;
-                break;
+                newData = true; // 버퍼가 다시 증가했음을 표시
             }
+            prevFixFlags[flag.first] = flag.second; // 현재 상태를 prevFixFlags에 저장
         }
-        if (allMotorsStagnant)
+
+        if (allMotorsStagnant && !wasFixed)
         {
             flagObj.setFixationFlag("fixed");
+            wasFixed = true;
+        }
+        else if (newData) // 새로운 데이터가 들어오면 wasFixed 해제
+        {
+            wasFixed = false;
         }
 
         bool isWriteError = false;
