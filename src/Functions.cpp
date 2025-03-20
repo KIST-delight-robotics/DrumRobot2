@@ -27,7 +27,11 @@ int Functions::getComNumberByHostname() {
         return 1;
     } else if (strcmp(hostname, "shy-MINIPC-VC66-C2") == 0) {
         return 2;
-    } else {
+    } 
+    else if (strcmp(hostname, "taehwang-14ZD90Q-GX56K") == 0) {  // 현재 컴퓨터 추가
+        return 3; 
+    }
+    else {
         std::cerr << "Unrecognized hostname: " << hostname << std::endl;
         exit(1);
     }
@@ -74,7 +78,14 @@ void Functions::restCanPort()
         snprintf(can3_off, sizeof(can3_off), " "); // Empty command
         snprintf(can2_on, sizeof(can2_on), " ");  // Empty command
         snprintf(can3_on, sizeof(can3_on), " ");  // Empty command
-    } else {
+    } 
+    else if(com_number == 3){
+
+        std::cout << "김태황 컴퓨터이다" << "\n";
+        usleep(500000);
+
+    }
+    else{
         fprintf(stderr, "Invalid com_number: %d\n", com_number);
         return;
     }
