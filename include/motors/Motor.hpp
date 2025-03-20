@@ -125,13 +125,7 @@ public:
     bool isHit = false; // 타격 궤적 시작 (내려가는 궤적)
     bool drumReached = false; // 올라오는 궤적 시작
 
-<<<<<<< HEAD
-    bool isHit = false;
-    bool drumReached = false;
-
-=======
     // commandBuffer
->>>>>>> 5c3ea04e205865795c50abdefc68e556ae74fa5c
     queue<MaxonData> commandBuffer;
     void clearCommandBuffer();
 

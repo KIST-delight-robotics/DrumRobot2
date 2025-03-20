@@ -118,13 +118,8 @@ private:
     int hitMode = 1;
     bool isReached = false;
     float torque = 0;
-<<<<<<< HEAD
-    double dt = 0.001; // 0.001로 세팅하면 천천히, TimeCheck를 1ms단위마다 돌게 해야함.
-    tuple <double, int, int> params;
-=======
     double dt = 0.005; // 0.001로 세팅하면 천천히, TimeCheck를 1ms단위마다 돌게 해야함.
     tuple <double, int, int, int> params;
->>>>>>> 5c3ea04e205865795c50abdefc68e556ae74fa5c
     double hit_time;
     int repeat;
     int hitstate;
@@ -138,16 +133,11 @@ private:
 
     float makeWristAngle(float t1, float t2, float t, int state, int intensity, shared_ptr<MaxonMotor> maxonMotor);
     float makeWristAngle_CST(float t1, float t2, float t, int state, int intensity, bool &hitting, float hittingPos);
-<<<<<<< HEAD
-    float makeWristAngle_TC(float t1, float t2, float t, int state, int intensity, bool &hitting, float hittingPos);
-    tuple <double, int, int> CSTHitLoop();
-=======
     float makeWristAngle_TC(float t1, float t2, float t, int state, int intensity, shared_ptr<MaxonMotor> maxonMotor);
     tuple <double, int, int, int> MaxonHitLoop();
     int makeTestHitTrajectory(float hit_time, int repeat, int intensity, int hitMode);
     float getDesiredTorque(float desiredPosition, shared_ptr<MaxonMotor> maxonMotor);
 
->>>>>>> 5c3ea04e205865795c50abdefc68e556ae74fa5c
 
     void unfixedMotor();
 

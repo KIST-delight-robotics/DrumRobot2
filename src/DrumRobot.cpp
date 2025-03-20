@@ -50,13 +50,8 @@ void DrumRobot::initializeMotors()
     
     for (auto &motor_pair : motors)
     {
-<<<<<<< HEAD
-        stateMachinePeriod = std::chrono::steady_clock::now();
-        stateMachinePeriod += std::chrono::microseconds(1000);    // 주기 : 5ms
-=======
         auto &motor = motor_pair.second;
         int can_id = canManager.motorMapping[motor_pair.first];
->>>>>>> 5c3ea04e205865795c50abdefc68e556ae74fa5c
 
         // 타입에 따라 적절한 캐스팅과 초기화 수행
         if (std::shared_ptr<TMotor> tMotor = std::dynamic_pointer_cast<TMotor>(motor))
@@ -113,35 +108,7 @@ void DrumRobot::initializeMotors()
                 tMotor->useFourBarLinkage = true;
                 tMotor->setInitialMotorAngle(tMotor->initialJointAngle);
             }
-<<<<<<< HEAD
-            usleep(5000);   // sendLoopForThread() 주기가 100us 라서 delay 필요
-            break;
-        }
-        case Main::Play:
-        {
-            unfixedMotor();
-            sendPlayProcess(5000, musicName);
-            break;
-        }
-        case Main::AddStance:
-        {
-            unfixedMotor();
-            sendAddStanceProcess(1000);
-            break;
-        }
-        case Main::Test:
-        {
-            //unfixedMotor();
-            testManager.SendTestProcess(1000);
-            break;
-        }
-        case Main::Pause:
-        {
-            bool isWriteError = false;
-            if (!canManager.checkAllMotors_Fixed())
-=======
             else if (motor_pair.first == "L_arm2")
->>>>>>> 5c3ea04e205865795c50abdefc68e556ae74fa5c
             {
                 tMotor->cwDir = -1.0f;
                 tMotor->rMin = jointRangeMin[can_id] * M_PI / 180.0f; // -60deg
@@ -163,111 +130,7 @@ void DrumRobot::initializeMotors()
                 tMotor->setInitialMotorAngle(tMotor->initialJointAngle);
             }
         }
-<<<<<<< HEAD
-        case Main::Error:
-        {
-            break;
-        }
-        case Main::Shutdown:
-            break;
-        }
-
-        std::this_thread::sleep_until(sendLoopPeriod);
-    }
-}
-
-void DrumRobot::recvLoopForThread()
-{
-    while (state.main != Main::Shutdown)
-    {
-        recvLoopPeriod = std::chrono::steady_clock::now();
-        recvLoopPeriod += std::chrono::microseconds(100);  // 주기 : 100us
-
-        switch (state.main.load())
-        {
-        case Main::SystemInit:
-        {
-            break;
-        }
-        case Main::Ideal:
-        {
-            readProcess(5000); /*1ms*/
-            break;
-        }
-        case Main::Play:
-        {
-            readProcess(5000);
-            break;
-        }
-        case Main::AddStance:
-        {
-            readProcess(1000);
-            break;
-        }
-        case Main::Test:
-        {
-            readProcess(1000);
-            break;
-        }
-        case Main::Pause:
-        {
-            readProcess(5000); // 1ms마다 실행
-            break;
-        }
-        case Main::Error:
-        {
-            break;
-        }
-        case Main::Shutdown:
-        {
-            break;
-        }
-        }
-
-        std::this_thread::sleep_until(recvLoopPeriod);
-    }
-}
-
-void DrumRobot::readProcess(int periodMicroSec)
-{
-    // std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motors["L_wrist"]);
-    // std::shared_ptr<GenericMotor> motor = motors["L_wrist"];
-
-    // struct can_frame frame;
-
-    auto currentTime = chrono::system_clock::now();
-    auto elapsedTime = chrono::duration_cast<chrono::microseconds>(currentTime - ReadStandard);
-    
-    switch (state.read.load())
-    {
-    case ReadSub::TimeCheck:
-        if (elapsedTime.count() >= periodMicroSec)
-        {
-            state.read = ReadSub::ReadCANFrame; // 주기가 되면 ReadCANFrame 상태로 진입
-            ReadStandard = currentTime;         // 현재 시간으로 시간 객체 초기화
-
-            // maxoncmd.getActualPos(*maxonMotor, &frame); //Maxon모터에게 1ms마다 신호
-            // canManager.txFrame(motor, frame); // CAN을 통해 보내줌
-        }
-        break;
-    case ReadSub::ReadCANFrame:
-        canManager.readFramesFromAllSockets(); // CAN frame 읽기
-        state.read = ReadSub::UpdateMotorInfo; // 다음 상태로 전환
-        break;
-    case ReadSub::UpdateMotorInfo:
-    {
-        if ((!settingInitPos) || state.main == Main::Test) // test 모드에서 에러 검출 안함
-        {
-            canManager.distributeFramesToMotors(false);
-        }
-        // if (!settingInitPos)    // test 모드에서 에러 검출함
-        // {
-        //     canManager.distributeFramesToMotors(false);
-        // }
-        else
-=======
         else if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motor))
->>>>>>> 5c3ea04e205865795c50abdefc68e556ae74fa5c
         {
             // 각 모터 이름에 따른 멤버 변수 설정
             if (motor_pair.first == "R_wrist")
