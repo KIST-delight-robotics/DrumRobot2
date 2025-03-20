@@ -689,22 +689,25 @@ void DrumRobot::processInput(const std::string &input, string flagName)
     if (input == "r" && flagName == "isHome")
     {
         flagObj.setAddStanceFlag("isReady");
+        flagObj.setFixationFlag("moving");
         state.main = Main::AddStance;
     }
     else if (input == "p" && flagName == "isReady")
     {
-        initializePlay();
-        flagObj.setAddStanceFlag("isHome"); // 연주가 끝난 후 Home 으로 돌아옴
+        initializePlayState();
+        flagObj.setFixationFlag("moving");
         state.main = Main::Play;
     }
     else if (input == "h" && flagName == "isReady")
     {
         flagObj.setAddStanceFlag("isHome");
+        flagObj.setFixationFlag("moving");
         state.main = Main::AddStance;
     }
     else if (input == "s" && flagName == "isHome")
     {
         flagObj.setAddStanceFlag("isShutDown");
+        flagObj.setFixationFlag("moving");
         state.main = Main::AddStance;
     }
     else if (input == "t")
@@ -772,8 +775,6 @@ void DrumRobot::sendAddStanceProcess()
         pathManager.getArr(pathManager.backArr);
     }
 
-    flagObj.setFixationFlag("moving");
-
     state.main = Main::Ideal;
 }
 
@@ -781,7 +782,7 @@ void DrumRobot::sendAddStanceProcess()
 /*                              Play State                                    */
 ////////////////////////////////////////////////////////////////////////////////
 
-void DrumRobot::initializePlay()
+void DrumRobot::initializePlayState()
 {
     fileIndex = 0;
 
@@ -891,7 +892,7 @@ void DrumRobot::sendPlayProcess()
 
     if (inputFile.is_open())    // 파일 열기 성공
     {
-        if (fileIndex == 0) // 처음 파일을 열 때
+        if (fileIndex == 0) // 처음 파일을 열 때 -> bpm 확인
         {
             bpmOfScore = readBpm(inputFile);
 
@@ -904,6 +905,7 @@ void DrumRobot::sendPlayProcess()
             {
                 std::cout << "\n bpm Read Error !!! \n";
                 inputFile.close(); // 파일 닫기
+                state.main = Main::Ideal;
                 return;
             }
         }
@@ -916,10 +918,10 @@ void DrumRobot::sendPlayProcess()
             std::cout << "\n//////////////////////////////// Read Measure : " << lineOfScore << "\n";
             pathManager.generateTrajectory(measureMatrix);
 
-            // if (lineOfScore > preCreatedLine)
-            // {
-            //     pathManager.solveIKandPushConmmand();
-            // }
+            if (lineOfScore > preCreatedLine)
+            {
+                pathManager.solveIKandPushConmmand();
+            }
         }
 
         inputFile.close(); // 파일 닫기
@@ -927,8 +929,10 @@ void DrumRobot::sendPlayProcess()
     }
     else                        // 파일 열기 실패
     {
-        if (fileIndex == 0)                     // 악보 이름 오타
+        if (fileIndex == 0)                     // 악보 파일 없음
         {
+            std::cout << "not find " << currentFile << "\n";
+            state.main = Main::Ideal;
             return;
         }
         else if (endOfScore)                     // 종료 코드 확인 -> 남은 궤적 생성
@@ -938,16 +942,16 @@ void DrumRobot::sendPlayProcess()
                 // 충돌 회피 알고리즘 자리
 
                 lineOfScore++;
+                std::cout << "\n//////////////////////////////// Read Measure : " << lineOfScore << "\n";
                 pathManager.generateTrajectory(measureMatrix);
 
-                // if (lineOfScore > preCreatedLine)
-                // {
-                //     pathManager.solveIKandPushConmmand();
-                // }
+                if (lineOfScore > preCreatedLine)
+                {
+                    pathManager.solveIKandPushConmmand();
+                }
             }
             std::cout << "Play is Over\n";
-            flagObj.setAddStanceFlag("isHome");
-            flagObj.setFixationFlag("moving");
+            flagObj.setAddStanceFlag("isHome"); // 연주 종료 후 Home 으로 이동
             state.main = Main::AddStance;
         }
         else if (flagObj.getFixationFlag())  // fixed -> 비정상 종료
