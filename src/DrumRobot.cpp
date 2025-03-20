@@ -319,49 +319,61 @@ bool DrumRobot::initializePos(const std::string &input)
         {
             if (std::shared_ptr<TMotor> tMotor = std::dynamic_pointer_cast<TMotor>(motorPair.second))
             {
-                if (tMotor->myName == "waist")
-                {
-                    tservocmd.comm_can_set_origin(*tMotor, &tMotor->sendFrame, 0);
-                    canManager.sendMotorFrame(tMotor);
-                }
-                else if (tMotor->myName == "R_arm1")
-                {
-                    tservocmd.comm_can_set_origin(*tMotor, &tMotor->sendFrame, 0);
-                    canManager.sendMotorFrame(tMotor);
-                }
-                else if (tMotor->myName == "L_arm1")
-                {
-                    tservocmd.comm_can_set_origin(*tMotor, &tMotor->sendFrame, 0);
-                    canManager.sendMotorFrame(tMotor);
-                }
-                else if (tMotor->myName == "R_arm2")
-                {
-                    tservocmd.comm_can_set_origin(*tMotor, &tMotor->sendFrame, 0);
-                    canManager.sendMotorFrame(tMotor);
-                }
-                else if (tMotor->myName == "L_arm2")
-                {
-                    tservocmd.comm_can_set_origin(*tMotor, &tMotor->sendFrame, 0);
-                    canManager.sendMotorFrame(tMotor);
-                }
-                else if (tMotor->myName == "R_arm3")
-                {
-                    tservocmd.comm_can_set_origin(*tMotor, &tMotor->sendFrame, 0);
-                    canManager.sendMotorFrame(tMotor);
-                }
-                else if (tMotor->myName == "L_arm3")
-                {
-                    tservocmd.comm_can_set_origin(*tMotor, &tMotor->sendFrame, 0);
-                    canManager.sendMotorFrame(tMotor);
-                }
-            }   
+                tservocmd.comm_can_set_origin(*tMotor, &tMotor->sendFrame, 0);
+                canManager.sendMotorFrame(tMotor);
+                tMotor->finalMotorPosition = tMotor->jointAngleToMotorPosition(tMotor->initialJointAngle);
+
+                // if (tMotor->myName == "waist")
+                // {
+                //     tservocmd.comm_can_set_origin(*tMotor, &tMotor->sendFrame, 0);
+                //     canManager.sendMotorFrame(tMotor);
+                //     tMotor->finalMotorPosition = tMotor->jointAngleToMotorPosition(tMotor->initialJointAngle);
+                // }
+                // else if (tMotor->myName == "R_arm1")
+                // {
+                //     tservocmd.comm_can_set_origin(*tMotor, &tMotor->sendFrame, 0);
+                //     canManager.sendMotorFrame(tMotor);
+                //     tMotor->finalMotorPosition = tMotor->jointAngleToMotorPosition(tMotor->initialJointAngle);
+                // }
+                // else if (tMotor->myName == "L_arm1")
+                // {
+                //     tservocmd.comm_can_set_origin(*tMotor, &tMotor->sendFrame, 0);
+                //     canManager.sendMotorFrame(tMotor);
+                //     tMotor->finalMotorPosition = tMotor->jointAngleToMotorPosition(tMotor->initialJointAngle);
+                // }
+                // else if (tMotor->myName == "R_arm2")
+                // {
+                //     tservocmd.comm_can_set_origin(*tMotor, &tMotor->sendFrame, 0);
+                //     canManager.sendMotorFrame(tMotor);
+                //     tMotor->finalMotorPosition = tMotor->jointAngleToMotorPosition(tMotor->initialJointAngle);
+                // }
+                // else if (tMotor->myName == "L_arm2")
+                // {
+                //     tservocmd.comm_can_set_origin(*tMotor, &tMotor->sendFrame, 0);
+                //     canManager.sendMotorFrame(tMotor);
+                //     tMotor->finalMotorPosition = tMotor->jointAngleToMotorPosition(tMotor->initialJointAngle);
+                // }
+                // else if (tMotor->myName == "R_arm3")
+                // {
+                //     tservocmd.comm_can_set_origin(*tMotor, &tMotor->sendFrame, 0);
+                //     canManager.sendMotorFrame(tMotor);
+                //     tMotor->finalMotorPosition = tMotor->jointAngleToMotorPosition(tMotor->initialJointAngle);
+                // }
+                // else if (tMotor->myName == "L_arm3")
+                // {
+                //     tservocmd.comm_can_set_origin(*tMotor, &tMotor->sendFrame, 0);
+                //     canManager.sendMotorFrame(tMotor);
+                //     tMotor->finalMotorPosition = tMotor->jointAngleToMotorPosition(tMotor->initialJointAngle);
+                // }
+            }
+            else if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motorPair.second))
+            {
+                maxonMotor->finalMotorPosition = maxonMotor->jointAngleToMotorPosition(maxonMotor->initialJointAngle);
+            }
         }
         std::cout << "set zero and offset setting ~ ~ ~\n";
         sleep(2);   // Set Zero 명령이 확실히 실행된 후
-    }
 
-    if (input == "o" || input == "i")
-    {
         maxonMotorEnable();
         setMaxonMotorMode("CSP");
 
@@ -370,6 +382,18 @@ bool DrumRobot::initializePos(const std::string &input)
         flagObj.setFixationFlag("moving");
 
         return false;
+    }
+    else if (input == "i")
+    {
+        // maxonMotorEnable();
+        // setMaxonMotorMode("CSP");
+
+        // state.main = Main::AddStance;
+        // flagObj.setAddStanceFlag("isHome");
+        // flagObj.setFixationFlag("moving");
+
+        // return false;
+        return true;
     }
     else
     {
@@ -789,6 +813,7 @@ void DrumRobot::initializePlayState()
     measureMatrix.resize(1, 9);
     measureMatrix = MatrixXd::Zero(1, 9);
 
+    // endOfScore = false;
     lineOfScore = 0;        ///< 현재 악보 읽은 줄.
     measureTotalTime = 0.0;     ///< 악보를 읽는 동안 누적 시간. [s]
 }
@@ -915,12 +940,16 @@ void DrumRobot::sendPlayProcess()
             // 충돌 회피 알고리즘 자리
 
             lineOfScore++;
-            std::cout << "\n//////////////////////////////// Read Measure : " << lineOfScore << "\n";
+            // std::cout << "\n//////////////////////////////// Read Measure : " << lineOfScore << "\n";
+            // std::cout << measureMatrix;
+            // std::cout << "\n ////////////// \n";
             pathManager.generateTrajectory(measureMatrix);
 
             if (lineOfScore > preCreatedLine)
             {
                 pathManager.solveIKandPushConmmand();
+
+                flagObj.setFixationFlag("moving");
             }
         }
 
@@ -942,12 +971,16 @@ void DrumRobot::sendPlayProcess()
                 // 충돌 회피 알고리즘 자리
 
                 lineOfScore++;
-                std::cout << "\n//////////////////////////////// Read Measure : " << lineOfScore << "\n";
+                // std::cout << "\n//////////////////////////////// Read Measure : " << lineOfScore << "\n";
+                // std::cout << measureMatrix;
+                // std::cout << "\n ////////////// \n";
                 pathManager.generateTrajectory(measureMatrix);
 
                 if (lineOfScore > preCreatedLine)
                 {
                     pathManager.solveIKandPushConmmand();
+
+                    flagObj.setFixationFlag("moving");
                 }
             }
             std::cout << "Play is Over\n";

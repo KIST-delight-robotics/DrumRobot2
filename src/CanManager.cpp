@@ -557,38 +557,6 @@ void CanManager::setMotorsSocket()
     }
 }
 
-// void CanManager::readFramesFromAllSockets()
-// {
-//     struct can_frame frame;
-//     for (const auto &socketPair : sockets)
-//     {
-//         int socket_fd = socketPair.second;
-//         tempFrames[socket_fd].clear();
-        
-//         while (read(socket_fd, &frame, sizeof(frame)) == sizeof(frame))
-//         {
-//             if (tempFrames[socket_fd].empty()) {
-//                 tempFrames[socket_fd].push_back(frame);
-//             } else {
-//                 tempFrames[socket_fd][0] = frame;
-//             }
-//         }
-//     }
-// }
-
-// void CanManager::readFramesFromAllSockets()
-// {
-//     struct can_frame frame;
-//     for (const auto &socketPair : sockets)
-//     {
-//         int socket_fd = socketPair.second;
-//         while (read(socket_fd, &frame, sizeof(frame)) == sizeof(frame))
-//         {
-//             tempFrames[socket_fd].push_back(frame);
-//         }
-//     }
-// }
-
 void CanManager::readFramesFromAllSockets()
 {
     struct can_frame frame;
@@ -648,7 +616,7 @@ bool CanManager::distributeFramesToMotors(bool setlimit)
                     // std::cout << tMotor->jointAngle << std::endl;
                     tMotor->recieveBuffer.push(frame);
 
-                    fun.appendToCSV_DATA(fun.file_name, (float)tMotor->nodeId, tMotor->motorPosition, tMotor->motorCurrent);
+                    fun.appendToCSV_DATA(fun.file_name, (float)tMotor->nodeId, tMotor->jointAngle, tMotor->motorCurrent);
                     
                     if (setlimit)
                     {
@@ -885,7 +853,7 @@ void CanManager::setTMotorCANFrame(std::shared_ptr<TMotor> tMotor, const TMotorD
     {
         tservocmd.setPositionCANFrame(*tMotor, &tMotor->sendFrame, tData.position);
 
-        fun.appendToCSV_DATA(fun.file_name, (float)tMotor->nodeId + SEND_SIGN, tData.position, 0);
+        fun.appendToCSV_DATA("data11", (float)tMotor->nodeId + SEND_SIGN, tMotor->motorPositionToJointAngle(tData.position), 0);
     }
     else if (tData.mode == "Idle")
     {

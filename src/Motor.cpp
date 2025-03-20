@@ -131,13 +131,6 @@ void MaxonMotor::clearCommandBuffer(){
     }
 }
 
-void MaxonMotor::clearWrist_BackArr(){
-    while (!wrist_BackArr.empty())
-    {
-        wrist_BackArr.pop();
-    }
-}
-
 float MaxonMotor::jointAngleToMotorPosition(float jointAngle)
 {
     float motorPosition;

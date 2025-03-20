@@ -124,7 +124,7 @@ private:
     FlagClass flagObj;
 
     // Initialize
-    int maxonMotorCount = 0;    // 1 이상이면 virtual Maxon Motor 쓰기 위해 기록
+    int maxonMotorCount = 0;    // 1 이상이면 virtual Maxon Motor를 사용하기 위해
 
     void initializePathManager();
     void initializeMotors();

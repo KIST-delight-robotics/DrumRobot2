@@ -226,7 +226,7 @@ private:
     double q0_threshold = 0.01;
 
     vector<double> cubicInterpolation(const vector<double>& q, const vector<double>& t);
-    std::pair<double, vector<double>> getQ0t2(int mode);
+    std::pair<double, vector<double>> getQ0t2();
     void getWaistCoefficient();
     double getWaistAngle(int i);
     
