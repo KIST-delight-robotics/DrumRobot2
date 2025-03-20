@@ -136,11 +136,10 @@ void PathManager::setReadyAngle()
         readyAngle(i) = qk(i);
     }
 
-    HitParameter param;
-    readyAngle(4) += param.elbowStayAngle;
-    readyAngle(6) += param.elbowStayAngle;
-    readyAngle(7) += param.wristStayAngle;
-    readyAngle(8) += param.wristStayAngle;
+    readyAngle(4) += 0.1;
+    readyAngle(6) += 0.1;
+    readyAngle(7) += 0.2;
+    readyAngle(8) += 0.2;
 
     //////////////////////////////////////// Home Angle
     homeAngle.resize(9);
@@ -433,6 +432,7 @@ void PathManager::pushAddStancePath(string flagName)
 
 void PathManager::initializeValue(int bpm)
 {
+    endOfPlay = false;
     bpmOfScore = bpm;
 
     measureState.resize(2, 3);
@@ -445,7 +445,6 @@ void PathManager::initializeValue(int bpm)
     lineData = MatrixXd::Zero(1, 12);
     lineData(0, 0) = -1;
 
-    indexSolveIK = 0;
     q0_t1 = readyAngle(0);
     q0_t0 = readyAngle(0);
     nextq0_t1 = readyAngle(0);
@@ -574,11 +573,12 @@ void PathManager::solveIKandPushConmmand()
     if(lineData.rows() == 1)
     {
         clearBrake();
+        endOfPlay = true;   // DrumRobot 에게 끝났음 알리기
     }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/*                         Read & Parse Measure                               */
+/*                              Parse Measure                                 */
 ////////////////////////////////////////////////////////////////////////////////
 
 void PathManager::parseMeasure(MatrixXd &measureMatrix)
@@ -813,31 +813,6 @@ pair<VectorXd, VectorXd> PathManager::getTargetPosition(VectorXd inst)
     MatrixXd angle = combined * instrumentVector;
 
     return std::make_pair(p, angle);
-}
-
-VectorXd PathManager::getTargetWristAngle(VectorXd &inst)
-{
-    VectorXd instrumentR = inst.segment(0, 9);
-    VectorXd instrumentL = inst.segment(9, 9);
-
-    if (instrumentR.sum() == 0)
-    {
-        std::cout << "Right Instrument Vector Error!!\n";
-    }
-
-    if (instrumentL.sum() == 0)
-    {
-        std::cout << "Left Instrument Vector Error!!\n";
-    }
-
-    VectorXd instrumentVector(18);
-    instrumentVector << instrumentR, instrumentL;
-
-    MatrixXd combined(2, 18);
-    combined << wristAnglesR, MatrixXd::Zero(1, 9), MatrixXd::Zero(1, 9), wristAnglesL;
-    MatrixXd angle = combined * instrumentVector;
-
-    return angle;
 }
 
 float PathManager::timeScaling(float ti, float tf, float t)
@@ -1310,9 +1285,9 @@ vector<double> PathManager::cubicInterpolation(const vector<double> &q, const ve
     return m;
 }
 
-std::pair<double, vector<double>> PathManager::getQ0t2()
+std::pair<double, vector<double>> PathManager::getNextQ0()
 {
-    VectorXd t_getQ0t2;     // getQ0t2() 함수 안에서 사용할 시간 벡터
+    VectorXd t_getQ0t2;     // getNextQ0() 함수 안에서 사용할 시간 벡터
     double dt = canManager.DTSECOND;
     vector<double> m_interpolation = {0.0, 0.0};
     double q0_t2 = 0.0;
@@ -1345,7 +1320,7 @@ std::pair<double, vector<double>> PathManager::getQ0t2()
     {
         if (lineData.rows() > i+1)
         {
-            a(i) = (lineData(i+1,7) - q0_t1) / (t_getQ0t2(i+2)-t_getQ0t2(1));
+            a(i) = (lineData(i+1,1) - q0_t1) / (t_getQ0t2(i+2)-t_getQ0t2(1));
         }
         else
         {
@@ -1355,9 +1330,9 @@ std::pair<double, vector<double>> PathManager::getQ0t2()
 
     q0_t2 = a.sum()/3.0*(t_getQ0t2(2)-t_getQ0t2(1)) + q0_t1;
 
-    if (q0_t2 <= lineData(1,1) || q0_t2 >= lineData(1,2))
+    if (q0_t2 <= lineData(1,2) || q0_t2 >= lineData(1,3))
     {
-        q0_t2 = 0.5*lineData(1,1) + 0.5*lineData(1,2);
+        q0_t2 = 0.5*lineData(1,2) + 0.5*lineData(1,3);
     }
 
     // t2 -> t3
@@ -1372,7 +1347,7 @@ std::pair<double, vector<double>> PathManager::getQ0t2()
         {
             if (lineData.rows() > i+2)
             {
-                a(i) = (lineData(i+2,7) - q0_t1) / (t_getQ0t2(i+3)-t_getQ0t2(2));
+                a(i) = (lineData(i+2,1) - q0_t1) / (t_getQ0t2(i+3)-t_getQ0t2(2));
             }
             else
             {
@@ -1382,9 +1357,9 @@ std::pair<double, vector<double>> PathManager::getQ0t2()
 
         q0_t3 = a.sum()/3.0*(t_getQ0t2(3)-t_getQ0t2(2)) + q0_t2;
 
-        if (q0_t3 <= lineData(2,1) || q0_t3 >= lineData(2,2))
+        if (q0_t3 <= lineData(2,2) || q0_t3 >= lineData(2,3))
         {
-            q0_t3 = 0.5*lineData(2,1) + 0.5*lineData(2,2);
+            q0_t3 = 0.5*lineData(2,2) + 0.5*lineData(2,3);
         }
     }
 
@@ -1407,11 +1382,12 @@ void PathManager::getWaistCoefficient()
 
     if (lineData.rows() == 1)
     {
+        // 마지막 줄 -> 허리 각 유지
         q0_t2 = q0_t1;
     }
     else
     {
-        std::pair<double, vector<double>> output = getQ0t2();
+        std::pair<double, vector<double>> output = getNextQ0();
         q0_t2 = output.first;
         m = output.second; 
     }
@@ -1443,54 +1419,12 @@ double PathManager::getWaistAngle(int index)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/*                            SYSTEM FUNCTION                                 */
-////////////////////////////////////////////////////////////////////////////////
-
-vector<float> PathManager::FK()
-{
-    getMotorPos();
-
-    PartLength partLength;
-    vector<float> P;
-    vector<float> theta(9);
-    for (auto &motorPair : motors)
-    {
-        auto &name = motorPair.first;
-        auto &motor = motorPair.second;
-
-        int can_id = canManager.motorMapping[name];
-
-        if (std::shared_ptr<TMotor> tMotor = std::dynamic_pointer_cast<TMotor>(motor))
-        {
-            theta[can_id] = tMotor->jointAngle;
-            cout << name << " : " << theta[can_id] << "\n";
-        }
-        if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motor))
-        {
-            theta[can_id] = maxonMotor->jointAngle;
-            cout << name << " : " << theta[can_id] << "\n";
-        }
-    }
-    float r1 = partLength.upperArm, r2 = partLength.lowerArm, l1 = partLength.upperArm, l2 = partLength.lowerArm, stick = partLength.stick;
-    float s = partLength.waist, z0 = partLength.height;
-
-    P.push_back(0.5 * s * cos(theta[0]) + r1 * sin(theta[3]) * cos(theta[0] + theta[1]) + r2 * sin(theta[3] + theta[4]) * cos(theta[0] + theta[1]) + stick * sin(theta[3] + theta[4] + theta[7]) * cos(theta[0] + theta[1]));
-    P.push_back(0.5 * s * sin(theta[0]) + r1 * sin(theta[3]) * sin(theta[0] + theta[1]) + r2 * sin(theta[3] + theta[4]) * sin(theta[0] + theta[1]) + stick * sin(theta[3] + theta[4] + theta[7]) * sin(theta[0] + theta[1]));
-    P.push_back(z0 - r1 * cos(theta[3]) - r2 * cos(theta[3] + theta[4]) - stick * cos(theta[3] + theta[4] + theta[7]));
-    P.push_back(-0.5 * s * cos(theta[0]) + l1 * sin(theta[5]) * cos(theta[0] + theta[2]) + l2 * sin(theta[5] + theta[6]) * cos(theta[0] + theta[2]) + stick * sin(theta[5] + theta[6] + theta[8]) * cos(theta[0] + theta[2]));
-    P.push_back(-0.5 * s * sin(theta[0]) + l1 * sin(theta[5]) * sin(theta[0] + theta[2]) + l2 * sin(theta[5] + theta[6]) * sin(theta[0] + theta[2]) + stick * sin(theta[5] + theta[6] + theta[8]) * sin(theta[0] + theta[2]));
-    P.push_back(z0 - l1 * cos(theta[5]) - l2 * cos(theta[5] + theta[6]) - stick * cos(theta[5] + theta[6] + theta[8]));
-
-    return P;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /*                                Brake                                       */
 ////////////////////////////////////////////////////////////////////////////////
 
 void PathManager::clearBrake()  // 모든 brake끄기
 {
-    brakeArr = {0, 0, 0, 0, 0, 0, 0, 0};
+    vector<int> brakeArr = {0, 0, 0, 0, 0, 0, 0, 0};
     for (int i = 0; i < 8; i++)
     {
         usbio.setUSBIO4761(i, brakeArr[i]);

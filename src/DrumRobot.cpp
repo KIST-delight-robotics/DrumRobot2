@@ -859,6 +859,22 @@ bool DrumRobot::readMeasure(ifstream& inputFile)
     return false;
 }
 
+void DrumRobot::playOneLineProcess()
+{
+    // 충돌 회피 알고리즘 자리
+
+    lineOfScore++;
+    // std::cout << "\n//////////////////////////////// Read Measure : " << lineOfScore << "\n";
+    // std::cout << measureMatrix;
+    // std::cout << "\n ////////////// \n";
+    pathManager.generateTrajectory(measureMatrix);
+
+    if (lineOfScore > preCreatedLine)
+    {
+        pathManager.solveIKandPushConmmand();
+    }
+}
+
 void DrumRobot::sendPlayProcess()
 {
     if (fileIndex == 0) // 처음 파일을 열 때
@@ -892,18 +908,7 @@ void DrumRobot::sendPlayProcess()
         
         while(readMeasure(inputFile))    // 한마디 분량 미만으로 남을 때까지
         {
-            // 충돌 회피 알고리즘 자리
-
-            lineOfScore++;
-            // std::cout << "\n//////////////////////////////// Read Measure : " << lineOfScore << "\n";
-            // std::cout << measureMatrix;
-            // std::cout << "\n ////////////// \n";
-            pathManager.generateTrajectory(measureMatrix);
-
-            if (lineOfScore > preCreatedLine)
-            {
-                pathManager.solveIKandPushConmmand();
-            }
+            playOneLineProcess();
         }
 
         inputFile.close(); // 파일 닫기
@@ -919,21 +924,16 @@ void DrumRobot::sendPlayProcess()
         }
         else if (endOfScore)                     // 종료 코드 확인 -> 남은 궤적 생성
         {
-            while(measureMatrix.rows() > 1)    // 끝날 때까지
+            while (measureMatrix.rows() > 1)    // 궤적 다 만들 때까지
             {
-                // 충돌 회피 알고리즘 자리
-
-                lineOfScore++;
-                // std::cout << "\n//////////////////////////////// Read Measure : " << lineOfScore << "\n";
-                // std::cout << measureMatrix;
-                // std::cout << "\n ////////////// \n";
-                pathManager.generateTrajectory(measureMatrix);
-
-                if (lineOfScore > preCreatedLine)
-                {
-                    pathManager.solveIKandPushConmmand();
-                }
+                playOneLineProcess();
             }
+
+            while (!pathManager.endOfPlay)      // 명령 다 보낼 때까지
+            {
+                pathManager.solveIKandPushConmmand();
+            }
+
             std::cout << "Play is Over\n";
             flagObj.setAddStanceFlag("isHome"); // 연주 종료 후 Home 으로 이동
             state.main = Main::AddStance;
