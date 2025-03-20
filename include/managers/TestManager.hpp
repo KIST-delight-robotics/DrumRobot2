@@ -119,19 +119,25 @@ private:
     bool isReached = false;
     float torque = 0;
     double dt = 0.005; // 0.001로 세팅하면 천천히, TimeCheck를 1ms단위마다 돌게 해야함.
-    tuple <double, int, int> params;
+    tuple <double, int, int, int> params;
     double hit_time;
     int repeat;
     int hitstate;
     int intensity;
-    void setMaxonMotorMode(std::string targetMode, string motorName);
-    void maxonMotorEnable();
-    void CSTLoop();
-    void TestStickLoop();
-    void TestStick(const std::string selectedMotor, int des_tff, float tffThreshold, float posThreshold, int backTorqueUnit);
-    float makeWristAngle(float t1, float t2, float t, int state, int intensity, bool &hitting, float hittingPos);
+    float Kp_normal, Kd_normal;
+    float Kp_hit, Kd_hit;
+    double pre_err;
+    int index;
+    double hit_duration;
+    double release_duration;
+
+    float makeWristAngle(float t1, float t2, float t, int state, int intensity, shared_ptr<MaxonMotor> maxonMotor);
     float makeWristAngle_CST(float t1, float t2, float t, int state, int intensity, bool &hitting, float hittingPos);
-    tuple <double, int, int> CSTHitLoop();
+    float makeWristAngle_TC(float t1, float t2, float t, int state, int intensity, shared_ptr<MaxonMotor> maxonMotor);
+    tuple <double, int, int, int> MaxonHitLoop();
+    int makeTestHitTrajectory(float hit_time, int repeat, int intensity, int hitMode);
+    float getDesiredTorque(float desiredPosition, shared_ptr<MaxonMotor> maxonMotor);
+
 
     void unfixedMotor();
 
