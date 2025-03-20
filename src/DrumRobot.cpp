@@ -578,9 +578,7 @@ void DrumRobot::stateMachine()
 }
 
 void DrumRobot::sendLoopForThread()
-{
-    bool fixFlag = false;
-    
+{   
     while (state.main != Main::Shutdown)
     {
         sendLoopPeriod = std::chrono::steady_clock::now();
@@ -634,8 +632,6 @@ void DrumRobot::sendLoopForThread()
         {
             state.main = Main::Error;
         }
-
-        flagObj.setFixationFlag("fixed");
         
         std::this_thread::sleep_until(sendLoopPeriod);
     }
@@ -649,7 +645,7 @@ void DrumRobot::recvLoopForThread()
         recvLoopPeriod += std::chrono::microseconds(50000);  // 주기 : 100us
 
         canManager.readFramesFromAllSockets(); 
-        bool isSafe = canManager.distributeFramesToMotors(true);
+        bool isSafe = canManager.distributeFramesToMotors(false);
         if (!isSafe)
         {
             state.main = Main::Error;
@@ -693,31 +689,26 @@ void DrumRobot::processInput(const std::string &input, string flagName)
     if (input == "r" && flagName == "isHome")
     {
         flagObj.setAddStanceFlag("isReady");
-        flagObj.setFixationFlag("moving");
         state.main = Main::AddStance;
     }
     else if (input == "p" && flagName == "isReady")
     {
         initializePlay();
-        // flagObj.setAddStanceFlag("isHome"); // 연주가 끝난 후 Home 으로 돌아옴
-        flagObj.setFixationFlag("moving");
+        flagObj.setAddStanceFlag("isHome"); // 연주가 끝난 후 Home 으로 돌아옴
         state.main = Main::Play;
     }
     else if (input == "h" && flagName == "isReady")
     {
         flagObj.setAddStanceFlag("isHome");
-        flagObj.setFixationFlag("moving");
         state.main = Main::AddStance;
     }
     else if (input == "s" && flagName == "isHome")
     {
         flagObj.setAddStanceFlag("isShutDown");
-        flagObj.setFixationFlag("moving");
         state.main = Main::AddStance;
     }
     else if (input == "t")
     {
-        // 이거 어렵다...
         state.main = Main::Test;
     }
     else
@@ -730,11 +721,17 @@ void DrumRobot::idealStateRoutine()
 {
     if (flagObj.getFixationFlag())
     {
+        string flag = flagObj.getAddStanceFlag();
+
+        if (flag == "isShutDown")
+        {
+            state.main = Main::Shutdown;
+            return;
+        }
+
         int ret = system("clear");
         if (ret == -1)
             std::cout << "system clear error" << endl;
-
-        string flag = flagObj.getAddStanceFlag();
 
         displayAvailableCommands(flag);
 
@@ -775,6 +772,8 @@ void DrumRobot::sendAddStanceProcess()
         pathManager.getArr(pathManager.backArr);
     }
 
+    flagObj.setFixationFlag("moving");
+
     state.main = Main::Ideal;
 }
 
@@ -784,6 +783,11 @@ void DrumRobot::sendAddStanceProcess()
 
 void DrumRobot::initializePlay()
 {
+    fileIndex = 0;
+
+    measureMatrix.resize(1, 9);
+    measureMatrix = MatrixXd::Zero(1, 9);
+
     lineOfScore = 0;        ///< 현재 악보 읽은 줄.
     measureTotalTime = 0.0;     ///< 악보를 읽는 동안 누적 시간. [s]
 }
@@ -829,7 +833,7 @@ bool DrumRobot::readMeasure(ifstream& inputFile)
     // timeSum이 threshold를 넘으면 true 반환
     if (timeSum >= measureThreshold)
     {
-        std::cout << "\n//////////////////////////////// Read Measure : " << lineOfScore + 1 << "\n";
+        // std::cout << "\n//////////////////////////////// Read Measure : " << lineOfScore + 1 << "\n";
         // std::cout << measureMatrix;
         // std::cout << "\n ////////////// time sum : " << timeSum << "\n";
 
@@ -864,7 +868,7 @@ bool DrumRobot::readMeasure(ifstream& inputFile)
         // timeSum이 threshold를 넘으면 true 반환
         if (timeSum >= measureThreshold)
         {
-            std::cout << "\n//////////////////////////////// Read Measure : " << lineOfScore + 1 << "\n";
+            // std::cout << "\n//////////////////////////////// Read Measure : " << lineOfScore + 1 << "\n";
             // std::cout << measureMatrix;
             // std::cout << "\n ////////////// time sum : " << timeSum << "\n";
 
@@ -890,7 +894,8 @@ void DrumRobot::sendPlayProcess()
         if (fileIndex == 0) // 처음 파일을 열 때
         {
             bpmOfScore = readBpm(inputFile);
-            if (bpmOfScore <= 0)
+
+            if (bpmOfScore > 0)
             {
                 std::cout << "music bpm = " << bpmOfScore << "\n";
                 pathManager.initializeValue(bpmOfScore);
@@ -898,6 +903,7 @@ void DrumRobot::sendPlayProcess()
             else
             {
                 std::cout << "\n bpm Read Error !!! \n";
+                inputFile.close(); // 파일 닫기
                 return;
             }
         }
@@ -907,7 +913,8 @@ void DrumRobot::sendPlayProcess()
             // 충돌 회피 알고리즘 자리
 
             lineOfScore++;
-            // pathManager.generateTrajectory(measureMatrix);
+            std::cout << "\n//////////////////////////////// Read Measure : " << lineOfScore << "\n";
+            pathManager.generateTrajectory(measureMatrix);
 
             // if (lineOfScore > preCreatedLine)
             // {
@@ -920,31 +927,36 @@ void DrumRobot::sendPlayProcess()
     }
     else                        // 파일 열기 실패
     {
+        if (fileIndex == 0)                     // 악보 이름 오타
         {
-            // 종료 코드 확인 -> 남은 궤적 생성
-
-            while(1)    // 끝날 때까지
+            return;
+        }
+        else if (endOfScore)                     // 종료 코드 확인 -> 남은 궤적 생성
+        {
+            while(measureMatrix.rows() > 1)    // 끝날 때까지
             {
                 // 충돌 회피 알고리즘 자리
 
                 lineOfScore++;
                 pathManager.generateTrajectory(measureMatrix);
 
-                if (lineOfScore > preCreatedLine)
-                {
-                    pathManager.solveIKandPushConmmand();
-                }
+                // if (lineOfScore > preCreatedLine)
+                // {
+                //     pathManager.solveIKandPushConmmand();
+                // }
             }
             std::cout << "Play is Over\n";
-            state.main = Main::Ideal;
+            flagObj.setAddStanceFlag("isHome");
+            flagObj.setFixationFlag("moving");
+            state.main = Main::AddStance;
         }
+        else if (flagObj.getFixationFlag())  // fixed -> 비정상 종료
         {
-            // fixed -> 비정상 종료
-            std::cout << "Play is Over\n";
-            state.main = Main::Ideal;
+            std::cout << "Error : not find " << currentFile << "\n";
+            state.main = Main::Error;
         }
+        else                                // 다음 악보 생성될 때까지 대기
         {
-            // 다음 악보 생성될 때까지 대기
             usleep(100);
         }
     }

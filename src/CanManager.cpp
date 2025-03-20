@@ -863,7 +863,6 @@ bool CanManager::setCANFrame(std::map<std::string, bool>& fixFlags)
     return true;
 }
 
-
 void CanManager::setMaxonCANFrame(std::shared_ptr<MaxonMotor> maxonMotor, const MaxonData &mData)
 {
     if (mData.mode == "Position")
@@ -885,6 +884,8 @@ void CanManager::setTMotorCANFrame(std::shared_ptr<TMotor> tMotor, const TMotorD
     if (tData.mode == "Position")
     {
         tservocmd.setPositionCANFrame(*tMotor, &tMotor->sendFrame, tData.position);
+
+        fun.appendToCSV_DATA(fun.file_name, (float)tMotor->nodeId + SEND_SIGN, tData.position, 0);
     }
     else if (tData.mode == "Idle")
     {
