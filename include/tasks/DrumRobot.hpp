@@ -160,7 +160,7 @@ private:
     double measureTotalTime = 0.0;     ///< 악보를 읽는 동안 누적 시간. [s]
     bool endOfScore = true;           ///< 악보의 종료 코드 확인
 
-    void initializePlay();
+    void initializePlayState();
 
     string trimWhitespace(const std::string &str);
     double readBpm(ifstream& inputFile);

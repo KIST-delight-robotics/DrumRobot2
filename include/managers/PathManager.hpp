@@ -84,9 +84,10 @@ public:
     }Position;
     queue<Position> trajectoryQueue;
 
-    bool readMeasure(ifstream& inputFile, bool &bpmFlag);
+    // bool readMeasure(ifstream& inputFile, bool &bpmFlag);
+    void initializeValue(int bpm);
     void generateTrajectory(MatrixXd &measureMatrix);
-    bool solveIKandPushConmmand();
+    void solveIKandPushConmmand();
     
     /////////////////////////////////////////////////////////////////////////// AddStance
 
@@ -120,8 +121,6 @@ public:
     float releaseTimeVal = 1; // 드럼 스틱 release time에 곱하는 배수
 
     vector<float> FK();
-
-    void initializeValue(int bpm);
 
 private:
     TMotorCommandParser TParser; ///< T 모터 명령어 파서.
@@ -196,15 +195,15 @@ private:
     /////////////////////////////////////////////////////////////////////////// Play (make trajectory)
     double roundSum = 0;    ///< 5ms 스텝에서 누적되는 오차 보상
 
-    // 한 줄 데이터 저장할 Matrix
-    // [n min max state_hit_R state_hit_L]
+    // 악보 한 줄의 데이터 저장한 Matrix
+    // [명령 개수 / q0 최적값 / q0 min / q0 max / ]
     MatrixXd lineData;
 
     pair<VectorXd, VectorXd> getTargetPosition(VectorXd inst_vector);
     float timeScaling(float ti, float tf, float t);
     VectorXd makePath(VectorXd Pi, VectorXd Pf, float s);
     void saveLineData(int n, VectorXd minmax, VectorXd intesity, VectorXd finalWristAngle);
-    VectorXd waistRange(VectorXd &pR, VectorXd &pL);
+    VectorXd calWaistAngle(VectorXd &pR, VectorXd &pL);
     VectorXd getTargetWristAngle(VectorXd &inst_vector);
 
     /////////////////////////////////////////////////////////////////////////// Play (solve IK)
