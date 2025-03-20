@@ -605,8 +605,6 @@ void DrumRobot::sendLoopForThread()
         }
         if (allMotorsStagnant)
         {
-            std::cout << "지금 자는중임 " << "\n";
-            usleep(50000);
             flagObj.setFixationFlag("fixed");
         }
 
