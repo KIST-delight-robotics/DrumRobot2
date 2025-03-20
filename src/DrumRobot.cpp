@@ -603,8 +603,6 @@ void DrumRobot::sendLoopForThread()
         }
         if (allMotorsStagnant)
         {
-            std::cout << "지금 자는중임 " << "\n";
-            usleep(50000);
             flagObj.setFixationFlag("fixed");
         }
 
@@ -634,8 +632,6 @@ void DrumRobot::sendLoopForThread()
         {
             state.main = Main::Error;
         }
-
-        flagObj.setFixationFlag("fixed");
         
         std::this_thread::sleep_until(sendLoopPeriod);
     }
@@ -693,31 +689,26 @@ void DrumRobot::processInput(const std::string &input, string flagName)
     if (input == "r" && flagName == "isHome")
     {
         flagObj.setAddStanceFlag("isReady");
-        flagObj.setFixationFlag("moving");
         state.main = Main::AddStance;
     }
     else if (input == "p" && flagName == "isReady")
     {
         initializePlay();
-        // flagObj.setAddStanceFlag("isHome"); // 연주가 끝난 후 Home 으로 돌아옴
-        flagObj.setFixationFlag("moving");
+        flagObj.setAddStanceFlag("isHome"); // 연주가 끝난 후 Home 으로 돌아옴
         state.main = Main::Play;
     }
     else if (input == "h" && flagName == "isReady")
     {
         flagObj.setAddStanceFlag("isHome");
-        flagObj.setFixationFlag("moving");
         state.main = Main::AddStance;
     }
     else if (input == "s" && flagName == "isHome")
     {
         flagObj.setAddStanceFlag("isShutDown");
-        flagObj.setFixationFlag("moving");
         state.main = Main::AddStance;
     }
     else if (input == "t")
     {
-        // 이거 어렵다...
         state.main = Main::Test;
     }
     else
@@ -780,6 +771,8 @@ void DrumRobot::sendAddStanceProcess()
     {
         pathManager.getArr(pathManager.backArr);
     }
+
+    flagObj.setFixationFlag("moving");
 
     state.main = Main::Ideal;
 }
