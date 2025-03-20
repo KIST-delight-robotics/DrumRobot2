@@ -225,12 +225,12 @@ void DrumRobot::recvLoopForThread()
         }
         case Main::AddStance:
         {
-            readProcess(5000);
+            readProcess(1000);
             break;
         }
         case Main::Test:
         {
-            readProcess(5000);
+            readProcess(1000);
             break;
         }
         case Main::Pause:

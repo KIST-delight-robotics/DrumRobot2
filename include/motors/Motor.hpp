@@ -141,6 +141,9 @@ public:
     float hittingPos;
     float hittingDrumAngle = 0;
 
+    bool isHit = false;
+    bool drumReached = false;
+
     queue<MaxonData> commandBuffer;
     queue<float> wrist_BackArr;
     void clearCommandBuffer();

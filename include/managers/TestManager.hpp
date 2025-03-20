@@ -118,7 +118,7 @@ private:
     int hitMode = 1;
     bool isReached = false;
     float torque = 0;
-    double dt = 0.005; // 0.001로 세팅하면 천천히, TimeCheck를 1ms단위마다 돌게 해야함.
+    double dt = 0.001; // 0.001로 세팅하면 천천히, TimeCheck를 1ms단위마다 돌게 해야함.
     tuple <double, int, int> params;
     double hit_time;
     int repeat;

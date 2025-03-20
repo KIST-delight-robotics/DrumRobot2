@@ -61,12 +61,19 @@ public:
     bool isCST = false;
     bool isCSTR = false;
     bool isCSTL = false;
+    bool CSTModeR = false;
+    bool CSTModeL = false;
+    bool drumReachedL = false;
     float wristStayAngle;
     bool torqueControl = false;
     float Kp_normal;
     float Kd_normal;
     float Kp_hit;
     float Kd_hit;
+    float index = 0;
+    double hit_duration;
+    double release_duration;
+    string curTestMode;
 
     MatrixXd wristAnglesR;                               ///< 오른팔의 각 악기별 타격 시 손목 각도.
     MatrixXd wristAnglesL;                                ///< 왼팔의 각 악기별 타격 시 손목 각도.
@@ -83,6 +90,8 @@ public:
     void flushCanBuffer(int socket);
     void resetCanFilter(int socket);
     void checkCanPortsStatus();
+
+    void setMaxonMode(shared_ptr<MaxonMotor> maxonMotor, string maxonMode);
 
     void setMotorsSocket();
 
@@ -121,6 +130,7 @@ public:
     bool safetyCheck_M(std::shared_ptr<GenericMotor> &motor);
 
     bool dct_fun(shared_ptr<MaxonMotor> maxonMotor);
+    void detectHitting(shared_ptr<MaxonMotor> maxonMotor, float &desiredPosition);
 
     map<std::string, int> motorMapping = { ///< 각 관절에 해당하는 정보 [이름, CAN ID]
         {"waist", 0},

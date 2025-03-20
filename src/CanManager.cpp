@@ -6,7 +6,7 @@ CanManager::CanManager(std::map<std::string, std::shared_ptr<GenericMotor>> &mot
     : motors(motorsRef), fun(funRef)
 {
 }
-
+//hi i am taehwang
 CanManager::~CanManager()
 {
     // 모든 소켓 닫기
@@ -81,6 +81,26 @@ void CanManager::checkCanPortsStatus()
     }
 
     // 모든 포트가 연결된 경우 1, 아니면 0 반환
+}
+
+void CanManager::setMaxonMode(shared_ptr<MaxonMotor> maxonMotor, string maxonMode)
+{
+    if (maxonMode == "CSP")
+    {
+        maxoncmd.getCSPMode(*maxonMotor, &maxonMotor->sendFrame);
+        sendMotorFrame(maxonMotor);
+    }
+    else if (maxonMode == "CST")
+    {
+        maxoncmd.getCSTMode(*maxonMotor, &maxonMotor->sendFrame);
+        sendMotorFrame(maxonMotor);
+    }
+
+    maxoncmd.getShutdown(*maxonMotor, &maxonMotor->sendFrame);
+    sendMotorFrame(maxonMotor);
+
+    maxoncmd.getEnable(*maxonMotor, &maxonMotor->sendFrame);
+    sendMotorFrame(maxonMotor);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////
@@ -722,6 +742,7 @@ bool CanManager::distributeFramesToMotors(bool setlimit)
 
 bool CanManager::sendForCheck_Fixed(std::shared_ptr<GenericMotor> motor)
 {
+    float desiredTorque;
     clearReadBuffers();
 
     if (std::shared_ptr<TMotor> tMotor = std::dynamic_pointer_cast<TMotor>(motor))
@@ -758,7 +779,7 @@ bool CanManager::sendForCheck_Fixed(std::shared_ptr<GenericMotor> motor)
         }
         // maxoncmd.getTargetPosition(*maxonMotor, &maxonMotor->sendFrame, maxonMotor->fixedMotorPosition);
 
-        // if (isCSTL)
+        // if (isCST)
         // {
         //     double err = maxonMotor->fixedMotorPosition - maxonMotor->motorPosition;
         //     double err_dot = (err - pre_err)/DTSECOND;
@@ -770,6 +791,39 @@ bool CanManager::sendForCheck_Fixed(std::shared_ptr<GenericMotor> motor)
         // {
         //     maxoncmd.getTargetPosition(*maxonMotor, &maxonMotor->sendFrame, maxonMotor->fixedMotorPosition);
         // }
+        // if (isCST) 
+        // {
+        //     if (curTestMode == "TestMaxon")
+        //     {
+        //         maxoncmd.getCSPMode(*maxonMotor, &maxonMotor->sendFrame);
+        //         sendMotorFrame(maxonMotor);
+
+        //         maxoncmd.getShutdown(*maxonMotor, &maxonMotor->sendFrame);
+        //         sendMotorFrame(maxonMotor);
+
+        //         maxoncmd.getEnable(*maxonMotor, &maxonMotor->sendFrame);
+        //         sendMotorFrame(maxonMotor);
+
+        //         isCST = false;
+        //     }
+        //     else if (curTestMode == "SetQValue")
+        //     {
+        //         double err = maxonMotor->fixedMotorPosition - maxonMotor->motorPosition;
+        //         double err_dot = (err - pre_err)/DTSECOND;
+        //         desiredTorque = Kp * err + Kd * err_dot;
+        //         pre_err = err;
+        //     }
+        // }
+        
+        // if (curTestMode == "TestMaxon")
+        // {
+        //     maxoncmd.getTargetPosition(*maxonMotor, &maxonMotor->sendFrame, maxonMotor->fixedMotorPosition);
+        // }
+        // else if (curTestMode == "SetQValue")
+        // {
+        //     maxoncmd.getTargetTorque(*maxonMotor, &maxonMotor->sendFrame, desiredTorque);
+        // }
+
         if (isCST) 
         {
             maxoncmd.getCSPMode(*maxonMotor, &maxonMotor->sendFrame);
@@ -782,9 +836,11 @@ bool CanManager::sendForCheck_Fixed(std::shared_ptr<GenericMotor> motor)
             sendMotorFrame(maxonMotor);
 
             isCST = false;
+
         }
 
         maxoncmd.getTargetPosition(*maxonMotor, &maxonMotor->sendFrame, maxonMotor->fixedMotorPosition);
+        
 
         if (!sendMotorFrame(maxonMotor))
         {
@@ -898,7 +954,6 @@ bool CanManager::setCANFrame()
                     if (isHitR) isHitR = false;
                     maxonMotor->hittingPos = maxonMotor->positionValues.back() + maxonMotor->initialJointAngle - maxonMotor->hittingDrumAngle;
                     desiredPosition = maxonMotor->positionValues.back();
-                    if (isCSTR) isCSTR = false;
                 }
                 else
                 {
@@ -993,10 +1048,6 @@ bool CanManager::setCANFrame()
 
 bool CanManager::setCANFrame_TEST()
 {
-    static bool CSTModeR = false;
-    static bool CSTModeL = false;
-    static int indexL = 0;
-
     vector<float> Pos(9);
     for (auto &motor_pair : motors)
     {
@@ -1006,153 +1057,103 @@ bool CanManager::setCANFrame_TEST()
 
             MaxonData mData = maxonMotor->commandBuffer.front();
             float desiredPosition = maxonMotor->jointAngleToMotorPosition(mData.position);
-            float hittingTorque = -400; 
-            float torque_dot = -5;
             double err = mData.position - maxonMotor->jointAngle;
             double err_dot = (err - pre_err)/DTSECOND;
-            float desiredTorque = Kp_normal * err + Kd_normal * err_dot;
+            double alpha = 0.1;  
+            double err_dot_filtered = alpha * ((err - pre_err) / DTSECOND) + (1 - alpha) * err_dot;
+
+            static int max_index = 0; 
+            static float deltaKp = 0;
+            static float deltaKd = 0;
+            float actualKp = 0;
+            float desiredTorque = Kp * err + Kd * err_dot_filtered;
+            if (curTestMode == "TestMaxon")
+            {
+                desiredTorque = Kp_normal * err + Kd_normal * err_dot_filtered;
+            }
+            else if (curTestMode == "SetQValue")
+            {
+                desiredTorque = Kp * err + Kd * err_dot_filtered;
+            }
+            
             pre_err = err;
             
             maxonMotor->commandBuffer.pop();
 
-            if (maxonMotor->myName == "R_wrist")
-            {
-                if (isCSTR && !CSTModeR)
-                {
-                    maxoncmd.getCSTMode(*maxonMotor, &maxonMotor->sendFrame);
-                    sendMotorFrame(maxonMotor);
-
-                    maxoncmd.getShutdown(*maxonMotor, &maxonMotor->sendFrame);
-                    sendMotorFrame(maxonMotor);
-
-                    maxoncmd.getEnable(*maxonMotor, &maxonMotor->sendFrame);
-                    sendMotorFrame(maxonMotor);
-                    
-                    CSTModeR = true;
-                }
-                else if (!isCSTR && CSTModeR)
-                {
-                    maxoncmd.getCSPMode(*maxonMotor, &maxonMotor->sendFrame);
-                    sendMotorFrame(maxonMotor);
-
-                    maxoncmd.getShutdown(*maxonMotor, &maxonMotor->sendFrame);
-                    sendMotorFrame(maxonMotor);
-
-                    maxoncmd.getEnable(*maxonMotor, &maxonMotor->sendFrame);
-                    sendMotorFrame(maxonMotor);
-                    CSTModeR = false;
-                }
-
-                if(dct_fun(maxonMotor) && isHitR && maxonMotor->hitting == false)
-                {
-                    fun.appendToCSV_DATA("hittingDetectR", 1, 0, 0);
-                    
-                    maxonMotor->hitting = true;
-                    if (isHitR) isHitR = false;
-                    maxonMotor->hittingPos = maxonMotor->positionValues.back() + maxonMotor->initialJointAngle - maxonMotor->hittingDrumAngle;
-                    desiredPosition = maxonMotor->positionValues.back();          
-                }
-                else
-                {
-                    fun.appendToCSV_DATA("hittingDetectR", 0, 0, 0);
-                }
-
-                if(isCSTR && CSTModeR)
-                {
-                    maxoncmd.getTargetTorque(*maxonMotor, &maxonMotor->sendFrame, desiredTorque);
-                }
-                else
-                {
-                    maxoncmd.getTargetPosition(*maxonMotor, &maxonMotor->sendFrame, desiredPosition);
-                }
-            }
-            else if (maxonMotor->myName == "L_wrist")
+            if (maxonMotor->myName == "L_wrist")
             {
                 // if (isCSTL && !CSTModeL)
                 // {
-                //     maxoncmd.getCSTMode(*maxonMotor, &maxonMotor->sendFrame);
-                //     sendMotorFrame(maxonMotor);
-
-                //     maxoncmd.getShutdown(*maxonMotor, &maxonMotor->sendFrame);
-                //     sendMotorFrame(maxonMotor);
-
-                //     maxoncmd.getEnable(*maxonMotor, &maxonMotor->sendFrame);
-                //     sendMotorFrame(maxonMotor);
+                //     setMaxonMode(maxonMotor, "CST");
                     
                 //     CSTModeL = true;
                 // }
                 // else if (!isCSTL && CSTModeL)
                 // {
-                //     maxoncmd.getCSPMode(*maxonMotor, &maxonMotor->sendFrame);
-                //     sendMotorFrame(maxonMotor);
-
-                //     maxoncmd.getShutdown(*maxonMotor, &maxonMotor->sendFrame);
-                //     sendMotorFrame(maxonMotor);
-
-                //     maxoncmd.getEnable(*maxonMotor, &maxonMotor->sendFrame);
-                //     sendMotorFrame(maxonMotor);
+                //     setMaxonMode(maxonMotor, "CSP");
 
                 //     CSTModeL = false;
                 // }
 
                 if (isCST && !CSTModeL)
                 {
-                    maxoncmd.getCSTMode(*maxonMotor, &maxonMotor->sendFrame);
-                    sendMotorFrame(maxonMotor);
-
-                    maxoncmd.getShutdown(*maxonMotor, &maxonMotor->sendFrame);
-                    sendMotorFrame(maxonMotor);
-
-                    maxoncmd.getEnable(*maxonMotor, &maxonMotor->sendFrame);
-                    sendMotorFrame(maxonMotor);
+                    setMaxonMode(maxonMotor, "CST");
                     
                     CSTModeL = true;
                 }
                 else if (!isCST && CSTModeL)
                 {
-                    maxoncmd.getCSPMode(*maxonMotor, &maxonMotor->sendFrame);
-                    sendMotorFrame(maxonMotor);
-
-                    maxoncmd.getShutdown(*maxonMotor, &maxonMotor->sendFrame);
-                    sendMotorFrame(maxonMotor);
-
-                    maxoncmd.getEnable(*maxonMotor, &maxonMotor->sendFrame);
-                    sendMotorFrame(maxonMotor);
+                    setMaxonMode(maxonMotor, "CSP");
 
                     CSTModeL = false;
                 }
 
-                if(dct_fun(maxonMotor) && isHitL && maxonMotor->hitting == false)
-                {
-                    fun.appendToCSV_DATA("hittingDetectL", 1, 0, 0);
-                   
-                    maxonMotor->hitting = true;
-                    if (isHitL) isHitL = false;
-                    indexL = 0;
-                    maxonMotor->hittingPos = maxonMotor->positionValues.back() + maxonMotor->initialJointAngle - maxonMotor->hittingDrumAngle;
-                    desiredPosition = maxonMotor->positionValues.back();
-                }
-                else
-                {
-                    fun.appendToCSV_DATA("hittingDetectL", 0, 0, 0);
-                }
+                // detectHitting(maxonMotor, desiredPosition);
 
                 if(isHitL && CSTModeL)
                 {
-                    hittingTorque -= torque_dot * indexL;
-                    maxoncmd.getTargetTorque(*maxonMotor, &maxonMotor->sendFrame, hittingTorque);
-                    if(abs(hittingTorque) >= 10) indexL++;
-                }
-                else
-                {
-                    if(isCST)
+                    max_index = hit_duration / 0.001;
+                    deltaKp = (Kp_normal - Kp_hit) / max_index;
+                    deltaKd = (Kd_normal - Kd_hit) / max_index;
+                    actualKp = (Kp_normal - (deltaKp * index));
+
+                    desiredTorque = actualKp * err + (Kd_normal - (deltaKd * index)) * err_dot_filtered;
+                    if(index >= max_index)
                     {
-                        maxoncmd.getTargetTorque(*maxonMotor, &maxonMotor->sendFrame, desiredTorque);
+                        index = 0;
                     }
                     else
                     {
-                        maxoncmd.getTargetPosition(*maxonMotor, &maxonMotor->sendFrame, desiredPosition);
+                        index++;
                     }
+                }
+                else if (drumReachedL && CSTModeL)
+                {
+                    max_index = release_duration / 0.001;
+                    deltaKp = (Kp_normal - Kp_hit) / max_index;
+                    deltaKd = (Kd_normal - Kd_hit) / max_index;
+                    actualKp = (Kp_normal - (deltaKp * (max_index - index)));
+
+                    desiredTorque = actualKp * err + (Kd_normal - (deltaKd * (max_index - index)) * err_dot_filtered);
+
+                    if(index >= max_index)
+                    {
+                        index = 0;
+                    }
+                    else
+                    {
+                        index++;
+                    }
+                }
+
+                if(isCST)
+                {
+                    fun.appendToCSV_DATA("desiredTorque", desiredTorque, actualKp, 0);
+                    maxoncmd.getTargetTorque(*maxonMotor, &maxonMotor->sendFrame, desiredTorque);
+                }
+                else
+                {
+                    maxoncmd.getTargetPosition(*maxonMotor, &maxonMotor->sendFrame, desiredPosition);
                 }
             }
             fun.appendToCSV_DATA(fun.file_name, (float)maxonMotor->nodeId + SEND_SIGN, desiredPosition, desiredPosition - maxonMotor->motorPosition);
@@ -1312,17 +1313,34 @@ bool CanManager::dct_fun(shared_ptr<MaxonMotor> maxonMotor)
     double vel_k = the_k - the_k_1;
     double vel_k_1 = the_k_1 - the_k_2;
 
-    if (((vel_k > 0 && vel_k_1 < 0) || (abs(vel_k) * 2 < abs(vel_k_1))) && abs(vel_k_1) >= 0.01 && the_k <= threshold)
-    {
-        return true;
-    }
-    else
-        return false;
-
-    // if (abs(vel_k) * 2 < abs(vel_k_1) && vel_k_1 < 0 && abs(vel_k_1) >= 0.01 && the_k <= threshold)
+    // if (((vel_k > 0 && vel_k_1 < 0) || (abs(vel_k) * 2 < abs(vel_k_1))) && abs(vel_k_1) >= 0.01 && the_k <= threshold)
     // {
     //     return true;
     // }
     // else
     //     return false;
+
+    if ((vel_k > 0 && vel_k_1 < 0) && the_k <= threshold)
+    {
+        return true;
+    }
+    else
+        return false;
+}
+
+void CanManager::detectHitting(shared_ptr<MaxonMotor> maxonMotor, float &desiredPosition)
+{
+    if(dct_fun(maxonMotor) && isHitL && maxonMotor->hitting == false)
+    {
+        fun.appendToCSV_DATA("hittingDetectL", 1, 0, 0);
+        
+        maxonMotor->hitting = true;
+        if (isHitL) isHitL = false;
+        maxonMotor->hittingPos = maxonMotor->positionValues.back() + maxonMotor->initialJointAngle - maxonMotor->hittingDrumAngle;
+        desiredPosition = maxonMotor->positionValues.back();
+    }
+    else
+    {
+        fun.appendToCSV_DATA("hittingDetectL", 0, 0, 0);
+    }
 }
