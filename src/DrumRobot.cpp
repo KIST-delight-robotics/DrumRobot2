@@ -211,7 +211,7 @@ void DrumRobot::initializeCanManager()
 {
     canManager.initializeCAN();
     canManager.checkCanPortsStatus();
-    canManager.setMotorsSocket();
+    allMotorUnConected = canManager.setMotorsSocket();
 }
 
 void DrumRobot::motorSettingCmd()
@@ -364,7 +364,7 @@ void DrumRobot::initializeDrumRobot()
     initializePathManager();
     initializeMotors();
     initializeCanManager();
-    motorSettingCmd(); // 손목
+    motorSettingCmd(); // Maxon
     canManager.setSocketNonBlock();
 
     usbio.initUSBIO4761();

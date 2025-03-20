@@ -85,7 +85,7 @@ public:
     bool recvToBuff(std::shared_ptr<GenericMotor> &motor, int readCount);
 
     void setSocketsTimeout(int sec, int usec);
-    void setMotorsSocket();
+    bool setMotorsSocket();
 
     //////////////////////////////////////// Send
     int errorCnt = 0;   // 수신 에러 카운트

@@ -108,6 +108,7 @@ private:
     const float jointRangeMin[12] = {-90.0, 0.0,    30.0,   -60.0,  -30.0,  -60.0,  -30.0,  -108.0, -108.0,    -90.0 ,       -90.0,  -90.0};
 
     FlagClass flagObj;
+    bool allMotorUnConected = true;
 
     // Initialize
     int maxonMotorCount = 0;    // 1 이상이면 virtual Maxon Motor를 사용하기 위해
