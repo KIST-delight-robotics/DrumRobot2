@@ -107,10 +107,10 @@ private:
 
 struct MaxonData
 {
-    float torque;
     float position;
-    // std::string mode;
     int mode;
+    int kp;
+    int kd;
 };
 
 class MaxonMotor : public GenericMotor
@@ -144,6 +144,9 @@ public:
     float hittingDrumAngle = 0; // 드럼 별 타격 각도
     bool isHit = false; // 타격 궤적 시작 (내려가는 궤적)
     bool drumReached = false; // 올라오는 궤적 시작
+
+    //토크 계산시 사용되는 에러
+    float pre_err = 0;
 
     // commandBuffer
     queue<MaxonData> commandBuffer;

@@ -584,7 +584,7 @@ void DrumRobot::sendLoopForThread()
 
     bool wasFixed = false; // 이전 `fixed` 상태 추적
     int cycleCounter = 0; // 주기 조절을 위한 변수
-
+    float pre_err = 0;
     while (state.main != Main::Shutdown)
     {
         sendLoopPeriod = std::chrono::steady_clock::now();

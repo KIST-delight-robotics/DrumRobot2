@@ -491,6 +491,7 @@ void CanManager::setMaxonCANFrame(std::shared_ptr<MaxonMotor> maxonMotor, const 
     {
         if (maxonMotor->controlMode != maxonMotor->CSP)
         {
+            //멕슨모터 모드 변경시에는 모드 변경해주고 shutdown -> enable 해주기
             maxoncmd.getCSPMode(*maxonMotor, &maxonMotor->sendFrame);
             sendMotorFrame(maxonMotor);
             maxoncmd.getShutdown(*maxonMotor, &maxonMotor->sendFrame);
@@ -509,6 +510,7 @@ void CanManager::setMaxonCANFrame(std::shared_ptr<MaxonMotor> maxonMotor, const 
     {
         if (maxonMotor->controlMode != maxonMotor->CST)
         {
+            //멕슨모터 모드 변경시에는 모드 변경해주고 shutdown -> enable 해주기
             maxoncmd.getCSTMode(*maxonMotor, &maxonMotor->sendFrame);
             sendMotorFrame(maxonMotor);
             maxoncmd.getShutdown(*maxonMotor, &maxonMotor->sendFrame);
@@ -516,7 +518,12 @@ void CanManager::setMaxonCANFrame(std::shared_ptr<MaxonMotor> maxonMotor, const 
             maxoncmd.getEnable(*maxonMotor, &maxonMotor->sendFrame);
             sendMotorFrame(maxonMotor);            
         }
-        maxoncmd.setTorqueCANFrame(*maxonMotor, &maxonMotor->sendFrame, mData.torque);
+        //여기에서 토그 계산을 해주고!!!
+        float err = mData.position - maxonMotor->jointAngle; 
+        float torque = mData.kp * err + mData.kd * maxonMotor -> pre_err;
+        maxonMotor-> pre_err = err;
+        //여기에서 보상을 해주고!!
+        maxoncmd.setTorqueCANFrame(*maxonMotor, &maxonMotor->sendFrame, torque);
     }
     else if (mData.mode == maxonMotor->CSV)
     {
