@@ -111,11 +111,14 @@ private:
     VectorXd shutdownAngle;
 
     /////////////////////////////////////////////////////////////////////////// AddStance
+    MatrixXd addStanceCoefficient;
+    
     // q1[rad], q2[rad], acc[rad/s^2], t2[s]
     VectorXd calVmax(VectorXd &q1, VectorXd &q2, float acc, float t2);
     // q1[rad], q2[rad], Vmax[rad/s], acc[rad/s^2], t[s], t2[s]
     VectorXd makeProfile(VectorXd &q1, VectorXd &q2, VectorXd &Vmax, float acc, float t, float t2);
     VectorXd getMotorPos();
+    void getAddStanceCoefficient(VectorXd Q1, VectorXd Q2, double t);
 
     /////////////////////////////////////////////////////////////////////////// Parse Measure
     double bpmOfScore = 0;      ///< 악보의 BPM 정보.
@@ -150,7 +153,7 @@ private:
     }Position;
     queue<Position> trajectoryQueue;
 
-    double roundSum = 0;    ///< 5ms 스텝에서 누적되는 오차 보상
+    double roundSum = 0;    ///< 5ms 스텝 단위에서 누적되는 오차 보상
 
     // 악보 한 줄의 데이터 저장한 Matrix
     // [명령 개수 / q0 최적값 / q0 min / q0 max / ]
@@ -160,15 +163,8 @@ private:
     float timeScaling(float ti, float tf, float t);
     VectorXd makePath(VectorXd Pi, VectorXd Pf, float s);
     void saveLineData(int n, VectorXd minmax, VectorXd intesity, VectorXd finalWristAngle);
-    VectorXd calWaistAngle(VectorXd &pR, VectorXd &pL);
+    VectorXd calWaistAngle(VectorXd pR, VectorXd pL);
 
-    /////////////////////////////////////////////////////////////////////////// Solve IK
-    float getLength(double theta);
-    double getTheta(float l1, double theta);
-    void solveIK(VectorXd &q, double q0);
-    VectorXd IKFixedWaist(VectorXd &pR, VectorXd &pL, double theta0, double theta7, double theta8);
-    void pushConmmandBuffer(VectorXd &Qi);
-    
     /////////////////////////////////////////////////////////////////////////// Waist
     MatrixXd waistCoefficient;
     double q0_t1;               // 시작 위치 저장
@@ -184,6 +180,18 @@ private:
     void getWaistCoefficient();
     double getWaistAngle(int i);
 
+    /////////////////////////////////////////////////////////////////////////// Solve IK
+    float getLength(double theta);
+    double getTheta(float l1, double theta);
+    VectorXd solveIK(double q0);
+    VectorXd IKFixedWaist(VectorXd pR, VectorXd pL, double theta0, double theta7, double theta8);
+
+    /////////////////////////////////////////////////////////////////////////// Wrist (Hit)
+    pair<VectorXd, vector<int>> generateHit(VectorXd &q);
+
+    /////////////////////////////////////////////////////////////////////////// Push Command Buffer
+    void pushConmmandBuffer(VectorXd Qi, VectorXd T, vector<int> mode);
+
     /////////////////////////////////////////////////////////////////////////// brake
     void clearBrake(); // 모든 brake끄기
 
@@ -195,5 +203,37 @@ private:
     MatrixXd getOneDrumPosition(int InstNum, char RL);
     bool checkTable(VectorXd PR, VectorXd PL, double hitR, double hitL);
     bool hex2TableData(char hex1, char hex2, int index);
+
+    /////////////////////////////////////////////////////////////////////////// 이전 코드에서 살려온 부분
+    // 0.5초 기준 각도
+    const float baseTime = 0.5;
+    const float wristStayBaseAngle = 10.0 * M_PI / 180.0;
+    const float wristContactBaseAngle = 10.0 * M_PI / 180.0;
+    const float wristLiftBaseAngle = 25.0 * M_PI / 180.0;
+
+    const float elbowStayBaseAngle = 5.0 * M_PI / 180.0;
+    const float elbowLiftBaseAngle = 15.0 * M_PI / 180.0;
+    
+    // 타격 궤적 생성 파라미터
+    typedef struct {
+
+        // 각도
+        float wristStayAngle = 15.0 * M_PI / 180.0;
+        float wristContactAngle = 5.0 * M_PI / 180.0;
+        float wristLiftAngle = 25.0 * M_PI / 180.0;
+
+        float elbowStayAngle = 5.0 * M_PI / 180.0;
+        float elbowLiftAngle = 10.0 * M_PI / 180.0;
+
+        // 시간
+        float wristStayTime;
+        float wristContactTime;
+        float wristReleaseTime;
+        float wristLiftTime;
+
+        float elbowStayTime;
+        float elbowLiftTime;
+
+    }HitParameter;
 
 };

@@ -859,7 +859,7 @@ bool DrumRobot::readMeasure(ifstream& inputFile)
     return false;
 }
 
-void DrumRobot::playOneLineProcess()
+void DrumRobot::playALineProcess()
 {
     // 충돌 회피 알고리즘 자리
 
@@ -908,7 +908,7 @@ void DrumRobot::sendPlayProcess()
         
         while(readMeasure(inputFile))    // 한마디 분량 미만으로 남을 때까지
         {
-            playOneLineProcess();
+            playALineProcess();
         }
 
         inputFile.close(); // 파일 닫기
@@ -926,7 +926,7 @@ void DrumRobot::sendPlayProcess()
         {
             while (measureMatrix.rows() > 1)    // 궤적 다 만들 때까지
             {
-                playOneLineProcess();
+                playALineProcess();
             }
 
             while (!pathManager.endOfPlay)      // 명령 다 보낼 때까지
