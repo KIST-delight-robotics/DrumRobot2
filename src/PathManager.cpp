@@ -1420,6 +1420,12 @@ pair<VectorXd, vector<int>> PathManager::generateHit(VectorXd &q)
         }
     }
 
+    HitParameter param; // 일단 손목 바꾸기 전까지 사용 // 이인우
+    q(4) += param.elbowStayAngle;
+    q(6) += param.elbowStayAngle;
+    q(7) += param.wristStayAngle;
+    q(8) += param.wristStayAngle;
+
     return std::make_pair(T, mode);
 }
 
