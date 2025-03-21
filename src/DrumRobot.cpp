@@ -323,6 +323,10 @@ bool DrumRobot::initializePos(const std::string &input)
                 tservocmd.comm_can_set_origin(*tMotor, &tMotor->sendFrame, 0);
                 canManager.sendMotorFrame(tMotor);
                 tMotor->finalMotorPosition = 0.0;
+
+                std::cout << "Tmotor [" << tMotor->myName << "] set Zero \n";
+
+                usleep(1000*100);    // 100ms
             }
             else if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motorPair.second))
             {
@@ -330,7 +334,7 @@ bool DrumRobot::initializePos(const std::string &input)
             }
         }
         std::cout << "set zero and offset setting ~ ~ ~\n";
-        sleep(2);   // Set Zero 명령이 확실히 실행된 후
+        sleep(3);   // Set Zero 명령이 확실히 실행된 후
 
         maxonMotorEnable();
         setMaxonMotorMode("CSP");
@@ -570,12 +574,11 @@ void DrumRobot::sendLoopForThread()
         
         std::map<std::string, bool> fixFlags; // 각 모터의 고정 상태 저장
         
-
         if (!canManager.setCANFrame(fixFlags))
         {
             state.main = Main::Error;
+            break;
         }
-
 
         static std::map<std::string, bool> prevFixFlags;
         bool newData = false; // 버퍼 크기가 증가했는지 여부 추적
