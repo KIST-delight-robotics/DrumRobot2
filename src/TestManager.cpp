@@ -153,7 +153,94 @@ void TestManager::SendTestProcess()
 
                         while(hitTest)
                         {
-                            makeTestHitTrajectory(hit_time, repeat, intensity, hitMode);
+                            int n = hit_time / dt;
+                            float desiredTorque = 0;
+
+                            for (int repeatCnt = 0; repeatCnt <= repeat; repeatCnt++)
+                            {
+                                for (int i = 0; i <= n; i++)
+                                {
+                                    for (auto &entry : motors)
+                                    {
+                                        if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(entry.second))
+                                        {
+                                            MaxonData newData;
+                                            if (hitMode == 1) // 기존 포지션 궤적
+                                            {
+                                                maxonMotor->hitting = false; // 타격감지 X
+                                                if (repeatCnt == repeat)
+                                                {
+                                                    q[motorMapping[entry.first]] = makeWristAngle(0, hit_time, i * dt, 1, intensity, maxonMotor);
+                                                }
+                                                else if (repeatCnt == 0)
+                                                {
+                                                    q[motorMapping[entry.first]] = makeWristAngle(0, hit_time, i * dt, 2, intensity, maxonMotor);
+                                                }
+                                                else
+                                                {
+                                                    q[motorMapping[entry.first]] = makeWristAngle(0, hit_time, i * dt, 3, intensity, maxonMotor);
+                                                }
+                                                newData.mode = maxonMotor->CSP;
+                                            }
+                                            else if (hitMode == 2) // 포지션 + 타격 감지
+                                            {
+                                                
+                                                if (repeatCnt == repeat)
+                                                {
+                                                    q[motorMapping[entry.first]] = makeWristAngle(0, hit_time, i * dt, 1, intensity, maxonMotor);
+                                                }
+                                                else if (repeatCnt == 0)
+                                                {
+                                                    q[motorMapping[entry.first]] = makeWristAngle(0, hit_time, i * dt, 2, intensity, maxonMotor);
+                                                }
+                                                else
+                                                {
+                                                    q[motorMapping[entry.first]] = makeWristAngle(0, hit_time, i * dt, 3, intensity, maxonMotor);
+                                                }
+                                                newData.mode = maxonMotor->CSP;
+                                            }
+                                            else if (hitMode == 3) // 토크 모드 타격 + 타격 감지
+                                            {
+                                                if (repeatCnt == repeat)
+                                                {
+                                                    q[motorMapping[entry.first]] = makeWristAngle_CST(0, hit_time, i * dt, 1, intensity, maxonMotor->hitting, maxonMotor->hittingPos);
+                                                }
+                                                else if (repeatCnt == 0)
+                                                {
+                                                    q[motorMapping[entry.first]] = makeWristAngle_CST(0, hit_time, i * dt, 2, intensity, maxonMotor->hitting, maxonMotor->hittingPos);
+                                                }
+                                                else
+                                                {
+                                                    q[motorMapping[entry.first]] = makeWristAngle_CST(0, hit_time, i * dt, 3, intensity, maxonMotor->hitting, maxonMotor->hittingPos);
+                                                }
+                                                newData.mode = maxonMotor->CSP;
+                                            }
+                                            else // 포지션 기반 토크 제어
+                                            {
+                                                if (repeatCnt == repeat)
+                                                {
+                                                    q[motorMapping[entry.first]] = makeWristAngle_TC(0, hit_time, i * dt, 1, intensity, maxonMotor);    
+                                                }
+                                                else if (repeatCnt == 0)
+                                                {
+                                                    q[motorMapping[entry.first]] = makeWristAngle_TC(0, hit_time, i * dt, 2, intensity, maxonMotor);
+                                                }
+                                                else
+                                                {
+                                                    q[motorMapping[entry.first]] = makeWristAngle_TC(0, hit_time, i * dt, 3, intensity, maxonMotor);
+                                                }
+                                                newData.mode = maxonMotor->CST;
+                                                desiredTorque = getDesiredTorque(maxonMotor->jointAngleToMotorPosition(q[motorMapping[entry.first]]), maxonMotor);
+                                            }
+                                            newData.position = maxonMotor->jointAngleToMotorPosition(q[motorMapping[entry.first]]);
+                                            newData.torque = desiredTorque;
+                                            maxonMotor->commandBuffer.push(newData);
+                                            fun.appendToCSV_DATA("wristTrajectory", (float)maxonMotor->nodeId, q[motorMapping[entry.first]], 0);
+                                        }
+                                    }
+                                }
+                            }
+                            hitTest = false;
                         } 
                     }
                 }
@@ -282,59 +369,59 @@ int TestManager::makeTestHitTrajectory(float hit_time, int repeat, int intensity
                 }
                 newData.mode = maxonMotor->CSP;
             }
-            else if (hitMode == 2) // 포지션 + 타격 감지
-            {
+            // else if (hitMode == 2) // 포지션 + 타격 감지
+            // {
                 
-                if (repeatCnt == repeat)
-                {
-                    q[motorMapping[entry.first]] = makeWristAngle(0, hit_time, i * dt, 1, intensity, maxonMotor);
-                }
-                else if (repeatCnt == 0)
-                {
-                    q[motorMapping[entry.first]] = makeWristAngle(0, hit_time, i * dt, 2, intensity, maxonMotor);
-                }
-                else
-                {
-                    q[motorMapping[entry.first]] = makeWristAngle(0, hit_time, i * dt, 3, intensity, maxonMotor);
-                }
-                newData.mode = maxonMotor->CSP;
-            }
-            else if (hitMode == 3) // 토크 모드 타격 + 타격 감지
-            {
-                if (repeatCnt == repeat)
-                {
-                    q[motorMapping[entry.first]] = makeWristAngle_CST(0, hit_time, i * dt, 1, intensity, maxonMotor->hitting, maxonMotor->hittingPos);
-                }
-                else if (repeatCnt == 0)
-                {
-                    q[motorMapping[entry.first]] = makeWristAngle_CST(0, hit_time, i * dt, 2, intensity, maxonMotor->hitting, maxonMotor->hittingPos);
-                }
-                else
-                {
-                    q[motorMapping[entry.first]] = makeWristAngle_CST(0, hit_time, i * dt, 3, intensity, maxonMotor->hitting, maxonMotor->hittingPos);
-                }
-                newData.mode = maxonMotor->CSP;
-            }
-            else // 포지션 기반 토크 제어
-            {
-                if (repeatCnt == repeat)
-                {
-                    q[motorMapping[entry.first]] = makeWristAngle_TC(0, hit_time, i * dt, 1, intensity, maxonMotor);    
-                }
-                else if (repeatCnt == 0)
-                {
-                    q[motorMapping[entry.first]] = makeWristAngle_TC(0, hit_time, i * dt, 2, intensity, maxonMotor);
-                }
-                else
-                {
-                    q[motorMapping[entry.first]] = makeWristAngle_TC(0, hit_time, i * dt, 3, intensity, maxonMotor);
-                }
-                newData.mode = maxonMotor->CST;
+            //     if (repeatCnt == repeat)
+            //     {
+            //         q[motorMapping[entry.first]] = makeWristAngle(0, hit_time, i * dt, 1, intensity, maxonMotor);
+            //     }
+            //     else if (repeatCnt == 0)
+            //     {
+            //         q[motorMapping[entry.first]] = makeWristAngle(0, hit_time, i * dt, 2, intensity, maxonMotor);
+            //     }
+            //     else
+            //     {
+            //         q[motorMapping[entry.first]] = makeWristAngle(0, hit_time, i * dt, 3, intensity, maxonMotor);
+            //     }
+            //     newData.mode = maxonMotor->CSP;
+            // }
+            // else if (hitMode == 3) // 토크 모드 타격 + 타격 감지
+            // {
+            //     if (repeatCnt == repeat)
+            //     {
+            //         q[motorMapping[entry.first]] = makeWristAngle_CST(0, hit_time, i * dt, 1, intensity, maxonMotor->hitting, maxonMotor->hittingPos);
+            //     }
+            //     else if (repeatCnt == 0)
+            //     {
+            //         q[motorMapping[entry.first]] = makeWristAngle_CST(0, hit_time, i * dt, 2, intensity, maxonMotor->hitting, maxonMotor->hittingPos);
+            //     }
+            //     else
+            //     {
+            //         q[motorMapping[entry.first]] = makeWristAngle_CST(0, hit_time, i * dt, 3, intensity, maxonMotor->hitting, maxonMotor->hittingPos);
+            //     }
+            //     newData.mode = maxonMotor->CSP;
+            // }
+            // else // 포지션 기반 토크 제어
+            // {
+            //     if (repeatCnt == repeat)
+            //     {
+            //         q[motorMapping[entry.first]] = makeWristAngle_TC(0, hit_time, i * dt, 1, intensity, maxonMotor);    
+            //     }
+            //     else if (repeatCnt == 0)
+            //     {
+            //         q[motorMapping[entry.first]] = makeWristAngle_TC(0, hit_time, i * dt, 2, intensity, maxonMotor);
+            //     }
+            //     else
+            //     {
+            //         q[motorMapping[entry.first]] = makeWristAngle_TC(0, hit_time, i * dt, 3, intensity, maxonMotor);
+            //     }
+            //     newData.mode = maxonMotor->CST;
 
-                desiredTorque = getDesiredTorque(maxonMotor->jointAngleToMotorPosition(q[motorMapping[entry.first]]), maxonMotor);
-            }
+            //     desiredTorque = getDesiredTorque(maxonMotor->jointAngleToMotorPosition(q[motorMapping[entry.first]]), maxonMotor);
+            // }
             newData.position = maxonMotor->jointAngleToMotorPosition(q[motorMapping[entry.first]]);
-            newData.torque = desiredTorque;
+            // newData.torque = desiredTorque;
             maxonMotor->commandBuffer.push(newData);
         }
     }
@@ -370,7 +457,7 @@ float TestManager::makeWristAngle(float t1, float t2, float t, int state, int in
     float t_hitting = 0.0;
     float wristLiftAngle;
     t2 - t1 < 0.5 ? wristLiftAngle = (-100 * ((t2 - t1) - 0.5) * ((t2 - t1) - 0.5) + 40) * M_PI / 180.0 : wristLiftAngle = 40  * M_PI / 180.0;
-    float wristStayAngle = 10.0 * M_PI / 180.0;
+    float wristStayAngle = 15.0 * M_PI / 180.0;
     float wristContactAngle = -1.0 * std::min((t2 - t1) * 5.0 * M_PI / 180.0 / 0.5, 5.0 * M_PI / 180.0);
 
     float intensityFactor = 0.4 * intensity + 0.2; // 1 : 약하게   2 : 기본    3 : 강하게
