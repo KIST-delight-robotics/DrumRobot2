@@ -451,7 +451,7 @@ bool CanManager::setMotorsSocket()
     }
 
     // 모터 없이 테스트하는 경우
-    bool allMotorUnConected = true;
+    bool allMotorsUnConected = true;
 
     // 모든 소켓에 대한 검사가 완료된 후, 모터 연결 상태 확인 및 연결 안된 모터 삭제
     for (uint32_t i = 0; i < 12; i++)
@@ -465,7 +465,7 @@ bool CanManager::setMotorsSocket()
                 if (motor->isConected)
                 {
                     std::cerr << "--------------> CAN NODE ID " << motor->nodeId << " Connected. " << "Motor [" << name << "]\n";
-                    allMotorUnConected = false;
+                    allMotorsUnConected = false;
                 }
                 else
                 {
@@ -478,7 +478,7 @@ bool CanManager::setMotorsSocket()
         }
     }
 
-    return allMotorUnConected;
+    return allMotorsUnConected;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
