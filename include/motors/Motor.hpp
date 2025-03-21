@@ -59,6 +59,10 @@ public:
     bool isError = false;
     float fixedMotorPosition;
     bool isfixed = false;
+
+    //판별함수
+    virtual bool isTMotor() const { return false; }  // 기본값: false
+    virtual bool isMaxonMotor() const { return false; }  // 기본값: false
 };
 
 struct TMotorData
@@ -95,6 +99,8 @@ public:
     float jointAngleToMotorPosition(float jointAngle);
     float motorPositionToJointAngle(float motorPosition);
     void setInitialMotorAngle(float jointAngle);
+
+    bool isTMotor() const override { return true; }
 
 private:
 };
@@ -145,6 +151,8 @@ public:
 
     float jointAngleToMotorPosition(float jointAngle);
     float motorPositionToJointAngle(float motorPosition);
+
+    bool isMaxonMotor() const override { return true; }
 };
 
 #endif // MOTOR_H
