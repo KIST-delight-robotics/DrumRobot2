@@ -376,7 +376,7 @@ void CanManager::setSocketsTimeout(int sec, int usec)
     }
 }
 
-void CanManager::setMotorsSocket()
+bool CanManager::setMotorsSocket()
 {
     struct can_frame frame;
     setSocketsTimeout(0, 10000);
@@ -450,6 +450,9 @@ void CanManager::setMotorsSocket()
         tempFrames.clear();
     }
 
+    // 모터 없이 테스트하는 경우
+    bool allMotorUnConected = true;
+
     // 모든 소켓에 대한 검사가 완료된 후, 모터 연결 상태 확인 및 연결 안된 모터 삭제
     for (uint32_t i = 0; i < 12; i++)
     {
@@ -462,6 +465,7 @@ void CanManager::setMotorsSocket()
                 if (motor->isConected)
                 {
                     std::cerr << "--------------> CAN NODE ID " << motor->nodeId << " Connected. " << "Motor [" << name << "]\n";
+                    allMotorUnConected = false;
                 }
                 else
                 {
@@ -473,6 +477,8 @@ void CanManager::setMotorsSocket()
             }
         }
     }
+
+    return allMotorUnConected;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -481,15 +487,35 @@ void CanManager::setMotorsSocket()
 
 void CanManager::setMaxonCANFrame(std::shared_ptr<MaxonMotor> maxonMotor, const MaxonData &mData)
 {
-    if (mData.mode == "Position")
+    // if (mData.mode == "Position")
+    // {
+    //     maxoncmd.setPositionCANFrame(*maxonMotor, &maxonMotor->sendFrame, mData.position);
+    // }
+    // else if (mData.mode == "Torque")
+    // {
+    //     maxoncmd.setTorqueCANFrame(*maxonMotor, &maxonMotor->sendFrame, mData.torque);
+    // }
+    // else if (mData.mode == "Speed")
+    // {
+    //     return;
+    // }
+    if (mData.mode == maxonMotor->CSP)
     {
+        if (maxonMotor->controlMode != maxonMotor->CSP)
+        {
+
+        }
         maxoncmd.setPositionCANFrame(*maxonMotor, &maxonMotor->sendFrame, mData.position);
     }
-    else if (mData.mode == "Torque")
+    else if (mData.mode == maxonMotor->CST)
     {
+        if (maxonMotor->controlMode != maxonMotor->CST)
+        {
+            
+        }
         maxoncmd.setTorqueCANFrame(*maxonMotor, &maxonMotor->sendFrame, mData.torque);
     }
-    else if (mData.mode == "Speed")
+    else if (mData.mode == maxonMotor->CSV)
     {
         return;
     }
@@ -509,7 +535,7 @@ void CanManager::setTMotorCANFrame(std::shared_ptr<TMotor> tMotor, const TMotorD
     }
 }
 
-bool CanManager::safetyCheckSecdT(std::shared_ptr<TMotor> tMotor, TMotorData tData)
+bool CanManager::safetyCheckSendT(std::shared_ptr<TMotor> tMotor, TMotorData tData)
 {
     bool isSafe = true;
     float diff_angle = tData.position - tMotor->jointAngle;

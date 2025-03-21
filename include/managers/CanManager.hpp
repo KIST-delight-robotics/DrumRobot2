@@ -85,7 +85,7 @@ public:
     bool recvToBuff(std::shared_ptr<GenericMotor> &motor, int readCount);
 
     void setSocketsTimeout(int sec, int usec);
-    void setMotorsSocket();
+    bool setMotorsSocket();
 
     //////////////////////////////////////// Send
     int errorCnt = 0;   // 수신 에러 카운트
@@ -146,7 +146,7 @@ private:
     //////////////////////////////////////// Send
     void setMaxonCANFrame(std::shared_ptr<MaxonMotor> maxonMotor, const MaxonData &mData);
     void setTMotorCANFrame(std::shared_ptr<TMotor> tMotor, const TMotorData &tData);
-    bool safetyCheckSecdT(std::shared_ptr<TMotor> tMotor, TMotorData tData);
+    bool safetyCheckSendT(std::shared_ptr<TMotor> tMotor, TMotorData tData);
 
     void deactivateCanPort(const char *port);
     void deactivateAllCanPorts();
