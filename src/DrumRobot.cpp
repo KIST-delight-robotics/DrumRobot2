@@ -507,17 +507,23 @@ void DrumRobot::setMaxonMotorMode(std::string targetMode)
                 canManager.txFrame(motor, frame);
             }
 
+            // 모드 바꾸고 껐다 켜주기
+
             maxoncmd.getShutdown(*maxonMotor, &frame);
             canManager.txFrame(motor, frame);
 
             maxoncmd.getSync(&frame);
             canManager.txFrame(motor, frame);
 
+            usleep(100);
+
             maxoncmd.getEnable(*maxonMotor, &frame);
             canManager.txFrame(motor, frame);
 
             maxoncmd.getSync(&frame);
             canManager.txFrame(motor, frame);
+
+            usleep(100);
         }
     }
 }
