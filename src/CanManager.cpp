@@ -487,15 +487,35 @@ bool CanManager::setMotorsSocket()
 
 void CanManager::setMaxonCANFrame(std::shared_ptr<MaxonMotor> maxonMotor, const MaxonData &mData)
 {
-    if (mData.mode == "Position")
+    // if (mData.mode == "Position")
+    // {
+    //     maxoncmd.setPositionCANFrame(*maxonMotor, &maxonMotor->sendFrame, mData.position);
+    // }
+    // else if (mData.mode == "Torque")
+    // {
+    //     maxoncmd.setTorqueCANFrame(*maxonMotor, &maxonMotor->sendFrame, mData.torque);
+    // }
+    // else if (mData.mode == "Speed")
+    // {
+    //     return;
+    // }
+    if (mData.mode == maxonMotor->CSP)
     {
+        if (maxonMotor->controlMode != maxonMotor->CSP)
+        {
+
+        }
         maxoncmd.setPositionCANFrame(*maxonMotor, &maxonMotor->sendFrame, mData.position);
     }
-    else if (mData.mode == "Torque")
+    else if (mData.mode == maxonMotor->CST)
     {
+        if (maxonMotor->controlMode != maxonMotor->CST)
+        {
+            
+        }
         maxoncmd.setTorqueCANFrame(*maxonMotor, &maxonMotor->sendFrame, mData.torque);
     }
-    else if (mData.mode == "Speed")
+    else if (mData.mode == maxonMotor->CSV)
     {
         return;
     }
@@ -515,7 +535,7 @@ void CanManager::setTMotorCANFrame(std::shared_ptr<TMotor> tMotor, const TMotorD
     }
 }
 
-bool CanManager::safetyCheckSecdT(std::shared_ptr<TMotor> tMotor, TMotorData tData)
+bool CanManager::safetyCheckSendT(std::shared_ptr<TMotor> tMotor, TMotorData tData)
 {
     bool isSafe = true;
     float diff_angle = tData.position - tMotor->jointAngle;

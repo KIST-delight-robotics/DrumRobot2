@@ -98,7 +98,8 @@ struct MaxonData
 {
     float torque;
     float position;
-    std::string mode;
+    // std::string mode;
+    int mode;
 };
 
 class MaxonMotor : public GenericMotor
@@ -115,6 +116,14 @@ public:
     // Receive
     float motorTorque;
     unsigned char statusBit;
+
+    // 제어 모드
+    const int HMM = 0;  // Homming Mode
+    const int CSP = 1;  // Cyclic Sync Position Mode
+    const int CSV = 2;  // Cyclic Sync Velocity Mode
+    const int CST = 3;  // Cyclic Sync Torque Mode
+
+    int controlMode = CSP;    // 현재 제어 모드
 
     // 타격 감지용 변수
     queue<double> positionValues; // 포지션 값 저장을 위한 queue
