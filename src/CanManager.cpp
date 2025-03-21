@@ -593,25 +593,28 @@ bool CanManager::setCANFrame(std::map<std::string, bool>& fixFlags, int cycleCou
             
         }
         // TMotor
-        else if (std::shared_ptr<TMotor> tMotor = std::dynamic_pointer_cast<TMotor>(motor) && cycleCounter ==0)
+        else if (std::shared_ptr<TMotor> tMotor = std::dynamic_pointer_cast<TMotor>(motor))
         {
-            if (tMotor->commandBuffer.empty()) continue;
-
-            TMotorData tData = tMotor->commandBuffer.front();
-
-            //버퍼 크기가 1이면 fixed 상태
-            fixFlags[motorName] = (tMotor->commandBuffer.size() == 1);
-
-            if (tMotor->commandBuffer.size() > 1)
+            if (cycleCounter == 0)
             {
-                fixFlags[motorName] = false;
-                tMotor->commandBuffer.pop();
-            }
+                if (tMotor->commandBuffer.empty()) continue;
 
-            setTMotorCANFrame(tMotor, tData);
-            if(!safetyCheckSendT(tMotor, tData))
-            {
-                return false;
+                TMotorData tData = tMotor->commandBuffer.front();
+
+                //버퍼 크기가 1이면 fixed 상태
+                fixFlags[motorName] = (tMotor->commandBuffer.size() == 1);
+
+                if (tMotor->commandBuffer.size() > 1)
+                {
+                    fixFlags[motorName] = false;
+                    tMotor->commandBuffer.pop();
+                }
+
+                setTMotorCANFrame(tMotor, tData);
+                if(!safetyCheckSendT(tMotor, tData))
+                {
+                    return false;
+                }
             }
         }
     }
