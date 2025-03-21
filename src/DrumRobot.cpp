@@ -574,6 +574,7 @@ void DrumRobot::sendLoopForThread()
         if (!canManager.setCANFrame(fixFlags))
         {
             state.main = Main::Error;
+            break;
         }
 
 
@@ -639,6 +640,7 @@ void DrumRobot::sendLoopForThread()
 
 void DrumRobot::recvLoopForThread()
 {
+    
     while (state.main != Main::Shutdown)
     {
         recvLoopPeriod = std::chrono::steady_clock::now();

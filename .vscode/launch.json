@@ -25,7 +25,8 @@
                 }
             ],
             "preLaunchTask": "build - DrumRobot",
-            "miDebuggerPath": "/usr/bin/gdb"
+            "miDebuggerPath": "/home/taehwang/DrumRobot/DrumRobot2/scripts/sudo-gdb.sh"
+
         }
     ]
 }
