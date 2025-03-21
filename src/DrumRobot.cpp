@@ -506,6 +506,18 @@ void DrumRobot::setMaxonMotorMode(std::string targetMode)
                 maxoncmd.getCSPMode(*maxonMotor, &frame);
                 canManager.sendAndRecv(motor, frame);
             }
+
+            maxoncmd.getShutdown(*maxonMotor, &frame);
+            canManager.sendAndRecv(motor, frame);
+
+            maxoncmd.getSync(&frame);
+            canManager.sendAndRecv(motor, frame);
+
+            maxoncmd.getEnable(*maxonMotor, &frame);
+            canManager.sendAndRecv(motor, frame);
+
+            maxoncmd.getSync(&frame);
+            canManager.sendAndRecv(motor, frame);
         }
     }
 }
