@@ -233,7 +233,7 @@ void PathManager::pushAddStancePath(string flagName)
                 {
                     TMotorData newData;
                     newData.position = tMotor->jointAngleToMotorPosition(Qt[can_id]);
-                    newData.mode = "Position";
+                    newData.mode = tMotor->Position;
                     tMotor->commandBuffer.push(newData);
 
                     tMotor->finalMotorPosition = newData.position;
@@ -261,7 +261,7 @@ void PathManager::pushAddStancePath(string flagName)
                 {
                     TMotorData newData;
                     newData.position = tMotor->jointAngleToMotorPosition(Q1[can_id]);
-                    newData.mode = "Position";
+                    newData.mode = tMotor->Position;
                     tMotor->commandBuffer.push(newData);
                 }
                 else if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(entry.second))
@@ -1437,7 +1437,7 @@ void PathManager::pushConmmandBuffer(VectorXd Qi, VectorXd T, vector<int> mode)
         {
             TMotorData newData;
             newData.position = tMotor->jointAngleToMotorPosition(Qi[can_id]);
-            newData.mode = "Position";
+            newData.mode = tMotor->Position;
             tMotor->commandBuffer.push(newData);
 
             tMotor->finalMotorPosition = newData.position;
