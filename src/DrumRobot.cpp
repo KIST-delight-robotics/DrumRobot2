@@ -671,6 +671,7 @@ void DrumRobot::sendLoopForThread()
         {
             flagObj.setFixationFlag("fixed");
         }
+        
         cycleCounter = (cycleCounter + 1) % 5;
         std::this_thread::sleep_until(sendLoopPeriod);
     }
