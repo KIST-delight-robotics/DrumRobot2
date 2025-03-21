@@ -645,7 +645,7 @@ void DrumRobot::recvLoopForThread()
     while (state.main != Main::Shutdown)
     {
         recvLoopPeriod = std::chrono::steady_clock::now();
-        recvLoopPeriod += std::chrono::microseconds(50000);  // 주기 : 100us
+        recvLoopPeriod += std::chrono::microseconds(5000);  // 주기 : 100us
 
         canManager.readFramesFromAllSockets(); 
         bool isSafe = canManager.distributeFramesToMotors(true);
