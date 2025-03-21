@@ -569,11 +569,12 @@ void DrumRobot::stateMachine()
 void DrumRobot::sendLoopForThread()
 {   
     bool wasFixed = false; // 이전 `fixed` 상태 추적
+    int cycleCounter = 0; // 주기 조절을 위한 변수
 
     while (state.main != Main::Shutdown)
     {
         sendLoopPeriod = std::chrono::steady_clock::now();
-        sendLoopPeriod += std::chrono::microseconds(5000);  // 주기 : 5msec
+        sendLoopPeriod += std::chrono::microseconds(1000);  // 주기 : 5msec
         
         std::map<std::string, bool> fixFlags; // 각 모터의 고정 상태 저장
         
@@ -616,11 +617,25 @@ void DrumRobot::sendLoopForThread()
         
         for (auto &motor_pair : motors)
         {
-            shared_ptr<GenericMotor> motor = motor_pair.second;
-
-            if (!canManager.sendMotorFrame(motor))
+            std::shared_ptr<GenericMotor> motor = motor_pair.second;
+            // t모터는 5번 중 1번만 실행
+            if (motor->isTMotor()) 
             {
-                isWriteError = true;
+                if (cycleCounter == 0) // 5ms마다 실행
+                {
+                    if (!canManager.sendMotorFrame(motor))
+                    {
+                        isWriteError = true;
+                    }
+                }
+            }
+            else if (motor->isMaxonMotor())
+            {
+                // Maxon모터는 1ms마다 실행
+                if (!canManager.sendMotorFrame(motor))
+                {
+                    isWriteError = true;
+                }
             }
         }
 
@@ -644,19 +659,15 @@ void DrumRobot::sendLoopForThread()
         {
             flagObj.setFixationFlag("fixed");
         }
-        
+        cycleCounter = (cycleCounter + 1) % 5;
         std::this_thread::sleep_until(sendLoopPeriod);
     }
 }
 
 void DrumRobot::recvLoopForThread()
 {
-<<<<<<< HEAD
-    
-=======
     canManager.clearReadBuffers();
 
->>>>>>> abf7d24f883a57adf40047b6c58c86fbf3ec9d73
     while (state.main != Main::Shutdown)
     {
         recvLoopPeriod = std::chrono::steady_clock::now();
