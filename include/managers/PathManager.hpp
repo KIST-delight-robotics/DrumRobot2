@@ -187,6 +187,41 @@ private:
     VectorXd IKFixedWaist(VectorXd pR, VectorXd pL, double theta0, double theta7, double theta8);
 
     /////////////////////////////////////////////////////////////////////////// Wrist (Hit)
+    typedef struct {
+        double releaseTime;
+        double stayTime;
+        double liftTime;
+        double hitTime;     // 전체 시간
+    }wristTime;
+
+    typedef struct {
+        double releaseTime;
+        double stayTime;
+        double liftTime;
+        double hitTime;     // 전체 시간
+    }elbowTime;
+
+    typedef struct {
+        double stayAngle;
+        double pressAngle;
+        double liftAngle;
+    }wristAngle;
+
+    typedef struct {
+        double stayAngle;
+        double liftAngle;
+    }elbowAngle;
+    
+    wristTime wristTimeR, wristTimeL;
+    elbowTime elbowTimeR, elbowTimeL;
+    wristAngle wristAngleR, wristAngleL;
+    elbowAngle elbowAngleR, elbowAngleL;
+    
+    MatrixXd wristCoefficientR;
+    MatrixXd wristCoefficientL;
+    MatrixXd elbowCoefficientR;
+    MatrixXd elbowCoefficientL;
+
     pair<VectorXd, vector<int>> generateHit(VectorXd &q);
 
     /////////////////////////////////////////////////////////////////////////// Push Command Buffer
