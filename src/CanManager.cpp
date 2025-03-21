@@ -451,7 +451,7 @@ bool CanManager::setMotorsSocket()
     }
 
     // 모터 없이 테스트하는 경우
-    bool allMotorUnConected = true;
+    bool allMotorsUnConected = true;
 
     // 모든 소켓에 대한 검사가 완료된 후, 모터 연결 상태 확인 및 연결 안된 모터 삭제
     for (uint32_t i = 0; i < 12; i++)
@@ -465,7 +465,7 @@ bool CanManager::setMotorsSocket()
                 if (motor->isConected)
                 {
                     std::cerr << "--------------> CAN NODE ID " << motor->nodeId << " Connected. " << "Motor [" << name << "]\n";
-                    allMotorUnConected = false;
+                    allMotorsUnConected = false;
                 }
                 else
                 {
@@ -478,7 +478,7 @@ bool CanManager::setMotorsSocket()
         }
     }
 
-    return allMotorUnConected;
+    return allMotorsUnConected;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -527,7 +527,7 @@ void CanManager::setTMotorCANFrame(std::shared_ptr<TMotor> tMotor, const TMotorD
     {
         tservocmd.setPositionCANFrame(*tMotor, &tMotor->sendFrame, tData.position);
 
-        fun.appendToCSV_DATA(fun.file_name, (float)tMotor->nodeId + SEND_SIGN, tMotor->motorPositionToJointAngle(tData.position), 0);
+        // fun.appendToCSV_DATA(fun.file_name, (float)tMotor->nodeId + SEND_SIGN, tMotor->motorPositionToJointAngle(tData.position), 0);
     }
     else if (tData.mode == tMotor-> Idle)
     {
@@ -538,24 +538,25 @@ void CanManager::setTMotorCANFrame(std::shared_ptr<TMotor> tMotor, const TMotorD
 bool CanManager::safetyCheckSendT(std::shared_ptr<TMotor> tMotor, TMotorData tData)
 {
     bool isSafe = true;
-    float diff_angle = tData.position - tMotor->jointAngle;
+    float desiredJointAngle = tMotor->motorPositionToJointAngle(tData.position);
+    float diff_angle = desiredJointAngle - tMotor->jointAngle;
 
     if (abs(diff_angle) > POS_DIFF_LIMIT)
     {
         std::cout << "\nSet CAN Frame Error : Safety Check (" << tMotor->myName << ")" << endl;
-        std::cout << "Desired Joint Angle : " << tData.position * 180.0 / M_PI << "deg\tCurrent Joint Angle : " << tMotor->jointAngle * 180.0 / M_PI << "deg\n";
+        std::cout << "Desired Joint Angle : " << desiredJointAngle * 180.0 / M_PI << "deg\tCurrent Joint Angle : " << tMotor->jointAngle * 180.0 / M_PI << "deg\n";
         isSafe = false;
     }
-    else if (tMotor->rMin > tData.position)
+    else if (tMotor->rMin > desiredJointAngle)
     {
         std::cout << "\nSet CAN Frame Error : Out of Min Range (" << tMotor->myName << ")" << endl;
-        std::cout << "Desired Joint Angle : " << tData.position * 180.0 / M_PI << "deg\n";
+        std::cout << "Desired Joint Angle : " << desiredJointAngle * 180.0 / M_PI << "deg\n";
         isSafe = false;
     }
-    else if (tMotor->rMax < tData.position)
+    else if (tMotor->rMax < desiredJointAngle)
     {
         std::cout << "\nSet CAN Frame Error : Out of Max Range (" << tMotor->myName << ")" << endl;
-        std::cout << "Desired Joint Angle : " << tData.position * 180.0 / M_PI << "deg\n";
+        std::cout << "Desired Joint Angle : " << desiredJointAngle * 180.0 / M_PI << "deg\n";
         isSafe = false;
     }
 
@@ -699,11 +700,13 @@ bool CanManager::safetyCheckRecvT(std::shared_ptr<GenericMotor> &motor)
             {
                 std::cout << "\nRead CAN Frame Error : Out of Min Range (" << tMotor->myName << ")" << endl;
                 std::cout << "Current Joint Angle : " << tMotor->jointAngle / M_PI * 180 << "deg\n";
+                std::cout << "Current Motor Position : " << tMotor->motorPosition / M_PI * 180 << "deg\n";
             }
             else
             {
                 std::cout << "\nRead CAN Frame Error : Out of Max Range (" << tMotor->myName << ")" << endl;
                 std::cout << "Current Joint Angle : " << tMotor->jointAngle / M_PI * 180 << "deg\n";
+                std::cout << "Current Motor Position : " << tMotor->motorPosition / M_PI * 180 << "deg\n";
             }
 
             isSafe = false;
@@ -816,13 +819,12 @@ bool CanManager::distributeFramesToMotors(bool setlimit)
                     tMotor->motorVelocity = std::get<2>(parsedData);
                     tMotor->motorCurrent = std::get<3>(parsedData);
 
-                    // tMotor->jointAngle = std::get<1>(parsedData) * tMotor->cwDir * tMotor->timingBeltRatio + tMotor->initialJointAngle;
                     tMotor->jointAngle = tMotor->motorPositionToJointAngle(std::get<1>(parsedData));
                     
                     // std::cout << tMotor->jointAngle << std::endl;
                     tMotor->recieveBuffer.push(frame);
 
-                    fun.appendToCSV_DATA(fun.file_name, (float)tMotor->nodeId, tMotor->jointAngle, tMotor->motorCurrent);
+                    fun.appendToCSV_DATA(fun.file_name, (float)tMotor->nodeId, tMotor->motorPosition, tMotor->motorCurrent);
                     
                     if (setlimit)
                     {
@@ -868,7 +870,6 @@ bool CanManager::distributeFramesToMotors(bool setlimit)
                         maxonMotor->positionValues.pop();
                     }
 
-                    // maxonMotor->jointAngle = std::get<1>(parsedData) * maxonMotor->cwDir + maxonMotor->initialJointAngle;
                     maxonMotor->jointAngle = maxonMotor->motorPositionToJointAngle(std::get<1>(parsedData));
                     maxonMotor->recieveBuffer.push(frame);
                     

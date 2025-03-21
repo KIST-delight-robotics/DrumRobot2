@@ -89,8 +89,8 @@ void PathManager::getDrumPositoin()
 
     //              S                  FT                  MT                  HT                  HH                  R                   RC                 LC
     wristAnglesR << 25.0*M_PI/180.0,   25.0*M_PI/180.0,    15.0*M_PI/180.0,    15.0*M_PI/180.0,    10.0*M_PI/180.0,    15.0*M_PI/180.0,    0.0*M_PI/180.0,    10.0*M_PI/180.0, 0;
-    // wristAnglesL << 25.0*M_PI/180.0,   25.0*M_PI/180.0,    15.0*M_PI/180.0,    15.0*M_PI/180.0,    10.0*M_PI/180.0,    15.0*M_PI/180.0,    0.0*M_PI/180.0,    10.0*M_PI/180.0, 0;
-    wristAnglesL << 0, 0, 0, 0, 0, 0, 0, 0, 0;
+    wristAnglesL << 25.0*M_PI/180.0,   25.0*M_PI/180.0,    15.0*M_PI/180.0,    15.0*M_PI/180.0,    10.0*M_PI/180.0,    15.0*M_PI/180.0,    0.0*M_PI/180.0,    10.0*M_PI/180.0, 0;
+    // wristAnglesL << 0, 0, 0, 0, 0, 0, 0, 0, 0;
 
     canManager.wristAnglesR.resize(1, 9);
     canManager.wristAnglesL.resize(1, 9);
@@ -1419,6 +1419,12 @@ pair<VectorXd, vector<int>> PathManager::generateHit(VectorXd &q)
             mode[can_id] = maxonMotor->CSP;
         }
     }
+
+    HitParameter param; // 일단 손목 바꾸기 전까지 사용 // 이인우
+    q(4) += param.elbowStayAngle;
+    q(6) += param.elbowStayAngle;
+    q(7) += param.wristStayAngle;
+    q(8) += param.wristStayAngle;
 
     return std::make_pair(T, mode);
 }

@@ -84,6 +84,8 @@ public:
     bool sendAndRecv(std::shared_ptr<GenericMotor> &motor, struct can_frame &frame);
     bool recvToBuff(std::shared_ptr<GenericMotor> &motor, int readCount);
 
+    void clearReadBuffers();
+
     void setSocketsTimeout(int sec, int usec);
     bool setMotorsSocket();
 
@@ -139,7 +141,6 @@ private:
     void flushCanBuffer(int socket);
     void resetCanFilter(int socket);
     
-    void clearReadBuffers();
     void clearCanBuffer(int canSocket);
     int setSocketTimeout(int socket, int sec, int usec);
 

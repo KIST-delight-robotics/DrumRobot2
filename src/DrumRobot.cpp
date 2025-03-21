@@ -212,7 +212,7 @@ void DrumRobot::initializeCanManager()
     canManager.initializeCAN();
     canManager.checkCanPortsStatus();
     //true 모터연결안된것 김태황
-    allMotorUnConected = canManager.setMotorsSocket();
+    allMotorsUnConected = canManager.setMotorsSocket();
 }
 
 void DrumRobot::motorSettingCmd()
@@ -323,6 +323,11 @@ bool DrumRobot::initializePos(const std::string &input)
                 tservocmd.comm_can_set_origin(*tMotor, &tMotor->sendFrame, 0);
                 canManager.sendMotorFrame(tMotor);
                 tMotor->finalMotorPosition = 0.0;
+
+                usleep(1000*100);    // 100ms
+
+                // std::cout << "Tmotor [" << tMotor->myName << "] set Zero \n";
+                // std::cout << "Current Motor Position : " << tMotor->motorPosition / M_PI * 180 << "deg\n";
             }
             else if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motorPair.second))
             {
@@ -511,6 +516,8 @@ void DrumRobot::setMaxonMotorMode(std::string targetMode)
 
 void DrumRobot::stateMachine()
 {
+    sleep(1);   // read에서 motor 값이 업데이트 될 때까지 대기
+
     while (state.main != Main::Shutdown)
     {
         switch (state.main.load())
@@ -570,13 +577,11 @@ void DrumRobot::sendLoopForThread()
         
         std::map<std::string, bool> fixFlags; // 각 모터의 고정 상태 저장
         
-
         if (!canManager.setCANFrame(fixFlags))
         {
             state.main = Main::Error;
             break;
         }
-
 
         static std::map<std::string, bool> prevFixFlags;
         bool newData = false; // 버퍼 크기가 증가했는지 여부 추적
@@ -633,6 +638,12 @@ void DrumRobot::sendLoopForThread()
         {
             state.main = Main::Error;
         }
+
+        // 모든 모터가 연결 안된 경우 : 바로 fixed 로 넘어감
+        if(allMotorsUnConected)
+        {
+            flagObj.setFixationFlag("fixed");
+        }
         
         std::this_thread::sleep_until(sendLoopPeriod);
     }
@@ -640,14 +651,19 @@ void DrumRobot::sendLoopForThread()
 
 void DrumRobot::recvLoopForThread()
 {
+<<<<<<< HEAD
     
+=======
+    canManager.clearReadBuffers();
+
+>>>>>>> abf7d24f883a57adf40047b6c58c86fbf3ec9d73
     while (state.main != Main::Shutdown)
     {
         recvLoopPeriod = std::chrono::steady_clock::now();
-        recvLoopPeriod += std::chrono::microseconds(50000);  // 주기 : 100us
+        recvLoopPeriod += std::chrono::microseconds(5000);  // 주기 : 100us
 
         canManager.readFramesFromAllSockets(); 
-        bool isSafe = canManager.distributeFramesToMotors(false);
+        bool isSafe = canManager.distributeFramesToMotors(true);
         if (!isSafe)
         {
             state.main = Main::Error;
