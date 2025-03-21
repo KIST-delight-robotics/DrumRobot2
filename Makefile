@@ -13,7 +13,11 @@ SOURCES := $(wildcard $(SRCDIR)/*.cpp)
 OBJFILES := $(patsubst $(SRCDIR)/%.cpp, $(OBJDIR)/%.o, $(SOURCES))
 
 # Build target
-all: $(BINDIR)/$(EXECUTABLE)
+all: directories $(BINDIR)/$(EXECUTABLE)
+
+# Ensure directories exist
+directories:
+	mkdir -p $(OBJDIR) $(BINDIR)
 
 $(BINDIR)/$(EXECUTABLE): $(OBJFILES)
 	$(CC) $(CFLAGS) $^ -o $@ $(INCLUDE) $(LDFLAGS)
@@ -25,6 +29,7 @@ $(OBJDIR)/%.o: $(SRCDIR)/%.cpp
 # Clean rule
 clean:
 	rm -f $(OBJDIR)/*.o $(BINDIR)/$(EXECUTABLE)
+
 
 # Qt 관련 설정 (현재 사용하지 않으므로 주석 처리)
 # MOC = moc

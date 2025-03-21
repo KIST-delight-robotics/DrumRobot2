@@ -1664,7 +1664,7 @@ void TestManager::getArr(float arr[])
                 {
                     TMotorData newData;
                     newData.position = tMotor->jointAngleToMotorPosition(Qi[motorMapping[entry.first]]);
-                    newData.mode = "Position";
+                    newData.mode = tMotor->Position;
                     tMotor->commandBuffer.push(newData);
                 }
                 else if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(entry.second))
