@@ -382,7 +382,7 @@ void PathManager::generateTrajectory(MatrixXd &measureMatrix)
 
 void PathManager::solveIKandPushConmmand()
 {
-    int n = lineData(0, 0);
+    int n = lineData(0, 0); // 명령 개수
 
     getWaistCoefficient();
 
@@ -1094,13 +1094,16 @@ vector<double> PathManager::cubicInterpolation(const vector<double> &q, const ve
     }
     double m1 = 0.5 * (a[0] + a[1]);
     double m2 = 0.5 * (a[1] + a[2]);
+
+    // Monotone Cubic Interpolation 적용
     double alph, bet;
     if (q[1] == q[2])
     {
         m1 = 0;
         m2 = 0;
     }
-    else{
+    else
+    {
         if((q[0] == q[1]) || (a[0] * a[1] < 0)){
             m1 = 0;
         }
@@ -1121,67 +1124,67 @@ vector<double> PathManager::cubicInterpolation(const vector<double> &q, const ve
     m[0] = m1;
     m[1] = m2;
     
-    // for (int i = 0; i < 4; i++)
-    // {
-    //     std::cout << "\n q[" << i << "] = " << q[i] << ", t[" << i << "] = " << t[i] << endl;
-    // }
-    // std::cout << "\n m1 : " << m1 << "\tm2 : " << m2 << endl;
-    
     return m;
 }
 
 std::pair<double, vector<double>> PathManager::getNextQ0()
 {
-    VectorXd t_getQ0t2;     // getNextQ0() 함수 안에서 사용할 시간 벡터
+    VectorXd t_getNextQ0;     // getNextQ0() 함수 안에서 사용할 시간 벡터
     double dt = canManager.DTSECOND;
     vector<double> m_interpolation = {0.0, 0.0};
-    double q0_t2 = 0.0;
+    double q0_t2 = 0.0, q0_t3;;
+
+    VectorXd a(3);  // 기울기
+    double avg_a;   // 기울기 평균
+    double q0Min, q0Max;
 
     // 기울기 평균 + interpolation
-    t_getQ0t2.resize(6);
+    t_getNextQ0.resize(6);
     for (int i = 0; i < 6; i++)
     {
         if (i == 0)
         {
-            t_getQ0t2(i) = t0;
+            t_getNextQ0(i) = t0;
         }
         else if (i == 1)
         {
-            t_getQ0t2(i) = 0;
+            t_getNextQ0(i) = 0;
         }
         else if (lineData.rows() >= i-1)
         {
-            t_getQ0t2(i) = t_getQ0t2(i-1) + lineData(i-2,0)*dt;
+            t_getNextQ0(i) = t_getNextQ0(i-1) + lineData(i-2,0)*dt;
         }
         else
         {
-            t_getQ0t2(i) = t_getQ0t2(i-1) + 1;
+            t_getNextQ0(i) = t_getNextQ0(i-1) + 1;
         }
     }
 
     // t1 -> t2
-    VectorXd a(3);
     for (int i = 0; i < 3; i++)
     {
         if (lineData.rows() > i+1)
         {
-            a(i) = (lineData(i+1,1) - q0_t1) / (t_getQ0t2(i+2)-t_getQ0t2(1));
+            a(i) = (lineData(i+1,1) - q0_t1) / (t_getNextQ0(i+2)-t_getNextQ0(1));
         }
         else
         {
-            a(i) = (t_getQ0t2(i+1)-t_getQ0t2(1)) / (t_getQ0t2(i+2)-t_getQ0t2(1)) * a(i-1);
+            a(i) = (t_getNextQ0(i+1)-t_getNextQ0(1)) / (t_getNextQ0(i+2)-t_getNextQ0(1)) * a(i-1);
         }
     }
 
-    q0_t2 = a.sum()/3.0*(t_getQ0t2(2)-t_getQ0t2(1)) + q0_t1;
+    avg_a = a.sum()/3.0;
+    q0_t2 = avg_a*(t_getNextQ0(2)-t_getNextQ0(1)) + q0_t1;
 
-    if (q0_t2 <= lineData(1,2) || q0_t2 >= lineData(1,3))
+    // 허리 범위 확인
+    q0Min = lineData(1,2);
+    q0Max = lineData(1,3);
+    if (q0_t2 <= q0Min || q0_t2 >= q0Max)
     {
-        q0_t2 = 0.5*lineData(1,2) + 0.5*lineData(1,3);
+        q0_t2 = 0.5*q0Min + 0.5*q0Max;
     }
 
     // t2 -> t3
-    double q0_t3;
     if (lineData.rows() == 2)
     {
         q0_t3 = q0_t2;
@@ -1192,38 +1195,46 @@ std::pair<double, vector<double>> PathManager::getNextQ0()
         {
             if (lineData.rows() > i+2)
             {
-                a(i) = (lineData(i+2,1) - q0_t1) / (t_getQ0t2(i+3)-t_getQ0t2(2));
+                a(i) = (lineData(i+2,1) - q0_t1) / (t_getNextQ0(i+3)-t_getNextQ0(2));
             }
             else
             {
-                a(i) = (t_getQ0t2(i+2)-t_getQ0t2(2)) / (t_getQ0t2(i+3)-t_getQ0t2(2)) * a(i-1);
+                a(i) = (t_getNextQ0(i+2)-t_getNextQ0(2)) / (t_getNextQ0(i+3)-t_getNextQ0(2)) * a(i-1);
             }
         }
 
-        q0_t3 = a.sum()/3.0*(t_getQ0t2(3)-t_getQ0t2(2)) + q0_t2;
+        // 허리 범위 확인
+        avg_a = a.sum()/3.0;
+        q0_t3 = avg_a*(t_getNextQ0(3)-t_getNextQ0(2)) + q0_t2;
 
-        if (q0_t3 <= lineData(2,2) || q0_t3 >= lineData(2,3))
+        q0Min = lineData(2,2);
+        q0Max = lineData(2,3);
+        if (q0_t3 <= q0Min || q0_t3 >= q0Max)
         {
-            q0_t3 = 0.5*lineData(2,2) + 0.5*lineData(2,3);
+            q0_t3 = 0.5*q0Min + 0.5*q0Max;
         }
     }
 
+    // 3차 보간법
     vector<double> y = {q0_t0, q0_t1, q0_t2, q0_t3};
-    vector<double> x = {t_getQ0t2(0), t_getQ0t2(1), t_getQ0t2(2), t_getQ0t2(3)};
+    vector<double> x = {t_getNextQ0(0), t_getNextQ0(1), t_getNextQ0(2), t_getNextQ0(3)};
     m_interpolation = cubicInterpolation(y, x);
 
-    return {q0_t2, m_interpolation};
+    return std::make_pair(q0_t2, m_interpolation);
 }
 
 void PathManager::getWaistCoefficient()
 {
+    vector<double> m = {0.0, 0.0};
+    double q0_t2;
+
+    int n = lineData(0, 0); // 명령 개수
+    double dt = canManager.DTSECOND;
+    double t21 = n * dt;    // 전체 시간
+
     MatrixXd A;
     MatrixXd b;
     MatrixXd A_1;
-    vector<double> m = {0.0, 0.0};
-    double q0_t2;
-    double dt = canManager.DTSECOND;
-    double t21 = lineData(0, 0) * dt;
 
     if (lineData.rows() == 1)
     {
