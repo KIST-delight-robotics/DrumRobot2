@@ -590,7 +590,7 @@ void DrumRobot::sendLoopForThread()
         
         std::map<std::string, bool> fixFlags; // 각 모터의 고정 상태 저장
         
-        if (!canManager.setCANFrame(fixFlags))
+        if (!canManager.setCANFrame(fixFlags,cycleCounter))
         {
             state.main = Main::Error;
             break;
