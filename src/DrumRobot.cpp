@@ -211,6 +211,7 @@ void DrumRobot::initializeCanManager()
 {
     canManager.initializeCAN();
     canManager.checkCanPortsStatus();
+    //true 모터연결안된것 김태황
     allMotorUnConected = canManager.setMotorsSocket();
 }
 
@@ -600,8 +601,13 @@ void DrumRobot::sendLoopForThread()
             wasFixed = false;
         }
 
-        bool isWriteError = false;
 
+        //////////////////////////////////////////////////////////////////////////
+        ///////////////////////////////////보내기///////////////////////////////////
+        //////////////////////////////////////////////////////////////////////////
+
+        bool isWriteError = false; 
+        
         for (auto &motor_pair : motors)
         {
             shared_ptr<GenericMotor> motor = motor_pair.second;

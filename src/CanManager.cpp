@@ -556,7 +556,7 @@ bool CanManager::setCANFrame(std::map<std::string, bool>& fixFlags)
 
             MaxonData mData = maxonMotor->commandBuffer.front();
 
-            // 버퍼 크기가 1이면 고정 상태
+            // 버퍼 크기가 1이면 fixed 상태
             fixFlags[motorName] = (maxonMotor->commandBuffer.size() == 1);
 
             if (maxonMotor->commandBuffer.size() > 1)
@@ -574,7 +574,7 @@ bool CanManager::setCANFrame(std::map<std::string, bool>& fixFlags)
 
             TMotorData tData = tMotor->commandBuffer.front();
 
-            //버퍼 크기가 1이면 고정 상태
+            //버퍼 크기가 1이면 fixed 상태
             fixFlags[motorName] = (tMotor->commandBuffer.size() == 1);
 
             if (tMotor->commandBuffer.size() > 1)
