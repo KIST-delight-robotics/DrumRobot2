@@ -922,17 +922,34 @@ bool CanManager::dct_fun(shared_ptr<MaxonMotor> maxonMotor)
     double vel_k = the_k - the_k_1;
     double vel_k_1 = the_k_1 - the_k_2;
 
-    if (((vel_k > 0 && vel_k_1 < 0) || (abs(vel_k) * 2 < abs(vel_k_1))) && abs(vel_k_1) >= 0.01 && the_k <= threshold)
-    {
-        return true;
-    }
-    else
-        return false;
-
-    // if (abs(vel_k) * 2 < abs(vel_k_1) && vel_k_1 < 0 && abs(vel_k_1) >= 0.01 && the_k <= threshold)
+    // if (((vel_k > 0 && vel_k_1 < 0) || (abs(vel_k) * 2 < abs(vel_k_1))) && abs(vel_k_1) >= 0.01 && the_k <= threshold)
     // {
     //     return true;
     // }
     // else
     //     return false;
+
+    if ((vel_k > 0 && vel_k_1 < 0) && the_k <= threshold)
+    {
+        return true;
+    }
+    else
+        return false;
+}
+
+void CanManager::detectHitting(shared_ptr<MaxonMotor> maxonMotor, float &desiredPosition)
+{
+    if(dct_fun(maxonMotor) && isHitL && maxonMotor->hitting == false)
+    {
+        fun.appendToCSV_DATA("hittingDetectL", 1, 0, 0);
+        
+        maxonMotor->hitting = true;
+        if (isHitL) isHitL = false;
+        maxonMotor->hittingPos = maxonMotor->positionValues.back() + maxonMotor->initialJointAngle - maxonMotor->hittingDrumAngle;
+        desiredPosition = maxonMotor->positionValues.back();
+    }
+    else
+    {
+        fun.appendToCSV_DATA("hittingDetectL", 0, 0, 0);
+    }
 }

@@ -116,6 +116,7 @@ public:
     float currentPosition = 0.0;
 
     bool dct_fun(shared_ptr<MaxonMotor> maxonMotor);
+    void detectHitting(shared_ptr<MaxonMotor> maxonMotor, float &desiredPosition);
 
 private:
 
