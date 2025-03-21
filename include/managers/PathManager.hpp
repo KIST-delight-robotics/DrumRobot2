@@ -204,36 +204,4 @@ private:
     bool checkTable(VectorXd PR, VectorXd PL, double hitR, double hitL);
     bool hex2TableData(char hex1, char hex2, int index);
 
-    /////////////////////////////////////////////////////////////////////////// 이전 코드에서 살려온 부분
-    // 0.5초 기준 각도
-    const float baseTime = 0.5;
-    const float wristStayBaseAngle = 15.0 * M_PI / 180.0;
-    const float wristPressBaseAngle = 10.0 * M_PI / 180.0;
-    const float wristLiftBaseAngle = 25.0 * M_PI / 180.0;
-
-    const float elbowStayBaseAngle = 5.0 * M_PI / 180.0;
-    const float elbowLiftBaseAngle = 15.0 * M_PI / 180.0;
-    
-    // 타격 궤적 생성 파라미터
-    typedef struct {
-
-        // 각도
-        float wristStayAngle = 15.0 * M_PI / 180.0;
-        float wristPressAngle = 5.0 * M_PI / 180.0;
-        float wristLiftAngle = 25.0 * M_PI / 180.0;
-
-        float elbowStayAngle = 5.0 * M_PI / 180.0;
-        float elbowLiftAngle = 10.0 * M_PI / 180.0;
-
-        // 시간
-        float wristStayTime;
-        float wristPressTime;
-        float wristReleaseTime;
-        float wristLiftTime;
-
-        float elbowStayTime;
-        float elbowLiftTime;
-
-    }HitParameter;
-
 };

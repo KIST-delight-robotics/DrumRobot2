@@ -491,6 +491,7 @@ void CanManager::setMaxonCANFrame(std::shared_ptr<MaxonMotor> maxonMotor, const 
     {
         if (maxonMotor->controlMode != maxonMotor->CSP)
         {
+            //멕슨모터 모드 변경시에는 모드 변경해주고 shutdown -> enable 해주기
             maxoncmd.getCSPMode(*maxonMotor, &maxonMotor->sendFrame);
             sendMotorFrame(maxonMotor);
             maxoncmd.getShutdown(*maxonMotor, &maxonMotor->sendFrame);
@@ -501,11 +502,15 @@ void CanManager::setMaxonCANFrame(std::shared_ptr<MaxonMotor> maxonMotor, const 
         }
         maxoncmd.setPositionCANFrame(*maxonMotor, &maxonMotor->sendFrame, mData.position);
 
+        // std::cout << "Maxon Motor : " << maxonMotor->myName << "\t" << mData.position << "\n";
+
+        fun.appendToCSV_DATA("debug", (float)maxonMotor->nodeId, mData.position, 0);
     }
     else if (mData.mode == maxonMotor->CST)
     {
         if (maxonMotor->controlMode != maxonMotor->CST)
         {
+            //멕슨모터 모드 변경시에는 모드 변경해주고 shutdown -> enable 해주기
             maxoncmd.getCSTMode(*maxonMotor, &maxonMotor->sendFrame);
             sendMotorFrame(maxonMotor);
             maxoncmd.getShutdown(*maxonMotor, &maxonMotor->sendFrame);
@@ -513,7 +518,12 @@ void CanManager::setMaxonCANFrame(std::shared_ptr<MaxonMotor> maxonMotor, const 
             maxoncmd.getEnable(*maxonMotor, &maxonMotor->sendFrame);
             sendMotorFrame(maxonMotor);            
         }
-        maxoncmd.setTorqueCANFrame(*maxonMotor, &maxonMotor->sendFrame, mData.torque);
+        //여기에서 토그 계산을 해주고!!!
+        float err = mData.position - maxonMotor->jointAngle; 
+        float torque = mData.kp * err + mData.kd * maxonMotor -> pre_err;
+        maxonMotor-> pre_err = err;
+        //여기에서 보상을 해주고!!
+        maxoncmd.setTorqueCANFrame(*maxonMotor, &maxonMotor->sendFrame, torque);
     }
     else if (mData.mode == maxonMotor->CSV)
     {
@@ -590,25 +600,28 @@ bool CanManager::setCANFrame(std::map<std::string, bool>& fixFlags, int cycleCou
             
         }
         // TMotor
-        else if (std::shared_ptr<TMotor> tMotor = std::dynamic_pointer_cast<TMotor>(motor) && cycleCounter ==0)
+        else if (std::shared_ptr<TMotor> tMotor = std::dynamic_pointer_cast<TMotor>(motor))
         {
-            if (tMotor->commandBuffer.empty()) continue;
-
-            TMotorData tData = tMotor->commandBuffer.front();
-
-            //버퍼 크기가 1이면 fixed 상태
-            fixFlags[motorName] = (tMotor->commandBuffer.size() == 1);
-
-            if (tMotor->commandBuffer.size() > 1)
+            if (cycleCounter == 0)
             {
-                fixFlags[motorName] = false;
-                tMotor->commandBuffer.pop();
-            }
+                if (tMotor->commandBuffer.empty()) continue;
 
-            setTMotorCANFrame(tMotor, tData);
-            if(!safetyCheckSendT(tMotor, tData))
-            {
-                return false;
+                TMotorData tData = tMotor->commandBuffer.front();
+
+                //버퍼 크기가 1이면 fixed 상태
+                fixFlags[motorName] = (tMotor->commandBuffer.size() == 1);
+
+                if (tMotor->commandBuffer.size() > 1)
+                {
+                    fixFlags[motorName] = false;
+                    tMotor->commandBuffer.pop();
+                }
+
+                setTMotorCANFrame(tMotor, tData);
+                if(!safetyCheckSendT(tMotor, tData))
+                {
+                    return false;
+                }
             }
         }
     }

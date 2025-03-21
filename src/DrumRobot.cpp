@@ -585,14 +585,16 @@ void DrumRobot::stateMachine()
 }
 
 void DrumRobot::sendLoopForThread()
-{   
+{
+    sleep(2);   // read thead에서 clear / initial pos Path 생성 할 때까지 기다림
+
     bool wasFixed = false; // 이전 `fixed` 상태 추적
     int cycleCounter = 0; // 주기 조절을 위한 변수
-
+    float pre_err = 0;
     while (state.main != Main::Shutdown)
     {
         sendLoopPeriod = std::chrono::steady_clock::now();
-        sendLoopPeriod += std::chrono::microseconds(1000);  // 주기 : 5msec
+        sendLoopPeriod += std::chrono::microseconds(5000);  // 주기 : 5msec
         
         std::map<std::string, bool> fixFlags; // 각 모터의 고정 상태 저장
         
@@ -677,7 +679,7 @@ void DrumRobot::sendLoopForThread()
         {
             flagObj.setFixationFlag("fixed");
         }
-        cycleCounter = (cycleCounter + 1) % 5;
+        // cycleCounter = (cycleCounter + 1) % 5;
         std::this_thread::sleep_until(sendLoopPeriod);
     }
 }
@@ -972,6 +974,7 @@ void DrumRobot::sendPlayProcess()
         if (fileIndex == 0)                     // 악보 파일 없음
         {
             std::cout << "not find " << currentFile << "\n";
+            flagObj.setFixationFlag("fixed");
             state.main = Main::Ideal;
             return;
         }
