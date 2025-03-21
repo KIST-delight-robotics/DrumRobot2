@@ -232,7 +232,7 @@ void TestManager::SendTestProcess()
                                                 newData.mode = maxonMotor->CST;
                                                 desiredTorque = getDesiredTorque(maxonMotor->jointAngleToMotorPosition(q[motorMapping[entry.first]]), maxonMotor);
                                             }
-                                            newData.position = maxonMotor->jointAngleToMotorPosition(q[motorMapping[entry.first]]);
+                                            newData.position = maxonMotor->jointAngleToMotorPosition(q[motorMapping[entry.first]] + 25.0*M_PI/180.0);
                                             newData.torque = desiredTorque;
                                             maxonMotor->commandBuffer.push(newData);
                                             fun.appendToCSV_DATA("wristTrajectory", (float)maxonMotor->nodeId, q[motorMapping[entry.first]], 0);
