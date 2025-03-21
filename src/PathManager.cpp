@@ -242,7 +242,6 @@ void PathManager::pushAddStancePath(string flagName)
                 {
                     MaxonData newData;
                     newData.position = maxonMotor->jointAngleToMotorPosition(Qt[can_id]);
-                    newData.torque = 0;
                     newData.mode = maxonMotor->CSP;
                     maxonMotor->commandBuffer.push(newData);
 
@@ -268,7 +267,6 @@ void PathManager::pushAddStancePath(string flagName)
                 {
                     MaxonData newData;
                     newData.position = maxonMotor->jointAngleToMotorPosition(Q1[can_id]);
-                    newData.torque = 0;
                     newData.mode = maxonMotor->CSP;
                     maxonMotor->commandBuffer.push(newData);
                 }
@@ -1463,7 +1461,6 @@ void PathManager::pushConmmandBuffer(VectorXd Qi, VectorXd T, vector<int> mode)
         {
             MaxonData newData;
             newData.position = maxonMotor->jointAngleToMotorPosition(Qi[can_id]);
-            newData.torque = T[can_id];
             newData.mode = mode[can_id];
             maxonMotor->commandBuffer.push(newData);
 
