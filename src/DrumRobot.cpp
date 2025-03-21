@@ -489,35 +489,35 @@ void DrumRobot::setMaxonMotorMode(std::string targetMode)
             if (targetMode == "CSV")    // Cyclic Sync Velocity Mode
             {
                 maxoncmd.getCSVMode(*maxonMotor, &frame);
-                canManager.sendAndRecv(motor, frame);
+                canManager.txFrame(motor, frame);
             }
             else if (targetMode == "CST")   // Cyclic Sync Torque Mode
             {
                 maxoncmd.getCSTMode(*maxonMotor, &frame);
-                canManager.sendAndRecv(motor, frame);
+                canManager.txFrame(motor, frame);
             }
             else if (targetMode == "HMM")   // Homming Mode
             {
                 maxoncmd.getHomeMode(*maxonMotor, &frame);
-                canManager.sendAndRecv(motor, frame);
+                canManager.txFrame(motor, frame);
             }
             else if (targetMode == "CSP")   // Cyclic Sync Position Mode
             {
                 maxoncmd.getCSPMode(*maxonMotor, &frame);
-                canManager.sendAndRecv(motor, frame);
+                canManager.txFrame(motor, frame);
             }
 
             maxoncmd.getShutdown(*maxonMotor, &frame);
-            canManager.sendAndRecv(motor, frame);
+            canManager.txFrame(motor, frame);
 
             maxoncmd.getSync(&frame);
-            canManager.sendAndRecv(motor, frame);
+            canManager.txFrame(motor, frame);
 
             maxoncmd.getEnable(*maxonMotor, &frame);
-            canManager.sendAndRecv(motor, frame);
+            canManager.txFrame(motor, frame);
 
             maxoncmd.getSync(&frame);
-            canManager.sendAndRecv(motor, frame);
+            canManager.txFrame(motor, frame);
         }
     }
 }
