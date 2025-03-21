@@ -506,6 +506,18 @@ void DrumRobot::setMaxonMotorMode(std::string targetMode)
                 maxoncmd.getCSPMode(*maxonMotor, &frame);
                 canManager.sendAndRecv(motor, frame);
             }
+
+            maxoncmd.getShutdown(*maxonMotor, &frame);
+            canManager.sendAndRecv(motor, frame);
+
+            maxoncmd.getSync(&frame);
+            canManager.sendAndRecv(motor, frame);
+
+            maxoncmd.getEnable(*maxonMotor, &frame);
+            canManager.sendAndRecv(motor, frame);
+
+            maxoncmd.getSync(&frame);
+            canManager.sendAndRecv(motor, frame);
         }
     }
 }
@@ -516,7 +528,7 @@ void DrumRobot::setMaxonMotorMode(std::string targetMode)
 
 void DrumRobot::stateMachine()
 {
-    sleep(1);   // read에서 motor 값이 업데이트 될 때까지 대기
+    sleep(1);   // read thead에서 clear 할 때까지 기다림
 
     while (state.main != Main::Shutdown)
     {
@@ -654,7 +666,7 @@ void DrumRobot::sendLoopForThread()
             state.main = Main::Error;
         }
 
-        // 모든 모터가 연결 안된 경우 : 바로 fixed 로 넘어감
+        // 모든 모터가 연결 안된 경우 : 바로 fixed
         if(allMotorsUnConected)
         {
             flagObj.setFixationFlag("fixed");
