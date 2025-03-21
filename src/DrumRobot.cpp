@@ -324,9 +324,10 @@ bool DrumRobot::initializePos(const std::string &input)
                 canManager.sendMotorFrame(tMotor);
                 tMotor->finalMotorPosition = 0.0;
 
-                std::cout << "Tmotor [" << tMotor->myName << "] set Zero \n";
-
                 usleep(1000*100);    // 100ms
+
+                // std::cout << "Tmotor [" << tMotor->myName << "] set Zero \n";
+                // std::cout << "Current Motor Position : " << tMotor->motorPosition / M_PI * 180 << "deg\n";
             }
             else if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motorPair.second))
             {
@@ -334,7 +335,7 @@ bool DrumRobot::initializePos(const std::string &input)
             }
         }
         std::cout << "set zero and offset setting ~ ~ ~\n";
-        sleep(3);   // Set Zero 명령이 확실히 실행된 후
+        sleep(2);   // Set Zero 명령이 확실히 실행된 후
 
         maxonMotorEnable();
         setMaxonMotorMode("CSP");
@@ -515,6 +516,8 @@ void DrumRobot::setMaxonMotorMode(std::string targetMode)
 
 void DrumRobot::stateMachine()
 {
+    sleep(1);   // read에서 motor 값이 업데이트 될 때까지 대기
+
     while (state.main != Main::Shutdown)
     {
         switch (state.main.load())
@@ -642,10 +645,12 @@ void DrumRobot::sendLoopForThread()
 
 void DrumRobot::recvLoopForThread()
 {
+    canManager.clearReadBuffers();
+    
     while (state.main != Main::Shutdown)
     {
         recvLoopPeriod = std::chrono::steady_clock::now();
-        recvLoopPeriod += std::chrono::microseconds(50000);  // 주기 : 100us
+        recvLoopPeriod += std::chrono::microseconds(5000);  // 주기 : 100us
 
         canManager.readFramesFromAllSockets(); 
         bool isSafe = canManager.distributeFramesToMotors(true);

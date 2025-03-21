@@ -527,7 +527,7 @@ void CanManager::setTMotorCANFrame(std::shared_ptr<TMotor> tMotor, const TMotorD
     {
         tservocmd.setPositionCANFrame(*tMotor, &tMotor->sendFrame, tData.position);
 
-        fun.appendToCSV_DATA(fun.file_name, (float)tMotor->nodeId + SEND_SIGN, tMotor->motorPositionToJointAngle(tData.position), 0);
+        // fun.appendToCSV_DATA(fun.file_name, (float)tMotor->nodeId + SEND_SIGN, tMotor->motorPositionToJointAngle(tData.position), 0);
     }
     else if (tData.mode == tMotor-> Idle)
     {
@@ -700,11 +700,13 @@ bool CanManager::safetyCheckRecvT(std::shared_ptr<GenericMotor> &motor)
             {
                 std::cout << "\nRead CAN Frame Error : Out of Min Range (" << tMotor->myName << ")" << endl;
                 std::cout << "Current Joint Angle : " << tMotor->jointAngle / M_PI * 180 << "deg\n";
+                std::cout << "Current Motor Position : " << tMotor->motorPosition / M_PI * 180 << "deg\n";
             }
             else
             {
                 std::cout << "\nRead CAN Frame Error : Out of Max Range (" << tMotor->myName << ")" << endl;
                 std::cout << "Current Joint Angle : " << tMotor->jointAngle / M_PI * 180 << "deg\n";
+                std::cout << "Current Motor Position : " << tMotor->motorPosition / M_PI * 180 << "deg\n";
             }
 
             isSafe = false;
@@ -817,13 +819,12 @@ bool CanManager::distributeFramesToMotors(bool setlimit)
                     tMotor->motorVelocity = std::get<2>(parsedData);
                     tMotor->motorCurrent = std::get<3>(parsedData);
 
-                    // tMotor->jointAngle = std::get<1>(parsedData) * tMotor->cwDir * tMotor->timingBeltRatio + tMotor->initialJointAngle;
                     tMotor->jointAngle = tMotor->motorPositionToJointAngle(std::get<1>(parsedData));
                     
                     // std::cout << tMotor->jointAngle << std::endl;
                     tMotor->recieveBuffer.push(frame);
 
-                    fun.appendToCSV_DATA(fun.file_name, (float)tMotor->nodeId, tMotor->jointAngle, tMotor->motorCurrent);
+                    fun.appendToCSV_DATA(fun.file_name, (float)tMotor->nodeId, tMotor->motorPosition, tMotor->motorCurrent);
                     
                     if (setlimit)
                     {
@@ -869,7 +870,6 @@ bool CanManager::distributeFramesToMotors(bool setlimit)
                         maxonMotor->positionValues.pop();
                     }
 
-                    // maxonMotor->jointAngle = std::get<1>(parsedData) * maxonMotor->cwDir + maxonMotor->initialJointAngle;
                     maxonMotor->jointAngle = maxonMotor->motorPositionToJointAngle(std::get<1>(parsedData));
                     maxonMotor->recieveBuffer.push(frame);
                     
