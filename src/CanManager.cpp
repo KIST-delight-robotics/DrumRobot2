@@ -538,24 +538,25 @@ void CanManager::setTMotorCANFrame(std::shared_ptr<TMotor> tMotor, const TMotorD
 bool CanManager::safetyCheckSendT(std::shared_ptr<TMotor> tMotor, TMotorData tData)
 {
     bool isSafe = true;
-    float diff_angle = tData.position - tMotor->jointAngle;
+    float desiredJointAngle = tMotor->motorPositionToJointAngle(tData.position);
+    float diff_angle = desiredJointAngle - tMotor->jointAngle;
 
     if (abs(diff_angle) > POS_DIFF_LIMIT)
     {
         std::cout << "\nSet CAN Frame Error : Safety Check (" << tMotor->myName << ")" << endl;
-        std::cout << "Desired Joint Angle : " << tData.position * 180.0 / M_PI << "deg\tCurrent Joint Angle : " << tMotor->jointAngle * 180.0 / M_PI << "deg\n";
+        std::cout << "Desired Joint Angle : " << desiredJointAngle * 180.0 / M_PI << "deg\tCurrent Joint Angle : " << tMotor->jointAngle * 180.0 / M_PI << "deg\n";
         isSafe = false;
     }
-    else if (tMotor->rMin > tData.position)
+    else if (tMotor->rMin > desiredJointAngle)
     {
         std::cout << "\nSet CAN Frame Error : Out of Min Range (" << tMotor->myName << ")" << endl;
-        std::cout << "Desired Joint Angle : " << tData.position * 180.0 / M_PI << "deg\n";
+        std::cout << "Desired Joint Angle : " << desiredJointAngle * 180.0 / M_PI << "deg\n";
         isSafe = false;
     }
-    else if (tMotor->rMax < tData.position)
+    else if (tMotor->rMax < desiredJointAngle)
     {
         std::cout << "\nSet CAN Frame Error : Out of Max Range (" << tMotor->myName << ")" << endl;
-        std::cout << "Desired Joint Angle : " << tData.position * 180.0 / M_PI << "deg\n";
+        std::cout << "Desired Joint Angle : " << desiredJointAngle * 180.0 / M_PI << "deg\n";
         isSafe = false;
     }
 
