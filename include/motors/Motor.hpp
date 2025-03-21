@@ -64,7 +64,7 @@ public:
 struct TMotorData
 {
     float position;
-    std::string mode;
+    int mode;
 };
 
 class TMotor : public GenericMotor
@@ -80,6 +80,11 @@ public:
     // Current Limit
     float currentLimit;
     int currentErrorCnt = 0;
+
+    const int Position = 0;
+    const int Idle = 1;
+
+    int controlMode = Position; 
 
     // commandBuffer
     std::queue<TMotorData> commandBuffer;

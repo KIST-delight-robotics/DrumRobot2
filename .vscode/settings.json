@@ -98,7 +98,14 @@
         "specialfunctions": "cpp",
         "splines": "cpp",
         "in.h": "c",
-        "stdio.h": "c"
+        "stdio.h": "c",
+        "compare": "cpp",
+        "concepts": "cpp",
+        "format": "cpp",
+        "numbers": "cpp",
+        "semaphore": "cpp",
+        "span": "cpp",
+        "stop_token": "cpp"
     },
     "makefile.launchConfigurations": [
         {

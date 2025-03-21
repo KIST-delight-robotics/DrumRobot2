@@ -487,31 +487,31 @@ bool CanManager::setMotorsSocket()
 
 void CanManager::setMaxonCANFrame(std::shared_ptr<MaxonMotor> maxonMotor, const MaxonData &mData)
 {
-    // if (mData.mode == "Position")
-    // {
-    //     maxoncmd.setPositionCANFrame(*maxonMotor, &maxonMotor->sendFrame, mData.position);
-    // }
-    // else if (mData.mode == "Torque")
-    // {
-    //     maxoncmd.setTorqueCANFrame(*maxonMotor, &maxonMotor->sendFrame, mData.torque);
-    // }
-    // else if (mData.mode == "Speed")
-    // {
-    //     return;
-    // }
     if (mData.mode == maxonMotor->CSP)
     {
         if (maxonMotor->controlMode != maxonMotor->CSP)
         {
-
+            maxoncmd.getCSPMode(*maxonMotor, &maxonMotor->sendFrame);
+            sendMotorFrame(maxonMotor);
+            maxoncmd.getShutdown(*maxonMotor, &maxonMotor->sendFrame);
+            sendMotorFrame(maxonMotor);
+            maxoncmd.getEnable(*maxonMotor, &maxonMotor->sendFrame);
+            sendMotorFrame(maxonMotor);
+            
         }
         maxoncmd.setPositionCANFrame(*maxonMotor, &maxonMotor->sendFrame, mData.position);
+
     }
     else if (mData.mode == maxonMotor->CST)
     {
         if (maxonMotor->controlMode != maxonMotor->CST)
         {
-            
+            maxoncmd.getCSTMode(*maxonMotor, &maxonMotor->sendFrame);
+            sendMotorFrame(maxonMotor);
+            maxoncmd.getShutdown(*maxonMotor, &maxonMotor->sendFrame);
+            sendMotorFrame(maxonMotor);
+            maxoncmd.getEnable(*maxonMotor, &maxonMotor->sendFrame);
+            sendMotorFrame(maxonMotor);            
         }
         maxoncmd.setTorqueCANFrame(*maxonMotor, &maxonMotor->sendFrame, mData.torque);
     }
@@ -523,13 +523,13 @@ void CanManager::setMaxonCANFrame(std::shared_ptr<MaxonMotor> maxonMotor, const 
 
 void CanManager::setTMotorCANFrame(std::shared_ptr<TMotor> tMotor, const TMotorData &tData)
 {
-    if (tData.mode == "Position")
+    if (tData.mode == tMotor-> Position)
     {
         tservocmd.setPositionCANFrame(*tMotor, &tMotor->sendFrame, tData.position);
 
         fun.appendToCSV_DATA(fun.file_name, (float)tMotor->nodeId + SEND_SIGN, tMotor->motorPositionToJointAngle(tData.position), 0);
     }
-    else if (tData.mode == "Idle")
+    else if (tData.mode == tMotor-> Idle)
     {
         return;
     }
