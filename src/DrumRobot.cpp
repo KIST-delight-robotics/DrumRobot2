@@ -212,7 +212,7 @@ void DrumRobot::initializeCanManager()
     canManager.initializeCAN();
     canManager.checkCanPortsStatus();
     //true 모터연결안된것 김태황
-    allMotorUnConected = canManager.setMotorsSocket();
+    allMotorsUnConected = canManager.setMotorsSocket();
 }
 
 void DrumRobot::motorSettingCmd()
@@ -638,6 +638,12 @@ void DrumRobot::sendLoopForThread()
         {
             state.main = Main::Error;
         }
+
+        // 모든 모터가 연결 안된 경우 : 바로 fixed 로 넘어감
+        if(allMotorsUnConected)
+        {
+            flagObj.setFixationFlag("fixed");
+        }
         
         std::this_thread::sleep_until(sendLoopPeriod);
     }
@@ -646,7 +652,7 @@ void DrumRobot::sendLoopForThread()
 void DrumRobot::recvLoopForThread()
 {
     canManager.clearReadBuffers();
-    
+
     while (state.main != Main::Shutdown)
     {
         recvLoopPeriod = std::chrono::steady_clock::now();
