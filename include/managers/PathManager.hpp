@@ -207,8 +207,8 @@ private:
     /////////////////////////////////////////////////////////////////////////// 이전 코드에서 살려온 부분
     // 0.5초 기준 각도
     const float baseTime = 0.5;
-    const float wristStayBaseAngle = 10.0 * M_PI / 180.0;
-    const float wristContactBaseAngle = 10.0 * M_PI / 180.0;
+    const float wristStayBaseAngle = 15.0 * M_PI / 180.0;
+    const float wristPressBaseAngle = 10.0 * M_PI / 180.0;
     const float wristLiftBaseAngle = 25.0 * M_PI / 180.0;
 
     const float elbowStayBaseAngle = 5.0 * M_PI / 180.0;
@@ -219,7 +219,7 @@ private:
 
         // 각도
         float wristStayAngle = 15.0 * M_PI / 180.0;
-        float wristContactAngle = 5.0 * M_PI / 180.0;
+        float wristPressAngle = 5.0 * M_PI / 180.0;
         float wristLiftAngle = 25.0 * M_PI / 180.0;
 
         float elbowStayAngle = 5.0 * M_PI / 180.0;
@@ -227,7 +227,7 @@ private:
 
         // 시간
         float wristStayTime;
-        float wristContactTime;
+        float wristPressTime;
         float wristReleaseTime;
         float wristLiftTime;
 

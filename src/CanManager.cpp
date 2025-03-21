@@ -566,7 +566,7 @@ bool CanManager::safetyCheckSendT(std::shared_ptr<TMotor> tMotor, TMotorData tDa
     return isSafe;
 }
 
-bool CanManager::setCANFrame(std::map<std::string, bool>& fixFlags)
+bool CanManager::setCANFrame(std::map<std::string, bool>& fixFlags, int cycleCounter)
 {
     for (auto &motor_pair : motors)
     {
@@ -593,7 +593,7 @@ bool CanManager::setCANFrame(std::map<std::string, bool>& fixFlags)
             
         }
         // TMotor
-        else if (std::shared_ptr<TMotor> tMotor = std::dynamic_pointer_cast<TMotor>(motor))
+        else if (std::shared_ptr<TMotor> tMotor = std::dynamic_pointer_cast<TMotor>(motor) && cycleCounter ==0)
         {
             if (tMotor->commandBuffer.empty()) continue;
 

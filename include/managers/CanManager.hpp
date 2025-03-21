@@ -93,7 +93,7 @@ public:
     int errorCnt = 0;   // 수신 에러 카운트
 
     bool sendMotorFrame(std::shared_ptr<GenericMotor> motor);
-    bool setCANFrame(std::map<std::string, bool>& fixFlags);
+    bool setCANFrame(std::map<std::string, bool>& fixFlags, int cycleCounter);
 
     //////////////////////////////////////// Receive
     void readFramesFromAllSockets();
