@@ -55,7 +55,7 @@ public:
     std::vector<std::string> ifnames;
 
     // tMotor 제어 주기 결정
-    const double DTSECOND = 0.001;
+    const double DTSECOND = 0.005;
 
     map<std::string, int> motorMapping = { ///< 각 관절에 해당하는 정보 [이름, CAN ID]
         {"waist", 0},

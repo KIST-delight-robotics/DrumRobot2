@@ -7,7 +7,6 @@ using namespace std;
 TestManager::TestManager(State &stateRef, CanManager &canManagerRef, std::map<std::string, std::shared_ptr<GenericMotor>> &motorsRef, USBIO &usbioRef, Functions &funRef)
     : state(stateRef), canManager(canManagerRef), motors(motorsRef), usbio(usbioRef), fun(funRef)
 {
-
     standardTime = chrono::system_clock::now();
 }
 
@@ -114,8 +113,6 @@ void TestManager::SendTestProcess()
         }
         else if (method == 3)
         {
-            std::cout << "손목모터조절해보자고 ㅋㅋ" << "\n";
-            sleep(5); 
             while(1)
             {
                 int userInput = 100;
@@ -173,7 +170,6 @@ void TestManager::SendTestProcess()
 //////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////박선우/////////////////////////////////////
 
-
 tuple <double, int, int, int> TestManager::MaxonHitLoop()
 {
     string userInput;
@@ -196,11 +192,11 @@ tuple <double, int, int, int> TestManager::MaxonHitLoop()
         cout << "\nIntensity    : " << intensity;
         if (hitMode == 1)
         {
-            cout << "\nHitting Mode   : Detect Hitting";
+            cout << "\nHitting Mode   : 기존 방식";
         }
         else if (hitMode == 2)
         {
-            cout << "\nHitting Mode   : 기존 방식";
+            cout << "\nHitting Mode   : Detect Hitting";
         }
         else if (hitMode == 3)
         {
@@ -285,7 +281,6 @@ int TestManager::makeTestHitTrajectory(float hit_time, int repeat, int intensity
                     q[motorMapping[entry.first]] = makeWristAngle(0, hit_time, i * dt, 3, intensity, maxonMotor);
                 }
                 newData.mode = "Position";
-
             }
             else if (hitMode == 2) // 포지션 + 타격 감지
             {
@@ -319,11 +314,9 @@ int TestManager::makeTestHitTrajectory(float hit_time, int repeat, int intensity
                     q[motorMapping[entry.first]] = makeWristAngle_CST(0, hit_time, i * dt, 3, intensity, maxonMotor->hitting, maxonMotor->hittingPos);
                 }
                 newData.mode = "Position";
-
             }
             else // 포지션 기반 토크 제어
             {
-                
                 if (repeatCnt == repeat)
                 {
                     q[motorMapping[entry.first]] = makeWristAngle_TC(0, hit_time, i * dt, 1, intensity, maxonMotor);    
@@ -338,9 +331,9 @@ int TestManager::makeTestHitTrajectory(float hit_time, int repeat, int intensity
                 }
                 newData.mode = "torque";
 
-                desiredTorque = getDesiredTorque(q[motorMapping[entry.first]], maxonMotor);
+                desiredTorque = getDesiredTorque(maxonMotor->jointAngleToMotorPosition(q[motorMapping[entry.first]]), maxonMotor);
             }
-            newData.position = q[motorMapping[entry.first]];
+            newData.position = maxonMotor->jointAngleToMotorPosition(q[motorMapping[entry.first]]);
             newData.torque = desiredTorque;
             maxonMotor->commandBuffer.push(newData);
         }
@@ -352,8 +345,6 @@ int TestManager::makeTestHitTrajectory(float hit_time, int repeat, int intensity
         {
             repeatCnt = 0;
             hitTest = false;
-            // canManager.CSTModeL = false; 
-            return 0;
         }
         else
         {
@@ -369,7 +360,8 @@ int TestManager::makeTestHitTrajectory(float hit_time, int repeat, int intensity
 float TestManager::makeWristAngle(float t1, float t2, float t, int state, int intensity, shared_ptr<MaxonMotor> maxonMotor)
 {
     float wrist_q = 0.0;
-    float t_press = std::min(0.1 * (t2 - t1), 0.05); // 0.08 -> 0.05
+
+    float t_press = std::min(0.1 * (t2 - t1), 0.05); // 0.08 -> 0.05 
     float t_lift = std::max(0.8 * (t2 - t1), t2 - t1 - 0.1);
     float t_stay;
     t2 - t1 < 0.15 ? t_stay = 0.45 * (t2 - t1) : t_stay = 0.47 * (t2 - t1) - 0.05;
@@ -1110,6 +1102,52 @@ float TestManager::getDesiredTorque(float desiredPosition, shared_ptr<MaxonMotor
     return desiredTorque;
 }
 
+float TestManager::getQuadraticFunc(float startT, float endT, float startAng, float endAng, float t)
+{
+    float result = 0;
+
+    MatrixXd A;
+    MatrixXd b;
+    MatrixXd A_1;
+    MatrixXd sol;
+
+    A.resize(3, 3);
+    b.resize(3, 1);
+
+    A << 1, startT, startT * startT,
+    1, endT, endT * endT,
+    0, 1, 2 * endT;
+    b << startAng, endAng, 0;
+    A_1 = A.inverse();
+    sol = A_1 * b;
+    result = sol(0, 0) + sol(1, 0) * t + sol(2, 0) * t * t;
+
+    return result;
+}
+
+float TestManager::getCubicFunc(float startT, float endT, float startAng, float endAng, float t)
+{
+    float result = 0;
+
+    MatrixXd A;
+    MatrixXd b;
+    MatrixXd A_1;
+    MatrixXd sol;
+
+    A.resize(4, 4);
+    b.resize(4, 1);
+    A << 1, startT, startT * startT, startT * startT * startT,
+        1, endT, endT * endT, endT * endT * endT,
+        0, 1, 2 * startT, 3 * startT * startT,
+        0, 1, 2 * endT, 3 * endT * endT;
+    b << startAng, endAng, 0, 0;
+    A_1 = A.inverse();
+    sol = A_1 * b;
+    result = sol(0, 0) + sol(1, 0) * t + sol(2, 0) * t * t + sol(3, 0) * t * t * t;
+
+    return result;
+}
+
 //////////////////////////////ㅂ바박바박선우여기까지./////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////
 
@@ -1210,7 +1248,7 @@ void TestManager::FK(float theta[])
 
 /////////////////////////////////////////////////////////////////////////////////
 /*                                 Values Test Mode                           */
-///////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////
 
 void TestManager::getMotorPos(float c_MotorAngle[])
 {

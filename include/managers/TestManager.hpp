@@ -137,6 +137,8 @@ private:
     tuple <double, int, int, int> MaxonHitLoop();
     int makeTestHitTrajectory(float hit_time, int repeat, int intensity, int hitMode);
     float getDesiredTorque(float desiredPosition, shared_ptr<MaxonMotor> maxonMotor);
+    float getQuadraticFunc(float startT, float endT, float startAng, float endAng, float t); // 2차 함수 계산 함수
+    float getCubicFunc(float startT, float endT, float startAng, float endAng, float t); // 3차 함수 계산 함수
 
 
     void unfixedMotor();
