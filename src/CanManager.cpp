@@ -586,6 +586,7 @@ bool CanManager::setCANFrame(std::map<std::string, bool>& fixFlags)
             }
 
             setMaxonCANFrame(maxonMotor, mData);
+            
         }
         // TMotor
         else if (std::shared_ptr<TMotor> tMotor = std::dynamic_pointer_cast<TMotor>(motor))
@@ -604,6 +605,10 @@ bool CanManager::setCANFrame(std::map<std::string, bool>& fixFlags)
             }
 
             setTMotorCANFrame(tMotor, tData);
+            if(!safetyCheckSendT(tMotor, tData))
+            {
+                return false;
+            }
         }
     }
 
