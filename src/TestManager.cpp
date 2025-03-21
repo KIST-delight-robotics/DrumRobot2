@@ -280,7 +280,7 @@ int TestManager::makeTestHitTrajectory(float hit_time, int repeat, int intensity
                 {
                     q[motorMapping[entry.first]] = makeWristAngle(0, hit_time, i * dt, 3, intensity, maxonMotor);
                 }
-                newData.mode = "Position";
+                newData.mode = maxonMotor->CSP;
             }
             else if (hitMode == 2) // 포지션 + 타격 감지
             {
@@ -297,7 +297,7 @@ int TestManager::makeTestHitTrajectory(float hit_time, int repeat, int intensity
                 {
                     q[motorMapping[entry.first]] = makeWristAngle(0, hit_time, i * dt, 3, intensity, maxonMotor);
                 }
-                newData.mode = "Position";
+                newData.mode = maxonMotor->CSP;
             }
             else if (hitMode == 3) // 토크 모드 타격 + 타격 감지
             {
@@ -313,7 +313,7 @@ int TestManager::makeTestHitTrajectory(float hit_time, int repeat, int intensity
                 {
                     q[motorMapping[entry.first]] = makeWristAngle_CST(0, hit_time, i * dt, 3, intensity, maxonMotor->hitting, maxonMotor->hittingPos);
                 }
-                newData.mode = "Position";
+                newData.mode = maxonMotor->CSP;
             }
             else // 포지션 기반 토크 제어
             {
@@ -329,7 +329,7 @@ int TestManager::makeTestHitTrajectory(float hit_time, int repeat, int intensity
                 {
                     q[motorMapping[entry.first]] = makeWristAngle_TC(0, hit_time, i * dt, 3, intensity, maxonMotor);
                 }
-                newData.mode = "torque";
+                newData.mode = maxonMotor->CST;
 
                 desiredTorque = getDesiredTorque(maxonMotor->jointAngleToMotorPosition(q[motorMapping[entry.first]]), maxonMotor);
             }
@@ -1585,7 +1585,7 @@ void TestManager::getArr(float arr[])
                     MaxonData newData;
                     newData.position = maxonMotor->jointAngleToMotorPosition(Qi[motorMapping[entry.first]]);
                     newData.torque = torque;
-                    newData.mode = "Position";
+                    newData.mode = maxonMotor->CSP;
                     maxonMotor->commandBuffer.push(newData);
                 }
             }
