@@ -243,7 +243,6 @@ void PathManager::pushAddStancePath(string flagName)
                     MaxonData newData;
                     newData.position = maxonMotor->jointAngleToMotorPosition(Qt[can_id]);
                     newData.torque = 0;
-                    // newData.mode = "Position";
                     newData.mode = maxonMotor->CSP;
                     maxonMotor->commandBuffer.push(newData);
 
@@ -270,7 +269,6 @@ void PathManager::pushAddStancePath(string flagName)
                     MaxonData newData;
                     newData.position = maxonMotor->jointAngleToMotorPosition(Q1[can_id]);
                     newData.torque = 0;
-                    // newData.mode = "Position";
                     newData.mode = maxonMotor->CSP;
                     maxonMotor->commandBuffer.push(newData);
                 }
@@ -583,7 +581,7 @@ VectorXd PathManager::getMotorPos()
 
 void PathManager::getAddStanceCoefficient(VectorXd Q1, VectorXd Q2, double t)
 {
-
+    // 이인우
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1408,7 +1406,21 @@ VectorXd PathManager::IKFixedWaist(VectorXd pR, VectorXd pL, double theta0, doub
 
 pair<VectorXd, vector<int>> PathManager::generateHit(VectorXd &q)
 {
+    VectorXd T = VectorXd::Zero(9);
+    vector<int> mode(9);
 
+    for (auto &entry : motors)
+    {
+        int can_id = canManager.motorMapping[entry.first];
+
+        // Maxon Motor 만 모드 설정해주면 됨
+        if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(entry.second))
+        {
+            mode[can_id] = maxonMotor->CSP;
+        }
+    }
+
+    return std::make_pair(T, mode);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1435,7 +1447,6 @@ void PathManager::pushConmmandBuffer(VectorXd Qi, VectorXd T, vector<int> mode)
             MaxonData newData;
             newData.position = maxonMotor->jointAngleToMotorPosition(Qi[can_id]);
             newData.torque = T[can_id];
-            // newData.mode = "Position";
             newData.mode = mode[can_id];
             maxonMotor->commandBuffer.push(newData);
 
