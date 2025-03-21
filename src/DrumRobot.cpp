@@ -939,6 +939,7 @@ void DrumRobot::sendPlayProcess()
         if (fileIndex == 0)                     // 악보 파일 없음
         {
             std::cout << "not find " << currentFile << "\n";
+            flagObj.setFixationFlag("fixed");
             state.main = Main::Ideal;
             return;
         }

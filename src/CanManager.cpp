@@ -501,6 +501,9 @@ void CanManager::setMaxonCANFrame(std::shared_ptr<MaxonMotor> maxonMotor, const 
         }
         maxoncmd.setPositionCANFrame(*maxonMotor, &maxonMotor->sendFrame, mData.position);
 
+        // std::cout << "Maxon Motor : " << maxonMotor->myName << "\t" << mData.position << "\n";
+
+        fun.appendToCSV_DATA("debug", (float)maxonMotor->nodeId, mData.position, 0);
     }
     else if (mData.mode == maxonMotor->CST)
     {
