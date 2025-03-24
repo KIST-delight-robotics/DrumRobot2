@@ -231,6 +231,7 @@ private:
     PathManager::elbowTime getElbowTime(float t1, float t2, int intensity);
     PathManager::wristAngle getWristAngle(float t1, float t2, int intensity);
     PathManager::elbowAngle getElbowAngle(float t1, float t2, int intensity);
+    VectorXd makeState(VectorXd drums, VectorXd time);
 
     /////////////////////////////////////////////////////////////////////////// Push Command Buffer
     int MaxonMode;

@@ -1782,6 +1782,39 @@ PathManager::elbowAngle PathManager::getElbowAngle(float t1, float t2, int inten
     return elbowAngle;
 }
 
+VectorXd PathManager::makeState(VectorXd drums, VectorXd time)
+{
+    VectorXd states;
+    states.resize(drums.size());
+
+    for (int i = 0; i <= drums.size(); i++)
+    {
+        if (i == 0)                                 // 첫 줄에 드럼을 치면 state 2 아니면 0
+        {
+            if (drums(i) == 0) states(0) == 0;
+            else states(0) == 2;
+        }
+
+        if(drums(i) != 0)                           // 지금 줄에 타격이 있을 때
+        {
+            if (drums(i-1) != 0) states(i) = 3;     // 이전 줄에 타격 o
+            else states(i) = 2;                     // 이전 줄에 타격 x
+        }
+        else                                        // 지금 줄에 타격이 없을 때
+        {
+            if (drums(i-1) != 0) states(i) = 1;     // 이전 줄에 타격 o
+            else states(i) = 0;                     // 이전 줄에 타격 x
+        }
+    }
+
+    for (int k = 0; k <= time.size(); k++)
+    {
+        
+    }
+
+    return states;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /*                           Push Command Buffer                              */
 ////////////////////////////////////////////////////////////////////////////////
