@@ -922,12 +922,15 @@ void DrumRobot::playALineProcess()
     // std::cout << "\n//////////////////////////////// Read Measure : " << lineOfScore << "\n";
     // std::cout << measureMatrix;
     // std::cout << "\n ////////////// \n";
+
     pathManager.generateTrajectory(measureMatrix);
 
     if (lineOfScore > preCreatedLine)
     {
         pathManager.solveIKandPushCommand();
     }
+
+    sleep(1);
 }
 
 void DrumRobot::sendPlayProcess()
@@ -988,6 +991,8 @@ void DrumRobot::sendPlayProcess()
             while (!pathManager.endOfPlayCommand)      // 명령 다 보낼 때까지
             {
                 pathManager.solveIKandPushCommand();
+
+                sleep(1);
             }
 
             std::cout << "Play is Over\n";

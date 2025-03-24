@@ -390,6 +390,7 @@ void PathManager::solveIKandPushCommand()
     int n = lineData(0, 0); // 명령 개수
 
     makeWaistCoefficient();
+
     makeHitCoefficient();
 
     for (int i = 0; i < n; i++)
@@ -413,6 +414,10 @@ void PathManager::solveIKandPushCommand()
             fun.appendToCSV_DATA(fileName, i, q(i), 0);
         }
     }
+
+    std::cout << "\n/////////////// Line Data \n";
+    std::cout << lineData;
+    std::cout << "\n ////////////// \n";
 
     // 커맨드 생성 후 lineData 첫 줄 삭제
     if (lineData.rows() >= 1)
@@ -632,6 +637,7 @@ void PathManager::parseMeasure(MatrixXd &measureMatrix)
     measureState.block(1, 0, 1, 3) = dataL.second.transpose();
 
     // 다음 타격 세기
+    intensity.resize(2);
     intensity(0) = measureMatrix(1, 4);
     intensity(1) = measureMatrix(1, 5);
 
@@ -651,6 +657,8 @@ void PathManager::parseMeasure(MatrixXd &measureMatrix)
     tmpMatrix = measureMatrix.block(1, 0, tmpMatrix.rows(), tmpMatrix.cols());
     measureMatrix.resize(tmpMatrix.rows(), tmpMatrix.cols());
     measureMatrix = tmpMatrix;
+
+    std::cout << "\n tmpMatrix \n";
 }
 
 pair<VectorXd, VectorXd> PathManager::parseOneArm(VectorXd t, VectorXd inst, VectorXd stateVector)
@@ -774,36 +782,35 @@ pair<VectorXd, VectorXd> PathManager::parseOneArm(VectorXd t, VectorXd inst, Vec
     return std::make_pair(outputVector, nextStateVector);
 }
 
-VectorXd PathManager::makeState(MatrixXd measureMatrix)
-{
-    VectorXd state(2);
+// VectorXd PathManager::makeState(MatrixXd measureMatrix)
+// {
+//     VectorXd state(2);
 
-    for (int i = 0; i < 2; i++)
-    {
-        if (measureMatrix(0, i + 4) == 0 && measureMatrix(1, i + 4) == 0)
-        {
-            // Stay
-            state(i) = 0;
-        }
-        else if (measureMatrix(1, i + 4) == 0)
-        {
-            // Contact - Stay
-            state(i) = 1;
-        }
-        else if (measureMatrix(0, i + 4) == 0)
-        {
-            // Stay - Lift - Hit
-            state(i) = 2;
-        }
-        else
-        {
-            // Contact - Lift - Hit
-            state(i) = 3;
-        }
-    }
-
-    return state;
-}
+//     for (int i = 0; i < 2; i++)
+//     {
+//         if (measureMatrix(0, i + 4) == 0 && measureMatrix(1, i + 4) == 0)
+//         {
+//             Stay
+//             state(i) = 0;
+//         }
+//         else if (measureMatrix(1, i + 4) == 0)
+//         {
+//             Contact - Stay
+//             state(i) = 1;
+//         }
+//         else if (measureMatrix(0, i + 4) == 0)
+//         {
+//             Stay - Lift - Hit
+//             state(i) = 2;
+//         }
+//         else
+//         {
+//             Contact - Lift - Hit
+//             state(i) = 3;
+//         }
+//     }
+//     return state;
+// }
 
 ////////////////////////////////////////////////////////////////////////////////
 /*                       Make Task Space Trajectory                           */
@@ -1443,17 +1450,25 @@ void PathManager::makeHitCoefficient()
     wristTimeR = getWristTime(t1, t2, intensityR);
     wristTimeL = getWristTime(t1, t2, intensityL);
 
+    std::cout << "\n T \n";
+
     elbowAngleR = getElbowAngle(t1, t2, intensityR);
     elbowAngleL = getElbowAngle(t1, t2, intensityL);
 
     wristAngleR = getWristAngle(t1, t2, intensityR);
     wristAngleL = getWristAngle(t1, t2, intensityL);
 
+    std::cout << "\n A \n";
+
     elbowCoefficientR = makeElbowCoefficient(stateR, elbowTimeR, elbowAngleR);
     elbowCoefficientL = makeElbowCoefficient(stateL, elbowTimeL, elbowAngleL);
 
+    std::cout << "\n makeElbowCoefficient \n";
+
     wristCoefficientR = makeWristCoefficient(stateR, wristTimeR, wristAngleR);
     wristCoefficientL = makeWristCoefficient(stateL, wristTimeL, wristAngleL);
+
+    std::cout << "\n makeWristCoefficient \n";
 }
 
 PathManager::elbowTime PathManager::getElbowTime(float t1, float t2, int intensity)
@@ -1524,10 +1539,8 @@ MatrixXd PathManager::makeElbowCoefficient(int state, elbowTime eT, elbowAngle e
     if (state == 0)
     {
         // Stay
-        elbowCoefficient.resize(4, 4);
+        elbowCoefficient.resize(2, 4);
         elbowCoefficient << eA.stayAngle, 0, 0, 0,
-                            eA.stayAngle, 0, 0, 0,
-                            eA.stayAngle, 0, 0, 0,
                             eA.stayAngle, 0, 0, 0;
     }
     else if (state == 1)
@@ -1546,10 +1559,8 @@ MatrixXd PathManager::makeElbowCoefficient(int state, elbowTime eT, elbowAngle e
         A_1 = A.inverse();
         sol = A_1 * b;
 
-        elbowCoefficient.resize(4, 4);
+        elbowCoefficient.resize(2, 4);
         elbowCoefficient << sol(0), sol(1), sol(2), sol(3),
-                            eA.stayAngle, 0, 0, 0,
-                            eA.stayAngle, 0, 0, 0,
                             eA.stayAngle, 0, 0, 0;
     }
     else if (state == 2)
@@ -1558,9 +1569,9 @@ MatrixXd PathManager::makeElbowCoefficient(int state, elbowTime eT, elbowAngle e
         A.resize(4, 4);
         b.resize(4, 1);
 
-        A << 1, eT.stayTime, eT.stayTime * eT.stayTime, eT.stayTime * eT.stayTime * eT.stayTime,
+        A << 1, 0, 0, 0,
             1, eT.liftTime, eT.liftTime * eT.liftTime, eT.liftTime * eT.liftTime * eT.liftTime,
-            0, 1, 2 * eT.stayTime, 3 * eT.stayTime * eT.stayTime,
+            0, 1, 0, 0,
             0, 1, 2 * eT.liftTime, 3 * eT.liftTime * eT.liftTime;
 
         b << eA.stayAngle, eA.liftAngle, 0, 0;
@@ -1579,12 +1590,10 @@ MatrixXd PathManager::makeElbowCoefficient(int state, elbowTime eT, elbowAngle e
         b << eA.liftAngle, 0, 0, 0;
 
         A_1 = A.inverse();
-        sol = A_1 * b;
+        sol2 = A_1 * b;
 
-        elbowCoefficient.resize(4, 4);
-        elbowCoefficient << eA.stayAngle, 0, 0, 0,
-                            eA.stayAngle, 0, 0, 0,
-                            sol(0), sol(1), sol(2), sol(3),
+        elbowCoefficient.resize(2, 4);
+        elbowCoefficient << sol(0), sol(1), sol(2), sol(3),
                             sol2(0), sol2(1), sol2(2), sol2(3);
     }
     else if (state == 3)
@@ -1594,9 +1603,9 @@ MatrixXd PathManager::makeElbowCoefficient(int state, elbowTime eT, elbowAngle e
         b.resize(4, 1);
 
         A << 1, 0, 0, 0,
-            1, eT.stayTime, eT.stayTime * eT.stayTime, eT.stayTime * eT.stayTime * eT.stayTime,
+            1, eT.liftTime, eT.liftTime * eT.liftTime, eT.liftTime * eT.liftTime * eT.liftTime,
             0, 1, 0, 0,
-            0, 1, 2 * eT.stayTime, 3 * eT.stayTime * eT.stayTime;
+            0, 1, 2 * eT.liftTime, 3 * eT.liftTime * eT.liftTime;
 
         b << 0, eA.liftAngle, 0, 0;
 
@@ -1614,12 +1623,10 @@ MatrixXd PathManager::makeElbowCoefficient(int state, elbowTime eT, elbowAngle e
         b << eA.liftAngle, 0, 0, 0;
 
         A_1 = A.inverse();
-        sol = A_1 * b;
+        sol2 = A_1 * b;
 
-        elbowCoefficient.resize(4, 4);
+        elbowCoefficient.resize(2, 4);
         elbowCoefficient << sol(0), sol(1), sol(2), sol(3),
-                            sol(0), sol(1), sol(2), sol(3),
-                            eA.liftAngle, 0, 0, 0,
                             sol2(0), sol2(1), sol2(2), sol2(3);
     }
 
@@ -1740,32 +1747,40 @@ MatrixXd PathManager::makeWristCoefficient(int state, wristTime wT, wristAngle w
 double PathManager::makeElbowAngle(double t, elbowTime eT, MatrixXd coefficientMatrix)
 {
     MatrixXd tMatrix;
-    tMatrix(4,1);
+    tMatrix.resize(4, 1);
     tMatrix << 1, t, t*t, t*t*t;
+
+    std::cout << "\n coefficientMatrix \n" << coefficientMatrix;
+
+    std::cout << "\n tMatrix \n" << tMatrix;
 
     MatrixXd elbowAngle = coefficientMatrix * tMatrix;
 
-    if (t < eT.stayTime)
+    std::cout << "\n elbowAngle \n" << elbowAngle;
+
+    if (t < eT.liftTime)
     {
-        return elbowAngle(1);
-    }
-    else if (t < eT.liftTime)
-    {
-        return elbowAngle(2);
+        return elbowAngle(0);
     }
     else
     {
-        return elbowAngle(3);
+        return elbowAngle(1);
     }
 }
 
 double PathManager::makeWristAngle(double t, wristTime wT, MatrixXd coefficientMatrix)
 {
     MatrixXd tMatrix;
-    tMatrix(4,1);
+    tMatrix.resize(4, 1);
     tMatrix << 1, t, t*t, t*t*t;
 
+    std::cout << "\n coefficientMatrix \n" << coefficientMatrix;
+
+    std::cout << "\n tMatrix \n" << tMatrix;
+
     MatrixXd wristAngle = coefficientMatrix * tMatrix;
+
+    std::cout << "\n wristAngle \n" << wristAngle;
 
     if (t < wT.releaseTime)
     {
