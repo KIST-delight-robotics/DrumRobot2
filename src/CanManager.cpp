@@ -498,7 +498,8 @@ void CanManager::setMaxonCANFrame(std::shared_ptr<MaxonMotor> maxonMotor, const 
             sendMotorFrame(maxonMotor);
             maxoncmd.getEnable(*maxonMotor, &maxonMotor->sendFrame);
             sendMotorFrame(maxonMotor);
-            
+
+            maxonMotor->controlMode = maxonMotor->CSP;
         }
         maxoncmd.setPositionCANFrame(*maxonMotor, &maxonMotor->sendFrame, mData.position);
 
@@ -515,7 +516,9 @@ void CanManager::setMaxonCANFrame(std::shared_ptr<MaxonMotor> maxonMotor, const 
             maxoncmd.getShutdown(*maxonMotor, &maxonMotor->sendFrame);
             sendMotorFrame(maxonMotor);
             maxoncmd.getEnable(*maxonMotor, &maxonMotor->sendFrame);
-            sendMotorFrame(maxonMotor);            
+            sendMotorFrame(maxonMotor);
+
+            maxonMotor->controlMode = maxonMotor->CST;
         }
         //여기에서 토그 계산을 해주고!!!
 
@@ -524,17 +527,18 @@ void CanManager::setMaxonCANFrame(std::shared_ptr<MaxonMotor> maxonMotor, const 
         double alpha = 0.2;  // 적절한 필터 계수
         
         double err_dot_filtered = alpha * ((err - maxonMotor-> pre_err) / DTSECOND) + (1 - alpha) * err_dot;
-        float torque = mData.kp * err + mData.kd * maxonMotor -> pre_err;
+        float torque = mData.kp * err + mData.kd * err_dot_filtered;
         
         maxonMotor-> pre_err = err;
         //여기에서 보상을 해주고!!
         // 무게 중력 거리
-        // float gravityTorque =  0.47 * 9.81 * 0.17 * std::sin(maxonMotor-> motorPosition);
+        // float gravityTorque =  0.47 * 9.81 * 0.17 * std::sin(maxonMotor-> jointAngle) / 0.0311 * 1000;
         // torque += gravityTorque;
         
-        maxoncmd.setTorqueCANFrame(*maxonMotor, &maxonMotor->sendFrame, torque);
+        maxoncmd.setTorqueCANFrame(*maxonMotor, &maxonMotor->sendFrame, round(torque));
 
         fun.appendToCSV_DATA(fun.file_name, (float)maxonMotor->nodeId + SEND_SIGN, mData.position, torque);
+        fun.appendToCSV_DATA("torque", (float)maxonMotor->nodeId + SEND_SIGN, mData.position, torque);
     }
     else if (mData.mode == maxonMotor->CSV)
     {
