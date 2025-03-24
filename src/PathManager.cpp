@@ -136,11 +136,12 @@ void PathManager::setReadyAngle()
         readyAngle(i) = qk(i);
     }
 
-    HitParameter param; // 일단 손목 바꾸기 전까지 사용 // 이인우
-    readyAngle(4) += param.elbowStayAngle;
-    readyAngle(6) += param.elbowStayAngle;
-    readyAngle(7) += param.wristStayAngle;
-    readyAngle(8) += param.wristStayAngle;
+    elbowAngle eA;
+    wristAngle wA;
+    readyAngle(4) += eA.stayAngle;
+    readyAngle(6) += eA.stayAngle;
+    readyAngle(7) += wA.stayAngle;
+    readyAngle(8) += wA.stayAngle;
 
     //////////////////////////////////////// Home Angle
     homeAngle.resize(9);
@@ -294,6 +295,16 @@ void PathManager::initializeValue(int bpm)
     q0_t0 = readyAngle(0);
     nextq0_t1 = readyAngle(0);
     clearBrake();
+
+    // Maxon Motor 모드 설정
+    for (auto &entry : motors)
+    {
+        if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(entry.second))
+        {
+            MaxonMode = maxonMotor->CSP;
+            break;
+        }
+    }
 }
 
 void PathManager::generateTrajectory(MatrixXd &measureMatrix)
@@ -382,7 +393,8 @@ void PathManager::solveIKandPushConmmand()
 {
     int n = lineData(0, 0); // 명령 개수
 
-    getWaistCoefficient();
+    makeWaistCoefficient();
+    makeHitCoefficient();
 
     for (int i = 0; i < n; i++)
     {
@@ -393,12 +405,10 @@ void PathManager::solveIKandPushConmmand()
         VectorXd q = solveIK(q0);
 
         // wrist (hit)
-        pair<VectorXd, vector<int>> torqueOutput = generateHit(q);
-        VectorXd T = torqueOutput.first;
-        vector<int> mode = torqueOutput.second;
+        generateHit(q, i);
 
         // push conmmand buffer
-        pushConmmandBuffer(q, T, mode);
+        pushConmmandBuffer(q);
 
         // 데이터 기록
         for (int i = 0; i < 9; i++)
@@ -1221,7 +1231,7 @@ std::pair<double, vector<double>> PathManager::getNextQ0()
     return std::make_pair(q0_t2, m_interpolation);
 }
 
-void PathManager::getWaistCoefficient()
+void PathManager::makeWaistCoefficient()
 {
     vector<double> m = {0.0, 0.0};
     double q0_t2;
@@ -1413,36 +1423,318 @@ VectorXd PathManager::IKFixedWaist(VectorXd pR, VectorXd pL, double theta0, doub
 /*                           Make Hit Trajectory                              */
 ////////////////////////////////////////////////////////////////////////////////
 
-pair<VectorXd, vector<int>> PathManager::generateHit(VectorXd &q)
+void PathManager::makeHitCoefficient()
 {
-    VectorXd T = VectorXd::Zero(9);
-    vector<int> mode(9);
+    int state;
 
-    for (auto &entry : motors)
+    elbowAngle elbowAngleR, elbowAngleL;
+    wristAngle wristAngleR, wristAngleL;
+
+    elbowCoefficientR = makeElbowCoefficient(state, elbowTimeR, elbowAngleR);
+    elbowCoefficientL = makeElbowCoefficient(state, elbowTimeL, elbowAngleL);
+    wristCoefficientR = makeWristCoefficient(state, wristTimeR, wristAngleR);
+    wristCoefficientL = makeWristCoefficient(state, wristTimeL, wristAngleL);
+}
+
+MatrixXd PathManager::makeElbowCoefficient(int state, elbowTime eT, elbowAngle eA)
+{
+    MatrixXd elbowCoefficient;
+    
+    MatrixXd A;
+    MatrixXd b;
+    MatrixXd A_1;
+    MatrixXd sol, sol2;
+
+    // elbow
+    if (state == 0)
     {
-        int can_id = canManager.motorMapping[entry.first];
+        // Stay
+        elbowCoefficient.resize(4, 4);
+        elbowCoefficient << eA.stayAngle, 0, 0, 0,
+                            eA.stayAngle, 0, 0, 0,
+                            eA.stayAngle, 0, 0, 0,
+                            eA.stayAngle, 0, 0, 0;
+    }
+    else if (state == 1)
+    {
+        // Release - Stay
+        A.resize(4, 4);
+        b.resize(4, 1);
 
-        // Maxon Motor 만 모드 설정해주면 됨
-        if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(entry.second))
-        {
-            mode[can_id] = maxonMotor->CSP;
-        }
+        A << 1, 0, 0, 0,
+            1, eT.releaseTime, eT.releaseTime * eT.releaseTime, eT.releaseTime * eT.releaseTime * eT.releaseTime,
+            0, 1, 0, 0,
+            0, 1, 2 * eT.releaseTime, 3 * eT.releaseTime * eT.releaseTime;
+
+        b << 0, eA.stayAngle, 0, 0;
+
+        A_1 = A.inverse();
+        sol = A_1 * b;
+
+        elbowCoefficient.resize(4, 4);
+        elbowCoefficient << sol(0), sol(1), sol(2), sol(3),
+                            eA.stayAngle, 0, 0, 0,
+                            eA.stayAngle, 0, 0, 0,
+                            eA.stayAngle, 0, 0, 0;
+    }
+    else if (state == 2)
+    {
+        // Stay - Lift - Hit
+        A.resize(4, 4);
+        b.resize(4, 1);
+
+        A << 1, eT.stayTime, eT.stayTime * eT.stayTime, eT.stayTime * eT.stayTime * eT.stayTime,
+            1, eT.liftTime, eT.liftTime * eT.liftTime, eT.liftTime * eT.liftTime * eT.liftTime,
+            0, 1, 2 * eT.stayTime, 3 * eT.stayTime * eT.stayTime,
+            0, 1, 2 * eT.liftTime, 3 * eT.liftTime * eT.liftTime;
+
+        b << eA.stayAngle, eA.liftAngle, 0, 0;
+
+        A_1 = A.inverse();
+        sol = A_1 * b;
+
+        A.resize(4, 4);
+        b.resize(4, 1);
+
+        A << 1, eT.liftTime, eT.liftTime * eT.liftTime, eT.liftTime * eT.liftTime * eT.liftTime,
+            1, eT.hitTime, eT.hitTime * eT.hitTime, eT.hitTime * eT.hitTime * eT.hitTime,
+            0, 1, 2 * eT.liftTime, 3 * eT.liftTime * eT.liftTime,
+            0, 1, 2 * eT.hitTime, 3 * eT.hitTime * eT.hitTime;
+
+        b << eA.liftAngle, 0, 0, 0;
+
+        A_1 = A.inverse();
+        sol = A_1 * b;
+
+        elbowCoefficient.resize(4, 4);
+        elbowCoefficient << eA.stayAngle, 0, 0, 0,
+                            eA.stayAngle, 0, 0, 0,
+                            sol(0), sol(1), sol(2), sol(3),
+                            sol2(0), sol2(1), sol2(2), sol2(3);
+    }
+    else if (state == 3)
+    {
+        // Lift - Hit
+        A.resize(4, 4);
+        b.resize(4, 1);
+
+        A << 1, 0, 0, 0,
+            1, eT.stayTime, eT.stayTime * eT.stayTime, eT.stayTime * eT.stayTime * eT.stayTime,
+            0, 1, 0, 0,
+            0, 1, 2 * eT.stayTime, 3 * eT.stayTime * eT.stayTime;
+
+        b << 0, eA.liftAngle, 0, 0;
+
+        A_1 = A.inverse();
+        sol = A_1 * b;
+
+        A.resize(4, 4);
+        b.resize(4, 1);
+
+        A << 1, eT.liftTime, eT.liftTime * eT.liftTime, eT.liftTime * eT.liftTime * eT.liftTime,
+            1, eT.hitTime, eT.hitTime * eT.hitTime, eT.hitTime * eT.hitTime * eT.hitTime,
+            0, 1, 2 * eT.liftTime, 3 * eT.liftTime * eT.liftTime,
+            0, 1, 2 * eT.hitTime, 3 * eT.hitTime * eT.hitTime;
+
+        b << eA.liftAngle, 0, 0, 0;
+
+        A_1 = A.inverse();
+        sol = A_1 * b;
+
+        elbowCoefficient.resize(4, 4);
+        elbowCoefficient << sol(0), sol(1), sol(2), sol(3),
+                            sol(0), sol(1), sol(2), sol(3),
+                            eA.liftAngle, 0, 0, 0,
+                            sol2(0), sol2(1), sol2(2), sol2(3);
     }
 
-    // HitParameter param; // 일단 손목 바꾸기 전까지 사용 // 이인우
-    q(4) += param.elbowStayAngle;
-    q(6) += param.elbowStayAngle;
-    q(7) += param.wristStayAngle;
-    q(8) += param.wristStayAngle;
+    return elbowCoefficient;
+}
 
-    return std::make_pair(T, mode);
+MatrixXd PathManager::makeWristCoefficient(int state, wristTime wT, wristAngle wA)
+{
+    MatrixXd wristCoefficient;
+    
+    MatrixXd A;
+    MatrixXd b;
+    MatrixXd A_1;
+    MatrixXd sol, sol2;
+
+    // wrist
+    if (state == 0)
+    {
+        // Stay
+        wristCoefficient.resize(4, 4);
+        wristCoefficient << wA.stayAngle, 0, 0, 0,
+                            wA.stayAngle, 0, 0, 0,
+                            wA.stayAngle, 0, 0, 0,
+                            wA.stayAngle, 0, 0, 0;
+    }
+    else if (state == 1)
+    {
+        // Release - Stay
+        A.resize(3, 3);
+        b.resize(3, 1);
+
+        A << 1, 0, 0,
+            1, wT.releaseTime, wT.releaseTime * wT.releaseTime,
+            0, 1, 2 * wT.releaseTime;
+
+        b << wA.pressAngle, wA.stayAngle, 0;
+
+        A_1 = A.inverse();
+        sol = A_1 * b;
+
+        wristCoefficient.resize(4, 4);
+        wristCoefficient << sol(0), sol(1), sol(2), 0,
+                            wA.stayAngle, 0, 0, 0,
+                            wA.stayAngle, 0, 0, 0,
+                            wA.stayAngle, 0, 0, 0;
+    }
+    else if (state == 2)
+    {
+        // Stay - Lift - Hit
+        A.resize(4, 4);
+        b.resize(4, 1);
+
+        A << 1, wT.stayTime, wT.stayTime * wT.stayTime, wT.stayTime * wT.stayTime * wT.stayTime,
+            1, wT.liftTime, wT.liftTime * wT.liftTime, wT.liftTime * wT.liftTime * wT.liftTime,
+            0, 1, 2 * wT.stayTime, 3 * wT.stayTime * wT.stayTime,
+            0, 1, 2 * wT.liftTime, 3 * wT.liftTime * wT.liftTime;
+
+        b << wA.stayAngle, wA.liftAngle, 0, 0;
+
+        A_1 = A.inverse();
+        sol = A_1 * b;
+
+        A.resize(3, 3);
+        b.resize(3, 1);
+
+        A << 1, wT.liftTime, wT.liftTime * wT.liftTime,
+            1, wT.hitTime, wT.hitTime * wT.hitTime,
+            0, 1, 2 * wT.liftTime;
+
+        b << wA.liftAngle, wA.pressAngle, 0;
+
+        A_1 = A.inverse();
+        sol2 = A_1 * b;
+
+        wristCoefficient.resize(4, 4);
+        wristCoefficient << wA.stayAngle, 0, 0, 0,
+                            wA.stayAngle, 0, 0, 0,
+                            sol(0), sol(1), sol(2), sol(3),
+                            sol2(0), sol2(1), sol2(2), 0;
+    }
+    else if (state == 3)
+    {
+        // Lift - Hit
+        A.resize(3, 3);
+        b.resize(3, 1);
+
+        A << 1, 0, 0,
+            1, wT.stayTime, wT.stayTime * wT.stayTime,
+            0, 1, 2 * wT.stayTime;
+
+        b << wA.pressAngle, wA.liftAngle, 0;
+
+        A_1 = A.inverse();
+        sol = A_1 * b;
+
+        A.resize(3, 3);
+        b.resize(3, 1);
+
+        A << 1, wT.liftTime, wT.liftTime * wT.liftTime,
+            1, wT.hitTime, wT.hitTime * wT.hitTime,
+            0, 1, 2 * wT.liftTime;
+
+        b << wA.liftAngle, wA.pressAngle, 0;
+
+        A_1 = A.inverse();
+        sol2 = A_1 * b;
+
+        wristCoefficient.resize(4, 4);
+        wristCoefficient << sol(0), sol(1), sol(2), 0,
+                            sol(0), sol(1), sol(2), 0,
+                            wA.liftAngle, 0, 0, 0,
+                            sol2(0), sol2(1), sol2(2), 0;
+    }
+
+    return wristCoefficient;
+}
+
+double PathManager::makeElbowAngle(double t, elbowTime eT, MatrixXd coefficientMatrix)
+{
+    MatrixXd tMatrix;
+    tMatrix(4,1);
+    tMatrix << 1, t, t*t, t*t*t;
+
+    MatrixXd elbowAngle = coefficientMatrix * tMatrix;
+
+    if (t < eT.releaseTime)
+    {
+        return elbowAngle(0);
+    }
+    else if (t < eT.stayTime)
+    {
+        return elbowAngle(1);
+    }
+    else if (t < eT.liftTime)
+    {
+        return elbowAngle(2);
+    }
+    else
+    {
+        return elbowAngle(3);
+    }
+}
+
+double PathManager::makeWristAngle(double t, wristTime wT, MatrixXd coefficientMatrix)
+{
+    MatrixXd tMatrix;
+    tMatrix(4,1);
+    tMatrix << 1, t, t*t, t*t*t;
+
+    MatrixXd wristAngle = coefficientMatrix * tMatrix;
+
+    if (t < wT.releaseTime)
+    {
+        return wristAngle(0);
+    }
+    else if (t < wT.stayTime)
+    {
+        return wristAngle(1);
+    }
+    else if (t < wT.liftTime)
+    {
+        return wristAngle(2);
+    }
+    else
+    {
+        return wristAngle(3);
+    }
+}
+
+void PathManager::generateHit(VectorXd &q, int index)
+{
+    double dt = canManager.DTSECOND;
+    double t = dt * index;
+
+    double elbowAngleR = makeElbowAngle(t, elbowTimeR, elbowCoefficientR);
+    double elbowAngleL = makeElbowAngle(t, elbowTimeL, elbowCoefficientL);
+    double wristAngleR = makeWristAngle(t, wristTimeR, wristCoefficientR);
+    double wristAngleL = makeWristAngle(t, wristTimeL, wristCoefficientL);
+
+    q(4) += elbowAngleR;
+    q(6) += elbowAngleL;
+    q(7) += wristAngleR;
+    q(8) += wristAngleL;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /*                           Push Command Buffer                              */
 ////////////////////////////////////////////////////////////////////////////////
 
-void PathManager::pushConmmandBuffer(VectorXd Qi, VectorXd T, vector<int> mode)
+void PathManager::pushConmmandBuffer(VectorXd Qi)
 {
     for (auto &entry : motors)
     {
@@ -1461,7 +1753,7 @@ void PathManager::pushConmmandBuffer(VectorXd Qi, VectorXd T, vector<int> mode)
         {
             MaxonData newData;
             newData.position = maxonMotor->jointAngleToMotorPosition(Qi[can_id]);
-            newData.mode = mode[can_id];
+            newData.mode = MaxonMode;
             maxonMotor->commandBuffer.push(newData);
 
             maxonMotor->finalMotorPosition = newData.position;

@@ -106,6 +106,7 @@ private:
     MatrixXd wristAnglesR;                               ///< 오른팔의 각 악기별 타격 시 손목 각도.
     MatrixXd wristAnglesL;                                ///< 왼팔의 각 악기별 타격 시 손목 각도.
 
+    // AddStace 에서 사용하는 위치
     VectorXd readyAngle;
     VectorXd homeAngle;
     VectorXd shutdownAngle;
@@ -177,7 +178,7 @@ private:
 
     vector<double> cubicInterpolation(const vector<double>& q, const vector<double>& t);
     std::pair<double, vector<double>> getNextQ0();
-    void getWaistCoefficient();
+    void makeWaistCoefficient();
     double getWaistAngle(int i);
 
     /////////////////////////////////////////////////////////////////////////// Solve IK
@@ -192,40 +193,45 @@ private:
         double stayTime;
         double liftTime;
         double hitTime;     // 전체 시간
-    }wristTime;
+    }elbowTime;
 
     typedef struct {
         double releaseTime;
         double stayTime;
         double liftTime;
         double hitTime;     // 전체 시간
-    }elbowTime;
+    }wristTime;
 
     typedef struct {
-        double stayAngle;
-        double pressAngle;
-        double liftAngle;
-    }wristAngle;
-
-    typedef struct {
-        double stayAngle;
-        double liftAngle;
+        double stayAngle = 5*M_PI/180.0;
+        double liftAngle = 15*M_PI/180.0;
     }elbowAngle;
+
+    typedef struct {
+        double stayAngle = 10*M_PI/180.0;
+        double pressAngle = -5*M_PI/180.0;
+        double liftAngle = 30*M_PI/180.0;
+    }wristAngle;
     
-    wristTime wristTimeR, wristTimeL;
     elbowTime elbowTimeR, elbowTimeL;
-    wristAngle wristAngleR, wristAngleL;
-    elbowAngle elbowAngleR, elbowAngleL;
+    wristTime wristTimeR, wristTimeL;
     
-    MatrixXd wristCoefficientR;
-    MatrixXd wristCoefficientL;
     MatrixXd elbowCoefficientR;
     MatrixXd elbowCoefficientL;
+    MatrixXd wristCoefficientR;
+    MatrixXd wristCoefficientL;
 
-    pair<VectorXd, vector<int>> generateHit(VectorXd &q);
+    void makeHitCoefficient();
+    MatrixXd makeElbowCoefficient(int state, elbowTime eT, elbowAngle eA);
+    MatrixXd makeWristCoefficient(int state, wristTime wT, wristAngle wA);
+    double makeElbowAngle(double t, elbowTime eT, MatrixXd coefficientMatrix);
+    double makeWristAngle(double t, wristTime wT, MatrixXd coefficientMatrix);
+    void generateHit(VectorXd &q, int index);
 
     /////////////////////////////////////////////////////////////////////////// Push Command Buffer
-    void pushConmmandBuffer(VectorXd Qi, VectorXd T, vector<int> mode);
+    int MaxonMode;
+
+    void pushConmmandBuffer(VectorXd Qi);
 
     /////////////////////////////////////////////////////////////////////////// brake
     void clearBrake(); // 모든 brake끄기
