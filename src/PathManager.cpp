@@ -600,6 +600,9 @@ void PathManager::parseMeasure(MatrixXd &measureMatrix)
     VectorXd measureIntensityR = measureMatrix.col(4);
     VectorXd measureIntensityL = measureMatrix.col(5);
 
+    MatrixXd StatesNTimeR;
+    MatrixXd StatesNTimeL;
+
     pair<VectorXd, VectorXd> dataR = parseOneArm(measureTime, measureInstrumentR, measureState.row(0));
     pair<VectorXd, VectorXd> dataL = parseOneArm(measureTime, measureInstrumentL, measureState.row(1));
 
@@ -615,8 +618,13 @@ void PathManager::parseMeasure(MatrixXd &measureMatrix)
     t1 = measureMatrix(0, 8);
     t2 = measureMatrix(1, 8);
 
+    StatesNTimeR = makeState(measureInstrumentR, measureTime);
+    StatesNTimeL = makeState(measureInstrumentL, measureTime);
+
     hitState.resize(4); 
-    hitState.head(2) = makeState(measureMatrix);
+    //hitState.head(2) = makeState(measureMatrix);
+    hitState(0) = StatesNTimeR(0,0);
+    hitState(1) = StatesNTimeL(0,0);
     hitState(2) = dataR.first(20);
     hitState(3) = dataL.first(20);
 

@@ -137,7 +137,7 @@ private:
                                                                                 // 2 : 1 <- 0
                                                                                 // 3 : 1 <- 1
 
-    VectorXd hitState = VectorXd::Zero(4);
+    VectorXd hitState;
     VectorXd intensity;
 
     void parseMeasure(MatrixXd &measureMatrix);
