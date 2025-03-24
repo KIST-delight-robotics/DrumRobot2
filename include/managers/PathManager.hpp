@@ -142,7 +142,7 @@ private:
 
     void parseMeasure(MatrixXd &measureMatrix);
     pair<VectorXd, VectorXd> parseOneArm(VectorXd t, VectorXd inst, VectorXd stateVector);
-    VectorXd makeState(MatrixXd measureMatrix);
+    // VectorXd makeState(MatrixXd measureMatrix);
 
     /////////////////////////////////////////////////////////////////////////// Make Trajectory
     // 궤적 저장할 구조체
