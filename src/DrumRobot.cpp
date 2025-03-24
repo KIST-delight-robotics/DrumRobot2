@@ -939,8 +939,22 @@ void DrumRobot::sendPlayProcess()
         std::cout << "enter music name : ";
         std::getline(std::cin, musicName);
 
-        std::cout << "enter control mode : ";
+        std::cout << "enter control mode (CSP : 1 / CST : 0): ";
         std::cin >> maxonMotorMode;
+
+        if (maxonMotorMode == 0)
+        {
+            pathManager.MaxonMode = "CST";
+            std::cout << "enter Kp : ";
+            std::cin >> pathManager.Kp;
+
+            std::cout << "enter Kd : ";
+            std::cin >> pathManager.Kd;
+        }
+        else
+        {
+            pathManager.MaxonMode = "CSP";
+        }
     }
 
     std::string currentFile = basePath + musicName + std::to_string(fileIndex) + ".txt";
@@ -955,7 +969,7 @@ void DrumRobot::sendPlayProcess()
             if (bpmOfScore > 0)
             {
                 std::cout << "music bpm = " << bpmOfScore << "\n";
-                pathManager.initializeValue(bpmOfScore, maxonMotorMode);
+                pathManager.initializeValue(bpmOfScore);
             }
             else
             {

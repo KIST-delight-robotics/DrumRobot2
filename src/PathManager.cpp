@@ -284,7 +284,7 @@ void PathManager::pushAddStancePath(string flagName)
     }
 }
 
-void PathManager::initializeValue(int bpm, int mode)
+void PathManager::initializeValue(int bpm)
 {
     endOfPlayCommand = false;
     bpmOfScore = bpm;
@@ -303,23 +303,6 @@ void PathManager::initializeValue(int bpm, int mode)
     q0_t0 = readyAngle(0);
     nextq0_t1 = readyAngle(0);
     clearBrake();
-
-    // Maxon Motor 모드 설정
-    for (auto &entry : motors)
-    {
-        if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(entry.second))
-        {
-            if (mode == 1)
-            {
-                MaxonMode = maxonMotor->CSP;
-            }
-            else
-            {
-                MaxonMode = maxonMotor->CST;
-            }
-            break;
-        }
-    }
 }
 
 void PathManager::generateTrajectory(MatrixXd &measureMatrix)
@@ -381,14 +364,14 @@ void PathManager::generateTrajectory(MatrixXd &measureMatrix)
 
         trajectoryQueue.push(Pt);
 
-        // 데이터 저장
-        std::string fileName;
-        fileName = "Trajectory_R";
-        fun.appendToCSV_DATA(fileName, Pt.trajectoryR[0], Pt.trajectoryR[1], Pt.trajectoryR[2]);
-        fileName = "Trajectory_L";
-        fun.appendToCSV_DATA(fileName, Pt.trajectoryL[0], Pt.trajectoryL[1], Pt.trajectoryL[2]);
-        fileName = "Wrist";
-        fun.appendToCSV_DATA(fileName, Pt.wristAngleR, Pt.wristAngleL, 0.0);
+        // // 데이터 저장
+        // std::string fileName;
+        // fileName = "Trajectory_R";
+        // fun.appendToCSV_DATA(fileName, Pt.trajectoryR[0], Pt.trajectoryR[1], Pt.trajectoryR[2]);
+        // fileName = "Trajectory_L";
+        // fun.appendToCSV_DATA(fileName, Pt.trajectoryL[0], Pt.trajectoryL[1], Pt.trajectoryL[2]);
+        // fileName = "Wrist";
+        // fun.appendToCSV_DATA(fileName, Pt.wristAngleR, Pt.wristAngleL, 0.0);
 
         if (i == 0)
         {
@@ -422,12 +405,12 @@ void PathManager::solveIKandPushCommand()
         // push command buffer
         pushCommandBuffer(q);
 
-        // 데이터 기록
-        for (int i = 0; i < 9; i++)
-        {
-            std::string fileName = "solveIK_q" + to_string(i);
-            fun.appendToCSV_DATA(fileName, i, q(i), 0);
-        }
+        // // 데이터 기록
+        // for (int i = 0; i < 9; i++)
+        // {
+        //     std::string fileName = "solveIK_q" + to_string(i);
+        //     fun.appendToCSV_DATA(fileName, i, q(i), 0);
+        // }
     }
 
     // std::cout << "\n/////////////// Line Data \n";
@@ -1462,25 +1445,17 @@ void PathManager::makeHitCoefficient()
     wristTimeR = getWristTime(t1, t2, intensityR);
     wristTimeL = getWristTime(t1, t2, intensityL);
 
-    std::cout << "\n T \n";
-
     elbowAngleR = getElbowAngle(t1, t2, intensityR);
     elbowAngleL = getElbowAngle(t1, t2, intensityL);
 
     wristAngleR = getWristAngle(t1, t2, intensityR);
     wristAngleL = getWristAngle(t1, t2, intensityL);
 
-    std::cout << "\n A \n";
-
     elbowCoefficientR = makeElbowCoefficient(stateR, elbowTimeR, elbowAngleR);
     elbowCoefficientL = makeElbowCoefficient(stateL, elbowTimeL, elbowAngleL);
 
-    std::cout << "\n makeElbowCoefficient \n";
-
     wristCoefficientR = makeWristCoefficient(stateR, wristTimeR, wristAngleR);
     wristCoefficientL = makeWristCoefficient(stateL, wristTimeL, wristAngleL);
-
-    std::cout << "\n makeWristCoefficient \n";
 }
 
 PathManager::elbowTime PathManager::getElbowTime(float t1, float t2, int intensity)
@@ -1955,7 +1930,19 @@ void PathManager::pushCommandBuffer(VectorXd Qi)
             {
                 MaxonData newData;
                 newData.position = maxonMotor->jointAngleToMotorPosition(Qi[can_id]);
-                newData.mode = MaxonMode;
+                if (MaxonMode == "CST")
+                {
+                    newData.mode = maxonMotor->CST;
+                    newData.kp = Kp;
+                    newData.kd = Kd;
+                }
+                else
+                {
+                    newData.mode = maxonMotor->CSP;
+                    newData.kp = 0;
+                    newData.kd = 0;
+                }
+                
                 maxonMotor->commandBuffer.push(newData);
 
                 maxonMotor->finalMotorPosition = newData.position;
