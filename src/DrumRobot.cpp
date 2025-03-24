@@ -598,7 +598,7 @@ void DrumRobot::sendLoopForThread()
         
         std::map<std::string, bool> fixFlags; // 각 모터의 고정 상태 저장
         
-        if (!canManager.setCANFrame(fixFlags,cycleCounter))
+        if (!canManager.setCANFrame(fixFlags, cycleCounter))
         {
             state.main = Main::Error;
             break;
@@ -679,7 +679,8 @@ void DrumRobot::sendLoopForThread()
         {
             flagObj.setFixationFlag("fixed");
         }
-        // cycleCounter = (cycleCounter + 1) % 5;
+
+        cycleCounter = (cycleCounter + 1) % 5;
         std::this_thread::sleep_until(sendLoopPeriod);
     }
 }
@@ -929,8 +930,6 @@ void DrumRobot::playALineProcess()
     {
         pathManager.solveIKandPushCommand();
     }
-
-    sleep(1);
 }
 
 void DrumRobot::sendPlayProcess()
@@ -939,6 +938,9 @@ void DrumRobot::sendPlayProcess()
     {
         std::cout << "enter music name : ";
         std::getline(std::cin, musicName);
+
+        std::cout << "enter control mode : ";
+        std::cin >> maxonMotorMode;
     }
 
     std::string currentFile = basePath + musicName + std::to_string(fileIndex) + ".txt";
@@ -953,7 +955,7 @@ void DrumRobot::sendPlayProcess()
             if (bpmOfScore > 0)
             {
                 std::cout << "music bpm = " << bpmOfScore << "\n";
-                pathManager.initializeValue(bpmOfScore);
+                pathManager.initializeValue(bpmOfScore, maxonMotorMode);
             }
             else
             {
@@ -991,8 +993,6 @@ void DrumRobot::sendPlayProcess()
             while (!pathManager.endOfPlayCommand)      // 명령 다 보낼 때까지
             {
                 pathManager.solveIKandPushCommand();
-
-                sleep(1);
             }
 
             std::cout << "Play is Over\n";

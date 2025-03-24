@@ -241,12 +241,16 @@ void PathManager::pushAddStancePath(string flagName)
                 }
                 else if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(entry.second))
                 {
-                    MaxonData newData;
-                    newData.position = maxonMotor->jointAngleToMotorPosition(Qt[can_id]);
-                    newData.mode = maxonMotor->CSP;
-                    maxonMotor->commandBuffer.push(newData);
+                    // 1ms 로 동작 (임시)
+                    for (int i = 0; i < 5; i++)
+                    {
+                        MaxonData newData;
+                        newData.position = maxonMotor->jointAngleToMotorPosition(Qt[can_id]);
+                        newData.mode = maxonMotor->CSP;
+                        maxonMotor->commandBuffer.push(newData);
 
-                    maxonMotor->finalMotorPosition = newData.position;
+                        maxonMotor->finalMotorPosition = newData.position;
+                    }
                 }
             }
         }
@@ -266,17 +270,21 @@ void PathManager::pushAddStancePath(string flagName)
                 }
                 else if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(entry.second))
                 {
-                    MaxonData newData;
-                    newData.position = maxonMotor->jointAngleToMotorPosition(Q1[can_id]);
-                    newData.mode = maxonMotor->CSP;
-                    maxonMotor->commandBuffer.push(newData);
+                    // 1ms 로 동작 (임시)
+                    for (int i = 0; i < 5; i++)
+                    {
+                        MaxonData newData;
+                        newData.position = maxonMotor->jointAngleToMotorPosition(Q1[can_id]);
+                        newData.mode = maxonMotor->CSP;
+                        maxonMotor->commandBuffer.push(newData);
+                    }
                 }
             }
         }
     }
 }
 
-void PathManager::initializeValue(int bpm)
+void PathManager::initializeValue(int bpm, int mode)
 {
     endOfPlayCommand = false;
     bpmOfScore = bpm;
@@ -301,7 +309,14 @@ void PathManager::initializeValue(int bpm)
     {
         if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(entry.second))
         {
-            MaxonMode = maxonMotor->CSP;
+            if (mode == 1)
+            {
+                MaxonMode = maxonMotor->CSP;
+            }
+            else
+            {
+                MaxonMode = maxonMotor->CST;
+            }
             break;
         }
     }
@@ -415,9 +430,9 @@ void PathManager::solveIKandPushCommand()
         }
     }
 
-    std::cout << "\n/////////////// Line Data \n";
-    std::cout << lineData;
-    std::cout << "\n ////////////// \n";
+    // std::cout << "\n/////////////// Line Data \n";
+    // std::cout << lineData;
+    // std::cout << "\n ////////////// \n";
 
     // 커맨드 생성 후 lineData 첫 줄 삭제
     if (lineData.rows() >= 1)
@@ -623,13 +638,13 @@ void PathManager::parseMeasure(MatrixXd &measureMatrix)
     t1 = measureMatrix(0, 8);
     t2 = measureMatrix(1, 8);
 
-    StatesNTimeR = makeState(measureInstrumentR, measureTime);
-    StatesNTimeL = makeState(measureInstrumentL, measureTime);
+    // StatesNTimeR = makeState(measureInstrumentR, measureTime);
+    // StatesNTimeL = makeState(measureInstrumentL, measureTime);
 
     hitState.resize(4); 
-    //hitState.head(2) = makeState(measureMatrix);
-    hitState(0) = StatesNTimeR(0,0);
-    hitState(1) = StatesNTimeL(0,0);
+    hitState.head(2) = makeState(measureMatrix);
+    // hitState(0) = StatesNTimeR(0,0);
+    // hitState(1) = StatesNTimeL(0,0);
     hitState(2) = dataR.first(20);
     hitState(3) = dataL.first(20);
 
@@ -657,8 +672,6 @@ void PathManager::parseMeasure(MatrixXd &measureMatrix)
     tmpMatrix = measureMatrix.block(1, 0, tmpMatrix.rows(), tmpMatrix.cols());
     measureMatrix.resize(tmpMatrix.rows(), tmpMatrix.cols());
     measureMatrix = tmpMatrix;
-
-    std::cout << "\n tmpMatrix \n";
 }
 
 pair<VectorXd, VectorXd> PathManager::parseOneArm(VectorXd t, VectorXd inst, VectorXd stateVector)
@@ -782,35 +795,34 @@ pair<VectorXd, VectorXd> PathManager::parseOneArm(VectorXd t, VectorXd inst, Vec
     return std::make_pair(outputVector, nextStateVector);
 }
 
-
-// VectorXd PathManager::makeState(MatrixXd measureMatrix)
-// {
-//     VectorXd state(2);
-//     for (int i = 0; i < 2; i++)
-//     {
-//         if (measureMatrix(0, i + 4) == 0 && measureMatrix(1, i + 4) == 0)
-//         {
-//             Stay
-//             state(i) = 0;
-//         }
-//         else if (measureMatrix(1, i + 4) == 0)
-//         {
-//             Contact - Stay
-//             state(i) = 1;
-//         }
-//         else if (measureMatrix(0, i + 4) == 0)
-//         {
-//             Stay - Lift - Hit
-//             state(i) = 2;
-//         }
-//         else
-//         {
-//             Contact - Lift - Hit
-//             state(i) = 3;
-//         }
-//     }
-//     return state;
-// }
+VectorXd PathManager::makeState(MatrixXd measureMatrix)
+{
+    VectorXd state(2);
+    for (int i = 0; i < 2; i++)
+    {
+        if (measureMatrix(0, i + 4) == 0 && measureMatrix(1, i + 4) == 0)
+        {
+            // Stay
+            state(i) = 0;
+        }
+        else if (measureMatrix(1, i + 4) == 0)
+        {
+            // Contact - Stay
+            state(i) = 1;
+        }
+        else if (measureMatrix(0, i + 4) == 0)
+        {
+            // Stay - Lift - Hit
+            state(i) = 2;
+        }
+        else
+        {
+            // Contact - Lift - Hit
+            state(i) = 3;
+        }
+    }
+    return state;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /*                       Make Task Space Trajectory                           */
@@ -1750,13 +1762,7 @@ double PathManager::makeElbowAngle(double t, elbowTime eT, MatrixXd coefficientM
     tMatrix.resize(4, 1);
     tMatrix << 1, t, t*t, t*t*t;
 
-    std::cout << "\n coefficientMatrix \n" << coefficientMatrix;
-
-    std::cout << "\n tMatrix \n" << tMatrix;
-
     MatrixXd elbowAngle = coefficientMatrix * tMatrix;
-
-    std::cout << "\n elbowAngle \n" << elbowAngle;
 
     if (t < eT.liftTime)
     {
@@ -1774,13 +1780,7 @@ double PathManager::makeWristAngle(double t, wristTime wT, MatrixXd coefficientM
     tMatrix.resize(4, 1);
     tMatrix << 1, t, t*t, t*t*t;
 
-    std::cout << "\n coefficientMatrix \n" << coefficientMatrix;
-
-    std::cout << "\n tMatrix \n" << tMatrix;
-
     MatrixXd wristAngle = coefficientMatrix * tMatrix;
-
-    std::cout << "\n wristAngle \n" << wristAngle;
 
     if (t < wT.releaseTime)
     {
@@ -1929,12 +1929,16 @@ void PathManager::pushCommandBuffer(VectorXd Qi)
         }
         else if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(entry.second))
         {
-            MaxonData newData;
-            newData.position = maxonMotor->jointAngleToMotorPosition(Qi[can_id]);
-            newData.mode = MaxonMode;
-            maxonMotor->commandBuffer.push(newData);
+            // 1ms 로 동작 (임시)
+            for (int i = 0; i < 5; i++)
+            {
+                MaxonData newData;
+                newData.position = maxonMotor->jointAngleToMotorPosition(Qi[can_id]);
+                newData.mode = MaxonMode;
+                maxonMotor->commandBuffer.push(newData);
 
-            maxonMotor->finalMotorPosition = newData.position;
+                maxonMotor->finalMotorPosition = newData.position;
+            }
         }
     }
 }

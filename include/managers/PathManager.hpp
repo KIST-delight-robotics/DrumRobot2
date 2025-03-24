@@ -74,8 +74,10 @@ public:
     
     /////////////////////////////////////////////////////////////////////////// Play
     bool endOfPlayCommand = false;
+    int MaxonMode;
+    double bpmOfScore = 0;      ///< 악보의 BPM 정보.
 
-    void initializeValue(int bpm);
+    void initializeValue(int bpm, int mode);
     void generateTrajectory(MatrixXd &measureMatrix);
     void solveIKandPushCommand();
 
@@ -122,8 +124,6 @@ private:
     void getAddStanceCoefficient(VectorXd Q1, VectorXd Q2, double t);
 
     /////////////////////////////////////////////////////////////////////////// Parse Measure
-    double bpmOfScore = 0;      ///< 악보의 BPM 정보.
-
     VectorXd initialInstrument = VectorXd::Zero(18);   // 전체 궤적에서 출발 악기
     VectorXd finalInstrument = VectorXd::Zero(18);   // 전체 궤적에서 도착 악기
 
@@ -142,7 +142,7 @@ private:
 
     void parseMeasure(MatrixXd &measureMatrix);
     pair<VectorXd, VectorXd> parseOneArm(VectorXd t, VectorXd inst, VectorXd stateVector);
-    // VectorXd makeState(MatrixXd measureMatrix);
+    VectorXd makeState(MatrixXd measureMatrix);
 
     /////////////////////////////////////////////////////////////////////////// Make Trajectory
     // 궤적 저장할 구조체
@@ -236,8 +236,6 @@ private:
     MatrixXd makeArrangedState(VectorXd drums, VectorXd time, float threshold);
 
     /////////////////////////////////////////////////////////////////////////// Push Command Buffer
-    int MaxonMode;
-
     void pushCommandBuffer(VectorXd Qi);
 
     /////////////////////////////////////////////////////////////////////////// brake
