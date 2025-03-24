@@ -518,8 +518,14 @@ void CanManager::setMaxonCANFrame(std::shared_ptr<MaxonMotor> maxonMotor, const 
             sendMotorFrame(maxonMotor);            
         }
         //여기에서 토그 계산을 해주고!!!
-        float err = mData.position - maxonMotor->motorPosition; 
+
+        double err = mData.position - maxonMotor->motorPosition;
+        double err_dot = (err - maxonMotor-> pre_err)/DTSECOND;
+        double alpha = 0.2;  // 적절한 필터 계수
+        
+        double err_dot_filtered = alpha * ((err - maxonMotor-> pre_err) / DTSECOND) + (1 - alpha) * err_dot;
         float torque = mData.kp * err + mData.kd * maxonMotor -> pre_err;
+        
         maxonMotor-> pre_err = err;
         //여기에서 보상을 해주고!!
         // 무게 중력 거리
