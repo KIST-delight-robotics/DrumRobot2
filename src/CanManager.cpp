@@ -528,9 +528,6 @@ void CanManager::setMaxonCANFrame(std::shared_ptr<MaxonMotor> maxonMotor, const 
         
         maxoncmd.setTorqueCANFrame(*maxonMotor, &maxonMotor->sendFrame, torque);
 
-
-
-
         fun.appendToCSV_DATA(fun.file_name, (float)maxonMotor->nodeId + SEND_SIGN, mData.position, torque);
     }
     else if (mData.mode == maxonMotor->CSV)

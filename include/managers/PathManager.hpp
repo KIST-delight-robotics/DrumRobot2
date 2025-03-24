@@ -74,10 +74,11 @@ public:
     
     /////////////////////////////////////////////////////////////////////////// Play
     bool endOfPlayCommand = false;
-    int MaxonMode;
     double bpmOfScore = 0;      ///< 악보의 BPM 정보.
+    string MaxonMode = "CSP";
+    int Kp, Kd;
 
-    void initializeValue(int bpm, int mode);
+    void initializeValue(int bpm);
     void generateTrajectory(MatrixXd &measureMatrix);
     void solveIKandPushCommand();
 

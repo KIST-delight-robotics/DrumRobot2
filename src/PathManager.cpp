@@ -284,7 +284,7 @@ void PathManager::pushAddStancePath(string flagName)
     }
 }
 
-void PathManager::initializeValue(int bpm, int mode)
+void PathManager::initializeValue(int bpm)
 {
     endOfPlayCommand = false;
     bpmOfScore = bpm;
@@ -303,23 +303,6 @@ void PathManager::initializeValue(int bpm, int mode)
     q0_t0 = readyAngle(0);
     nextq0_t1 = readyAngle(0);
     clearBrake();
-
-    // Maxon Motor 모드 설정
-    for (auto &entry : motors)
-    {
-        if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(entry.second))
-        {
-            if (mode == 1)
-            {
-                MaxonMode = maxonMotor->CSP;
-            }
-            else
-            {
-                MaxonMode = maxonMotor->CST;
-            }
-            break;
-        }
-    }
 }
 
 void PathManager::generateTrajectory(MatrixXd &measureMatrix)
@@ -1926,7 +1909,19 @@ void PathManager::pushCommandBuffer(VectorXd Qi)
             {
                 MaxonData newData;
                 newData.position = maxonMotor->jointAngleToMotorPosition(Qi[can_id]);
-                newData.mode = MaxonMode;
+                if (MaxonMode == "CST")
+                {
+                    newData.mode = maxonMotor->CST;
+                    newData.kp = Kp;
+                    newData.kd = Kd;
+                }
+                else
+                {
+                    newData.mode = maxonMotor->CSP;
+                    newData.kp = 0;
+                    newData.kd = 0;
+                }
+                
                 maxonMotor->commandBuffer.push(newData);
 
                 maxonMotor->finalMotorPosition = newData.position;
