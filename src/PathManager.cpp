@@ -287,8 +287,8 @@ void PathManager::initializeValue(int bpm)
     measureState(1, 1) = 1.0;
 
     roundSum = 0.0;
-    lineData.resize(1, 12);
-    lineData = MatrixXd::Zero(1, 12);
+    lineData.resize(1, 10);
+    lineData = MatrixXd::Zero(1, 10);
     lineData(0, 0) = -1;
 
     q0_t1 = readyAngle(0);
@@ -414,7 +414,7 @@ void PathManager::solveIKandPushCommand()
         }
     }
 
-    // 커맨드 생성 후 첫 줄 삭제
+    // 커맨드 생성 후 lineData 첫 줄 삭제
     if (lineData.rows() >= 1)
     {
         MatrixXd tmpMatrix(lineData.rows() - 1, lineData.cols());
@@ -1419,29 +1419,33 @@ VectorXd PathManager::IKFixedWaist(VectorXd pR, VectorXd pL, double theta0, doub
 
 void PathManager::makeHitCoefficient()
 {
-    int state, intensity;
-    float t1, t2;
+    float t1 = lineData(0, 4);
+    float t2 = lineData(0, 5);
+    int stateR = lineData(0, 6);
+    int stateL = lineData(0, 7);
+    int intensityR = lineData(0, 8);
+    int intensityL = lineData(0, 9);
 
     elbowAngle elbowAngleR, elbowAngleL;
     wristAngle wristAngleR, wristAngleL;
 
-    elbowTimeR = getElbowTime(t1, t2, intensity);
-    elbowTimeL = getElbowTime(t1, t2, intensity);
+    elbowTimeR = getElbowTime(t1, t2, intensityR);
+    elbowTimeL = getElbowTime(t1, t2, intensityL);
 
-    wristTimeR = getWristTime(t1, t2, intensity);
-    wristTimeL = getWristTime(t1, t2, intensity);
+    wristTimeR = getWristTime(t1, t2, intensityR);
+    wristTimeL = getWristTime(t1, t2, intensityL);
 
-    elbowAngleR = getElbowAngle(t1, t2, intensity);
-    elbowAngleL = getElbowAngle(t1, t2, intensity);
+    elbowAngleR = getElbowAngle(t1, t2, intensityR);
+    elbowAngleL = getElbowAngle(t1, t2, intensityL);
 
-    wristAngleR = getWristAngle(t1, t2, intensity);
-    wristAngleL = getWristAngle(t1, t2, intensity);
+    wristAngleR = getWristAngle(t1, t2, intensityR);
+    wristAngleL = getWristAngle(t1, t2, intensityL);
 
-    elbowCoefficientR = makeElbowCoefficient(state, elbowTimeR, elbowAngleR);
-    elbowCoefficientL = makeElbowCoefficient(state, elbowTimeL, elbowAngleL);
+    elbowCoefficientR = makeElbowCoefficient(stateR, elbowTimeR, elbowAngleR);
+    elbowCoefficientL = makeElbowCoefficient(stateL, elbowTimeL, elbowAngleL);
 
-    wristCoefficientR = makeWristCoefficient(state, wristTimeR, wristAngleR);
-    wristCoefficientL = makeWristCoefficient(state, wristTimeL, wristAngleL);
+    wristCoefficientR = makeWristCoefficient(stateR, wristTimeR, wristAngleR);
+    wristCoefficientL = makeWristCoefficient(stateL, wristTimeL, wristAngleL);
 }
 
 PathManager::elbowTime PathManager::getElbowTime(float t1, float t2, int intensity)
