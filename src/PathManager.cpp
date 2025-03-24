@@ -364,14 +364,14 @@ void PathManager::generateTrajectory(MatrixXd &measureMatrix)
 
         trajectoryQueue.push(Pt);
 
-        // 데이터 저장
-        std::string fileName;
-        fileName = "Trajectory_R";
-        fun.appendToCSV_DATA(fileName, Pt.trajectoryR[0], Pt.trajectoryR[1], Pt.trajectoryR[2]);
-        fileName = "Trajectory_L";
-        fun.appendToCSV_DATA(fileName, Pt.trajectoryL[0], Pt.trajectoryL[1], Pt.trajectoryL[2]);
-        fileName = "Wrist";
-        fun.appendToCSV_DATA(fileName, Pt.wristAngleR, Pt.wristAngleL, 0.0);
+        // // 데이터 저장
+        // std::string fileName;
+        // fileName = "Trajectory_R";
+        // fun.appendToCSV_DATA(fileName, Pt.trajectoryR[0], Pt.trajectoryR[1], Pt.trajectoryR[2]);
+        // fileName = "Trajectory_L";
+        // fun.appendToCSV_DATA(fileName, Pt.trajectoryL[0], Pt.trajectoryL[1], Pt.trajectoryL[2]);
+        // fileName = "Wrist";
+        // fun.appendToCSV_DATA(fileName, Pt.wristAngleR, Pt.wristAngleL, 0.0);
 
         if (i == 0)
         {
@@ -405,12 +405,12 @@ void PathManager::solveIKandPushCommand()
         // push command buffer
         pushCommandBuffer(q);
 
-        // 데이터 기록
-        for (int i = 0; i < 9; i++)
-        {
-            std::string fileName = "solveIK_q" + to_string(i);
-            fun.appendToCSV_DATA(fileName, i, q(i), 0);
-        }
+        // // 데이터 기록
+        // for (int i = 0; i < 9; i++)
+        // {
+        //     std::string fileName = "solveIK_q" + to_string(i);
+        //     fun.appendToCSV_DATA(fileName, i, q(i), 0);
+        // }
     }
 
     // std::cout << "\n/////////////// Line Data \n";
