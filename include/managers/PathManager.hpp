@@ -131,6 +131,13 @@ private:
     float initialTimeL, finalTimeL;
     float t1, t2;           // 궤적 생성 시간
 
+    VectorXd drumR;     // 오른손 악기 전체 저장
+    VectorXd drumL;     // 왼손 악기 전체 저장
+    VectorXd timeR;
+    VectorXd timeL;
+    VectorXd statesNTimeR;    // 오른손 state, time 전체 저장
+    VectorXd statesNTimeL;    // 왼손 state, time 전체 저장
+
     MatrixXd measureState = MatrixXd::Zero(2, 3); // [이전 시간, 이전 악기, 상태] // state
                                                                                 // 0 : 0 <- 0
                                                                                 // 1 : 0 <- 1
@@ -231,7 +238,7 @@ private:
     double makeElbowAngle(double t, elbowTime eT, MatrixXd coefficientMatrix);
     double makeWristAngle(double t, wristTime wT, MatrixXd coefficientMatrix);
     void generateHit(VectorXd &q, int index);
-    MatrixXd makeState(VectorXd drums, VectorXd time);
+    MatrixXd makeState(VectorXd drums, VectorXd time, bool dir);
     VectorXd makeTempState(VectorXd drums);
     MatrixXd makeArrangedState(VectorXd drums, VectorXd time, float threshold);
 

@@ -638,13 +638,13 @@ void PathManager::parseMeasure(MatrixXd &measureMatrix)
     t1 = measureMatrix(0, 8);
     t2 = measureMatrix(1, 8);
 
-    // StatesNTimeR = makeState(measureInstrumentR, measureTime);
-    // StatesNTimeL = makeState(measureInstrumentL, measureTime);
+    StatesNTimeR = makeState(measureInstrumentR, measureTime);
+    StatesNTimeL = makeState(measureInstrumentL, measureTime);
 
     hitState.resize(4); 
-    hitState.head(2) = makeState(measureMatrix);
-    // hitState(0) = StatesNTimeR(0,0);
-    // hitState(1) = StatesNTimeL(0,0);
+    //hitState.head(2) = makeState(measureMatrix);
+    hitState(0) = StatesNTimeR(0,0);
+    hitState(1) = StatesNTimeL(0,0);
     hitState(2) = dataR.first(20);
     hitState(3) = dataL.first(20);
 
@@ -1816,97 +1816,118 @@ void PathManager::generateHit(VectorXd &q, int index)
     q(8) += wristAngleL;
 }
 
-// MatrixXd PathManager::makeState(VectorXd drums, VectorXd time)
-// {
-//     float threshold = 0.2;
+MatrixXd PathManager::makeState(VectorXd drums, VectorXd time, bool dir)
+{
+    float threshold = 0.2;
 
-//     VectorXd tempStates;
-//     MatrixXd statesNTime;
+    VectorXd tempStates;
+    MatrixXd statesNTime;
 
-//     tempStates.resize(drums.size());
-//     statesNTime.resize(2, drums.size());
+    if(dir == 0)
+    {
+        if (drumR.size() == 0)
+        {
+            drumR.resize(drums.size());
+            timeR.resize(time.size());
+        }
+        else
+        {
+            drumR.resize(drumR.size() + drums.size());
+            timeR.resize(timeR.size() + time.size());
+        }
 
-//     tempStates = makeTempState(drums);                              // 악보만 보고 temp state 생성
+        tempStates = makeTempState(drumR);
 
-//     statesNTime = makeArrangedState(tempStates, time, threshold);   // 시간이 짧은 부분 state 수정
+        statesNTimeR = makeArrangedState(tempStates, time, threshold);
+    }
 
-//     return statesNTime;
-// }
+    VectorXd tempStates;
+    MatrixXd statesNTime;
 
-// VectorXd PathManager::makeTempState(VectorXd drums)
-// {
-//     VectorXd states;
-//     states.resize(drums.size());
+    tempStates.resize(drums.size());
+    statesNTime.resize(2, drums.size());
 
-//     for (int i = 0; i < drums.size(); i++)
-//     {
-//         if (i == 0)                                 // 첫 줄에 드럼을 치면 state 2 아니면 0
-//         {
-//             if (drums(i) == 0) states(0) = 0;
-//             else states(0) = 2;
-//         }
-//         else
-//         {
-//             if(drums(i) != 0)                           // 지금 줄에 타격이 있을 때
-//             {
-//                 if (drums(i-1) != 0) states(i) = 3;     // 이전 줄에 타격 o
-//                 else states(i) = 2;                     // 이전 줄에 타격 x
-//             }
-//             else                                        // 지금 줄에 타격이 없을 때
-//             {
-//                 if (drums(i-1) != 0) states(i) = 1;     // 이전 줄에 타격 o
-//                 else states(i) = 0;                     // 이전 줄에 타격 x
-//             }
-//         }
-//     }
-//     return states;
-// }
+    tempStates = makeTempState(drums);                              // 악보만 보고 temp state 생성
 
-// MatrixXd PathManager::makeArrangedState(VectorXd states, VectorXd time, float threshold)
-// {
-//     MatrixXd result;
-//     result.resize(states.size(), 2);
+    statesNTime = makeArrangedState(tempStates, time, threshold);   // 시간이 짧은 부분 state 수정
 
-//     for (int k = 0; k < states.size() - 1; k++)
-//     {
-//         if (time(k) <= threshold)
-//         {
-//             if(states(k) == 2)
-//             {
-//                 if (states(k-1) == 0)
-//                 {
-//                     time(k) += time(k-1);
-//                     time(k-1) = 0;
-//                 } 
-//                 else if (states(k-1) == 1)
-//                 {
-//                     time(k) += time(k-1);
-//                     time(k-1) = 0;
-//                     states(k) = 3;
-//                 }
-//             }
-//             else if (states(k) == 1)
-//             {
-//                 if (states(k+1) == 0)
-//                 {
-//                     time(k) += time(k+1);
-//                     time(k+1) = 0;
-//                 }
-//                 else if (states(k+1) == 2)
-//                 {
-//                     time(k) += time(k+1);
-//                     time(k+1) = 0;
-//                     states(k) = 3;
-//                 }
-//             }
-//         }
-//     }
+    return statesNTime;
+}
 
-//     result.col(0) = states;
-//     result.col(1) = time;
+VectorXd PathManager::makeTempState(VectorXd drums)
+{
+    VectorXd states;
+    states.resize(drums.size());
 
-//     return result;
-// }
+    for (int i = 0; i < drums.size(); i++)
+    {
+        if (i == 0)                                 // 첫 줄에 드럼을 치면 state 2 아니면 0
+        {
+            if (drums(i) == 0) states(0) = 0;
+            else states(0) = 2;
+        }
+        else
+        {
+            if(drums(i) != 0)                           // 지금 줄에 타격이 있을 때
+            {
+                if (drums(i-1) != 0) states(i) = 3;     // 이전 줄에 타격 o
+                else states(i) = 2;                     // 이전 줄에 타격 x
+            }
+            else                                        // 지금 줄에 타격이 없을 때
+            {
+                if (drums(i-1) != 0) states(i) = 1;     // 이전 줄에 타격 o
+                else states(i) = 0;                     // 이전 줄에 타격 x
+            }
+        }
+    }
+    return states;
+}
+
+MatrixXd PathManager::makeArrangedState(VectorXd states, VectorXd time, float threshold)
+{
+    MatrixXd result;
+    result.resize(states.size(), 2);
+
+    for (int k = 0; k < states.size() - 1; k++)
+    {
+        if (time(k) <= threshold)
+        {
+            if(states(k) == 2)
+            {
+                if (states(k-1) == 0)
+                {
+                    time(k) += time(k-1);
+                    time(k-1) = 0;
+                } 
+                else if (states(k-1) == 1)
+                {
+                    time(k) += time(k-1);
+                    time(k-1) = 0;
+                    states(k) = 3;
+                }
+            }
+            else if (states(k) == 1)
+            {
+                if (states(k+1) == 0)
+                {
+                    time(k) += time(k+1);
+                    time(k+1) = 0;
+                }
+                else if (states(k+1) == 2)
+                {
+                    time(k) += time(k+1);
+                    time(k+1) = 0;
+                    states(k) = 3;
+                }
+            }
+        }
+    }
+
+    result.col(0) = states;
+    result.col(1) = time;
+
+    return result;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /*                           Push Command Buffer                              */
