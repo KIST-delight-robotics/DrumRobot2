@@ -1425,15 +1425,74 @@ VectorXd PathManager::IKFixedWaist(VectorXd pR, VectorXd pL, double theta0, doub
 
 void PathManager::makeHitCoefficient()
 {
-    int state;
+    int state, intensity;
+    double t1, t2;
 
     elbowAngle elbowAngleR, elbowAngleL;
     wristAngle wristAngleR, wristAngleL;
+
+    elbowTimeR = getElbowTime(t1, t2, intensity);
+    elbowTimeL = getElbowTime(t1, t2, intensity);
+
+    wristTimeR = getWristTime(t1, t2, intensity);
+    wristTimeL = getWristTime(t1, t2, intensity);
 
     elbowCoefficientR = makeElbowCoefficient(state, elbowTimeR, elbowAngleR);
     elbowCoefficientL = makeElbowCoefficient(state, elbowTimeL, elbowAngleL);
     wristCoefficientR = makeWristCoefficient(state, wristTimeR, wristAngleR);
     wristCoefficientL = makeWristCoefficient(state, wristTimeL, wristAngleL);
+}
+
+PathManager::elbowTime PathManager::getElbowTime(float t1, float t2, int intensity)
+{
+    float T = t2 - t1;
+    elbowTime elbowTime;
+
+    elbowTime.stayTime = std::max(0.5 * (T), T - 0.2);
+    elbowTime.liftTime = std::max(0.5 * (T), T - 0.2);
+    
+    return elbowTime;
+}
+
+PathManager::wristTime PathManager::getWristTime(float t1, float t2, int intensity)
+{
+    float T = t2 - t1;
+    wristTime wristTime;
+
+    wristTime.releaseTime = std::min(0.2 * (T), 0.1);
+
+    t2 - t1 < 0.15 ? wristTime.stayTime = 0.45 * (T) : wristTime.stayTime = 0.47 * (T) - 0.05;
+
+    if (intensity == 1)
+        wristTime.liftTime = std::max(0.5 * (T), T - 0.25);
+    else if (intensity == 2)
+        wristTime.liftTime = std::max(0.6 * (T), T - 0.2);
+    else
+        wristTime.liftTime = std::max(0.7 * (T), T - 0.15);
+    
+    return wristTime;
+}
+
+PathManager::elbowAngle PathManager::getElbowAngle(float t1, float t2, int intensity)
+{
+    float T = t2 - t1;
+    elbowAngle elbowAngle;
+
+    elbowAngle.liftAngle = std::max(0.5 * (T), T - 0.2);
+
+    return elbowAngle;
+}
+
+PathManager::wristAngle PathManager::getWristAngle(float t1, float t2, int intensity)
+{
+    float T = t2 - t1;
+    wristAngle wristAngle;
+
+    wristAngle.stayAngle = 10 * M_PI / 180.0;
+    t2 - t1 < 0.5 ? wristAngle.liftAngle = (-100 * ((T) - 0.5) * ((T) - 0.5) + 30) * M_PI / 180.0 : wristAngle.liftAngle = 30  * M_PI / 180.0;
+    wristAngle.pressAngle = -1.0 * std::min((T) * (5 * M_PI / 180.0)/ 0.5, (5 * M_PI / 180.0));
+
+    return wristAngle;
 }
 
 MatrixXd PathManager::makeElbowCoefficient(int state, elbowTime eT, elbowAngle eA)
@@ -1728,91 +1787,6 @@ void PathManager::generateHit(VectorXd &q, int index)
     q(6) += elbowAngleL;
     q(7) += wristAngleR;
     q(8) += wristAngleL;
-}
-
-PathManager::wristTime PathManager::getWristTime(float t1, float t2, int intensity)
-{
-    float T = t2 - t1;
-    wristTime wristTime;
-
-    wristTime.releaseTime = std::min(0.2 * (T), 0.1);
-
-    t2 - t1 < 0.15 ? wristTime.stayTime = 0.45 * (T) : wristTime.stayTime = 0.47 * (T) - 0.05;
-
-    if (intensity == 1)
-        wristTime.liftTime = std::max(0.5 * (T), T - 0.25);
-    else if (intensity == 2)
-        wristTime.liftTime = std::max(0.6 * (T), T - 0.2);
-    else
-        wristTime.liftTime = std::max(0.7 * (T), T - 0.15);
-    
-    return wristTime;
-}
-
-PathManager::elbowTime PathManager::getElbowTime(float t1, float t2, int intensity)
-{
-    float T = t2 - t1;
-    elbowTime elbowTime;
-
-    elbowTime.stayTime = std::max(0.5 * (T), T - 0.2);
-    elbowTime.liftTime = std::max(0.5 * (T), T - 0.2);
-    
-    return elbowTime;
-}
-
-PathManager::wristAngle PathManager::getWristAngle(float t1, float t2, int intensity)
-{
-    float T = t2 - t1;
-    wristAngle wristAngle;
-
-    wristAngle.stayAngle = 10 * M_PI / 180.0;
-    t2 - t1 < 0.5 ? wristAngle.liftAngle = (-100 * ((T) - 0.5) * ((T) - 0.5) + 30) * M_PI / 180.0 : wristAngle.liftAngle = 30  * M_PI / 180.0;
-    wristAngle.pressAngle = -1.0 * std::min((T) * (5 * M_PI / 180.0)/ 0.5, (5 * M_PI / 180.0));
-
-    return wristAngle;
-}
-
-PathManager::elbowAngle PathManager::getElbowAngle(float t1, float t2, int intensity)
-{
-    float T = t2 - t1;
-    elbowAngle elbowAngle;
-
-    elbowAngle.liftAngle = std::max(0.5 * (T), T - 0.2);
-
-    return elbowAngle;
-}
-
-VectorXd PathManager::makeState(VectorXd drums, VectorXd time)
-{
-    VectorXd states;
-    states.resize(drums.size());
-
-    for (int i = 0; i <= drums.size(); i++)
-    {
-        if (i == 0)                                 // 첫 줄에 드럼을 치면 state 2 아니면 0
-        {
-            if (drums(i) == 0) states(0) == 0;
-            else states(0) == 2;
-        }
-
-        if(drums(i) != 0)                           // 지금 줄에 타격이 있을 때
-        {
-            if (drums(i-1) != 0) states(i) = 3;     // 이전 줄에 타격 o
-            else states(i) = 2;                     // 이전 줄에 타격 x
-        }
-        else                                        // 지금 줄에 타격이 없을 때
-        {
-            if (drums(i-1) != 0) states(i) = 1;     // 이전 줄에 타격 o
-            else states(i) = 0;                     // 이전 줄에 타격 x
-        }
-    }
-
-    for (int k = 0; k <= time.size(); k++)
-    {
-        
-    }
-
-    return states;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

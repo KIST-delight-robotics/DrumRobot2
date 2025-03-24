@@ -222,16 +222,15 @@ private:
     MatrixXd wristCoefficientL;
 
     void makeHitCoefficient();
+    PathManager::elbowTime getElbowTime(float t1, float t2, int intensity);
+    PathManager::wristTime getWristTime(float t1, float t2, int intensity);
+    PathManager::elbowAngle getElbowAngle(float t1, float t2, int intensity);
+    PathManager::wristAngle getWristAngle(float t1, float t2, int intensity);
     MatrixXd makeElbowCoefficient(int state, elbowTime eT, elbowAngle eA);
     MatrixXd makeWristCoefficient(int state, wristTime wT, wristAngle wA);
     double makeElbowAngle(double t, elbowTime eT, MatrixXd coefficientMatrix);
     double makeWristAngle(double t, wristTime wT, MatrixXd coefficientMatrix);
     void generateHit(VectorXd &q, int index);
-    PathManager::wristTime getWristTime(float t1, float t2, int intensity);
-    PathManager::elbowTime getElbowTime(float t1, float t2, int intensity);
-    PathManager::wristAngle getWristAngle(float t1, float t2, int intensity);
-    PathManager::elbowAngle getElbowAngle(float t1, float t2, int intensity);
-    VectorXd makeState(VectorXd drums, VectorXd time);
 
     /////////////////////////////////////////////////////////////////////////// Push Command Buffer
     int MaxonMode;
