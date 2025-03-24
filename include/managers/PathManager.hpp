@@ -231,6 +231,9 @@ private:
     double makeElbowAngle(double t, elbowTime eT, MatrixXd coefficientMatrix);
     double makeWristAngle(double t, wristTime wT, MatrixXd coefficientMatrix);
     void generateHit(VectorXd &q, int index);
+    MatrixXd makeState(VectorXd drums, VectorXd time);
+    VectorXd makeTempState(VectorXd drums);
+    MatrixXd makeArrangedState(VectorXd drums, VectorXd time, float threshold);
 
     /////////////////////////////////////////////////////////////////////////// Push Command Buffer
     int MaxonMode;
