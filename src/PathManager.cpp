@@ -1730,6 +1730,58 @@ void PathManager::generateHit(VectorXd &q, int index)
     q(8) += wristAngleL;
 }
 
+PathManager::wristTime PathManager::getWristTime(float t1, float t2, int intensity)
+{
+    float T = t2 - t1;
+    wristTime wristTime;
+
+    wristTime.releaseTime = std::min(0.2 * (T), 0.1);
+
+    t2 - t1 < 0.15 ? wristTime.stayTime = 0.45 * (T) : wristTime.stayTime = 0.47 * (T) - 0.05;
+
+    if (intensity == 1)
+        wristTime.liftTime = std::max(0.5 * (T), T - 0.25);
+    else if (intensity == 2)
+        wristTime.liftTime = std::max(0.6 * (T), T - 0.2);
+    else
+        wristTime.liftTime = std::max(0.7 * (T), T - 0.15);
+    
+    return wristTime;
+}
+
+PathManager::elbowTime PathManager::getElbowTime(float t1, float t2, int intensity)
+{
+    float T = t2 - t1;
+    elbowTime elbowTime;
+
+    elbowTime.stayTime = std::max(0.5 * (T), T - 0.2);
+    elbowTime.liftTime = std::max(0.5 * (T), T - 0.2);
+    
+    return elbowTime;
+}
+
+PathManager::wristAngle PathManager::getWristAngle(float t1, float t2, int intensity)
+{
+    float T = t2 - t1;
+    wristAngle wristAngle;
+
+    wristAngle.stayAngle = 10 * M_PI / 180.0;
+    t2 - t1 < 0.5 ? wristAngle.liftAngle = (-100 * ((T) - 0.5) * ((T) - 0.5) + 30) * M_PI / 180.0 : wristAngle.liftAngle = 30  * M_PI / 180.0;
+    wristAngle.pressAngle = -1.0 * std::min((T) * (5 * M_PI / 180.0)/ 0.5, (5 * M_PI / 180.0));
+
+    return wristAngle;
+}
+
+PathManager::elbowAngle PathManager::getElbowAngle(float t1, float t2, int intensity)
+{
+    float T = t2 - t1;
+    elbowAngle elbowAngle;
+
+    elbowAngle.liftAngle = std::max(0.5 * (T), T - 0.2);
+
+    return elbowAngle;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /*                           Push Command Buffer                              */
 ////////////////////////////////////////////////////////////////////////////////
