@@ -782,10 +782,10 @@ pair<VectorXd, VectorXd> PathManager::parseOneArm(VectorXd t, VectorXd inst, Vec
     return std::make_pair(outputVector, nextStateVector);
 }
 
+
 // VectorXd PathManager::makeState(MatrixXd measureMatrix)
 // {
 //     VectorXd state(2);
-
 //     for (int i = 0; i < 2; i++)
 //     {
 //         if (measureMatrix(0, i + 4) == 0 && measureMatrix(1, i + 4) == 0)
@@ -1823,6 +1823,9 @@ MatrixXd PathManager::makeState(VectorXd drums, VectorXd time)
     VectorXd tempStates;
     MatrixXd statesNTime;
 
+    tempStates.resize(drums.size());
+    statesNTime.resize(2, drums.size());
+
     tempStates = makeTempState(drums);                              // 악보만 보고 temp state 생성
 
     statesNTime = makeArrangedState(tempStates, time, threshold);   // 시간이 짧은 부분 state 수정
@@ -1835,23 +1838,25 @@ VectorXd PathManager::makeTempState(VectorXd drums)
     VectorXd states;
     states.resize(drums.size());
 
-    for (int i = 0; i <= drums.size(); i++)
+    for (int i = 0; i < drums.size(); i++)
     {
         if (i == 0)                                 // 첫 줄에 드럼을 치면 state 2 아니면 0
         {
             if (drums(i) == 0) states(0) = 0;
             else states(0) = 2;
         }
-
-        if(drums(i) != 0)                           // 지금 줄에 타격이 있을 때
+        else
         {
-            if (drums(i-1) != 0) states(i) = 3;     // 이전 줄에 타격 o
-            else states(i) = 2;                     // 이전 줄에 타격 x
-        }
-        else                                        // 지금 줄에 타격이 없을 때
-        {
-            if (drums(i-1) != 0) states(i) = 1;     // 이전 줄에 타격 o
-            else states(i) = 0;                     // 이전 줄에 타격 x
+            if(drums(i) != 0)                           // 지금 줄에 타격이 있을 때
+            {
+                if (drums(i-1) != 0) states(i) = 3;     // 이전 줄에 타격 o
+                else states(i) = 2;                     // 이전 줄에 타격 x
+            }
+            else                                        // 지금 줄에 타격이 없을 때
+            {
+                if (drums(i-1) != 0) states(i) = 1;     // 이전 줄에 타격 o
+                else states(i) = 0;                     // 이전 줄에 타격 x
+            }
         }
     }
     return states;
@@ -1860,9 +1865,9 @@ VectorXd PathManager::makeTempState(VectorXd drums)
 MatrixXd PathManager::makeArrangedState(VectorXd states, VectorXd time, float threshold)
 {
     MatrixXd result;
-    result.resize(states.size(), time.size());
+    result.resize(states.size(), 2);
 
-    for (int k = 0; k <= time.size(); k++)
+    for (int k = 0; k < states.size() - 1; k++)
     {
         if (time(k) <= threshold)
         {
@@ -1897,7 +1902,8 @@ MatrixXd PathManager::makeArrangedState(VectorXd states, VectorXd time, float th
         }
     }
 
-    result << states, time;
+    result.col(0) = states;
+    result.col(1) = time;
 
     return result;
 }
