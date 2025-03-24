@@ -1796,9 +1796,9 @@ MatrixXd PathManager::makeState(VectorXd drums, VectorXd time)
     VectorXd tempStates;
     MatrixXd statesNTime;
 
-    tempStates = makeTempState(drums);
+    tempStates = makeTempState(drums);                              // 악보만 보고 temp state 생성
 
-    statesNTime = makeArrangedState(tempStates, time, threshold);
+    statesNTime = makeArrangedState(tempStates, time, threshold);   // 시간이 짧은 부분 state 수정
 
     return statesNTime;
 }
