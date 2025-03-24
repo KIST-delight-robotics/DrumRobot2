@@ -1816,15 +1816,19 @@ void PathManager::generateHit(VectorXd &q, int index)
     q(8) += wristAngleL;
 }
 
-MatrixXd PathManager::makeState(VectorXd drums, VectorXd time)
+MatrixXd PathManager::makeState(VectorXd tempDrums, VectorXd time)
 {
     float threshold = 0.2;
 
-    VectorXd tempStates;
-    MatrixXd statesNTime;
+    static VectorXd drums;
+    drums.resize(drums.size() + tempDrums.size());
+    drums << tempDrums;
 
-    tempStates.resize(drums.size());
-    statesNTime.resize(2, drums.size());
+    static VectorXd tempStates;
+    static MatrixXd statesNTime;
+
+    tempStates.resize(tempStates.size() + drums.size());
+    statesNTime.resize(2, tempStates.size() + drums.size());
 
     tempStates = makeTempState(drums);                              // 악보만 보고 temp state 생성
 
@@ -1835,10 +1839,19 @@ MatrixXd PathManager::makeState(VectorXd drums, VectorXd time)
 
 VectorXd PathManager::makeTempState(VectorXd drums)
 {
-    VectorXd states;
-    states.resize(drums.size());
+    static VectorXd states;
+    int start = 0;
+    if (states.size() == 0)
+    {
+        states.resize(drums.size());
+    }
+    else
+    {
+        start = states.size();
+        states.resize(states.size() + drums.size());
+    }
 
-    for (int i = 0; i < drums.size(); i++)
+    for (int i = start; i < drums.size(); i++)
     {
         if (i == 0)                                 // 첫 줄에 드럼을 치면 state 2 아니면 0
         {
