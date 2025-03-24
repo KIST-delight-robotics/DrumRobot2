@@ -503,8 +503,7 @@ void CanManager::setMaxonCANFrame(std::shared_ptr<MaxonMotor> maxonMotor, const 
         maxoncmd.setPositionCANFrame(*maxonMotor, &maxonMotor->sendFrame, mData.position);
 
         // std::cout << "Maxon Motor : " << maxonMotor->myName << "\t" << mData.position << "\n";
-
-        fun.appendToCSV_DATA("debug", (float)maxonMotor->nodeId, mData.position, 0);
+        fun.appendToCSV_DATA(fun.file_name, (float)maxonMotor->nodeId + SEND_SIGN, mData.position, mData.position - maxonMotor->motorPosition);
     }
     else if (mData.mode == maxonMotor->CST)
     {
@@ -524,6 +523,8 @@ void CanManager::setMaxonCANFrame(std::shared_ptr<MaxonMotor> maxonMotor, const 
         maxonMotor-> pre_err = err;
         //여기에서 보상을 해주고!!
         maxoncmd.setTorqueCANFrame(*maxonMotor, &maxonMotor->sendFrame, torque);
+
+        fun.appendToCSV_DATA(fun.file_name, (float)maxonMotor->nodeId + SEND_SIGN, mData.position, torque);
     }
     else if (mData.mode == maxonMotor->CSV)
     {
@@ -537,7 +538,7 @@ void CanManager::setTMotorCANFrame(std::shared_ptr<TMotor> tMotor, const TMotorD
     {
         tservocmd.setPositionCANFrame(*tMotor, &tMotor->sendFrame, tData.position);
 
-        // fun.appendToCSV_DATA(fun.file_name, (float)tMotor->nodeId + SEND_SIGN, tMotor->motorPositionToJointAngle(tData.position), 0);
+        fun.appendToCSV_DATA(fun.file_name, (float)tMotor->nodeId + SEND_SIGN, tData.position, tData.position - tMotor->motorPosition);
     }
     else if (tData.mode == tMotor-> Idle)
     {
