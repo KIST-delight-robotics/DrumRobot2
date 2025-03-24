@@ -158,7 +158,7 @@ private:
     double roundSum = 0;    ///< 5ms 스텝 단위에서 누적되는 오차 보상
 
     // 악보 한 줄의 데이터 저장한 Matrix
-    // [명령 개수 / q0 최적값 / q0 min / q0 max / ]
+    // [명령 개수 / q0 최적값 / q0 min / q0 max / t1 / t2 / state R / state L / intensity R / intensity L]
     MatrixXd lineData;
 
     pair<VectorXd, VectorXd> getTargetPosition(VectorXd inst_vector);
