@@ -1462,25 +1462,17 @@ void PathManager::makeHitCoefficient()
     wristTimeR = getWristTime(t1, t2, intensityR);
     wristTimeL = getWristTime(t1, t2, intensityL);
 
-    std::cout << "\n T \n";
-
     elbowAngleR = getElbowAngle(t1, t2, intensityR);
     elbowAngleL = getElbowAngle(t1, t2, intensityL);
 
     wristAngleR = getWristAngle(t1, t2, intensityR);
     wristAngleL = getWristAngle(t1, t2, intensityL);
 
-    std::cout << "\n A \n";
-
     elbowCoefficientR = makeElbowCoefficient(stateR, elbowTimeR, elbowAngleR);
     elbowCoefficientL = makeElbowCoefficient(stateL, elbowTimeL, elbowAngleL);
 
-    std::cout << "\n makeElbowCoefficient \n";
-
     wristCoefficientR = makeWristCoefficient(stateR, wristTimeR, wristAngleR);
     wristCoefficientL = makeWristCoefficient(stateL, wristTimeL, wristAngleL);
-
-    std::cout << "\n makeWristCoefficient \n";
 }
 
 PathManager::elbowTime PathManager::getElbowTime(float t1, float t2, int intensity)
