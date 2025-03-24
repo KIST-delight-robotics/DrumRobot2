@@ -1789,6 +1789,92 @@ void PathManager::generateHit(VectorXd &q, int index)
     q(8) += wristAngleL;
 }
 
+MatrixXd PathManager::makeState(VectorXd drums, VectorXd time)
+{
+    float threshold = 0.2;
+
+    VectorXd tempStates;
+    MatrixXd statesNTime;
+
+    tempStates = makeTempState(drums);
+
+    statesNTime = makeArrangedState(tempStates, time, threshold);
+
+    return statesNTime;
+}
+
+VectorXd PathManager::makeTempState(VectorXd drums)
+{
+    VectorXd states;
+    states.resize(drums.size());
+
+    for (int i = 0; i <= drums.size(); i++)
+    {
+        if (i == 0)                                 // 첫 줄에 드럼을 치면 state 2 아니면 0
+        {
+            if (drums(i) == 0) states(0) = 0;
+            else states(0) = 2;
+        }
+
+        if(drums(i) != 0)                           // 지금 줄에 타격이 있을 때
+        {
+            if (drums(i-1) != 0) states(i) = 3;     // 이전 줄에 타격 o
+            else states(i) = 2;                     // 이전 줄에 타격 x
+        }
+        else                                        // 지금 줄에 타격이 없을 때
+        {
+            if (drums(i-1) != 0) states(i) = 1;     // 이전 줄에 타격 o
+            else states(i) = 0;                     // 이전 줄에 타격 x
+        }
+    }
+    return states;
+}
+
+MatrixXd PathManager::makeArrangedState(VectorXd states, VectorXd time, float threshold)
+{
+    MatrixXd result;
+    result.resize(states.size(), time.size());
+
+    for (int k = 0; k <= time.size(); k++)
+    {
+        if (time(k) <= threshold)
+        {
+            if(states(k) == 2)
+            {
+                if (states(k-1) == 0)
+                {
+                    time(k) += time(k-1);
+                    time(k-1) = 0;
+                } 
+                else if (states(k-1) == 1)
+                {
+                    time(k) += time(k-1);
+                    time(k-1) = 0;
+                    states(k) = 3;
+                }
+            }
+            else if (states(k) == 1)
+            {
+                if (states(k+1) == 0)
+                {
+                    time(k) += time(k+1);
+                    time(k+1) = 0;
+                }
+                else if (states(k+1) == 2)
+                {
+                    time(k) += time(k+1);
+                    time(k+1) = 0;
+                    states(k) = 3;
+                }
+            }
+        }
+    }
+
+    result << states, time;
+
+    return result;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /*                           Push Command Buffer                              */
 ////////////////////////////////////////////////////////////////////////////////
