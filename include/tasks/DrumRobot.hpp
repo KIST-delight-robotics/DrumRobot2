@@ -148,6 +148,7 @@ private:
     bool endOfScore = true;
 
     void initializePlayState();
+    int maxonMotorMode = 1; // 1 : CSP // 0 : CST
 
     string trimWhitespace(const std::string &str);
     double readBpm(ifstream& inputFile);
