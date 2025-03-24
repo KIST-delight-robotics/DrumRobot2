@@ -73,11 +73,11 @@ public:
     void pushAddStancePath(string flagName);
     
     /////////////////////////////////////////////////////////////////////////// Play
-    bool endOfPlay = false;
+    bool endOfPlayCommand = false;
 
     void initializeValue(int bpm);
     void generateTrajectory(MatrixXd &measureMatrix);
-    void solveIKandPushConmmand();
+    void solveIKandPushCommand();
 
 private:
     TMotorCommandParser TParser; ///< T 모터 명령어 파서.
@@ -138,6 +138,7 @@ private:
                                                                                 // 3 : 1 <- 1
 
     VectorXd hitState = VectorXd::Zero(4);
+    VectorXd intensity;
 
     void parseMeasure(MatrixXd &measureMatrix);
     pair<VectorXd, VectorXd> parseOneArm(VectorXd t, VectorXd inst, VectorXd stateVector);
@@ -163,7 +164,7 @@ private:
     pair<VectorXd, VectorXd> getTargetPosition(VectorXd inst_vector);
     float timeScaling(float ti, float tf, float t);
     VectorXd makePath(VectorXd Pi, VectorXd Pf, float s);
-    void saveLineData(int n, VectorXd minmax, VectorXd intesity, VectorXd finalWristAngle);
+    void saveLineData(int n, VectorXd minmax);
     VectorXd calWaistAngle(VectorXd pR, VectorXd pL);
 
     /////////////////////////////////////////////////////////////////////////// Waist
@@ -189,7 +190,6 @@ private:
 
     /////////////////////////////////////////////////////////////////////////// Wrist (Hit)
     typedef struct {
-        double releaseTime;
         double stayTime;
         double liftTime;
         double hitTime;     // 전체 시간
@@ -235,7 +235,7 @@ private:
     /////////////////////////////////////////////////////////////////////////// Push Command Buffer
     int MaxonMode;
 
-    void pushConmmandBuffer(VectorXd Qi);
+    void pushCommandBuffer(VectorXd Qi);
 
     /////////////////////////////////////////////////////////////////////////// brake
     void clearBrake(); // 모든 brake끄기
