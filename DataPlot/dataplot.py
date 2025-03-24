@@ -129,7 +129,7 @@ def mode_2_plot(df):
 
 
 def main():
-    file_path = '../DrumRobot_data/data29.txt'
+    file_path = '../DrumRobot_data/data32.txt'
     df = load_txt(file_path)
 
     print("Choose mode:")

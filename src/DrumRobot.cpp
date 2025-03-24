@@ -594,7 +594,7 @@ void DrumRobot::sendLoopForThread()
     while (state.main != Main::Shutdown)
     {
         sendLoopPeriod = std::chrono::steady_clock::now();
-        sendLoopPeriod += std::chrono::microseconds(5000);  // 주기 : 5msec
+        sendLoopPeriod += std::chrono::microseconds(1000);  // 주기 : 5msec
         
         std::map<std::string, bool> fixFlags; // 각 모터의 고정 상태 저장
         
