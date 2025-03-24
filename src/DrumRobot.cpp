@@ -926,7 +926,7 @@ void DrumRobot::playALineProcess()
 
     if (lineOfScore > preCreatedLine)
     {
-        pathManager.solveIKandPushConmmand();
+        pathManager.solveIKandPushCommand();
     }
 }
 
@@ -985,9 +985,9 @@ void DrumRobot::sendPlayProcess()
                 playALineProcess();
             }
 
-            while (!pathManager.endOfPlay)      // 명령 다 보낼 때까지
+            while (!pathManager.endOfPlayCommand)      // 명령 다 보낼 때까지
             {
-                pathManager.solveIKandPushConmmand();
+                pathManager.solveIKandPushCommand();
             }
 
             std::cout << "Play is Over\n";

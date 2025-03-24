@@ -73,11 +73,11 @@ public:
     void pushAddStancePath(string flagName);
     
     /////////////////////////////////////////////////////////////////////////// Play
-    bool endOfPlay = false;
+    bool endOfPlayCommand = false;
 
     void initializeValue(int bpm);
     void generateTrajectory(MatrixXd &measureMatrix);
-    void solveIKandPushConmmand();
+    void solveIKandPushCommand();
 
 private:
     TMotorCommandParser TParser; ///< T 모터 명령어 파서.
@@ -138,6 +138,7 @@ private:
                                                                                 // 3 : 1 <- 1
 
     VectorXd hitState = VectorXd::Zero(4);
+    VectorXd intensity;
 
     void parseMeasure(MatrixXd &measureMatrix);
     pair<VectorXd, VectorXd> parseOneArm(VectorXd t, VectorXd inst, VectorXd stateVector);
@@ -157,13 +158,13 @@ private:
     double roundSum = 0;    ///< 5ms 스텝 단위에서 누적되는 오차 보상
 
     // 악보 한 줄의 데이터 저장한 Matrix
-    // [명령 개수 / q0 최적값 / q0 min / q0 max / ]
+    // [명령 개수 / q0 최적값 / q0 min / q0 max / t1 / t2 / state R / state L / intensity R / intensity L]
     MatrixXd lineData;
 
     pair<VectorXd, VectorXd> getTargetPosition(VectorXd inst_vector);
     float timeScaling(float ti, float tf, float t);
     VectorXd makePath(VectorXd Pi, VectorXd Pf, float s);
-    void saveLineData(int n, VectorXd minmax, VectorXd intesity, VectorXd finalWristAngle);
+    void saveLineData(int n, VectorXd minmax);
     VectorXd calWaistAngle(VectorXd pR, VectorXd pL);
 
     /////////////////////////////////////////////////////////////////////////// Waist
@@ -189,7 +190,6 @@ private:
 
     /////////////////////////////////////////////////////////////////////////// Wrist (Hit)
     typedef struct {
-        double releaseTime;
         double stayTime;
         double liftTime;
         double hitTime;     // 전체 시간
@@ -238,7 +238,7 @@ private:
     /////////////////////////////////////////////////////////////////////////// Push Command Buffer
     int MaxonMode;
 
-    void pushConmmandBuffer(VectorXd Qi);
+    void pushCommandBuffer(VectorXd Qi);
 
     /////////////////////////////////////////////////////////////////////////// brake
     void clearBrake(); // 모든 brake끄기

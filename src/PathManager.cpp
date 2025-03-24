@@ -278,7 +278,7 @@ void PathManager::pushAddStancePath(string flagName)
 
 void PathManager::initializeValue(int bpm)
 {
-    endOfPlay = false;
+    endOfPlayCommand = false;
     bpmOfScore = bpm;
 
     measureState.resize(2, 3);
@@ -318,7 +318,7 @@ void PathManager::generateTrajectory(MatrixXd &measureMatrix)
     VectorXd initialWristAngle(2);
     VectorXd finalWristAngle(2);
     VectorXd waistVector;
-    VectorXd intensity(2);
+
     float n, sR, sL;
     float dt = canManager.DTSECOND;
 
@@ -382,14 +382,10 @@ void PathManager::generateTrajectory(MatrixXd &measureMatrix)
         }
     }
 
-    // 다음 타격 세기 = 한 줄 삭제한 후 첫 줄
-    intensity(0) = measureMatrix(0, 4);
-    intensity(1) = measureMatrix(0, 5);
-
-    saveLineData(n, waistVector, intensity, finalWristAngle);
+    saveLineData(n, waistVector);
 }
 
-void PathManager::solveIKandPushConmmand()
+void PathManager::solveIKandPushCommand()
 {
     int n = lineData(0, 0); // 명령 개수
 
@@ -407,8 +403,8 @@ void PathManager::solveIKandPushConmmand()
         // wrist (hit)
         generateHit(q, i);
 
-        // push conmmand buffer
-        pushConmmandBuffer(q);
+        // push command buffer
+        pushCommandBuffer(q);
 
         // 데이터 기록
         for (int i = 0; i < 9; i++)
@@ -431,7 +427,7 @@ void PathManager::solveIKandPushConmmand()
     if(lineData.rows() == 1)
     {
         clearBrake();
-        endOfPlay = true;   // DrumRobot 에게 끝났음 알리기
+        endOfPlayCommand = true;   // DrumRobot 에게 끝났음 알리기
     }
 }
 
@@ -626,6 +622,10 @@ void PathManager::parseMeasure(MatrixXd &measureMatrix)
 
     measureState.block(0, 0, 1, 3) = dataR.second.transpose();
     measureState.block(1, 0, 1, 3) = dataL.second.transpose();
+
+    // 다음 타격 세기
+    intensity(0) = measureMatrix(1, 4);
+    intensity(1) = measureMatrix(1, 5);
 
     // std::cout << "\n /// t1 -> t2 : " << t1 << " -> " << t2 << "\n";
 
@@ -906,23 +906,20 @@ VectorXd PathManager::makePath(VectorXd Pi, VectorXd Pf, float s)
     return Ps;
 }
 
-void PathManager::saveLineData(int n, VectorXd waistVector, VectorXd intensity, VectorXd finalWristAngle)
+void PathManager::saveLineData(int n, VectorXd waistVector)
 {
-    if (lineData(0, 0) == -1)
+    if (lineData(0, 0) == -1)   // 첫 줄
     {
         lineData(0, 0) = n;                         // 명령 개수
         lineData(0, 1) = waistVector(2);            // q0 최적값
         lineData(0, 2) = waistVector(0);            // q0 min
         lineData(0, 3) = waistVector(1);            // q0 max
-
-        lineData(0, 4) = hitState(0);
-        lineData(0, 5) = hitState(1);
-        lineData(0, 6) = intensity(0);
-        lineData(0, 7) = intensity(1);
-        lineData(0, 8) = hitState(2);
-        lineData(0, 9) = hitState(3);
-        lineData(0, 10) = finalWristAngle(0);
-        lineData(0, 11) = finalWristAngle(1);
+        lineData(0, 4) = t1;                        // t1
+        lineData(0, 5) = t2;                        // t2
+        lineData(0, 6) = hitState(0);               // state R
+        lineData(0, 7) = hitState(1);               // state L
+        lineData(0, 8) = intensity(0);              // intensity R
+        lineData(0, 9) = intensity(1);              // intensity L
     }
     else
     {
@@ -931,15 +928,12 @@ void PathManager::saveLineData(int n, VectorXd waistVector, VectorXd intensity, 
         lineData(lineData.rows() - 1, 1) = waistVector(2);          // q0 최적값
         lineData(lineData.rows() - 1, 2) = waistVector(0);          // q0 min
         lineData(lineData.rows() - 1, 3) = waistVector(1);          // q0 max
-
-        lineData(lineData.rows() - 1, 4) = hitState(0);
-        lineData(lineData.rows() - 1, 5) = hitState(1);
-        lineData(lineData.rows() - 1, 6) = intensity(0);
-        lineData(lineData.rows() - 1, 7) = intensity(1);
-        lineData(lineData.rows() - 1, 8) = hitState(2);
-        lineData(lineData.rows() - 1, 9) = hitState(3);
-        lineData(lineData.rows() - 1, 10) = finalWristAngle(0);
-        lineData(lineData.rows() - 1, 11) = finalWristAngle(1);
+        lineData(lineData.rows() - 1, 4) = t1;                      // t1
+        lineData(lineData.rows() - 1, 5) = t2;                      // t2
+        lineData(lineData.rows() - 1, 6) = hitState(0);             // state R
+        lineData(lineData.rows() - 1, 7) = hitState(1);             // state L
+        lineData(lineData.rows() - 1, 8) = intensity(0);            // intensity R
+        lineData(lineData.rows() - 1, 9) = intensity(1);            // intensity L
     }
 }
 
@@ -1426,7 +1420,7 @@ VectorXd PathManager::IKFixedWaist(VectorXd pR, VectorXd pL, double theta0, doub
 void PathManager::makeHitCoefficient()
 {
     int state, intensity;
-    double t1, t2;
+    float t1, t2;
 
     elbowAngle elbowAngleR, elbowAngleL;
     wristAngle wristAngleR, wristAngleL;
@@ -1437,8 +1431,15 @@ void PathManager::makeHitCoefficient()
     wristTimeR = getWristTime(t1, t2, intensity);
     wristTimeL = getWristTime(t1, t2, intensity);
 
+    elbowAngleR = getElbowAngle(t1, t2, intensity);
+    elbowAngleL = getElbowAngle(t1, t2, intensity);
+
+    wristAngleR = getWristAngle(t1, t2, intensity);
+    wristAngleL = getWristAngle(t1, t2, intensity);
+
     elbowCoefficientR = makeElbowCoefficient(state, elbowTimeR, elbowAngleR);
     elbowCoefficientL = makeElbowCoefficient(state, elbowTimeL, elbowAngleL);
+
     wristCoefficientR = makeWristCoefficient(state, wristTimeR, wristAngleR);
     wristCoefficientL = makeWristCoefficient(state, wristTimeL, wristAngleL);
 }
@@ -1450,6 +1451,7 @@ PathManager::elbowTime PathManager::getElbowTime(float t1, float t2, int intensi
 
     elbowTime.stayTime = std::max(0.5 * (T), T - 0.2);
     elbowTime.liftTime = std::max(0.5 * (T), T - 0.2);
+    elbowTime.hitTime = T;
     
     return elbowTime;
 }
@@ -1469,6 +1471,8 @@ PathManager::wristTime PathManager::getWristTime(float t1, float t2, int intensi
         wristTime.liftTime = std::max(0.6 * (T), T - 0.2);
     else
         wristTime.liftTime = std::max(0.7 * (T), T - 0.15);
+    
+    wristTime.hitTime = T;
     
     return wristTime;
 }
@@ -1521,9 +1525,9 @@ MatrixXd PathManager::makeElbowCoefficient(int state, elbowTime eT, elbowAngle e
         b.resize(4, 1);
 
         A << 1, 0, 0, 0,
-            1, eT.releaseTime, eT.releaseTime * eT.releaseTime, eT.releaseTime * eT.releaseTime * eT.releaseTime,
+            1, eT.stayTime, eT.stayTime * eT.stayTime, eT.stayTime * eT.stayTime * eT.stayTime,
             0, 1, 0, 0,
-            0, 1, 2 * eT.releaseTime, 3 * eT.releaseTime * eT.releaseTime;
+            0, 1, 2 * eT.stayTime, 3 * eT.stayTime * eT.stayTime;
 
         b << 0, eA.stayAngle, 0, 0;
 
@@ -1729,11 +1733,7 @@ double PathManager::makeElbowAngle(double t, elbowTime eT, MatrixXd coefficientM
 
     MatrixXd elbowAngle = coefficientMatrix * tMatrix;
 
-    if (t < eT.releaseTime)
-    {
-        return elbowAngle(0);
-    }
-    else if (t < eT.stayTime)
+    if (t < eT.stayTime)
     {
         return elbowAngle(1);
     }
@@ -1879,7 +1879,7 @@ MatrixXd PathManager::makeArrangedState(VectorXd states, VectorXd time, float th
 /*                           Push Command Buffer                              */
 ////////////////////////////////////////////////////////////////////////////////
 
-void PathManager::pushConmmandBuffer(VectorXd Qi)
+void PathManager::pushCommandBuffer(VectorXd Qi)
 {
     for (auto &entry : motors)
     {
