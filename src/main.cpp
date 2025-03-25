@@ -40,7 +40,7 @@ int main(int argc, char *argv[])
     USBIO usbio;
 
     Functions fun(motors);
-    CanManager canManager(motors, fun);
+    CanManager canManager(motors, fun, usbio);
     PathManager pathManager(state, canManager, motors, usbio, fun);
     TestManager testManager(state, canManager, motors, usbio, fun);
     DrumRobot drumRobot(state, canManager, pathManager, testManager, motors, usbio, fun);
