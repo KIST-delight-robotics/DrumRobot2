@@ -44,11 +44,13 @@ void TestManager::SendTestProcess()
                 float c_MotorAngle[10] = {0};
                 getMotorPos(c_MotorAngle);
 
-                std::cout << "\n[Current Q Values] [Target Q Values] (Radian)\n";
+                std::cout << "[ Current Q Values (Radian / Degree) ]\n";
                 for (int i = 0; i < 10; i++)
                 {
-                    std::cout << "Q[" << i << "] : " << c_MotorAngle[i] << "\t<->\t" << q[i] << std::endl;
-                }
+                    q[i] = c_MotorAngle[i];
+                    std::cout << "Q[" << i << "] : " << c_MotorAngle[i] << "\t\t" << c_MotorAngle[i] * 180.0 / M_PI << "\n";
+                    }
+                FK(c_MotorAngle);
 
                 std::cout << "\ntime : " << t << "s";
                 std::cout << "\nnumber of repeat : " << n_repeat << std::endl << std::endl;
