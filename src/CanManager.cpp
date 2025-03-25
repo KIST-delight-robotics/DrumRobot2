@@ -532,13 +532,19 @@ void CanManager::setMaxonCANFrame(std::shared_ptr<MaxonMotor> maxonMotor, const 
         maxonMotor-> pre_err = err;
         //여기에서 보상을 해주고!!
         // 무게 중력 거리
-        // float gravityTorque =  0.47 * 9.81 * 0.17 * std::sin(maxonMotor-> jointAngle) / 0.0311 * 1000;
-        // torque += gravityTorque;
+        float ratedTorqueNm = 0.0311;
+        float gearRatio = 35.0;
+        float stickLengthMeter = 0.17;
+        float stickMassKg = 0.47;
+        float div = 10.0;
+
+        float gravityTorque =  stickMassKg * 9.81 * stickLengthMeter * std::sin(maxonMotor-> jointAngle) / ratedTorqueNm / gearRatio * 1000.0 / div;
+        torque += gravityTorque;
         
         maxoncmd.setTorqueCANFrame(*maxonMotor, &maxonMotor->sendFrame, round(torque));
 
         fun.appendToCSV_DATA(fun.file_name, (float)maxonMotor->nodeId + SEND_SIGN, mData.position, torque);
-        fun.appendToCSV_DATA("torque", (float)maxonMotor->nodeId + SEND_SIGN, mData.position, torque);
+        fun.appendToCSV_DATA("torque", (float)maxonMotor->nodeId + SEND_SIGN, torque, gravityTorque);
     }
     else if (mData.mode == maxonMotor->CSV)
     {
