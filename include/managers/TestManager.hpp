@@ -53,6 +53,7 @@ private:
     USBIO &usbio;
     Functions &fun;
 
+
     TMotorCommandParser tmotorcmd;
     MaxonCommandParser maxoncmd;
     TMotorServoCommandParser tservocmd;
@@ -95,7 +96,7 @@ private:
     vector<float> makeProfile(float Q1[], float Q2[], vector<float> &Vmax, float acc, float t, float t2);
     vector<float> cal_Vmax(float q1[], float q2[],  float acc, float t2);
     vector<float> sinProfile(float q1[], float q2[], float t, float t2);
-    vector<float> ikfun_final(float pR[], float pL[], float part_length[], float s, float z0);
+    vector<float> ikfun_final(float pR[], float pL[]);
     void FK(float arr[]);
     void getArr(float arr[]);
 
@@ -147,4 +148,14 @@ private:
     void testTable();
     string trimWhitespace(const std::string &str);
     bool hex2TableData(char hex1, char hex2, int index);
+
+        typedef struct{
+
+        float upperArm = 0.250;         ///< 상완 길이. [m]
+        float lowerArm = 0.328;         ///< 하완 길이. [m]
+        float stick = 0.325+0.048;      ///< 스틱 길이 + 브라켓 길이. [m]
+        float waist = 0.520;            ///< 허리 길이. [m]
+        float height = 1.020-0.0605;    ///< 바닥부터 허리까지의 높이. [m]
+
+    }PartLength;
 };

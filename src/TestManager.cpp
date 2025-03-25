@@ -110,6 +110,51 @@ void TestManager::SendTestProcess()
         {
             std::cout << "좌표값조절해보자고 ㅋㅋ" << "\n";
             sleep(5);
+            while(1)
+            {
+                int userInput = 100;
+                int ret = system("clear");
+                if (ret == -1)
+                    std::cout << "system clear error" << endl;
+                std::cout << "[ Current x, y, z (meter) ]\n";
+                std::cout << "Right : ";
+                for (int i = 0; i < 3; i++)
+                {
+                    std::cout << R_xyz[i] << ", ";
+                }
+                std::cout << "\nLeft : ";
+                for (int i = 0; i < 3; i++)
+                {
+                    std::cout << L_xyz[i] << ", ";
+                }
+
+                std::cout << "\nSelect Motor to Change Value (1 - Right, 2 - Left) / Start Test (3) / Exit (-1) : ";
+                std::cin >> userInput;
+
+                if (userInput == -1)
+                {
+                    break;
+                }
+                else if (userInput == 1)
+                {
+                    std::cout << "Enter x, y, z Values (meter) : ";
+                    std::cin >> R_xyz[0] >> R_xyz[1] >> R_xyz[2];
+                }
+                else if (userInput == 2)
+                {
+                    std::cout << "Enter x, y, z Values (meter) : ";
+                    std::cin >> L_xyz[0] >> L_xyz[1] >> L_xyz[2];
+                }
+                else if (userInput == 3)
+                {
+                    std::vector<float> q_vec = ikfun_final(R_xyz, L_xyz);
+                    for (size_t i = 0; i < q_vec.size() && i < 10; ++i) {
+                        q[i] = q_vec[i];
+                    }
+                    getArr(q);
+                }
+            }
+           
         }
         else if (method == 3)
         {
@@ -1617,8 +1662,6 @@ void TestManager::getArr(float arr[])
     float Q2[10] = {0.0};
     int n;
     int n_p;    // 목표위치까지 가기 위한 추가 시간
-    int n_brake_start[7] = {0};
-    int n_brake_end[7] = {0};
 
     n = (int)(t/canManager.DTSECOND);    // t초동안 이동
     n_p = (int)(extra_time/canManager.DTSECOND);  // 추가 시간
@@ -1633,15 +1676,6 @@ void TestManager::getArr(float arr[])
     }
 
     Vmax = cal_Vmax(Q1, Q2, acc_max, t);
-
-    for (int i = 0; i < 7; i++)
-    {
-        if (brake_flag[i])
-        {
-            n_brake_start[i] = (int)(brake_start_time[i]/canManager.DTSECOND);
-            n_brake_end[i] = (int)(brake_end_time[i]/canManager.DTSECOND);
-        }
-    }
     
     for (int i = 0; i < n_repeat; i++)
     {
@@ -1666,9 +1700,10 @@ void TestManager::getArr(float arr[])
                     newData.position = tMotor->jointAngleToMotorPosition(Qi[motorMapping[entry.first]]);
                     newData.mode = tMotor->Position;
                     //김태황 브레이크
-                    newData.is_break = 1;
+                    newData.is_break = 0;
                     tMotor->commandBuffer.push(newData);
                     
+                    tMotor->finalMotorPosition = newData.position;
                 }
                 else if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(entry.second))
                 {
@@ -1676,22 +1711,27 @@ void TestManager::getArr(float arr[])
                     newData.position = maxonMotor->jointAngleToMotorPosition(Qi[motorMapping[entry.first]]);
                     newData.mode = maxonMotor->CSP;
                     maxonMotor->commandBuffer.push(newData);
+
+                    maxonMotor->finalMotorPosition = newData.position;
                 }
             }
         }
     }
 }
 
-vector<float> TestManager::ikfun_final(float pR[], float pL[], float part_length[], float s, float z0)
+vector<float> TestManager::ikfun_final(float pR[], float pL[])
 {
+    PartLength partLength;
     float direction = 0.0 * M_PI;
 
+    float s = partLength.waist;
+    float z0 = partLength.height;
     float X1 = pR[0], Y1 = pR[1], z1 = pR[2];
     float X2 = pL[0], Y2 = pL[1], z2 = pL[2];
-    float r1 = part_length[0];
-    float r2 = part_length[1] + part_length[4];
-    float L1 = part_length[2];
-    float L2 = part_length[3] + part_length[5];
+    float r1 = partLength.upperArm;
+    float r2 = partLength.lowerArm + partLength.stick;
+    float L1 = partLength.upperArm;
+    float L2 = partLength.lowerArm + partLength.stick;
 
     int j = 0;
     float the3[1351];

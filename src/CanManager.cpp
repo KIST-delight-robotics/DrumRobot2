@@ -544,7 +544,6 @@ void CanManager::setMaxonCANFrame(std::shared_ptr<MaxonMotor> maxonMotor, const 
         maxoncmd.setTorqueCANFrame(*maxonMotor, &maxonMotor->sendFrame, round(torque));
 
         fun.appendToCSV_DATA(fun.file_name, (float)maxonMotor->nodeId + SEND_SIGN, mData.position, torque);
-        fun.appendToCSV_DATA("torque", (float)maxonMotor->nodeId + SEND_SIGN, torque, gravityTorque);
     }
     else if (mData.mode == maxonMotor->CSV)
     {
@@ -554,13 +553,13 @@ void CanManager::setMaxonCANFrame(std::shared_ptr<MaxonMotor> maxonMotor, const 
 
 void CanManager::setTMotorCANFrame(std::shared_ptr<TMotor> tMotor, const TMotorData &tData)
 {
-    if (tData.mode == tMotor-> Position)
+    if (tData.mode == tMotor->Position)
     {
         tservocmd.setPositionCANFrame(*tMotor, &tMotor->sendFrame, tData.position);
 
         fun.appendToCSV_DATA(fun.file_name, (float)tMotor->nodeId + SEND_SIGN, tData.position, tData.position - tMotor->motorPosition);
     }
-    else if (tData.mode == tMotor-> Idle)
+    else if (tData.mode == tMotor->Idle)
     {
         return;
     }
@@ -637,6 +636,7 @@ bool CanManager::setCANFrame(std::map<std::string, bool>& fixFlags, int cycleCou
                     fixFlags[motorName] = false;
                     tMotor->commandBuffer.pop();
                 }
+
                 //isbreak가 1이면 브레이크 켜줌 0이면 꺼줌
                 usbio.setUSBIO4761(0, tData.is_break == 1); //세팅
                 usbio.outputUSBIO4761();                    //실행
