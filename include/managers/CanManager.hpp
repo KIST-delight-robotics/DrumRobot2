@@ -111,9 +111,6 @@ public:
     float backTorque = -10;
     bool torqueOff = false;
 
-    MatrixXd wristAnglesR;                               ///< 오른팔의 각 악기별 타격 시 손목 각도.
-    MatrixXd wristAnglesL;                                ///< 왼팔의 각 악기별 타격 시 손목 각도.
-
     // SDO communication으로 받아오는 현재 위치 값
     float currentPosition = 0.0;
 

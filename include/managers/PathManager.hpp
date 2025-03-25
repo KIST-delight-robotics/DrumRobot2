@@ -77,6 +77,8 @@ public:
     double bpmOfScore = 0;      ///< 악보의 BPM 정보.
     string MaxonMode = "CSP";
     int Kp, Kd;
+    double Kppp = 0.0;  // Kpp 에 곱해지는 값 : 0 -> Kp 감소 없음, 0.9 -> kp 10% 까지 감소
+                        // Kpp : Kp 에 곱해지는 값
 
     void initializeValue(int bpm);
     void generateTrajectory(MatrixXd &measureMatrix);
@@ -238,13 +240,13 @@ private:
     MatrixXd makeWristCoefficient(int state, wristTime wT, wristAngle wA);
     double makeElbowAngle(double t, elbowTime eT, MatrixXd coefficientMatrix);
     double makeWristAngle(double t, wristTime wT, MatrixXd coefficientMatrix);
-    void generateHit(VectorXd &q, int index);
+    VectorXd generateHit(VectorXd &q, int index);
     MatrixXd makeState(VectorXd drums, VectorXd time, bool dir);
     VectorXd makeTempState(VectorXd drums);
     MatrixXd makeArrangedState(VectorXd drums, VectorXd time, float threshold);
 
     /////////////////////////////////////////////////////////////////////////// Push Command Buffer
-    void pushCommandBuffer(VectorXd Qi);
+    void pushCommandBuffer(VectorXd Qi, VectorXd Kpp);
 
     /////////////////////////////////////////////////////////////////////////// brake
     void clearBrake(); // 모든 brake끄기

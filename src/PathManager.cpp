@@ -83,7 +83,7 @@ void PathManager::getDrumPositoin()
     drumCoordinateR << right_S, right_FT, right_MT, right_HT, right_HH, right_R, right_RC, right_LC, right_LC;
     drumCoordinateL << left_S, left_FT, left_MT, left_HT, left_HH, left_R, left_RC, left_LC, left_LC;
 
-    // 타격 시 손목 각도
+    // 악기 별 타격 시 손목 각도
     wristAnglesR.resize(1, 9);
     wristAnglesL.resize(1, 9);
 
@@ -91,12 +91,6 @@ void PathManager::getDrumPositoin()
     wristAnglesR << 25.0*M_PI/180.0,   25.0*M_PI/180.0,    15.0*M_PI/180.0,    15.0*M_PI/180.0,    10.0*M_PI/180.0,    15.0*M_PI/180.0,    0.0*M_PI/180.0,    10.0*M_PI/180.0, 0;
     wristAnglesL << 25.0*M_PI/180.0,   25.0*M_PI/180.0,    15.0*M_PI/180.0,    15.0*M_PI/180.0,    10.0*M_PI/180.0,    15.0*M_PI/180.0,    0.0*M_PI/180.0,    10.0*M_PI/180.0, 0;
     // wristAnglesL << 0, 0, 0, 0, 0, 0, 0, 0, 0;
-
-    canManager.wristAnglesR.resize(1, 9);
-    canManager.wristAnglesL.resize(1, 9);
-
-    canManager.wristAnglesR << 25.0*M_PI/180.0,   25.0*M_PI/180.0,    15.0*M_PI/180.0,    15.0*M_PI/180.0,    10.0*M_PI/180.0,    15.0*M_PI/180.0,    0.0*M_PI/180.0,    10.0*M_PI/180.0, 0;
-    canManager.wristAnglesL << 25.0*M_PI/180.0,   25.0*M_PI/180.0,    15.0*M_PI/180.0,    15.0*M_PI/180.0,    10.0*M_PI/180.0,    15.0*M_PI/180.0,    0.0*M_PI/180.0,    10.0*M_PI/180.0, 0;
 }
 
 void PathManager::setReadyAngle()
@@ -241,7 +235,7 @@ void PathManager::pushAddStancePath(string flagName)
                 }
                 else if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(entry.second))
                 {
-                    // 1ms 로 동작 (임시)
+                    // 1ms 로 동작 (이인우)
                     for (int i = 0; i < 5; i++)
                     {
                         MaxonData newData;
@@ -270,7 +264,7 @@ void PathManager::pushAddStancePath(string flagName)
                 }
                 else if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(entry.second))
                 {
-                    // 1ms 로 동작 (임시)
+                    // 1ms 로 동작 (이인우)
                     for (int i = 0; i < 5; i++)
                     {
                         MaxonData newData;
@@ -323,7 +317,7 @@ void PathManager::generateTrajectory(MatrixXd &measureMatrix)
     // parse
     parseMeasure(measureMatrix);
 
-    // 한 줄의 데이터 개수
+    // 한 줄의 데이터 개수 (5ms 단위)
     n = (t2 - t1) / dt;
     roundSum += (int)(n * 1000) % 1000;
     if (roundSum >= 1000)
@@ -400,10 +394,10 @@ void PathManager::solveIKandPushCommand()
         VectorXd q = solveIK(q0);
 
         // wrist (hit)
-        generateHit(q, i);
+        VectorXd Kpp = generateHit(q, i);   // Kpp : Kp 에 곱해지는 값
 
         // push command buffer
-        pushCommandBuffer(q);
+        pushCommandBuffer(q, Kpp);
 
         // // 데이터 기록
         // for (int i = 0; i < 9; i++)
@@ -567,6 +561,7 @@ VectorXd PathManager::getMotorPos()
     VectorXd Qf = VectorXd::Zero(9);
 
     // finalMotorPosition 가져오기
+    // 마지막 명령값에서 이어서 생성
     for (auto &entry : motors)
     {
         int can_id = canManager.motorMapping[entry.first];
@@ -1436,6 +1431,7 @@ void PathManager::makeHitCoefficient()
     int intensityR = lineData(0, 8);
     int intensityL = lineData(0, 9);
 
+    // 타격 관련 파라미터
     elbowAngle elbowAngleR, elbowAngleL;
     wristAngle wristAngleR, wristAngleL;
 
@@ -1451,6 +1447,7 @@ void PathManager::makeHitCoefficient()
     wristAngleR = getWristAngle(t1, t2, intensityR);
     wristAngleL = getWristAngle(t1, t2, intensityL);
 
+    // 계수 행렬 구하기
     elbowCoefficientR = makeElbowCoefficient(stateR, elbowTimeR, elbowAngleR);
     elbowCoefficientL = makeElbowCoefficient(stateL, elbowTimeL, elbowAngleL);
 
@@ -1522,17 +1519,18 @@ MatrixXd PathManager::makeElbowCoefficient(int state, elbowTime eT, elbowAngle e
     MatrixXd A_1;
     MatrixXd sol, sol2;
 
-    // elbow
     if (state == 0)
     {
         // Stay
         elbowCoefficient.resize(2, 4);
-        elbowCoefficient << eA.stayAngle, 0, 0, 0,
-                            eA.stayAngle, 0, 0, 0;
+        elbowCoefficient << eA.stayAngle, 0, 0, 0,  // Stay
+                            eA.stayAngle, 0, 0, 0;  // Stay
     }
     else if (state == 1)
     {
         // Release - Stay
+
+        // Release
         A.resize(4, 4);
         b.resize(4, 1);
 
@@ -1547,12 +1545,14 @@ MatrixXd PathManager::makeElbowCoefficient(int state, elbowTime eT, elbowAngle e
         sol = A_1 * b;
 
         elbowCoefficient.resize(2, 4);
-        elbowCoefficient << sol(0), sol(1), sol(2), sol(3),
-                            eA.stayAngle, 0, 0, 0;
+        elbowCoefficient << sol(0), sol(1), sol(2), sol(3), // Release
+                            eA.stayAngle, 0, 0, 0;          // Stay
     }
     else if (state == 2)
     {
-        // Stay - Lift - Hit
+        // Lift - Hit
+
+        // Lift
         A.resize(4, 4);
         b.resize(4, 1);
 
@@ -1566,6 +1566,7 @@ MatrixXd PathManager::makeElbowCoefficient(int state, elbowTime eT, elbowAngle e
         A_1 = A.inverse();
         sol = A_1 * b;
 
+        // Hit
         A.resize(4, 4);
         b.resize(4, 1);
 
@@ -1580,12 +1581,14 @@ MatrixXd PathManager::makeElbowCoefficient(int state, elbowTime eT, elbowAngle e
         sol2 = A_1 * b;
 
         elbowCoefficient.resize(2, 4);
-        elbowCoefficient << sol(0), sol(1), sol(2), sol(3),
-                            sol2(0), sol2(1), sol2(2), sol2(3);
+        elbowCoefficient << sol(0), sol(1), sol(2), sol(3),     // Lift
+                            sol2(0), sol2(1), sol2(2), sol2(3); // Hit
     }
     else if (state == 3)
     {
         // Lift - Hit
+
+        // Lift
         A.resize(4, 4);
         b.resize(4, 1);
 
@@ -1599,6 +1602,7 @@ MatrixXd PathManager::makeElbowCoefficient(int state, elbowTime eT, elbowAngle e
         A_1 = A.inverse();
         sol = A_1 * b;
 
+        // Hit
         A.resize(4, 4);
         b.resize(4, 1);
 
@@ -1613,8 +1617,8 @@ MatrixXd PathManager::makeElbowCoefficient(int state, elbowTime eT, elbowAngle e
         sol2 = A_1 * b;
 
         elbowCoefficient.resize(2, 4);
-        elbowCoefficient << sol(0), sol(1), sol(2), sol(3),
-                            sol2(0), sol2(1), sol2(2), sol2(3);
+        elbowCoefficient << sol(0), sol(1), sol(2), sol(3),     // Lift
+                            sol2(0), sol2(1), sol2(2), sol2(3); // Hit
     }
 
     return elbowCoefficient;
@@ -1629,19 +1633,20 @@ MatrixXd PathManager::makeWristCoefficient(int state, wristTime wT, wristAngle w
     MatrixXd A_1;
     MatrixXd sol, sol2;
 
-    // wrist
     if (state == 0)
     {
         // Stay
         wristCoefficient.resize(4, 4);
-        wristCoefficient << wA.stayAngle, 0, 0, 0,
-                            wA.stayAngle, 0, 0, 0,
-                            wA.stayAngle, 0, 0, 0,
-                            wA.stayAngle, 0, 0, 0;
+        wristCoefficient << wA.stayAngle, 0, 0, 0,  // Stay
+                            wA.stayAngle, 0, 0, 0,  // Stay
+                            wA.stayAngle, 0, 0, 0,  // Stay
+                            wA.stayAngle, 0, 0, 0;  // Stay
     }
     else if (state == 1)
     {
         // Release - Stay
+
+        // Release
         A.resize(3, 3);
         b.resize(3, 1);
 
@@ -1655,14 +1660,16 @@ MatrixXd PathManager::makeWristCoefficient(int state, wristTime wT, wristAngle w
         sol = A_1 * b;
 
         wristCoefficient.resize(4, 4);
-        wristCoefficient << sol(0), sol(1), sol(2), 0,
-                            wA.stayAngle, 0, 0, 0,
-                            wA.stayAngle, 0, 0, 0,
-                            wA.stayAngle, 0, 0, 0;
+        wristCoefficient << sol(0), sol(1), sol(2), 0,  // Release
+                            wA.stayAngle, 0, 0, 0,      // Stay
+                            wA.stayAngle, 0, 0, 0,      // Stay
+                            wA.stayAngle, 0, 0, 0;      // Stay
     }
     else if (state == 2)
     {
         // Stay - Lift - Hit
+
+        // Lift
         A.resize(4, 4);
         b.resize(4, 1);
 
@@ -1676,6 +1683,7 @@ MatrixXd PathManager::makeWristCoefficient(int state, wristTime wT, wristAngle w
         A_1 = A.inverse();
         sol = A_1 * b;
 
+        // Hit
         A.resize(3, 3);
         b.resize(3, 1);
 
@@ -1689,14 +1697,16 @@ MatrixXd PathManager::makeWristCoefficient(int state, wristTime wT, wristAngle w
         sol2 = A_1 * b;
 
         wristCoefficient.resize(4, 4);
-        wristCoefficient << wA.stayAngle, 0, 0, 0,
-                            wA.stayAngle, 0, 0, 0,
-                            sol(0), sol(1), sol(2), sol(3),
-                            sol2(0), sol2(1), sol2(2), 0;
+        wristCoefficient << wA.stayAngle, 0, 0, 0,          // Stay
+                            wA.stayAngle, 0, 0, 0,          // Stay
+                            sol(0), sol(1), sol(2), sol(3), // Lift
+                            sol2(0), sol2(1), sol2(2), 0;   // Hit
     }
     else if (state == 3)
     {
         // Lift - Hit
+
+        // Lift
         A.resize(3, 3);
         b.resize(3, 1);
 
@@ -1709,6 +1719,7 @@ MatrixXd PathManager::makeWristCoefficient(int state, wristTime wT, wristAngle w
         A_1 = A.inverse();
         sol = A_1 * b;
 
+        // Hit
         A.resize(3, 3);
         b.resize(3, 1);
 
@@ -1722,10 +1733,10 @@ MatrixXd PathManager::makeWristCoefficient(int state, wristTime wT, wristAngle w
         sol2 = A_1 * b;
 
         wristCoefficient.resize(4, 4);
-        wristCoefficient << sol(0), sol(1), sol(2), 0,
-                            sol(0), sol(1), sol(2), 0,
-                            wA.liftAngle, 0, 0, 0,
-                            sol2(0), sol2(1), sol2(2), 0;
+        wristCoefficient << sol(0), sol(1), sol(2), 0,      // Lift
+                            sol(0), sol(1), sol(2), 0,      // Lift
+                            wA.liftAngle, 0, 0, 0,          // Stay (Lift Angle)
+                            sol2(0), sol2(1), sol2(2), 0;   // Hit
     }
 
     return wristCoefficient;
@@ -1775,11 +1786,14 @@ double PathManager::makeWristAngle(double t, wristTime wT, MatrixXd coefficientM
     }
 }
 
-void PathManager::generateHit(VectorXd &q, int index)
+VectorXd PathManager::generateHit(VectorXd &q, int index)
 {
+    VectorXd Kpp = VectorXd::Zero(9);   // Kp 에 곱해지는 값
+
     double dt = canManager.DTSECOND;
     double t = dt * index;
 
+    // 각 관절에 더해줌
     double elbowAngleR = makeElbowAngle(t, elbowTimeR, elbowCoefficientR);
     double elbowAngleL = makeElbowAngle(t, elbowTimeL, elbowCoefficientL);
     double wristAngleR = makeWristAngle(t, wristTimeR, wristCoefficientR);
@@ -1789,6 +1803,28 @@ void PathManager::generateHit(VectorXd &q, int index)
     q(6) += elbowAngleL;
     q(7) += wristAngleR;
     q(8) += wristAngleL;
+
+    // Kp : 위치에 따라 감소
+    wristAngle wA;
+    if (wristAngleR >= wA.stayAngle)
+    {
+        Kpp(7) = 1;
+    }
+    else
+    {
+        Kpp(7) = 1 - Kppp * (wA.stayAngle - wristAngleR) / (wA.stayAngle + 5.0 * M_PI / 180.0);
+    }
+
+    if (wristAngleL >= wA.stayAngle)
+    {
+        Kpp(8) = 1;
+    }
+    else
+    {
+        Kpp(8) = 1 - Kppp * (wA.stayAngle - wristAngleL) / (wA.stayAngle + 5.0 * M_PI / 180.0);
+    }
+
+    return Kpp;
 }
 
 // MatrixXd PathManager::makeState(VectorXd drums, VectorXd time, bool dir)
@@ -1908,7 +1944,7 @@ void PathManager::generateHit(VectorXd &q, int index)
 /*                           Push Command Buffer                              */
 ////////////////////////////////////////////////////////////////////////////////
 
-void PathManager::pushCommandBuffer(VectorXd Qi)
+void PathManager::pushCommandBuffer(VectorXd Qi, VectorXd Kpp)
 {
     for (auto &entry : motors)
     {
@@ -1925,7 +1961,7 @@ void PathManager::pushCommandBuffer(VectorXd Qi)
         }
         else if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(entry.second))
         {
-            // 1ms 로 동작 (임시)
+            // 1ms 로 동작 (이인우)
             for (int i = 0; i < 5; i++)
             {
                 MaxonData newData;
@@ -1933,7 +1969,7 @@ void PathManager::pushCommandBuffer(VectorXd Qi)
                 if (MaxonMode == "CST")
                 {
                     newData.mode = maxonMotor->CST;
-                    newData.kp = Kp;
+                    newData.kp = Kpp[can_id] * Kp;
                     newData.kd = Kd;
                 }
                 else

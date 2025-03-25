@@ -924,11 +924,11 @@ void DrumRobot::playALineProcess()
     // std::cout << measureMatrix;
     // std::cout << "\n ////////////// \n";
 
-    pathManager.generateTrajectory(measureMatrix);
+    pathManager.generateTrajectory(measureMatrix);  // 궤적 생성
 
     if (lineOfScore > preCreatedLine)
     {
-        pathManager.solveIKandPushCommand();
+        pathManager.solveIKandPushCommand();        // IK & 명령 생성
     }
 }
 
@@ -950,6 +950,9 @@ void DrumRobot::sendPlayProcess()
 
             std::cout << "enter Kd : ";
             std::cin >> pathManager.Kd;
+
+            std::cout << "enter Kppp (0 ~ 0.9): ";
+            std::cin >> pathManager.Kppp;
         }
         else
         {
@@ -960,7 +963,7 @@ void DrumRobot::sendPlayProcess()
     std::string currentFile = basePath + musicName + std::to_string(fileIndex) + ".txt";
     inputFile.open(currentFile); // 파일 열기
 
-    if (inputFile.is_open())    // 파일 열기 성공
+    if (inputFile.is_open())    //////////////////////////////////////// 파일 열기 성공
     {
         if (fileIndex == 0) // 처음 파일을 열 때 -> bpm 확인
         {
@@ -980,7 +983,7 @@ void DrumRobot::sendPlayProcess()
             }
         }
         
-        while(readMeasure(inputFile))    // 한마디 분량 미만으로 남을 때까지
+        while(readMeasure(inputFile))    // 한마디 분량 미만으로 남을 때까지 궤적/명령 생성
         {
             playALineProcess();
         }
@@ -988,23 +991,23 @@ void DrumRobot::sendPlayProcess()
         inputFile.close(); // 파일 닫기
         fileIndex++;    // 다음 파일 열 준비
     }
-    else                        // 파일 열기 실패
+    else    //////////////////////////////////////////////////////////// 파일 열기 실패
     {
-        if (fileIndex == 0)                     // 악보 파일 없음
+        if (fileIndex == 0)                     ////////// 1. Play 시작도 못한 경우 (악보 입력 오타 등) -> Ideal 로 이동
         {
             std::cout << "not find " << currentFile << "\n";
             flagObj.setFixationFlag("fixed");
             state.main = Main::Ideal;
             return;
         }
-        else if (endOfScore)                     // 종료 코드 확인 -> 남은 궤적 생성
+        else if (endOfScore)                    ////////// 2. 종료 코드가 확인된 경우 : 남은 궤적/명령 만들고 종료
         {
-            while (measureMatrix.rows() > 1)    // 궤적 다 만들 때까지
+            while (measureMatrix.rows() > 1)    // 궤적 전부 만들 때까지
             {
                 playALineProcess();
             }
 
-            while (!pathManager.endOfPlayCommand)      // 명령 다 보낼 때까지
+            while (!pathManager.endOfPlayCommand)      // 명령 전부 생성할 때까지
             {
                 pathManager.solveIKandPushCommand();
             }
@@ -1013,12 +1016,12 @@ void DrumRobot::sendPlayProcess()
             flagObj.setAddStanceFlag("isHome"); // 연주 종료 후 Home 으로 이동
             state.main = Main::AddStance;
         }
-        else if (flagObj.getFixationFlag())  // fixed -> 비정상 종료
+        else if (flagObj.getFixationFlag())     ////////// 3. 로봇 상태가 fixed 로 변경 (악보가 들어오기 전 명령 소진) -> 에러
         {
             std::cout << "Error : not find " << currentFile << "\n";
             state.main = Main::Error;
         }
-        else                                // 다음 악보 생성될 때까지 대기
+        else                                    ////////// 4. 다음 악보 생성될 때까지 대기
         {
             usleep(100);
         }
