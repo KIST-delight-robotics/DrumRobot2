@@ -2,8 +2,8 @@
 
 // For Qt
 // #include "../managers/CanManager.hpp"
-CanManager::CanManager(std::map<std::string, std::shared_ptr<GenericMotor>> &motorsRef, Functions &funRef)
-    : motors(motorsRef), fun(funRef)
+CanManager::CanManager(std::map<std::string, std::shared_ptr<GenericMotor>> &motorsRef, Functions &funRef, USBIO &usbioRef)
+    : motors(motorsRef), fun(funRef), usbio(usbioRef)
 {
 }
 
@@ -637,6 +637,9 @@ bool CanManager::setCANFrame(std::map<std::string, bool>& fixFlags, int cycleCou
                     fixFlags[motorName] = false;
                     tMotor->commandBuffer.pop();
                 }
+                //isbreak가 1이면 브레이크 켜줌 0이면 꺼줌
+                usbio.setUSBIO4761(0, tData.is_break == 1); //세팅
+                usbio.outputUSBIO4761();                    //실행
 
                 setTMotorCANFrame(tMotor, tData);
                 if(!safetyCheckSendT(tMotor, tData))

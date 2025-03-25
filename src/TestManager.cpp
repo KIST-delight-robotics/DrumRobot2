@@ -1665,7 +1665,10 @@ void TestManager::getArr(float arr[])
                     TMotorData newData;
                     newData.position = tMotor->jointAngleToMotorPosition(Qi[motorMapping[entry.first]]);
                     newData.mode = tMotor->Position;
+                    //김태황 브레이크
+                    newData.is_break = 1;
                     tMotor->commandBuffer.push(newData);
+                    
                 }
                 else if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(entry.second))
                 {
