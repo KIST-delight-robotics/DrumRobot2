@@ -30,6 +30,8 @@
 #include "Motor.hpp"
 #include "CommandParser.hpp"
 #include "../include/tasks/Functions.hpp"
+#include "../include/USBIO_advantech/USBIO_advantech.hpp"
+
 
 // position loop mode 에서 step input 각도 제한
 #define POS_DIFF_LIMIT 30.0*M_PI/180.0
@@ -46,7 +48,7 @@ public:
     static const int ERR_SOCKET_CREATE_FAILURE = -1;
     static const int ERR_SOCKET_CONFIGURE_FAILURE = -2;
 
-    CanManager(std::map<std::string, std::shared_ptr<GenericMotor>> &motorsRef, Functions &funRef);
+    CanManager(std::map<std::string, std::shared_ptr<GenericMotor>> &motorsRef, Functions &funRef, USBIO &usbioRef);
 
     ~CanManager();
 
@@ -111,9 +113,6 @@ public:
     float backTorque = -10;
     bool torqueOff = false;
 
-    MatrixXd wristAnglesR;                               ///< 오른팔의 각 악기별 타격 시 손목 각도.
-    MatrixXd wristAnglesL;                                ///< 왼팔의 각 악기별 타격 시 손목 각도.
-
     // SDO communication으로 받아오는 현재 위치 값
     float currentPosition = 0.0;
 
@@ -122,6 +121,7 @@ public:
 
 private:
 
+    USBIO &usbio;
     std::map<std::string, std::shared_ptr<GenericMotor>> &motors;
     Functions &fun;
     

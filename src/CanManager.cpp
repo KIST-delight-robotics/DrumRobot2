@@ -2,8 +2,8 @@
 
 // For Qt
 // #include "../managers/CanManager.hpp"
-CanManager::CanManager(std::map<std::string, std::shared_ptr<GenericMotor>> &motorsRef, Functions &funRef)
-    : motors(motorsRef), fun(funRef)
+CanManager::CanManager(std::map<std::string, std::shared_ptr<GenericMotor>> &motorsRef, Functions &funRef, USBIO &usbioRef)
+    : motors(motorsRef), fun(funRef), usbio(usbioRef)
 {
 }
 
@@ -498,7 +498,8 @@ void CanManager::setMaxonCANFrame(std::shared_ptr<MaxonMotor> maxonMotor, const 
             sendMotorFrame(maxonMotor);
             maxoncmd.getEnable(*maxonMotor, &maxonMotor->sendFrame);
             sendMotorFrame(maxonMotor);
-            
+
+            maxonMotor->controlMode = maxonMotor->CSP;
         }
         maxoncmd.setPositionCANFrame(*maxonMotor, &maxonMotor->sendFrame, mData.position);
 
@@ -515,7 +516,9 @@ void CanManager::setMaxonCANFrame(std::shared_ptr<MaxonMotor> maxonMotor, const 
             maxoncmd.getShutdown(*maxonMotor, &maxonMotor->sendFrame);
             sendMotorFrame(maxonMotor);
             maxoncmd.getEnable(*maxonMotor, &maxonMotor->sendFrame);
-            sendMotorFrame(maxonMotor);            
+            sendMotorFrame(maxonMotor);
+
+            maxonMotor->controlMode = maxonMotor->CST;
         }
         //여기에서 토그 계산을 해주고!!!
 
@@ -524,15 +527,21 @@ void CanManager::setMaxonCANFrame(std::shared_ptr<MaxonMotor> maxonMotor, const 
         double alpha = 0.2;  // 적절한 필터 계수
 
         double err_dot_filtered = alpha * ((err - maxonMotor-> pre_err) / DTSECOND) + (1 - alpha) * err_dot;
-        float torque = mData.kp * err + mData.kd * maxonMotor -> pre_err;
+        float torque = mData.kp * err + mData.kd * err_dot_filtered;
         
         maxonMotor-> pre_err = err;
         //여기에서 보상을 해주고!!
-        // 무게 중력 거리 (기어비 35:1)
-        float gravityTorque =  0.47 * 9.81 * 0.17 * std::sin(maxonMotor-> motorPosition);
+        // 무게 중력 거리
+        float ratedTorqueNm = 0.0311;
+        float gearRatio = 35.0;
+        float stickLengthMeter = 0.17;
+        float stickMassKg = 0.47;
+        float div = 10.0;
+
+        float gravityTorque =  stickMassKg * 9.81 * stickLengthMeter * std::sin(maxonMotor-> jointAngle) / ratedTorqueNm / gearRatio * 1000.0 / div;
         torque += gravityTorque;
         
-        maxoncmd.setTorqueCANFrame(*maxonMotor, &maxonMotor->sendFrame, torque);
+        maxoncmd.setTorqueCANFrame(*maxonMotor, &maxonMotor->sendFrame, round(torque));
 
         fun.appendToCSV_DATA(fun.file_name, (float)maxonMotor->nodeId + SEND_SIGN, mData.position, torque);
     }
@@ -544,13 +553,13 @@ void CanManager::setMaxonCANFrame(std::shared_ptr<MaxonMotor> maxonMotor, const 
 
 void CanManager::setTMotorCANFrame(std::shared_ptr<TMotor> tMotor, const TMotorData &tData)
 {
-    if (tData.mode == tMotor-> Position)
+    if (tData.mode == tMotor->Position)
     {
         tservocmd.setPositionCANFrame(*tMotor, &tMotor->sendFrame, tData.position);
 
         fun.appendToCSV_DATA(fun.file_name, (float)tMotor->nodeId + SEND_SIGN, tData.position, tData.position - tMotor->motorPosition);
     }
-    else if (tData.mode == tMotor-> Idle)
+    else if (tData.mode == tMotor->Idle)
     {
         return;
     }
@@ -627,6 +636,10 @@ bool CanManager::setCANFrame(std::map<std::string, bool>& fixFlags, int cycleCou
                     fixFlags[motorName] = false;
                     tMotor->commandBuffer.pop();
                 }
+
+                //isbreak가 1이면 브레이크 켜줌 0이면 꺼줌
+                usbio.setUSBIO4761(0, tData.is_break == 1); //세팅
+                usbio.outputUSBIO4761();                    //실행
 
                 setTMotorCANFrame(tMotor, tData);
                 if(!safetyCheckSendT(tMotor, tData))

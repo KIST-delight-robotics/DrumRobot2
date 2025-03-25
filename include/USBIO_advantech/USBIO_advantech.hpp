@@ -5,6 +5,7 @@
 #include "../USBIO_advantech/compatibility.h"
 #include "../USBIO_advantech/bdaqctrl.h"
 
+
 using namespace Automation::BDaq;
 
 typedef unsigned char byte;
