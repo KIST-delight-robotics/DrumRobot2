@@ -1738,7 +1738,7 @@ vector<float> TestManager::ikfun_final(float pR[], float pL[])
     int j = 0;
     float the3[1351];
     float zeta = z0 - z2;
-    vector<float> Qf(7);
+    vector<float> Qf(9);
     float the0_f = 0;
 
     // the3 배열 초기화
@@ -1830,6 +1830,9 @@ vector<float> TestManager::ikfun_final(float pR[], float pL[])
         cout << "IKFUN is not solved!!\n";
         state.main = Main::Error;
     }
+
+    Qf[7] = 0.0;
+    Qf[8] = 0.0;
 
     return Qf;
 }
