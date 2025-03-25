@@ -250,7 +250,7 @@ private:
 
     /////////////////////////////////////////////////////////////////////////// brake
     void clearBrake(); // 모든 brake끄기
-
+    float prevWaistPos = 0.0; // 브레이크 판단에 사용될 허리 전 값
     /////////////////////////////////////////////////////////////////////////// Detect Collision
     int aNumOfLine = 0;
     string trimWhitespace(const std::string &str);

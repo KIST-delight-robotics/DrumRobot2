@@ -1954,7 +1954,15 @@ void PathManager::pushCommandBuffer(VectorXd Qi, VectorXd Kpp)
         {
             TMotorData newData;
             newData.position = tMotor->jointAngleToMotorPosition(Qi[can_id]);
-            newData.mode = tMotor->Position;
+            if (can_id == 0) {
+                float diff = std::abs(newData.position - prevWaistPos);
+                prevWaistPos = newData.position; 
+                newData.is_break = (diff < 0.5 * M_PI / 180.0) ? 1 : 0;
+            } else {
+                newData.is_break = 0;
+            }
+
+
             tMotor->commandBuffer.push(newData);
 
             tMotor->finalMotorPosition = newData.position;
