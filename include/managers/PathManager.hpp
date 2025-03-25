@@ -136,8 +136,8 @@ private:
     VectorXd drumL;     // 왼손 악기 전체 저장
     VectorXd timeR;
     VectorXd timeL;
-    VectorXd statesNTimeR;    // 오른손 state, time 전체 저장
-    VectorXd statesNTimeL;    // 왼손 state, time 전체 저장
+    VectorXd statesR;    // 오른손 state, time 전체 저장
+    VectorXd statesL;    // 왼손 state, time 전체 저장
 
     MatrixXd measureState = MatrixXd::Zero(2, 3); // [이전 시간, 이전 악기, 상태] // state
                                                                                 // 0 : 0 <- 0
@@ -239,12 +239,12 @@ private:
     double makeElbowAngle(double t, elbowTime eT, MatrixXd coefficientMatrix);
     double makeWristAngle(double t, wristTime wT, MatrixXd coefficientMatrix);
     void generateHit(VectorXd &q, int index);
-    MatrixXd makeState(VectorXd drums, VectorXd time, bool dir);
-    VectorXd makeTempState(VectorXd drums);
-    MatrixXd makeArrangedState(VectorXd drums, VectorXd time, float threshold);
+    // MatrixXd makeState(VectorXd &states, VectorXd drums, VectorXd time, bool dir);
+    // VectorXd makeTempState(VectorXd drums);
+    // MatrixXd makeArrangedState(VectorXd drums, VectorXd time, float threshold);
 
     /////////////////////////////////////////////////////////////////////////// Push Command Buffer
-    void pushCommandBuffer(VectorXd Qi);
+    void pushCommandBuffer(VectorXd Qi, int index);
 
     /////////////////////////////////////////////////////////////////////////// brake
     void clearBrake(); // 모든 brake끄기

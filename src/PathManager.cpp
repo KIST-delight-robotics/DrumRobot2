@@ -403,7 +403,7 @@ void PathManager::solveIKandPushCommand()
         generateHit(q, i);
 
         // push command buffer
-        pushCommandBuffer(q);
+        pushCommandBuffer(q, i);
 
         // // 데이터 기록
         // for (int i = 0; i < 9; i++)
@@ -413,9 +413,9 @@ void PathManager::solveIKandPushCommand()
         // }
     }
 
-    // std::cout << "\n/////////////// Line Data \n";
-    // std::cout << lineData;
-    // std::cout << "\n ////////////// \n";
+    std::cout << "\n/////////////// Line Data \n";
+    std::cout << lineData;
+    std::cout << "\n ////////////// \n";
 
     // 커맨드 생성 후 lineData 첫 줄 삭제
     if (lineData.rows() >= 1)
@@ -603,8 +603,8 @@ void PathManager::parseMeasure(MatrixXd &measureMatrix)
     VectorXd measureIntensityR = measureMatrix.col(4);
     VectorXd measureIntensityL = measureMatrix.col(5);
 
-    MatrixXd StatesNTimeR;
-    MatrixXd StatesNTimeL;
+    // MatrixXd statesNTimeR;
+    // MatrixXd statesNTimeL;
 
     pair<VectorXd, VectorXd> dataR = parseOneArm(measureTime, measureInstrumentR, measureState.row(0));
     pair<VectorXd, VectorXd> dataL = parseOneArm(measureTime, measureInstrumentL, measureState.row(1));
@@ -621,13 +621,16 @@ void PathManager::parseMeasure(MatrixXd &measureMatrix)
     t1 = measureMatrix(0, 8);
     t2 = measureMatrix(1, 8);
 
-    // StatesNTimeR = makeState(measureInstrumentR, measureTime);
-    // StatesNTimeL = makeState(measureInstrumentL, measureTime);
+    // statesNTimeR.resize(measureIntensityR.size(), 2);
+    // statesNTimeL.resize(measureIntensityL.size(), 2);
+
+    // statesNTimeR = makeState(statesR, measureInstrumentR, measureTime, 0);
+    // statesNTimeL = makeState(statesL, measureInstrumentL, measureTime, 1);
 
     hitState.resize(4); 
     hitState.head(2) = makeState(measureMatrix);
-    // hitState(0) = StatesNTimeR(0,0);
-    // hitState(1) = StatesNTimeL(0,0);
+    // hitState(0) = statesNTimeR(0,0);
+    // hitState(1) = statesNTimeL(0,0);
     hitState(2) = dataR.first(20);
     hitState(3) = dataL.first(20);
 
@@ -655,6 +658,9 @@ void PathManager::parseMeasure(MatrixXd &measureMatrix)
     tmpMatrix = measureMatrix.block(1, 0, tmpMatrix.rows(), tmpMatrix.cols());
     measureMatrix.resize(tmpMatrix.rows(), tmpMatrix.cols());
     measureMatrix = tmpMatrix;
+
+    statesR = statesR.tail(statesR.size() - 1);
+    statesL = statesL.tail(statesL.size() - 1);
 }
 
 pair<VectorXd, VectorXd> PathManager::parseOneArm(VectorXd t, VectorXd inst, VectorXd stateVector)
@@ -1429,8 +1435,10 @@ VectorXd PathManager::IKFixedWaist(VectorXd pR, VectorXd pL, double theta0, doub
 
 void PathManager::makeHitCoefficient()
 {
+
     float t1 = lineData(0, 4);
     float t2 = lineData(0, 5);
+    
     int stateR = lineData(0, 6);
     int stateL = lineData(0, 7);
     int intensityR = lineData(0, 8);
@@ -1791,43 +1799,53 @@ void PathManager::generateHit(VectorXd &q, int index)
     q(8) += wristAngleL;
 }
 
-// MatrixXd PathManager::makeState(VectorXd drums, VectorXd time, bool dir)
-// {
-//     float threshold = 0.2;
+int PathManager::changeState()
+{
+    int stateR = lineData(0, 3);
+    int stateL = lineData(0, 4);
+    float next_n = lineData(1, 0);
+    float dt = canManager.DTSECOND;
 
-//     VectorXd tempStates;
-//     MatrixXd statesNTime;
+    if (lineData.rows() > 2)
+    {
+        if (lineData(1, 3) == 2 && !readyRflag)
+        {
+            nnR = n + next_n;
+            ntR = nnR * dt;
+            readyRflag = 1;
+            if (lineData(0, 3) == 0)
+            {
+                next_stateR = lineData(1, 3);
+                next_intensityR = lineData(1, 5);
+            }
+            else if (lineData(0, 3) == 1)
+            {
+                next_stateR = 3;
+                next_intensityR = lineData(1, 5);
+            }
+        }
 
-//     if(dir == 0)
-//     {
-//         if (drumR.size() == 0)
-//         {
-//             drumR.resize(drums.size());
-//             timeR.resize(time.size());
-//         }
-//         else
-//         {
-//             drumR.resize(drumR.size() + drums.size());
-//             timeR.resize(timeR.size() + time.size());
-//         }
+        if (lineData(1, 4) == 2 && !readyLflag)
+        {
+            nnL = n + next_n;
+            ntL = nnL * dt;
+            readyLflag = 1;
+            if (lineData(0, 4) == 0)
+            {
+                next_stateL = lineData(1, 4);
+                next_intensityL = lineData(1, 6);
+            }
+            else if (lineData(0, 4) == 1)
+            {
+                next_stateL = 3;
+                next_intensityL = lineData(1, 6);
+            }
+        }
+        
+    }
 
-//         tempStates = makeTempState(drumR);
-
-//         statesNTimeR = makeArrangedState(tempStates, time, threshold);
-//     }
-
-//     VectorXd tempStates;
-//     MatrixXd statesNTime;
-
-//     tempStates.resize(drums.size());
-//     statesNTime.resize(2, drums.size());
-
-//     tempStates = makeTempState(drums);                              // 악보만 보고 temp state 생성
-
-//     statesNTime = makeArrangedState(tempStates, time, threshold);   // 시간이 짧은 부분 state 수정
-
-//     return statesNTime;
-// }
+    
+}
 
 // VectorXd PathManager::makeTempState(VectorXd drums)
 // {
@@ -1908,7 +1926,7 @@ void PathManager::generateHit(VectorXd &q, int index)
 /*                           Push Command Buffer                              */
 ////////////////////////////////////////////////////////////////////////////////
 
-void PathManager::pushCommandBuffer(VectorXd Qi)
+void PathManager::pushCommandBuffer(VectorXd Qi, int index)
 {
     for (auto &entry : motors)
     {
