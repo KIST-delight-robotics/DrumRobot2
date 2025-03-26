@@ -127,19 +127,19 @@ private:
     void getAddStanceCoefficient(VectorXd Q1, VectorXd Q2, double t);
 
     /////////////////////////////////////////////////////////////////////////// Parse Measure
+    float line_t1, line_t2;           // 궤적 생성 시간
+    
     VectorXd initialInstrument = VectorXd::Zero(18);   // 전체 궤적에서 출발 악기
     VectorXd finalInstrument = VectorXd::Zero(18);   // 전체 궤적에서 도착 악기
 
     float initialTimeR, finalTimeR;       // 전체 궤적에서 출발 시간, 도착 시간
     float initialTimeL, finalTimeL;
-    float t1, t2;           // 궤적 생성 시간
 
-    VectorXd drumR;     // 오른손 악기 전체 저장
-    VectorXd drumL;     // 왼손 악기 전체 저장
-    VectorXd timeR;
-    VectorXd timeL;
-    VectorXd statesR;    // 오른손 state, time 전체 저장
-    VectorXd statesL;    // 왼손 state, time 전체 저장
+    MatrixXd hitState;              // [이전 시간, 이전 State, intensity]  R
+                                    // [이전 시간, 이전 State, intensity]  L
+
+    float hitR_t1, hitR_t2;       // 전체 타격에서 출발 시간, 도착 시간
+    float hitL_t1, hitL_t2;
 
     MatrixXd measureState = MatrixXd::Zero(2, 3); // [이전 시간, 이전 악기, 상태] // state
                                                                                 // 0 : 0 <- 0
@@ -147,12 +147,11 @@ private:
                                                                                 // 2 : 1 <- 0
                                                                                 // 3 : 1 <- 1
 
-    VectorXd hitState;
-    VectorXd intensity;
+    
 
     void parseMeasure(MatrixXd &measureMatrix);
     pair<VectorXd, VectorXd> parseOneArm(VectorXd t, VectorXd inst, VectorXd stateVector);
-    VectorXd makeState(MatrixXd measureMatrix);
+    void parseHitData(VectorXd t, VectorXd hitR, VectorXd hitL);
 
     /////////////////////////////////////////////////////////////////////////// Make Trajectory
     // 궤적 저장할 구조체
@@ -160,8 +159,13 @@ private:
         VectorXd trajectoryR; ///< 오른팔 스틱 끝 좌표 (x, y, z)
         VectorXd trajectoryL; ///< 왼팔 스틱 끝 좌표 (x, y, z)
 
-        double wristAngleR;  ///> IK를 풀기 위한 오른 손목 각도
-        double wristAngleL;  ///> IK를 풀기 위한 왼 손목 각도
+        double drumWristAngleR;  ///> IK를 풀기 위한 오른 손목 각도
+        double drumWristAngleL;  ///> IK를 풀기 위한 왼 손목 각도
+
+        double elbowAngleR;  ///> 오른팔 팔꿈치 관절에 더해줄 각도
+        double elbowAngleL;  ///> 왼팔 팔꿈치 관절에 더해줄 각도
+        double wristAngleR;  ///> 오른팔 손목 관절에 더해줄 각도
+        double wristAngleL;  ///> 왼팔 손목 관절에 더해줄 각도
     }Position;
     queue<Position> trajectoryQueue;
 
@@ -181,11 +185,6 @@ private:
     MatrixXd waistCoefficient;
     double q0_t1;               // 시작 위치 저장
     double q0_t0, t0 = -1;      // 이전 위치, 이전 시간 저장
-
-    // threshold 관련 변수
-    double nextq0_t1;
-    int status = 0;
-    double q0_threshold = 0.01;
 
     vector<double> cubicInterpolation(const vector<double>& q, const vector<double>& t);
     std::pair<double, vector<double>> getNextQ0();
@@ -241,9 +240,6 @@ private:
     double makeElbowAngle(double t, elbowTime eT, MatrixXd coefficientMatrix);
     double makeWristAngle(double t, wristTime wT, MatrixXd coefficientMatrix);
     VectorXd generateHit(VectorXd &q, int index);
-    MatrixXd makeState(VectorXd drums, VectorXd time, bool dir);
-    VectorXd makeTempState(VectorXd drums);
-    MatrixXd makeArrangedState(VectorXd drums, VectorXd time, float threshold);
 
     /////////////////////////////////////////////////////////////////////////// Push Command Buffer
     void pushCommandBuffer(VectorXd Qi, VectorXd Kpp);
