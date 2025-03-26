@@ -1517,8 +1517,10 @@ PathManager::elbowAngle PathManager::getElbowAngle(float t1, float t2, int inten
 {
     float T = t2 - t1;
     elbowAngle elbowAngle;
+    float intensityFactor = 0.4 * intensity + 0.2; // 1 : 약하게   2 : 기본    3 : 강하게
 
     elbowAngle.liftAngle = std::min((T) * (10 * M_PI / 180.0) / 0.5, (10 * M_PI / 180.0));
+    elbowAngle.liftAngle = elbowAngle.liftAngle * intensityFactor;
 
     return elbowAngle;
 }
@@ -1527,10 +1529,12 @@ PathManager::wristAngle PathManager::getWristAngle(float t1, float t2, int inten
 {
     float T = t2 - t1;
     wristAngle wristAngle;
+    float intensityFactor = 0.4 * intensity + 0.2; // 1 : 약하게   2 : 기본    3 : 강하게
 
     wristAngle.stayAngle = 10 * M_PI / 180.0;
     t2 - t1 < 0.5 ? wristAngle.liftAngle = (-100 * ((T) - 0.5) * ((T) - 0.5) + 30) * M_PI / 180.0 : wristAngle.liftAngle = 30  * M_PI / 180.0;
     wristAngle.pressAngle = -1.0 * std::min((T) * (5 * M_PI / 180.0)/ 0.5, (5 * M_PI / 180.0));
+    wristAngle.liftAngle = wristAngle.liftAngle * intensityFactor;
 
     return wristAngle;
 }
