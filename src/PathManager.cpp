@@ -409,9 +409,9 @@ void PathManager::solveIKandPushCommand()
         // }
     }
 
-    std::cout << "\n/////////////// Line Data \n";
-    std::cout << lineData;
-    std::cout << "\n ////////////// \n";
+    // std::cout << "\n/////////////// Line Data \n";
+    // std::cout << lineData;
+    // std::cout << "\n ////////////// \n";
 
     // 커맨드 생성 후 lineData 첫 줄 삭제
     if (lineData.rows() >= 1)
@@ -600,8 +600,8 @@ void PathManager::parseMeasure(MatrixXd &measureMatrix)
     VectorXd measureIntensityR = measureMatrix.col(4);
     VectorXd measureIntensityL = measureMatrix.col(5);
 
-    // MatrixXd statesNTimeR;
-    // MatrixXd statesNTimeL;
+    MatrixXd StatesNTimeR;
+    MatrixXd StatesNTimeL;
 
     pair<VectorXd, VectorXd> dataR = parseOneArm(measureTime, measureInstrumentR, measureState.row(0));
     pair<VectorXd, VectorXd> dataL = parseOneArm(measureTime, measureInstrumentL, measureState.row(1));
@@ -618,16 +618,13 @@ void PathManager::parseMeasure(MatrixXd &measureMatrix)
     t1 = measureMatrix(0, 8);
     t2 = measureMatrix(1, 8);
 
-    // statesNTimeR.resize(measureIntensityR.size(), 2);
-    // statesNTimeL.resize(measureIntensityL.size(), 2);
-
-    // statesNTimeR = makeState(statesR, measureInstrumentR, measureTime, 0);
-    // statesNTimeL = makeState(statesL, measureInstrumentL, measureTime, 1);
+    // StatesNTimeR = makeState(measureInstrumentR, measureTime);
+    // StatesNTimeL = makeState(measureInstrumentL, measureTime);
 
     hitState.resize(4); 
     hitState.head(2) = makeState(measureMatrix);
-    // hitState(0) = statesNTimeR(0,0);
-    // hitState(1) = statesNTimeL(0,0);
+    // hitState(0) = StatesNTimeR(0,0);
+    // hitState(1) = StatesNTimeL(0,0);
     hitState(2) = dataR.first(20);
     hitState(3) = dataL.first(20);
 
@@ -655,9 +652,6 @@ void PathManager::parseMeasure(MatrixXd &measureMatrix)
     tmpMatrix = measureMatrix.block(1, 0, tmpMatrix.rows(), tmpMatrix.cols());
     measureMatrix.resize(tmpMatrix.rows(), tmpMatrix.cols());
     measureMatrix = tmpMatrix;
-
-    statesR = statesR.tail(statesR.size() - 1);
-    statesL = statesL.tail(statesL.size() - 1);
 }
 
 pair<VectorXd, VectorXd> PathManager::parseOneArm(VectorXd t, VectorXd inst, VectorXd stateVector)
@@ -1432,10 +1426,8 @@ VectorXd PathManager::IKFixedWaist(VectorXd pR, VectorXd pL, double theta0, doub
 
 void PathManager::makeHitCoefficient()
 {
-
     float t1 = lineData(0, 4);
     float t2 = lineData(0, 5);
-    
     int stateR = lineData(0, 6);
     int stateL = lineData(0, 7);
     int intensityR = lineData(0, 8);
@@ -1502,8 +1494,10 @@ PathManager::elbowAngle PathManager::getElbowAngle(float t1, float t2, int inten
 {
     float T = t2 - t1;
     elbowAngle elbowAngle;
+    float intensityFactor = 0.4 * intensity + 0.2; // 1 : 약하게   2 : 기본    3 : 강하게
 
     elbowAngle.liftAngle = std::min((T) * (10 * M_PI / 180.0) / 0.5, (10 * M_PI / 180.0));
+    elbowAngle.liftAngle = elbowAngle.liftAngle * intensityFactor;
 
     return elbowAngle;
 }
@@ -1512,10 +1506,12 @@ PathManager::wristAngle PathManager::getWristAngle(float t1, float t2, int inten
 {
     float T = t2 - t1;
     wristAngle wristAngle;
+    float intensityFactor = 0.4 * intensity + 0.2; // 1 : 약하게   2 : 기본    3 : 강하게
 
     wristAngle.stayAngle = 10 * M_PI / 180.0;
     t2 - t1 < 0.5 ? wristAngle.liftAngle = (-100 * ((T) - 0.5) * ((T) - 0.5) + 30) * M_PI / 180.0 : wristAngle.liftAngle = 30  * M_PI / 180.0;
     wristAngle.pressAngle = -1.0 * std::min((T) * (5 * M_PI / 180.0)/ 0.5, (5 * M_PI / 180.0));
+    wristAngle.liftAngle = wristAngle.liftAngle * intensityFactor;
 
     return wristAngle;
 }
