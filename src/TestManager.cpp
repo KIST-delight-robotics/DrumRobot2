@@ -33,8 +33,6 @@ void TestManager::SendTestProcess()
 
         if(method == 1)
         {
-            std::cout << "관절각도값조절해보자고 ㅋㅋ" << "\n";
-            sleep(2);
             while(1)
             {
                 int userInput = 100;
@@ -109,8 +107,6 @@ void TestManager::SendTestProcess()
         }
         else if (method == 2)
         {
-            std::cout << "좌표값조절해보자고 ㅋㅋ" << "\n";
-            sleep(5);
             while(1)
             {
                 int userInput = 100;

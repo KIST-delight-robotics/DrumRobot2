@@ -141,9 +141,6 @@ private:
     float getQuadraticFunc(float startT, float endT, float startAng, float endAng, float t); // 2차 함수 계산 함수
     float getCubicFunc(float startT, float endT, float startAng, float endAng, float t); // 3차 함수 계산 함수
 
-
-    void unfixedMotor();
-
     // test table
     void testTable();
     string trimWhitespace(const std::string &str);

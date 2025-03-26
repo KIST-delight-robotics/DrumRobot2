@@ -520,8 +520,19 @@ void CanManager::setMaxonCANFrame(std::shared_ptr<MaxonMotor> maxonMotor, const 
 
             maxonMotor->controlMode = maxonMotor->CST;
         }
-        //여기에서 토그 계산을 해주고!!!
 
+        maxoncmd.setTorqueCANFrame(*maxonMotor, &maxonMotor->sendFrame, calTorque(maxonMotor,mData));
+
+        fun.appendToCSV_DATA(fun.file_name, (float)maxonMotor->nodeId + SEND_SIGN, mData.position, calTorque(maxonMotor,mData));
+    }
+    else if (mData.mode == maxonMotor->CSV)
+    {
+        return;
+    }
+}
+
+float CanManager::calTorque(std::shared_ptr<MaxonMotor> maxonMotor, const MaxonData &mData)
+{
         double err = mData.position - maxonMotor->motorPosition;
         double err_dot = (err - maxonMotor-> pre_err)/DTSECOND;
         double alpha = 0.2;  // 적절한 필터 계수
@@ -537,18 +548,38 @@ void CanManager::setMaxonCANFrame(std::shared_ptr<MaxonMotor> maxonMotor, const 
         float stickLengthMeter = 0.17;
         float stickMassKg = 0.47;
         float div = 10.0;
+        float gravity_angle = 0;
+        for (auto &motor_pair : motors)
+        {
+            std::shared_ptr<GenericMotor> motor = motor_pair.second;
+            std::string motorName = motor_pair.first;
+            
+            // TMotor
+            if (std::shared_ptr<TMotor> tMotor = std::dynamic_pointer_cast<TMotor>(motor))
+            {
+                if (maxonMotor -> myName == "R_wrist")
+                {
+                    if(tMotor -> myName == "R_arm2" || tMotor -> myName == "R_arm3" )
+                    {
+                        gravity_angle += tMotor -> jointAngle;
+                    }
+                }
+                else if (maxonMotor -> myName == "L_wrist")
+                {
+                    if(tMotor -> myName == "L_arm2" || tMotor -> myName == "L_arm3" )
+                    {
+                        gravity_angle += tMotor -> jointAngle;
+                    }
+                }
+            }
+        }
+        gravity_angle += maxonMotor -> jointAngle;
 
-        float gravityTorque =  stickMassKg * 9.81 * stickLengthMeter * std::sin(maxonMotor-> jointAngle) / ratedTorqueNm / gearRatio * 1000.0 / div;
+        float gravityTorque =  stickMassKg * 9.81 * stickLengthMeter * std::sin(gravity_angle) / ratedTorqueNm / gearRatio * 1000.0 / div;
+
         torque += gravityTorque;
-        
-        maxoncmd.setTorqueCANFrame(*maxonMotor, &maxonMotor->sendFrame, round(torque));
 
-        fun.appendToCSV_DATA(fun.file_name, (float)maxonMotor->nodeId + SEND_SIGN, mData.position, torque);
-    }
-    else if (mData.mode == maxonMotor->CSV)
-    {
-        return;
-    }
+        return torque;
 }
 
 void CanManager::setTMotorCANFrame(std::shared_ptr<TMotor> tMotor, const TMotorData &tData)
@@ -599,28 +630,9 @@ bool CanManager::setCANFrame(std::map<std::string, bool>& fixFlags, int cycleCou
     {
         std::shared_ptr<GenericMotor> motor = motor_pair.second;
         std::string motorName = motor_pair.first;
-
-        // MaxonMotor
-        if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motor))
-        {
-            if (maxonMotor->commandBuffer.empty()) continue;
-
-            MaxonData mData = maxonMotor->commandBuffer.front();
-
-            // 버퍼 크기가 1이면 fixed 상태
-            fixFlags[motorName] = (maxonMotor->commandBuffer.size() == 1);
-
-            if (maxonMotor->commandBuffer.size() > 1)
-            {
-                fixFlags[motorName] = false;
-                maxonMotor->commandBuffer.pop();
-            }
-
-            setMaxonCANFrame(maxonMotor, mData);
-            
-        }
+        
         // TMotor
-        else if (std::shared_ptr<TMotor> tMotor = std::dynamic_pointer_cast<TMotor>(motor))
+        if (std::shared_ptr<TMotor> tMotor = std::dynamic_pointer_cast<TMotor>(motor))
         {
             if (cycleCounter == 0)
             {
@@ -647,6 +659,25 @@ bool CanManager::setCANFrame(std::map<std::string, bool>& fixFlags, int cycleCou
                     return false;
                 }
             }
+        }
+        // MaxonMotor
+        else if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motor))
+        {
+            if (maxonMotor->commandBuffer.empty()) continue;
+
+            MaxonData mData = maxonMotor->commandBuffer.front();
+
+            // 버퍼 크기가 1이면 fixed 상태
+            fixFlags[motorName] = (maxonMotor->commandBuffer.size() == 1);
+
+            if (maxonMotor->commandBuffer.size() > 1)
+            {
+                fixFlags[motorName] = false;
+                maxonMotor->commandBuffer.pop();
+            }
+
+            setMaxonCANFrame(maxonMotor, mData);
+            
         }
     }
 
