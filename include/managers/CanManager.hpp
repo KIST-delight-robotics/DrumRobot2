@@ -146,6 +146,7 @@ private:
 
     //////////////////////////////////////// Send
     void setMaxonCANFrame(std::shared_ptr<MaxonMotor> maxonMotor, const MaxonData &mData);
+    float calTorque(std::shared_ptr<MaxonMotor> maxonMotor, const MaxonData &mData);
     void setTMotorCANFrame(std::shared_ptr<TMotor> tMotor, const TMotorData &tData);
     bool safetyCheckSendT(std::shared_ptr<TMotor> tMotor, TMotorData tData);
 
