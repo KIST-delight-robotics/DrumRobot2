@@ -297,6 +297,7 @@ void PathManager::initializeValue(int bpm)
 
     q0_t1 = readyAngle(0);
     q0_t0 = readyAngle(0);
+    t0 = -1;
     nextq0_t1 = readyAngle(0);
     clearBrake();
 }
@@ -414,16 +415,14 @@ void PathManager::solveIKandPushCommand()
     // std::cout << "\n ////////////// \n";
 
     // 커맨드 생성 후 lineData 첫 줄 삭제
-    if (lineData.rows() >= 1)
+    if (lineData.rows() > 1)
     {
         MatrixXd tmpMatrix(lineData.rows() - 1, lineData.cols());
         tmpMatrix = lineData.block(1, 0, tmpMatrix.rows(), tmpMatrix.cols());
         lineData.resize(tmpMatrix.rows(), tmpMatrix.cols());
         lineData = tmpMatrix;
     }
-
-    // 마지막 줄에서 모든 브레이크 정리
-    if(lineData.rows() == 1)
+    else if (lineData.rows() == 1)  // 마지막 줄에서 모든 브레이크 정리
     {
         clearBrake();
         endOfPlayCommand = true;   // DrumRobot 에게 끝났음 알리기
@@ -1352,7 +1351,11 @@ VectorXd PathManager::IKFixedWaist(VectorXd pR, VectorXd pL, double theta0, doub
 
     if (theta1 < 0 || theta1 > 150.0 * M_PI / 180.0) // the1 범위 : 0deg ~ 150deg
     {
+        std::cout << "PR \n" << pR << "\n";
+        std::cout << "PL \n" << pL << "\n";
+        std::cout << "theta0 : " << theta0 * 180.0 / M_PI << "\n theta7 : " << theta7 * 180.0 / M_PI << "\n theta8 : " << theta8 * 180.0 / M_PI << "\n";
         std::cout << "IKFUN (q1) is not solved!!\n";
+        std::cout << "theta1 : " << theta1 * 180.0 / M_PI << "\n";
         state.main = Main::Error;
     }
 
@@ -1361,7 +1364,11 @@ VectorXd PathManager::IKFixedWaist(VectorXd pR, VectorXd pL, double theta0, doub
 
     if (theta2 < 30 * M_PI / 180.0 || theta2 > M_PI) // the2 범위 : 30deg ~ 180deg
     {
+        std::cout << "PR \n" << pR << "\n";
+        std::cout << "PL \n" << pL << "\n";
+        std::cout << "theta0 : " << theta0 * 180.0 / M_PI << "\n theta7 : " << theta7 * 180.0 / M_PI << "\n theta8 : " << theta8 * 180.0 / M_PI << "\n";
         std::cout << "IKFUN (q2) is not solved!!\n";
+        std::cout << "theta2 : " << theta2 * 180.0 / M_PI << "\n";
         state.main = Main::Error;
     }
 
@@ -1375,7 +1382,11 @@ VectorXd PathManager::IKFixedWaist(VectorXd pR, VectorXd pL, double theta0, doub
 
     if (theta4 < 0 || theta4 > 140.0 * M_PI / 180.0) // the4 범위 : 0deg ~ 120deg
     {
+        std::cout << "PR \n" << pR << "\n";
+        std::cout << "PL \n" << pL << "\n";
+        std::cout << "theta0 : " << theta0 * 180.0 / M_PI << "\n theta7 : " << theta7 * 180.0 / M_PI << "\n theta8 : " << theta8 * 180.0 / M_PI << "\n";
         std::cout << "IKFUN (q4) is not solved!!\n";
+        std::cout << "theta4 : " << theta4 * 180.0 / M_PI << "\n";
         state.main = Main::Error;
     }
 
@@ -1384,7 +1395,11 @@ VectorXd PathManager::IKFixedWaist(VectorXd pR, VectorXd pL, double theta0, doub
 
     if (theta3 < -45.0 * M_PI / 180.0 || theta3 > 90.0 * M_PI / 180.0) // the3 범위 : -45deg ~ 90deg
     {
+        std::cout << "PR \n" << pR << "\n";
+        std::cout << "PL \n" << pL << "\n";
+        std::cout << "theta0 : " << theta0 * 180.0 / M_PI << "\n theta7 : " << theta7 * 180.0 / M_PI << "\n theta8 : " << theta8 * 180.0 / M_PI << "\n";
         std::cout << "IKFUN (q3) is not solved!!\n";
+        std::cout << "theta3 : " << theta3 * 180.0 / M_PI << "\n";
         state.main = Main::Error;
     }
 
@@ -1398,7 +1413,11 @@ VectorXd PathManager::IKFixedWaist(VectorXd pR, VectorXd pL, double theta0, doub
 
     if (theta6 < 0 || theta6 > 140.0 * M_PI / 180.0) // the6 범위 : 0deg ~ 120deg
     {
+        std::cout << "PR \n" << pR << "\n";
+        std::cout << "PL \n" << pL << "\n";
+        std::cout << "theta0 : " << theta0 * 180.0 / M_PI << "\n theta7 : " << theta7 * 180.0 / M_PI << "\n theta8 : " << theta8 * 180.0 / M_PI << "\n";
         std::cout << "IKFUN (q6) is not solved!!\n";
+        std::cout << "theta6 : " << theta6 * 180.0 / M_PI << "\n";
         state.main = Main::Error;
     }
 
@@ -1407,7 +1426,11 @@ VectorXd PathManager::IKFixedWaist(VectorXd pR, VectorXd pL, double theta0, doub
 
     if (theta5 < -45.0 * M_PI / 180.0 || theta5 > 90.0 * M_PI / 180.0) // the5 범위 : -45deg ~ 90deg
     {
+        std::cout << "PR \n" << pR << "\n";
+        std::cout << "PL \n" << pL << "\n";
+        std::cout << "theta0 : " << theta0 * 180.0 / M_PI << "\n theta7 : " << theta7 * 180.0 / M_PI << "\n theta8 : " << theta8 * 180.0 / M_PI << "\n";
         std::cout << "IKFUN (q5) is not solved!!\n";
+        std::cout << "theta5 : " << theta5 * 180.0 / M_PI << "\n";
         state.main = Main::Error;
     }
 
@@ -2004,11 +2027,8 @@ void PathManager::pushCommandBuffer(VectorXd Qi, VectorXd Kpp)
 
 void PathManager::clearBrake()  // 모든 brake끄기
 {
-    vector<int> brakeArr = {0, 0, 0, 0, 0, 0, 0, 0};
-    for (int i = 0; i < 8; i++)
-    {
-        usbio.setUSBIO4761(i, brakeArr[i]);
-    }
+    usbio.setUSBIO4761(0, 0);
+    usbio.outputUSBIO4761();
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -158,4 +158,7 @@ private:
         float height = 1.020-0.0605;    ///< 바닥부터 허리까지의 높이. [m]
 
     }PartLength;
+
+    VectorXd IKFixedWaist(VectorXd pR, VectorXd pL, double theta0);
+    VectorXd calWaistAngle(VectorXd pR, VectorXd pL);
 };
