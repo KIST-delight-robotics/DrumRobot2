@@ -141,9 +141,6 @@ private:
     float getQuadraticFunc(float startT, float endT, float startAng, float endAng, float t); // 2차 함수 계산 함수
     float getCubicFunc(float startT, float endT, float startAng, float endAng, float t); // 3차 함수 계산 함수
 
-
-    void unfixedMotor();
-
     // test table
     void testTable();
     string trimWhitespace(const std::string &str);
@@ -158,4 +155,7 @@ private:
         float height = 1.020-0.0605;    ///< 바닥부터 허리까지의 높이. [m]
 
     }PartLength;
+
+    VectorXd IKFixedWaist(VectorXd pR, VectorXd pL, double theta0);
+    VectorXd calWaistAngle(VectorXd pR, VectorXd pL);
 };

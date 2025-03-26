@@ -33,8 +33,6 @@ void TestManager::SendTestProcess()
 
         if(method == 1)
         {
-            std::cout << "관절각도값조절해보자고 ㅋㅋ" << "\n";
-            sleep(2);
             while(1)
             {
                 int userInput = 100;
@@ -109,8 +107,6 @@ void TestManager::SendTestProcess()
         }
         else if (method == 2)
         {
-            std::cout << "좌표값조절해보자고 ㅋㅋ" << "\n";
-            sleep(5);
             while(1)
             {
                 int userInput = 100;
@@ -148,9 +144,18 @@ void TestManager::SendTestProcess()
                 }
                 else if (userInput == 3)
                 {
-                    std::vector<float> q_vec = ikfun_final(R_xyz, L_xyz);
-                    for (size_t i = 0; i < q_vec.size() && i < 10; ++i) {
-                        q[i] = q_vec[i];
+                    VectorXd pR(3), pL(3);
+                    for (int i = 0; i < 3; i++)
+                    {
+                        pR(i) = R_xyz[i];
+                        pL(i) = L_xyz[i];
+                    }
+                    
+                    VectorXd waistVector = calWaistAngle(pR, pL);
+                    VectorXd qk = IKFixedWaist(pR, pL, 0.5 * (waistVector(0) + waistVector(1)));
+
+                    for (size_t i = 0; i < qk.size() && i < 10; ++i) {
+                        q[i] = qk(i);
                     }
                     getArr(q);
                 }
@@ -1720,99 +1725,198 @@ void TestManager::getArr(float arr[])
     }
 }
 
-vector<float> TestManager::ikfun_final(float pR[], float pL[])
+VectorXd TestManager::IKFixedWaist(VectorXd pR, VectorXd pL, double theta0)
 {
+    VectorXd Qf;
     PartLength partLength;
-    float direction = 0.0 * M_PI;
 
-    float s = partLength.waist;
-    float z0 = partLength.height;
-    float X1 = pR[0], Y1 = pR[1], z1 = pR[2];
-    float X2 = pL[0], Y2 = pL[1], z2 = pL[2];
-    float r1 = partLength.upperArm;
-    float r2 = partLength.lowerArm + partLength.stick;
+    float XR = pR(0), YR = pR(1), ZR = pR(2);
+    float XL = pL(0), YL = pL(1), ZL = pL(2);
+    float R1 = partLength.upperArm;
+    float R2 = partLength.lowerArm + partLength.stick;
     float L1 = partLength.upperArm;
     float L2 = partLength.lowerArm + partLength.stick;
+    float s = partLength.waist;
+    float z0 = partLength.height;
 
-    int j = 0;
-    float the3[1351];
-    float zeta = z0 - z2;
-    vector<float> Qf(9);
-    float the0_f = 0;
+    float shoulderXR = 0.5 * s * cos(theta0);
+    float shoulderYR = 0.5 * s * sin(theta0);
+    float shoulderXL = -0.5 * s * cos(theta0);
+    float shoulderYL = -0.5 * s * sin(theta0);
 
-    // the3 배열 초기화
-    for (int i = 0; i < 1351; ++i)
-        the3[i] = (-M_PI * 0.25) + (i / 1350.0 * M_PI * 0.75); // the3 범위 : -45deg ~ 90deg
+    float theta01 = atan2(YR - shoulderYR, XR - shoulderXR);
+    float theta1 = theta01 - theta0;
 
-    for (int i = 0; i < 1351; ++i)
+    if (theta1 < 0 || theta1 > 150.0 * M_PI / 180.0) // the1 범위 : 0deg ~ 150deg
     {
-        float det_the4 = (z0 - z1 - r1 * cos(the3[i])) / r2;
+        std::cout << "IKFUN (q1) is not solved!!\n";
+        state.main = Main::Error;
+    }
 
-        if (det_the4 < 1 && det_the4 > -1)
+    float theta02 = atan2(YL - shoulderYL, XL - shoulderXL);
+    float theta2 = theta02 - theta0;
+
+    if (theta2 < 30 * M_PI / 180.0 || theta2 > M_PI) // the2 범위 : 30deg ~ 180deg
+    {
+        std::cout << "IKFUN (q2) is not solved!!\n";
+        state.main = Main::Error;
+    }
+
+    float zeta = z0 - ZR;
+    float r2 = (YR - shoulderYR) * (YR - shoulderYR) + (XR - shoulderXR) * (XR - shoulderXR); // r^2
+
+    float x = zeta * zeta + r2 - R1 * R1 - R2 * R2;
+    float y = sqrt(4.0 * R1 * R1 * R2 * R2 - x * x);
+
+    float theta4 = atan2(y, x);
+
+    if (theta4 < 0 || theta4 > 140.0 * M_PI / 180.0) // the4 범위 : 0deg ~ 120deg
+    {
+        std::cout << "IKFUN (q4) is not solved!!\n";
+        state.main = Main::Error;
+    }
+
+    float theta34 = atan2(sqrt(r2), zeta);
+    float theta3 = theta34 - atan2(R2 * sin(theta4), R1 + R2 * cos(theta4));
+
+    if (theta3 < -45.0 * M_PI / 180.0 || theta3 > 90.0 * M_PI / 180.0) // the3 범위 : -45deg ~ 90deg
+    {
+        std::cout << "IKFUN (q3) is not solved!!\n";
+        state.main = Main::Error;
+    }
+
+    zeta = z0 - ZL;
+    r2 = (YL - shoulderYL) * (YL - shoulderYL) + (XL - shoulderXL) * (XL - shoulderXL); // r^2
+
+    x = zeta * zeta + r2 - L1 * L1 - L2 * L2;
+    y = sqrt(4.0 * L1 * L1 * L2 * L2 - x * x);
+
+    float theta6 = atan2(y, x);
+
+    if (theta6 < 0 || theta6 > 140.0 * M_PI / 180.0) // the6 범위 : 0deg ~ 120deg
+    {
+        std::cout << "IKFUN (q6) is not solved!!\n";
+        state.main = Main::Error;
+    }
+
+    float theta56 = atan2(sqrt(r2), zeta);
+    float theta5 = theta56 - atan2(L2 * sin(theta6), L1 + L2 * cos(theta6));
+
+    if (theta5 < -45.0 * M_PI / 180.0 || theta5 > 90.0 * M_PI / 180.0) // the5 범위 : -45deg ~ 90deg
+    {
+        std::cout << "IKFUN (q5) is not solved!!\n";
+        state.main = Main::Error;
+    }
+
+    Qf.resize(9);
+    Qf << theta0, theta1, theta2, theta3, theta4, theta5, theta6, 0, 0;
+
+    return Qf;
+}
+
+VectorXd TestManager::calWaistAngle(VectorXd pR, VectorXd pL)
+{
+    PartLength partLength;
+
+    float XR = pR(0), YR = pR(1), ZR = pR(2);
+    float XL = pL(0), YL = pL(1), ZL = pL(2);
+    float R1 = partLength.upperArm;
+    float R2 = partLength.lowerArm + partLength.stick;
+    float L1 = partLength.upperArm;
+    float L2 = partLength.lowerArm + partLength.stick;
+    float s = partLength.waist;
+    float z0 = partLength.height;
+
+    VectorXd W(2);
+    W << 2, 1;
+    double minCost = W.sum();
+    double w = 0, cost = 0;
+    int minIndex = 0;
+
+    MatrixXd Qarr(7, 1);
+    VectorXd output(3);
+    int j = 0;
+
+    for (int i = 0; i < 1801; i++)
+    {
+        double theta0 = -0.5 * M_PI + M_PI / 1800.0 * i; // the0 범위 : -90deg ~ 90deg
+
+        float shoulderXR = 0.5 * s * cos(theta0);
+        float shoulderYR = 0.5 * s * sin(theta0);
+        float shoulderXL = -0.5 * s * cos(theta0);
+        float shoulderYL = -0.5 * s * sin(theta0);
+
+        float theta01 = atan2(YR - shoulderYR, XR - shoulderXR);
+        float theta1 = theta01 - theta0;
+
+        if (theta1 > 0 && theta1 < 150.0 * M_PI / 180.0) // the1 범위 : 0deg ~ 150deg
         {
-            float the34 = acos((z0 - z1 - r1 * cos(the3[i])) / r2);
-            float the4 = the34 - the3[i];
+            float theta02 = atan2(YL - shoulderYL, XL - shoulderXL);
+            float theta2 = theta02 - theta0;
 
-            if (the4 >= 0 && the4 < (M_PI * 0.75)) // the4 범위 : 0deg ~ 135deg
+            if (theta2 > 30 * M_PI / 180.0 && theta2 < M_PI) // the2 범위 : 30deg ~ 180deg
             {
-                float r = r1 * sin(the3[i]) + r2 * sin(the34);
-                float det_the1 = (X1 * X1 + Y1 * Y1 - r * r - s * s / 4.0) / (s * r);
+                float zeta = z0 - ZR;
+                float r2 = (YR - shoulderYR) * (YR - shoulderYR) + (XR - shoulderXR) * (XR - shoulderXR); // r^2
 
-                if (det_the1 < 1 && det_the1 > -1)
+                float x = zeta * zeta + r2 - R1 * R1 - R2 * R2;
+
+                if (4.0 * R1 * R1 * R2 * R2 - x * x > 0)
                 {
-                    float the1 = acos(det_the1);
-                    if (the1 > 0 && the1 < (M_PI * 0.8)) // the1 범위 : 0deg ~ 144deg
+                    float y = sqrt(4.0 * R1 * R1 * R2 * R2 - x * x);
+
+                    float theta4 = atan2(y, x);
+
+                    if (theta4 > 0 && theta4 < 140.0 * M_PI / 180.0) // the4 범위 : 0deg ~ 120deg
                     {
-                        float alpha = asin(X1 / sqrt(X1 * X1 + Y1 * Y1));
-                        float det_the0 = (s / 4.0 + (X1 * X1 + Y1 * Y1 - r * r) / s) / sqrt(X1 * X1 + Y1 * Y1);
+                        float theta34 = atan2(sqrt(r2), zeta);
+                        float theta3 = theta34 - atan2(R2 * sin(theta4), R1 + R2 * cos(theta4));
 
-                        if (det_the0 < 1 && det_the0 > -1)
+                        if (theta3 > -45.0 * M_PI / 180.0 && theta3 < 90.0 * M_PI / 180.0) // the3 범위 : -45deg ~ 90deg
                         {
-                            float the0 = asin(det_the0) - alpha;
-                            if (the0 > (-M_PI / 2) && the0 < (M_PI / 2)) // the0 범위 : -90deg ~ 90deg
+                            zeta = z0 - ZL;
+                            r2 = (YL - shoulderYL) * (YL - shoulderYL) + (XL - shoulderXL) * (XL - shoulderXL); // r^2
+
+                            x = zeta * zeta + r2 - L1 * L1 - L2 * L2;
+
+                            if (4.0 * L1 * L1 * L2 * L2 - x * x > 0)
                             {
-                                float L = sqrt((X2 - 0.5 * s * cos(the0 + M_PI)) * (X2 - 0.5 * s * cos(the0 + M_PI)) + (Y2 - 0.5 * s * sin(the0 + M_PI)) * (Y2 - 0.5 * s * sin(the0 + M_PI)));
-                                float det_the2 = (X2 - 0.5 * s * cos(the0 + M_PI)) / L;
+                                y = sqrt(4.0 * L1 * L1 * L2 * L2 - x * x);
 
-                                if (det_the2 < 1 && det_the2 > -1)
+                                float theta6 = atan2(y, x);
+
+                                if (theta6 > 0 && theta6 < 140.0 * M_PI / 180.0) // the6 범위 : 0deg ~ 120deg
                                 {
-                                    float the2 = acos(det_the2) - the0;
-                                    if (the2 > (M_PI * 0.2) && the2 < M_PI) // the2 범위 : 36deg ~ 180deg
+                                    float theta56 = atan2(sqrt(r2), zeta);
+                                    float theta5 = theta56 - atan2(L2 * sin(theta6), L1 + L2 * cos(theta6));
+
+                                    if (theta5 > -45.0 * M_PI / 180.0 && theta5 < 90.0 * M_PI / 180.0) // the5 범위 : -45deg ~ 90deg
                                     {
-                                        float Lp = sqrt(L * L + zeta * zeta);
-                                        float det_the6 = (Lp * Lp - L1 * L1 - L2 * L2) / (2 * L1 * L2);
-
-                                        if (det_the6 < 1 && det_the6 > -1)
+                                        if (j == 0)
                                         {
-                                            float the6 = acos(det_the6);
-                                            if (the6 >= 0 && the6 < (M_PI * 0.75)) // the6 범위 : 0deg ~ 135deg
-                                            {
-                                                float T = (zeta * zeta + L * L + L1 * L1 - L2 * L2) / (L1 * 2);
-                                                float det_the5 = L * L + zeta * zeta - T * T;
+                                            Qarr(0, 0) = theta0;
+                                            Qarr(1, 0) = theta1;
+                                            Qarr(2, 0) = theta2;
+                                            Qarr(3, 0) = theta3;
+                                            Qarr(4, 0) = theta4;
+                                            Qarr(5, 0) = theta5;
+                                            Qarr(6, 0) = theta6;
 
-                                                if (det_the5 > 0)
-                                                {
-                                                    float sol = T * L - zeta * sqrt(L * L + zeta * zeta - T * T);
-                                                    sol /= (L * L + zeta * zeta);
-                                                    float the5 = asin(sol);
-                                                    if (the5 > (-M_PI * 0.25) && the5 < (M_PI / 2)) // the5 범위 : -45deg ~ 90deg
-                                                    {
-                                                        if (j == 0 || fabs(the0 - direction) < fabs(the0_f - direction))
-                                                        {
-                                                            Qf[0] = the0;
-                                                            Qf[1] = the1;
-                                                            Qf[2] = the2;
-                                                            Qf[3] = the3[i];
-                                                            Qf[4] = the4;
-                                                            Qf[5] = the5;
-                                                            Qf[6] = the6;
+                                            j = 1;
+                                        }
+                                        else
+                                        {
+                                            Qarr.conservativeResize(Qarr.rows(), Qarr.cols() + 1);
 
-                                                            the0_f = the0;
-                                                            j = 1;
-                                                        }
-                                                    }
-                                                }
-                                            }
+                                            Qarr(0, j) = theta0;
+                                            Qarr(1, j) = theta1;
+                                            Qarr(2, j) = theta2;
+                                            Qarr(3, j) = theta3;
+                                            Qarr(4, j) = theta4;
+                                            Qarr(5, j) = theta5;
+                                            Qarr(6, j) = theta6;
+
+                                            j++;
                                         }
                                     }
                                 }
@@ -1826,20 +1930,32 @@ vector<float> TestManager::ikfun_final(float pR[], float pL[])
 
     if (j == 0)
     {
-        cout << "IKFUN is not solved!!\n";
+        cout << "IKFUN is not solved!! (Waist Range)\n";
         state.main = Main::Error;
+
+        output(0) = 0;
+        output(1) = 0;
+    }
+    else
+    {
+        output(0) = Qarr(0, 0);     // min
+        output(1) = Qarr(0, j - 1); // max
     }
 
-    Qf[7] = 0.0;
-    Qf[8] = 0.0;
+    w = 2.0 * M_PI / abs(Qarr(0, j - 1) - Qarr(0, 0));
+    for (int i = 0; i < j; i++)
+    {
+        cost = W(0)*cos(Qarr(1, i) + Qarr(2, i)) + W(1)*cos(w*abs(Qarr(0, i) - Qarr(0, 0)));
 
-    return Qf;
-}
+        if (cost < minCost)
+        {
+            minCost = cost;
+            minIndex = i;
+        }
+    }
+    output(2) = Qarr(0, minIndex);
 
-void TestManager::unfixedMotor()
-{
-    for (auto motor_pair : motors)
-        motor_pair.second->isfixed = false;
+    return output;
 }
 
 /////////////////////////////////////////////////////////////////////////////////

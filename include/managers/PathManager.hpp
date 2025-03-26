@@ -138,8 +138,8 @@ private:
     VectorXd drumL;     // 왼손 악기 전체 저장
     VectorXd timeR;
     VectorXd timeL;
-    VectorXd statesNTimeR;    // 오른손 state, time 전체 저장
-    VectorXd statesNTimeL;    // 왼손 state, time 전체 저장
+    VectorXd statesR;    // 오른손 state, time 전체 저장
+    VectorXd statesL;    // 왼손 state, time 전체 저장
 
     MatrixXd measureState = MatrixXd::Zero(2, 3); // [이전 시간, 이전 악기, 상태] // state
                                                                                 // 0 : 0 <- 0
