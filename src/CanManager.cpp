@@ -200,11 +200,12 @@ void CanManager::flushCanBuffer(int socket)
     setsockopt(socket, SOL_CAN_RAW, CAN_RAW_FILTER, &filter, sizeof(filter));
 }
 
-void CanManager::resetCanFilter(int socket)
-{
-    // 기본 상태로 CAN 필터 재설정
-    setsockopt(socket, SOL_CAN_RAW, CAN_RAW_FILTER, NULL, 0);
-}
+// //안씀
+// void CanManager::resetCanFilter(int socket)
+// {
+//     // 기본 상태로 CAN 필터 재설정
+//     setsockopt(socket, SOL_CAN_RAW, CAN_RAW_FILTER, NULL, 0);
+// }
 
 void CanManager::checkCanPortsStatus()
 {
