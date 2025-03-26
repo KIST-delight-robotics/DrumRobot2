@@ -521,11 +521,7 @@ void CanManager::setMaxonCANFrame(std::shared_ptr<MaxonMotor> maxonMotor, const 
 
             maxonMotor->controlMode = maxonMotor->CST;
         }
-<<<<<<< HEAD
-        //여기에서 토크 계산을 해주고!!!
-=======
->>>>>>> 02c8b530d42facac4ce8ea13b06e4e3d5c8afb14
-
+        
         maxoncmd.setTorqueCANFrame(*maxonMotor, &maxonMotor->sendFrame, calTorque(maxonMotor,mData));
 
         fun.appendToCSV_DATA(fun.file_name, (float)maxonMotor->nodeId + SEND_SIGN, mData.position, calTorque(maxonMotor,mData));
