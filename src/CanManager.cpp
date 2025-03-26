@@ -520,7 +520,7 @@ void CanManager::setMaxonCANFrame(std::shared_ptr<MaxonMotor> maxonMotor, const 
 
             maxonMotor->controlMode = maxonMotor->CST;
         }
-        //여기에서 토그 계산을 해주고!!!
+        //여기에서 토크 계산을 해주고!!!
 
         double err = mData.position - maxonMotor->motorPosition;
         double err_dot = (err - maxonMotor-> pre_err)/DTSECOND;
