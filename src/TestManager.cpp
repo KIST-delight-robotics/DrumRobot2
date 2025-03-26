@@ -27,7 +27,7 @@ void TestManager::SendTestProcess()
             std::cout << "Q[" << i << "] : " << c_MotorAngle[i] << "\t\t" << c_MotorAngle[i] * 180.0 / M_PI << "\n";
             }
         FK(c_MotorAngle); // 현재 q값에 대한 FK 진행
-
+    
         std::cout << "\nSelect Method (1 - 관절각도값 조절, 2 - 좌표값 조절, 3 - 손목 모터, -1 - 나가기) : ";
         std::cin >> method;
 
@@ -388,110 +388,6 @@ tuple <double, int, int, int> TestManager::MaxonHitLoop()
             hitMode = -1;
             return make_tuple(t, repeat, intensity, hitMode);
         }
-    }
-}
-
-int TestManager::makeTestHitTrajectory(float hit_time, int repeat, int intensity, int hitMode)
-{
-    static int i = 0;
-    static int repeatCnt = 0;
-    int n = hit_time / dt;
-    float desiredTorque = 0;
-
-    for (auto &entry : motors)
-    {
-        if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(entry.second))
-        {
-            MaxonData newData;
-            if (hitMode == 1) // 기존 포지션 궤적
-            {
-                maxonMotor->hitting = false; // 타격감지 X
-                if (repeatCnt == repeat)
-                {
-                    q[motorMapping[entry.first]] = makeWristAngle(0, hit_time, i * dt, 1, intensity, maxonMotor);
-                }
-                else if (repeatCnt == 0)
-                {
-                    q[motorMapping[entry.first]] = makeWristAngle(0, hit_time, i * dt, 2, intensity, maxonMotor);
-                }
-                else
-                {
-                    q[motorMapping[entry.first]] = makeWristAngle(0, hit_time, i * dt, 3, intensity, maxonMotor);
-                }
-                newData.mode = maxonMotor->CSP;
-            }
-            // else if (hitMode == 2) // 포지션 + 타격 감지
-            // {
-                
-            //     if (repeatCnt == repeat)
-            //     {
-            //         q[motorMapping[entry.first]] = makeWristAngle(0, hit_time, i * dt, 1, intensity, maxonMotor);
-            //     }
-            //     else if (repeatCnt == 0)
-            //     {
-            //         q[motorMapping[entry.first]] = makeWristAngle(0, hit_time, i * dt, 2, intensity, maxonMotor);
-            //     }
-            //     else
-            //     {
-            //         q[motorMapping[entry.first]] = makeWristAngle(0, hit_time, i * dt, 3, intensity, maxonMotor);
-            //     }
-            //     newData.mode = maxonMotor->CSP;
-            // }
-            // else if (hitMode == 3) // 토크 모드 타격 + 타격 감지
-            // {
-            //     if (repeatCnt == repeat)
-            //     {
-            //         q[motorMapping[entry.first]] = makeWristAngle_CST(0, hit_time, i * dt, 1, intensity, maxonMotor->hitting, maxonMotor->hittingPos);
-            //     }
-            //     else if (repeatCnt == 0)
-            //     {
-            //         q[motorMapping[entry.first]] = makeWristAngle_CST(0, hit_time, i * dt, 2, intensity, maxonMotor->hitting, maxonMotor->hittingPos);
-            //     }
-            //     else
-            //     {
-            //         q[motorMapping[entry.first]] = makeWristAngle_CST(0, hit_time, i * dt, 3, intensity, maxonMotor->hitting, maxonMotor->hittingPos);
-            //     }
-            //     newData.mode = maxonMotor->CSP;
-            // }
-            // else // 포지션 기반 토크 제어
-            // {
-            //     if (repeatCnt == repeat)
-            //     {
-            //         q[motorMapping[entry.first]] = makeWristAngle_TC(0, hit_time, i * dt, 1, intensity, maxonMotor);    
-            //     }
-            //     else if (repeatCnt == 0)
-            //     {
-            //         q[motorMapping[entry.first]] = makeWristAngle_TC(0, hit_time, i * dt, 2, intensity, maxonMotor);
-            //     }
-            //     else
-            //     {
-            //         q[motorMapping[entry.first]] = makeWristAngle_TC(0, hit_time, i * dt, 3, intensity, maxonMotor);
-            //     }
-            //     newData.mode = maxonMotor->CST;
-
-            //     desiredTorque = getDesiredTorque(maxonMotor->jointAngleToMotorPosition(q[motorMapping[entry.first]]), maxonMotor);
-            // }
-            newData.position = maxonMotor->jointAngleToMotorPosition(q[motorMapping[entry.first]]);
-            // newData.torque = desiredTorque;
-            maxonMotor->commandBuffer.push(newData);
-        }
-    }
-    if (i >= n)
-    {
-        i = 0;
-        if (repeatCnt >= repeat)
-        {
-            repeatCnt = 0;
-            hitTest = false;
-        }
-        else
-        {
-            repeatCnt++;
-        }
-    }
-    else
-    {
-        i++;
     }
 }
 
@@ -1240,132 +1136,8 @@ float TestManager::getDesiredTorque(float desiredPosition, shared_ptr<MaxonMotor
     return desiredTorque;
 }
 
-float TestManager::getQuadraticFunc(float startT, float endT, float startAng, float endAng, float t)
-{
-    float result = 0;
-
-    MatrixXd A;
-    MatrixXd b;
-    MatrixXd A_1;
-    MatrixXd sol;
-
-    A.resize(3, 3);
-    b.resize(3, 1);
-
-    A << 1, startT, startT * startT,
-    1, endT, endT * endT,
-    0, 1, 2 * endT;
-    b << startAng, endAng, 0;
-    A_1 = A.inverse();
-    sol = A_1 * b;
-    result = sol(0, 0) + sol(1, 0) * t + sol(2, 0) * t * t;
-
-    return result;
-}
-
-float TestManager::getCubicFunc(float startT, float endT, float startAng, float endAng, float t)
-{
-    float result = 0;
-
-    MatrixXd A;
-    MatrixXd b;
-    MatrixXd A_1;
-    MatrixXd sol;
-
-    A.resize(4, 4);
-    b.resize(4, 1);
-    A << 1, startT, startT * startT, startT * startT * startT,
-        1, endT, endT * endT, endT * endT * endT,
-        0, 1, 2 * startT, 3 * startT * startT,
-        0, 1, 2 * endT, 3 * endT * endT;
-    b << startAng, endAng, 0, 0;
-    A_1 = A.inverse();
-    sol = A_1 * b;
-    result = sol(0, 0) + sol(1, 0) * t + sol(2, 0) * t * t + sol(3, 0) * t * t * t;
-
-    return result;
-}
-
 //////////////////////////////ㅂ바박바박선우여기까지./////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////
-
-void TestManager::MaxonEnable()
-{
-    struct can_frame frame;
-    canManager.setSocketsTimeout(2, 0);
-
-    // 제어 모드 설정
-    for (const auto &motorPair : motors)
-    {
-        std::string name = motorPair.first;
-        std::shared_ptr<GenericMotor> motor = motorPair.second;
-        if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motor))
-        {
-
-            maxoncmd.getOperational(*maxonMotor, &frame);
-            canManager.txFrame(motor, frame);
-
-            usleep(100000);
-            maxoncmd.getEnable(*maxonMotor, &frame);
-            canManager.txFrame(motor, frame);
-
-            maxoncmd.getSync(&frame);
-            canManager.txFrame(motor, frame);
-            std::cout << "Maxon Enabled(1) \n";
-
-            usleep(100000);
-
-            maxoncmd.getQuickStop(*maxonMotor, &frame);
-            canManager.txFrame(motor, frame);
-
-            maxoncmd.getSync(&frame);
-            canManager.txFrame(motor, frame);
-
-            usleep(100000);
-            maxoncmd.getEnable(*maxonMotor, &frame);
-            canManager.txFrame(motor, frame);
-
-            maxoncmd.getSync(&frame);
-            canManager.txFrame(motor, frame);
-
-            std::cout << "Maxon Enabled(2) \n";
-        }
-    }
-};
-
-void TestManager::setMaxonMode(std::string targetMode)
-{
-    struct can_frame frame;
-    canManager.setSocketsTimeout(0, 10000);
-    for (const auto &motorPair : motors)
-    {
-        std::string name = motorPair.first;
-        std::shared_ptr<GenericMotor> motor = motorPair.second;
-        if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motorPair.second))
-        {
-            if (targetMode == "CSV")
-            {
-                maxoncmd.getCSVMode(*maxonMotor, &frame);
-                canManager.sendAndRecv(motor, frame);
-            }
-            else if (targetMode == "CST")
-            {
-                maxoncmd.getCSTMode(*maxonMotor, &frame);
-                canManager.sendAndRecv(motor, frame);
-            }
-            else if (targetMode == "HMM")
-            {
-                maxoncmd.getHomeMode(*maxonMotor, &frame);
-                canManager.sendAndRecv(motor, frame);
-            }
-            else if (targetMode == "CSP")
-            {
-                maxoncmd.getCSPMode(*maxonMotor, &frame);
-                canManager.sendAndRecv(motor, frame);
-            }
-        }
-    }
-}
 
 void TestManager::FK(float theta[])
 {
@@ -1640,25 +1412,6 @@ vector<float> TestManager::makeProfile(float q1[], float q2[], vector<float> &Vm
     // return Qi;
 }
 
-vector<float> TestManager::sinProfile(float q1[], float q2[], float t, float t2)
-{
-    vector<float> Qi;
-
-    for (int i = 0; i < 9; i++)
-    {
-        float val;
-        
-        float A = q2[i] - q1[i];
-        float w = 2.0 * M_PI/t2;
-        
-        val = -0.5*((A * cos(w*t)) - A)+ q1[i];
-
-        Qi.push_back(val);
-    }
-
-    return Qi;
-}
-
 void TestManager::getArr(float arr[])
 {
     const float acc_max = 100.0;    // rad/s^2
@@ -1705,8 +1458,6 @@ void TestManager::getArr(float arr[])
                     TMotorData newData;
                     newData.position = tMotor->jointAngleToMotorPosition(Qi[motorMapping[entry.first]]);
                     newData.mode = tMotor->Position;
-                    //김태황 브레이크
-                    newData.is_break = 0;
                     tMotor->commandBuffer.push(newData);
                     
                     tMotor->finalMotorPosition = newData.position;
@@ -1958,17 +1709,3 @@ VectorXd TestManager::calWaistAngle(VectorXd pR, VectorXd pL)
     return output;
 }
 
-/////////////////////////////////////////////////////////////////////////////////
-/*                              TEST Function                                  */
-/////////////////////////////////////////////////////////////////////////////////
-
-string TestManager::trimWhitespace(const std::string &str)
-{
-    size_t first = str.find_first_not_of(" \t");
-    if (std::string::npos == first)
-    {
-        return str;
-    }
-    size_t last = str.find_last_not_of(" \t");
-    return str.substr(first, (last - first + 1));
-}

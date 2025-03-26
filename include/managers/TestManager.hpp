@@ -38,8 +38,6 @@ public:
     TestManager(State &stateRef, CanManager &canManagerRef, std::map<std::string, std::shared_ptr<GenericMotor>> &motorsRef, USBIO &usbioRef, Functions &funRef);
 
     void SendTestProcess();
-    void MaxonEnable();
-    void setMaxonMode(std::string targetMode);
 
     bool isMaxonEnable = false;
     bool hitTest = 0;
@@ -95,7 +93,6 @@ private:
     void getMotorPos(float c_MotorAngle[]);
     vector<float> makeProfile(float Q1[], float Q2[], vector<float> &Vmax, float acc, float t, float t2);
     vector<float> cal_Vmax(float q1[], float q2[],  float acc, float t2);
-    vector<float> sinProfile(float q1[], float q2[], float t, float t2);
     vector<float> ikfun_final(float pR[], float pL[]);
     void FK(float arr[]);
     void getArr(float arr[]);
@@ -136,11 +133,8 @@ private:
     float makeWristAngle_CST(float t1, float t2, float t, int state, int intensity, bool &hitting, float hittingPos);
     float makeWristAngle_TC(float t1, float t2, float t, int state, int intensity, shared_ptr<MaxonMotor> maxonMotor);
     tuple <double, int, int, int> MaxonHitLoop();
-    int makeTestHitTrajectory(float hit_time, int repeat, int intensity, int hitMode);
     float getDesiredTorque(float desiredPosition, shared_ptr<MaxonMotor> maxonMotor);
-    float getQuadraticFunc(float startT, float endT, float startAng, float endAng, float t); // 2차 함수 계산 함수
-    float getCubicFunc(float startT, float endT, float startAng, float endAng, float t); // 3차 함수 계산 함수
-
+    
     // test table
     void testTable();
     string trimWhitespace(const std::string &str);
