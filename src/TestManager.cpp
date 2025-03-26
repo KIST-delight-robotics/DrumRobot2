@@ -47,7 +47,6 @@ void TestManager::SendTestProcess()
                 std::cout << "[ Current Q Values (Radian / Degree) ]\n";
                 for (int i = 0; i < 10; i++)
                 {
-                    q[i] = c_MotorAngle[i];
                     std::cout << "Q[" << i << "] : " << c_MotorAngle[i] << "\t\t" << c_MotorAngle[i] * 180.0 / M_PI << "\t\t" <<q[i]/ M_PI * 180.0 << "\n";
                     }
                 FK(c_MotorAngle);
