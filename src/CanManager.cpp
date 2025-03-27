@@ -522,9 +522,11 @@ void CanManager::setMaxonCANFrame(std::shared_ptr<MaxonMotor> maxonMotor, const 
             maxonMotor->controlMode = maxonMotor->CST;
         }
 
-        maxoncmd.setTorqueCANFrame(*maxonMotor, &maxonMotor->sendFrame, calTorque(maxonMotor,mData));
+        float targetTorquemNm = calTorque(maxonMotor,mData);
+        int targetTorque = maxoncmd.setTorqueCANFrame(*maxonMotor, &maxonMotor->sendFrame, targetTorquemNm);
 
-        fun.appendToCSV_DATA(fun.file_name, (float)maxonMotor->nodeId + SEND_SIGN, mData.position, calTorque(maxonMotor,mData));
+        fun.appendToCSV_DATA(fun.file_name, (float)maxonMotor->nodeId + SEND_SIGN, mData.position, mData.position - maxonMotor->motorPosition);
+        fun.appendToCSV_DATA("torque input", (float)maxonMotor->nodeId + SEND_SIGN, targetTorquemNm, targetTorque);
     }
     else if (mData.mode == maxonMotor->CSV)
     {
