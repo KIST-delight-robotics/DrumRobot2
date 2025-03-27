@@ -790,7 +790,7 @@ void PathManager::parseHitData(VectorXd t, VectorXd hitR, VectorXd hitL)
     bool detectHit = false;
     double hitTime = t(1);
     int intensity = 0;
-    // 다음 타격 찾기
+
     for (int i = 1; i < t.rows(); i++)
     {
         if (round(10000 * hitDetectionThreshold) < round(10000 * (t(i) - t(0))))
