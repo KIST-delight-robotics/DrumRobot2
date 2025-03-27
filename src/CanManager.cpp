@@ -550,7 +550,7 @@ float CanManager::calTorque(std::shared_ptr<MaxonMotor> maxonMotor, const MaxonD
         float gearRatio = 35.0;
         float stickLengthMeter = 0.17;
         float stickMassKg = 0.47;
-        float div = 20.0;
+        float div = 1.0;
         float gravity_angle = 0;
         for (auto &motor_pair : motors)
         {
