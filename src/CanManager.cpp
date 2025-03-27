@@ -521,7 +521,7 @@ void CanManager::setMaxonCANFrame(std::shared_ptr<MaxonMotor> maxonMotor, const 
 
             maxonMotor->controlMode = maxonMotor->CST;
         }
-        
+
         maxoncmd.setTorqueCANFrame(*maxonMotor, &maxonMotor->sendFrame, calTorque(maxonMotor,mData));
 
         fun.appendToCSV_DATA(fun.file_name, (float)maxonMotor->nodeId + SEND_SIGN, mData.position, calTorque(maxonMotor,mData));
@@ -539,12 +539,12 @@ float CanManager::calTorque(std::shared_ptr<MaxonMotor> maxonMotor, const MaxonD
         double alpha = 0.2;  // 적절한 필터 계수
 
         double err_dot_filtered = alpha * ((err - maxonMotor-> pre_err) / DTSECOND) + (1 - alpha) * err_dot;
-        float torque = mData.kp * err + mData.kd * err_dot_filtered;
+        float torquemNm = mData.kp * err + mData.kd * err_dot_filtered;
         
         maxonMotor-> pre_err = err;
+
         //여기에서 보상을 해주고!!
         // 무게 중력 거리
-        float ratedTorqueNm = 0.0311;
         float gearRatio = 35.0;
         float stickLengthMeter = 0.17;
         float stickMassKg = 0.47;
@@ -576,11 +576,11 @@ float CanManager::calTorque(std::shared_ptr<MaxonMotor> maxonMotor, const MaxonD
         }
         gravity_angle += maxonMotor -> jointAngle;
 
-        float gravityTorque =  stickMassKg * 9.81 * stickLengthMeter * std::sin(gravity_angle) / ratedTorqueNm / gearRatio * 1000.0 / div;
+        float gravityTorqueNm =  stickMassKg * 9.81 * stickLengthMeter * std::sin(gravity_angle) / gearRatio / div;
 
-        torque += gravityTorque;
+        torquemNm += gravityTorqueNm / 1000.0;  // N·m -> mN·m
 
-        return torque;
+        return torquemNm;
 }
 
 void CanManager::setTMotorCANFrame(std::shared_ptr<TMotor> tMotor, const TMotorData &tData)
@@ -943,9 +943,6 @@ bool CanManager::distributeFramesToMotors(bool setlimit)
                     maxonMotor->recieveBuffer.push(frame);
                     
                     fun.appendToCSV_DATA(fun.file_name, (float)maxonMotor->nodeId, maxonMotor->motorPosition, maxonMotor->motorTorque);
-
-                    // fun.appendToCSV_DATA("손목데이터", (float)maxonMotor->nodeId, maxonMotor->motorPosition, maxonMotor->motorTorque);
-
 
                     if (setlimit)
                     {
