@@ -375,14 +375,14 @@ void PathManager::generateTrajectory(MatrixXd &measureMatrix)
 
         trajectoryQueue.push(Pt);
 
-        // // 데이터 저장
-        // std::string fileName;
-        // fileName = "Trajectory_R";
-        // fun.appendToCSV_DATA(fileName, Pt.trajectoryR[0], Pt.trajectoryR[1], Pt.trajectoryR[2]);
-        // fileName = "Trajectory_L";
-        // fun.appendToCSV_DATA(fileName, Pt.trajectoryL[0], Pt.trajectoryL[1], Pt.trajectoryL[2]);
-        // fileName = "Wrist";
-        // fun.appendToCSV_DATA(fileName, Pt.wristAngleR, Pt.wristAngleL, 0.0);
+        // 데이터 저장
+        std::string fileName;
+        fileName = "Trajectory_R";
+        fun.appendToCSV_DATA(fileName, Pt.trajectoryR[0], Pt.trajectoryR[1], Pt.trajectoryR[2]);
+        fileName = "Trajectory_L";
+        fun.appendToCSV_DATA(fileName, Pt.trajectoryL[0], Pt.trajectoryL[1], Pt.trajectoryL[2]);
+        fileName = "Wrist";
+        fun.appendToCSV_DATA(fileName, Pt.wristAngleR, Pt.wristAngleL, 0.0);
 
         if (i == 0)
         {
@@ -806,6 +806,7 @@ void PathManager::parseHitData(VectorXd t, VectorXd hitR, VectorXd hitL)
             break;
         }
     }
+    
 
     if (hitR(0) == 0)  // 현재 줄이 타격이 아님
     {
