@@ -764,8 +764,29 @@ void MaxonCommandParser::getCSTMode(MaxonMotor &motor, struct can_frame *frame)
     frame->data[7] = 0x00;
 }
 
-void MaxonCommandParser::setTorqueCANFrame(MaxonMotor &motor, struct can_frame *frame, int targetTorque)
+int MaxonCommandParser::setTorqueCANFrame(MaxonMotor &motor, struct can_frame *frame, int targetTorquemNm)
 {
+    // Motor rated torque 값 (mN·m)
+    const float motorRatedTorquemNm = 31.052;
+    const float maxTorquemNm = 293.8;
+
+    // Torque actual value는 천분의 일 단위이므로, 실제 토크 값은 (torqueActualValue / 1000) * motorRatedTorqueNm
+    int targetTorque;
+
+    // saturation
+    if (targetTorquemNm > maxTorquemNm)
+    {
+        targetTorque = static_cast<int>(maxTorquemNm/motorRatedTorquemNm*1000.0);
+    }
+    else if (targetTorquemNm < -1.0*maxTorquemNm)
+    {
+        targetTorque = static_cast<int>(-1.0*maxTorquemNm/motorRatedTorquemNm*1000.0);
+    }
+    else
+    {
+        targetTorque = static_cast<int>(targetTorquemNm/motorRatedTorquemNm*1000.0);
+    }
+
     unsigned char torByte0 = targetTorque & 0xFF;        // 하위 8비트
     unsigned char torByte1 = (targetTorque >> 8) & 0xFF; // 다음 8비트
 
@@ -782,6 +803,8 @@ void MaxonCommandParser::setTorqueCANFrame(MaxonMotor &motor, struct can_frame *
     frame->data[5] = 0x00;
     frame->data[6] = 0x00;
     frame->data[7] = 0x00;
+
+    return targetTorque;
 }
 
 void MaxonCommandParser::setTargetTorque(MaxonMotor &motor, struct can_frame *frame, int targetTorque)

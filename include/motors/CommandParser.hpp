@@ -99,7 +99,7 @@ public:
 
     // CST 모드 관련 명령 구성 메서드.
     void getCSTMode(MaxonMotor &motor, struct can_frame *frame);
-    void setTorqueCANFrame(MaxonMotor &motor, struct can_frame *frame, int targetTorque);
+    int setTorqueCANFrame(MaxonMotor &motor, struct can_frame *frame, int targetTorquemNm);
     void setTargetTorque(MaxonMotor &motor, struct can_frame *frame, int targetTorque);
 };
 
