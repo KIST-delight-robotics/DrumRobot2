@@ -43,6 +43,7 @@ public:
 
     // 명령의 최종 위치 저장
     float finalMotorPosition;
+    float prevTorque;
 
     std::queue<can_frame> sendBuffer;
     std::queue<can_frame> recieveBuffer;
