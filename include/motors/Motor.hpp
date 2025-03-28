@@ -43,6 +43,7 @@ public:
 
     // 명령의 최종 위치 저장
     float finalMotorPosition;
+    float prevTorque;
 
     std::queue<can_frame> sendBuffer;
     std::queue<can_frame> recieveBuffer;
@@ -136,6 +137,9 @@ public:
     const int CST = 3;  // Cyclic Sync Torque Mode
 
     int controlMode = CSP;    // 현재 제어 모드
+
+    // 1ms 궤적 만들기
+    float pre_q;
 
     // 타격 감지용 변수
     queue<double> positionValues; // 포지션 값 저장을 위한 queue
