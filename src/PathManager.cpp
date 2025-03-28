@@ -397,19 +397,14 @@ void PathManager::solveIKandPushCommand()
 
     makeWaistCoefficient();
 
-    makeHitCoefficient();
-
     for (int i = 0; i < n; i++)
     {
         // waist angle
         double q0 = getWaistAngle(i);
 
         // solve IK
-        VectorXd q = solveIK(q0);
-
-        // wrist (hit)
-        // VectorXd Kpp = generateHit(q, i);   // Kpp : Kp 에 곱해지는 값
-        VectorXd Kpp = VectorXd::Ones(9);
+        VectorXd q;
+        VectorXd Kpp  = solveIK(q, q0); // solveIK 이름이 맘에 안듬 (이인우)
 
         // push command buffer
         pushCommandBuffer(q, Kpp);
@@ -1413,14 +1408,14 @@ double PathManager::getTheta(float l1, double theta)
     return theta_m;
 }
 
-VectorXd PathManager::solveIK(double q0)
+VectorXd PathManager::solveIK(VectorXd &q, double q0)
 {
-    VectorXd q;
     Position nextP;
 
     nextP = trajectoryQueue.front();
     trajectoryQueue.pop();
 
+    q.resize(9);
     q = IKFixedWaist(nextP.trajectoryR, nextP.trajectoryL, q0, nextP.drumWristAngleR, nextP.drumWristAngleL);
     
     q(4) += nextP.elbowAngleR;
@@ -1428,7 +1423,7 @@ VectorXd PathManager::solveIK(double q0)
     q(7) += nextP.wristAngleR;
     q(8) += nextP.wristAngleL;
 
-    return q;
+    return nextP.Kpp;
 }
 
 VectorXd PathManager::IKFixedWaist(VectorXd pR, VectorXd pL, double theta0, double theta7, double theta8)

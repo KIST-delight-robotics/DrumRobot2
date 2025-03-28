@@ -167,14 +167,14 @@ private:
         double wristAngleR;  ///> 오른팔 손목 관절에 더해줄 각도
         double wristAngleL;  ///> 왼팔 손목 관절에 더해줄 각도
 
-        VectorXd Kpp; 
+        VectorXd Kpp;       ///> Kpp : Kp 에 곱해지는 값
     }Position;
     queue<Position> trajectoryQueue;
 
     double roundSum = 0;    ///< 5ms 스텝 단위에서 누적되는 오차 보상
 
     // 악보 한 줄의 데이터 저장한 Matrix
-    // [명령 개수 / q0 최적값 / q0 min / q0 max / t1 / t2 / state R / state L / intensity R / intensity L]
+    // [명령 개수 / q0 최적값 / q0 min / q0 max]
     MatrixXd lineData;
 
     pair<VectorXd, VectorXd> getTargetPosition(VectorXd inst_vector);
@@ -196,7 +196,7 @@ private:
     /////////////////////////////////////////////////////////////////////////// Solve IK
     float getLength(double theta);
     double getTheta(float l1, double theta);
-    VectorXd solveIK(double q0);
+    VectorXd solveIK(VectorXd &q, double q0);
     VectorXd IKFixedWaist(VectorXd pR, VectorXd pL, double theta0, double theta7, double theta8);
 
     /////////////////////////////////////////////////////////////////////////// Wrist (Hit)
