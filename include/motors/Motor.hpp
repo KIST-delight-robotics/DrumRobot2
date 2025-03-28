@@ -137,6 +137,9 @@ public:
 
     int controlMode = CSP;    // 현재 제어 모드
 
+    // 1ms 궤적 만들기
+    float pre_q;
+
     // 타격 감지용 변수
     queue<double> positionValues; // 포지션 값 저장을 위한 queue
     int maxIndex = 5;

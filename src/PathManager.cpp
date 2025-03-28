@@ -246,6 +246,7 @@ void PathManager::pushAddStancePath(string flagName)
 
                         maxonMotor->finalMotorPosition = newData.position;
                     }
+                    maxonMotor->pre_q = Qt[can_id];
                 }
             }
         }
@@ -274,6 +275,7 @@ void PathManager::pushAddStancePath(string flagName)
                         newData.mode = maxonMotor->CSP;
                         maxonMotor->commandBuffer.push(newData);
                     }
+                    maxonMotor->pre_q = Qt[can_id];
                 }
             }
         }
@@ -2025,7 +2027,8 @@ void PathManager::pushCommandBuffer(VectorXd Qi, VectorXd Kpp)
             for (int i = 0; i < 5; i++)
             {
                 MaxonData newData;
-                newData.position = maxonMotor->jointAngleToMotorPosition(Qi[can_id]);
+                float Qi1ms = ((i+1)*Qi[can_id] + (4-i)*maxonMotor->pre_q)/5.0;
+                newData.position = maxonMotor->jointAngleToMotorPosition(Qi1ms);
                 if (MaxonMode == "CST")
                 {
                     newData.mode = maxonMotor->CST;
@@ -2043,6 +2046,7 @@ void PathManager::pushCommandBuffer(VectorXd Qi, VectorXd Kpp)
 
                 maxonMotor->finalMotorPosition = newData.position;
             }
+            maxonMotor->pre_q = Qi[can_id];
         }
     }
 }
