@@ -229,7 +229,7 @@ void PathManager::pushAddStancePath(string flagName)
                     TMotorData newData;
                     newData.position = tMotor->jointAngleToMotorPosition(Qt[can_id]);
                     newData.mode = tMotor->Position;
-                    newData.is_break = 0;
+                    newData.is_brake = 0;
                     tMotor->commandBuffer.push(newData);
 
                     tMotor->finalMotorPosition = newData.position;
@@ -261,7 +261,7 @@ void PathManager::pushAddStancePath(string flagName)
                     TMotorData newData;
                     newData.position = tMotor->jointAngleToMotorPosition(Q1[can_id]);
                     newData.mode = tMotor->Position;
-                    newData.is_break = 0;
+                    newData.is_brake = 0;
                     tMotor->commandBuffer.push(newData);
                 }
                 else if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(entry.second))
@@ -436,7 +436,7 @@ void PathManager::solveIKandPushCommand()
     }
     else if (lineData.rows() == 1)  // 마지막 줄에서 모든 브레이크 정리
     {
-        clearBrake();
+        // clearBrake();           // 이제 실제 끝나는 시간 아님
         endOfPlayCommand = true;   // DrumRobot 에게 끝났음 알리기
     }
 }
@@ -2007,12 +2007,17 @@ void PathManager::pushCommandBuffer(VectorXd Qi, VectorXd Kpp)
             newData.position = tMotor->jointAngleToMotorPosition(Qi[can_id]);
             newData.mode = tMotor->Position;
 
-            if (can_id == 0) {
+            if (can_id == 0)
+            {
                 float diff = std::abs(newData.position - prevWaistPos);
                 prevWaistPos = newData.position; 
-                newData.is_break = (diff < 0.01 * M_PI / 180.0) ? 1 : 0;
-            } else {
-                newData.is_break = 0;
+                newData.is_brake = (diff < 0.01 * M_PI / 180.0) ? 1 : 0;
+
+                fun.appendToCSV_DATA("brake input", newData.position, newData.is_brake, 0);
+            }
+            else
+            {
+                newData.is_brake = 0;
             }
 
             tMotor->commandBuffer.push(newData);
