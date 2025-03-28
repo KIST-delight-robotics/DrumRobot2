@@ -69,7 +69,7 @@ struct TMotorData
 {
     float position;
     int mode;
-    int is_break;
+    int is_brake;
 };
 
 class TMotor : public GenericMotor

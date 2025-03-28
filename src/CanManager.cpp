@@ -526,7 +526,7 @@ void CanManager::setMaxonCANFrame(std::shared_ptr<MaxonMotor> maxonMotor, const 
         int targetTorque = maxoncmd.setTorqueCANFrame(*maxonMotor, &maxonMotor->sendFrame, targetTorquemNm);
 
         fun.appendToCSV_DATA(fun.file_name, (float)maxonMotor->nodeId + SEND_SIGN, mData.position, mData.position - maxonMotor->motorPosition);
-        fun.appendToCSV_DATA("torque input", (float)maxonMotor->nodeId + SEND_SIGN, targetTorquemNm, targetTorque);
+        fun.appendToCSV_DATA("torque input", (float)maxonMotor->nodeId, targetTorquemNm, targetTorque);
     }
     else if (mData.mode == maxonMotor->CSV)
     {
@@ -550,7 +550,7 @@ float CanManager::calTorque(std::shared_ptr<MaxonMotor> maxonMotor, const MaxonD
         float gearRatio = 35.0;
         float stickLengthMeter = 0.17;
         float stickMassKg = 0.47;
-        float div = 1.0;
+        float div = 10.0;
         float gravity_angle = 0;
         for (auto &motor_pair : motors)
         {
@@ -580,7 +580,7 @@ float CanManager::calTorque(std::shared_ptr<MaxonMotor> maxonMotor, const MaxonD
 
         float gravityTorqueNm =  stickMassKg * 9.81 * stickLengthMeter * std::sin(gravity_angle) / gearRatio / div;
 
-        torquemNm += gravityTorqueNm / 1000.0;  // N·m -> mN·m
+        torquemNm += gravityTorqueNm * 1000.0;  // N·m -> mN·m
 
         return torquemNm;
 }
@@ -652,8 +652,8 @@ bool CanManager::setCANFrame(std::map<std::string, bool>& fixFlags, int cycleCou
                     tMotor->commandBuffer.pop();
                 }
 
-                //isbreak가 1이면 브레이크 켜줌 0이면 꺼줌
-                usbio.setUSBIO4761(0, tData.is_break == 1); //세팅
+                //isbrake가 1이면 브레이크 켜줌 0이면 꺼줌
+                usbio.setUSBIO4761(0, tData.is_brake == 1); //세팅
                 usbio.outputUSBIO4761();                    //실행
 
                 setTMotorCANFrame(tMotor, tData);
