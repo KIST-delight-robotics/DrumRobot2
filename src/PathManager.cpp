@@ -88,8 +88,8 @@ void PathManager::getDrumPositoin()
     wristAnglesL.resize(1, 9);
 
     //              S                  FT                  MT                  HT                  HH                  R                   RC                 LC
-    wristAnglesR << 25.0*M_PI/180.0,   25.0*M_PI/180.0,    15.0*M_PI/180.0,    15.0*M_PI/180.0,    10.0*M_PI/180.0,    15.0*M_PI/180.0,    10.0*M_PI/180.0,    10.0*M_PI/180.0, 0;
-    wristAnglesL << 25.0*M_PI/180.0,   25.0*M_PI/180.0,    15.0*M_PI/180.0,    15.0*M_PI/180.0,    10.0*M_PI/180.0,    15.0*M_PI/180.0,    10.0*M_PI/180.0,    10.0*M_PI/180.0, 0;
+    wristAnglesR << 25.0*M_PI/180.0,   25.0*M_PI/180.0,     0.0*M_PI/180.0,     0.0*M_PI/180.0,    10.0*M_PI/180.0,    15.0*M_PI/180.0,    10.0*M_PI/180.0,    10.0*M_PI/180.0, 0;
+    wristAnglesL << 25.0*M_PI/180.0,   25.0*M_PI/180.0,     0.0*M_PI/180.0,     0.0*M_PI/180.0,    10.0*M_PI/180.0,    15.0*M_PI/180.0,    10.0*M_PI/180.0,    10.0*M_PI/180.0, 0;
     // wristAnglesL << 0, 0, 0, 0, 0, 0, 0, 0, 0;
 }
 
@@ -319,6 +319,9 @@ void PathManager::generateTrajectory(MatrixXd &measureMatrix)
     float n, sR, sL;
     float dt = canManager.DTSECOND;
 
+    int stateR = hitState(0, 1);
+    int stateL = hitState(1, 1);
+
     // parse
     parseMeasure(measureMatrix);
 
@@ -370,16 +373,20 @@ void PathManager::generateTrajectory(MatrixXd &measureMatrix)
         // 각 관절에 더해줄 각도
         Pt = generateHit(tHitR, tHitL, Pt);
 
+        getHitTime(Pt, stateR, stateL, tHitR, tHitL);
+
+        cout << Pt.isHitR << Pt.isHitL << "\n";
+
         trajectoryQueue.push(Pt);
 
-        // 데이터 저장
+        // // 데이터 저장
         std::string fileName;
-        fileName = "Trajectory_R";
-        fun.appendToCSV_DATA(fileName, Pt.trajectoryR[0], Pt.trajectoryR[1], Pt.trajectoryR[2]);
-        fileName = "Trajectory_L";
-        fun.appendToCSV_DATA(fileName, Pt.trajectoryL[0], Pt.trajectoryL[1], Pt.trajectoryL[2]);
+        // fileName = "Trajectory_R";
+        // fun.appendToCSV_DATA(fileName, Pt.trajectoryR[0], Pt.trajectoryR[1], Pt.trajectoryR[2]);
+        // fileName = "Trajectory_L";
+        // fun.appendToCSV_DATA(fileName, Pt.trajectoryL[0], Pt.trajectoryL[1], Pt.trajectoryL[2]);
         fileName = "Wrist";
-        fun.appendToCSV_DATA(fileName, Pt.wristAngleR, Pt.wristAngleL, 0.0);
+        fun.appendToCSV_DATA(fileName, Pt.wristAngleR, Pt.wristAngleL, Pt.isHitR);
 
         if (i == 0)
         {
@@ -1986,6 +1993,33 @@ PathManager::Position PathManager::generateHit(float tHitR, float tHitL, Positio
     return Pt;
 }
 
+void PathManager::getHitTime(Position &Pt, int stateR, int stateL, float tHitR, float tHitL)
+{
+    if (stateR == 2 || stateR == 3)
+    {
+        if (tHitR <= wristTimeR.liftTime)
+        {
+            Pt.isHitR = false;
+        }
+        else
+        {
+            Pt.isHitR = true;
+        }
+    }
+
+    if (stateL == 2 || stateL == 3)
+    {
+        if (tHitL <= wristTimeL.liftTime)
+        {
+            Pt.isHitL = false;
+        }
+        else
+        {
+            Pt.isHitL = true;
+        }
+    }
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /*                           Push Command Buffer                              */
 ////////////////////////////////////////////////////////////////////////////////
@@ -2004,11 +2038,13 @@ void PathManager::pushCommandBuffer(VectorXd Qi, VectorXd Kpp)
 
             if (can_id == 0)
             {
-                float diff = std::abs(newData.position - prevWaistPos);
+                float alpha = 0.5;
+                float diff = alpha*preDiff + (1 - alpha)*std::abs(newData.position - prevWaistPos);
                 prevWaistPos = newData.position; 
                 newData.is_brake = (diff < 0.01 * M_PI / 180.0) ? 1 : 0;
+                preDiff = diff;
 
-                fun.appendToCSV_DATA("brake input", newData.position, newData.is_brake, 0);
+                fun.appendToCSV_DATA("brake input", newData.position, newData.is_brake, diff);
             }
             else
             {

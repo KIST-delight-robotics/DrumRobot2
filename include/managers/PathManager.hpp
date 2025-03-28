@@ -168,6 +168,9 @@ private:
         double wristAngleL;  ///> 왼팔 손목 관절에 더해줄 각도
 
         VectorXd Kpp;       ///> Kpp : Kp 에 곱해지는 값
+
+        bool isHitR = false;
+        bool isHitL = false;
     }Position;
     queue<Position> trajectoryQueue;
 
@@ -242,13 +245,16 @@ private:
     double makeElbowAngle(double t, elbowTime eT, MatrixXd coefficientMatrix);
     double makeWristAngle(double t, wristTime wT, MatrixXd coefficientMatrix);
     PathManager::Position generateHit(float tHitR, float tHitL, Position &Pt);
+    void getHitTime(Position &Pt, int stateR, int stateL, float tHitR, float tHitL);
 
     /////////////////////////////////////////////////////////////////////////// Push Command Buffer
     void pushCommandBuffer(VectorXd Qi, VectorXd Kpp);
 
     /////////////////////////////////////////////////////////////////////////// brake
     void clearBrake(); // 모든 brake끄기
-    float prevWaistPos = 0.0; // 브레이크 판단에 사용될 허리 전 값
+    float prevWaistPos = 0.0;   // 브레이크 판단에 사용될 허리 전 값
+    float preDiff = 0.0;        // 브레이크 판단(필터)에 사용될 전 허리 차이값
+
     /////////////////////////////////////////////////////////////////////////// Detect Collision
     int aNumOfLine = 0;
     string trimWhitespace(const std::string &str);
