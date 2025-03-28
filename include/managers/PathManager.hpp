@@ -166,6 +166,8 @@ private:
         double elbowAngleL;  ///> 왼팔 팔꿈치 관절에 더해줄 각도
         double wristAngleR;  ///> 오른팔 손목 관절에 더해줄 각도
         double wristAngleL;  ///> 왼팔 손목 관절에 더해줄 각도
+
+        VectorXd Kpp; 
     }Position;
     queue<Position> trajectoryQueue;
 
@@ -239,7 +241,7 @@ private:
     MatrixXd makeWristCoefficient(int state, wristTime wT, wristAngle wA);
     double makeElbowAngle(double t, elbowTime eT, MatrixXd coefficientMatrix);
     double makeWristAngle(double t, wristTime wT, MatrixXd coefficientMatrix);
-    VectorXd generateHit(VectorXd &q, int index);
+    PathManager::Position generateHit(float tHitR, float tHitL, Position &Pt);
 
     /////////////////////////////////////////////////////////////////////////// Push Command Buffer
     void pushCommandBuffer(VectorXd Qi, VectorXd Kpp);

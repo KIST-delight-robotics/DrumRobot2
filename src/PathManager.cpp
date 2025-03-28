@@ -368,10 +368,7 @@ void PathManager::generateTrajectory(MatrixXd &measureMatrix)
         float tHitL = dt * i + line_t1 - hitL_t1;
 
         // 각 관절에 더해줄 각도
-        Pt.elbowAngleR = makeElbowAngle(tHitR, elbowTimeR, elbowCoefficientR);
-        Pt.elbowAngleL = makeElbowAngle(tHitL, elbowTimeL, elbowCoefficientL);
-        Pt.wristAngleR = makeWristAngle(tHitR, wristTimeR, wristCoefficientR);
-        Pt.wristAngleL = makeWristAngle(tHitL, wristTimeL, wristCoefficientL);
+        Pt = generateHit(tHitR, tHitL, Pt);
 
         trajectoryQueue.push(Pt);
 
@@ -1961,45 +1958,37 @@ double PathManager::makeWristAngle(double t, wristTime wT, MatrixXd coefficientM
     }
 }
 
-VectorXd PathManager::generateHit(VectorXd &q, int index)
+PathManager::Position PathManager::generateHit(float tHitR, float tHitL, Position &Pt)
 {
-    VectorXd Kpp = VectorXd::Zero(9);   // Kp 에 곱해지는 값
-
-    double dt = canManager.DTSECOND;
-    double t = dt * index;
+    Pt.Kpp = VectorXd::Zero(9);   // Kp 에 곱해지는 값
 
     // 각 관절에 더해줌
-    double elbowAngleR = makeElbowAngle(t, elbowTimeR, elbowCoefficientR);
-    double elbowAngleL = makeElbowAngle(t, elbowTimeL, elbowCoefficientL);
-    double wristAngleR = makeWristAngle(t, wristTimeR, wristCoefficientR);
-    double wristAngleL = makeWristAngle(t, wristTimeL, wristCoefficientL);
-
-    q(4) += elbowAngleR;
-    q(6) += elbowAngleL;
-    q(7) += wristAngleR;
-    q(8) += wristAngleL;
+    Pt.elbowAngleR = makeElbowAngle(tHitR, elbowTimeR, elbowCoefficientR);
+    Pt.elbowAngleL = makeElbowAngle(tHitL, elbowTimeL, elbowCoefficientL);
+    Pt.wristAngleR = makeWristAngle(tHitR, wristTimeR, wristCoefficientR);
+    Pt.wristAngleL = makeWristAngle(tHitL, wristTimeL, wristCoefficientL);
 
     // Kp : 위치에 따라 감소
     wristAngle wA;
-    if (wristAngleR >= wA.stayAngle)
+    if (Pt.wristAngleR >= wA.stayAngle)
     {
-        Kpp(7) = 1;
+        Pt.Kpp(7) = 1;
     }
     else
     {
-        Kpp(7) = 1 - Kppp * (wA.stayAngle - wristAngleR) / (wA.stayAngle + 5.0 * M_PI / 180.0);
+        Pt.Kpp(7) = 1 - Kppp * (wA.stayAngle - Pt.wristAngleR) / (wA.stayAngle + 5.0 * M_PI / 180.0);
     }
 
-    if (wristAngleL >= wA.stayAngle)
+    if (Pt.wristAngleL >= wA.stayAngle)
     {
-        Kpp(8) = 1;
+       Pt.Kpp(8) = 1;
     }
     else
     {
-        Kpp(8) = 1 - Kppp * (wA.stayAngle - wristAngleL) / (wA.stayAngle + 5.0 * M_PI / 180.0);
+        Pt.Kpp(8) = 1 - Kppp * (wA.stayAngle - Pt.wristAngleL) / (wA.stayAngle + 5.0 * M_PI / 180.0);
     }
 
-    return Kpp;
+    return Pt;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
