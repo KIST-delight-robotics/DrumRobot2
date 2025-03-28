@@ -199,7 +199,7 @@ private:
     /////////////////////////////////////////////////////////////////////////// Solve IK
     float getLength(double theta);
     double getTheta(float l1, double theta);
-    VectorXd solveIK(VectorXd &q, double q0);
+    PathManager::Position solveIK(VectorXd &q, double q0);
     VectorXd IKFixedWaist(VectorXd pR, VectorXd pL, double theta0, double theta7, double theta8);
 
     /////////////////////////////////////////////////////////////////////////// Wrist (Hit)
@@ -248,7 +248,7 @@ private:
     void getHitTime(Position &Pt, int stateR, int stateL, float tHitR, float tHitL);
 
     /////////////////////////////////////////////////////////////////////////// Push Command Buffer
-    void pushCommandBuffer(VectorXd Qi, VectorXd Kpp);
+    void pushCommandBuffer(VectorXd Qi, VectorXd Kpp, bool isHitR, bool isHitL);
 
     /////////////////////////////////////////////////////////////////////////// brake
     void clearBrake(); // 모든 brake끄기

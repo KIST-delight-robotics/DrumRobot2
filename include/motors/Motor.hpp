@@ -113,6 +113,9 @@ struct MaxonData
     int mode;
     int kp;
     int kd;
+
+    bool isHitR;
+    bool isHitL;
 };
 
 class MaxonMotor : public GenericMotor

@@ -413,10 +413,10 @@ void PathManager::solveIKandPushCommand()
 
         // solve IK
         VectorXd q;
-        VectorXd Kpp  = solveIK(q, q0); // solveIK 이름이 맘에 안듬 (이인우)
+        Position Pt = solveIK(q, q0); // solveIK 이름이 맘에 안듬 (이인우)
 
         // push command buffer
-        pushCommandBuffer(q, Kpp);
+        pushCommandBuffer(q, Pt.Kpp, Pt.isHitR, Pt.isHitL);
 
         // // 데이터 기록
         // for (int i = 0; i < 9; i++)
@@ -1417,7 +1417,7 @@ double PathManager::getTheta(float l1, double theta)
     return theta_m;
 }
 
-VectorXd PathManager::solveIK(VectorXd &q, double q0)
+PathManager::Position PathManager::solveIK(VectorXd &q, double q0)
 {
     Position nextP;
 
@@ -1432,7 +1432,7 @@ VectorXd PathManager::solveIK(VectorXd &q, double q0)
     q(7) += nextP.wristAngleR;
     q(8) += nextP.wristAngleL;
 
-    return nextP.Kpp;
+    return nextP;
 }
 
 VectorXd PathManager::IKFixedWaist(VectorXd pR, VectorXd pL, double theta0, double theta7, double theta8)
@@ -2026,7 +2026,7 @@ void PathManager::getHitTime(Position &Pt, int stateR, int stateL, float tHitR, 
 /*                           Push Command Buffer                              */
 ////////////////////////////////////////////////////////////////////////////////
 
-void PathManager::pushCommandBuffer(VectorXd Qi, VectorXd Kpp)
+void PathManager::pushCommandBuffer(VectorXd Qi, VectorXd Kpp, bool isHitR, bool isHitL)
 {
     for (auto &entry : motors)
     {
@@ -2077,6 +2077,11 @@ void PathManager::pushCommandBuffer(VectorXd Qi, VectorXd Kpp)
                     newData.kp = 0;
                     newData.kd = 0;
                 }
+
+                newData.isHitR = isHitR;
+                newData.isHitL = isHitL;
+
+                // fun.appendToCSV_DATA("isHit", isHitR, isHitL, 0);
                 
                 maxonMotor->commandBuffer.push(newData);
 
