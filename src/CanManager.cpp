@@ -200,13 +200,6 @@ void CanManager::flushCanBuffer(int socket)
     setsockopt(socket, SOL_CAN_RAW, CAN_RAW_FILTER, &filter, sizeof(filter));
 }
 
-// //안씀
-// void CanManager::resetCanFilter(int socket)
-// {
-//     // 기본 상태로 CAN 필터 재설정
-//     setsockopt(socket, SOL_CAN_RAW, CAN_RAW_FILTER, NULL, 0);
-// }
-
 void CanManager::checkCanPortsStatus()
 {
     for (const auto &ifname : this->ifnames)
@@ -542,7 +535,17 @@ float CanManager::calTorque(std::shared_ptr<MaxonMotor> maxonMotor, const MaxonD
 
         double err_dot_filtered = alpha * ((err - maxonMotor-> pre_err) / DTSECOND) + (1 - alpha) * err_dot;
         float torquemNm = mData.kp * err + mData.kd * err_dot_filtered;
-        
+        if (mData.isHitR || mData.isHitL)
+        {
+            if (torquemNm > 0)
+            {
+                torquemNm = maxonMotor->prevTorque; 
+            }
+            else
+            {
+                maxonMotor -> prevTorque = torquemNm;
+            }
+        }
         maxonMotor-> pre_err = err;
 
         //여기에서 보상을 해주고!!
@@ -575,7 +578,10 @@ float CanManager::calTorque(std::shared_ptr<MaxonMotor> maxonMotor, const MaxonD
                     }
                 }
             }
+
         }
+
+        
         gravity_angle += maxonMotor -> jointAngle;
 
         float gravityTorqueNm =  stickMassKg * 9.81 * stickLengthMeter * std::sin(gravity_angle) / gearRatio / div;
