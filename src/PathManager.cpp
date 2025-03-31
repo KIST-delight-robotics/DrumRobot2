@@ -377,7 +377,7 @@ void PathManager::generateTrajectory(MatrixXd &measureMatrix)
 
         getHitTime(Pt, stateR, stateL, tHitR, tHitL);
 
-        cout << Pt.isHitR << Pt.isHitL << "\n";
+        // cout << Pt.isHitR << Pt.isHitL << "\n";
 
         trajectoryQueue.push(Pt);
 
@@ -865,7 +865,10 @@ void PathManager::parseHitData(VectorXd t, VectorXd hitR, VectorXd hitL)
     {
         if (round(10000 * hitDetectionThreshold) < round(10000 * (t(i) - t(0))))
         {
-            break;
+            if (i != 1)     // 이인우 : 첫 줄은 무조건 읽도록 (임시) 
+            {
+                break;
+            }
         }
 
         if (hitL(i) != 0)
