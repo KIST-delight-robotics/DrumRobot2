@@ -518,7 +518,7 @@ void CanManager::setMaxonCANFrame(std::shared_ptr<MaxonMotor> maxonMotor, const 
         float targetTorquemNm = calTorque(maxonMotor,mData);
         int targetTorque = maxoncmd.setTorqueCANFrame(*maxonMotor, &maxonMotor->sendFrame, targetTorquemNm);
 
-        fun.appendToCSV_DATA(fun.file_name, (float)maxonMotor->nodeId + SEND_SIGN, mData.position, mData.position - maxonMotor->motorPosition);
+        fun.appendToCSV_DATA(fun.file_name, (float)maxonMotor->nodeId + SEND_SIGN, mData.position, targetTorque);
         fun.appendToCSV_DATA("torque input", (float)maxonMotor->nodeId, targetTorquemNm, targetTorque);
     }
     else if (mData.mode == maxonMotor->CSV)
@@ -535,17 +535,39 @@ float CanManager::calTorque(std::shared_ptr<MaxonMotor> maxonMotor, const MaxonD
 
         double err_dot_filtered = alpha * ((err - maxonMotor-> pre_err) / DTSECOND) + (1 - alpha) * err_dot;
         float torquemNm = mData.kp * err + mData.kd * err_dot_filtered;
-        if (mData.isHitR || mData.isHitL)
-        {
-            if (torquemNm > 0)
-            {
-                torquemNm = maxonMotor->prevTorque; 
-            }
-            else
-            {
-                maxonMotor -> prevTorque = torquemNm;
-            }
-        }
+
+        // if (maxonMotor -> myName == "R_wrist")
+        // {
+        //     if (mData.isHitR)
+        //     {
+        //         if (torquemNm > 0)
+        //         {
+        //             torquemNm = maxonMotor->prevTorque; 
+        //         }
+        //         else if (torquemNm < 0)
+        //         {
+        //             maxonMotor -> prevTorque = torquemNm;
+        //         }
+        //     }
+        // }
+        
+        // else if (maxonMotor -> myName == "L_wrist")
+        // {
+        //     if (mData.isHitL)
+        //     {
+        //         if (torquemNm > 0)
+        //         {
+        //             torquemNm = maxonMotor->prevTorque; 
+        //         }
+        //         else if (torquemNm < 0)
+        //         {
+        //             maxonMotor -> prevTorque = torquemNm;
+        //         }
+        //     }
+        // }
+
+        //fun.appendToCSV_DATA("isHitRL", (float)maxonMotor->nodeId, mData.isHitR, mData.isHitL);
+
         maxonMotor-> pre_err = err;
 
         //여기에서 보상을 해주고!!

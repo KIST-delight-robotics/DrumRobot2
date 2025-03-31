@@ -321,9 +321,6 @@ void PathManager::generateTrajectory(MatrixXd &measureMatrix)
     float n, sR, sL;
     float dt = canManager.DTSECOND;
 
-    int stateR = hitState(0, 1);
-    int stateL = hitState(1, 1);
-
     // parse
     parseMeasure(measureMatrix);
 
@@ -353,6 +350,9 @@ void PathManager::generateTrajectory(MatrixXd &measureMatrix)
     // 타격 궤적 만들기
     makeHitCoefficient();
 
+    int stateR = hitState(0, 1);
+    int stateL = hitState(1, 1);
+
     for (int i = 0; i < n; i++)
     {
         Position Pt;
@@ -377,8 +377,6 @@ void PathManager::generateTrajectory(MatrixXd &measureMatrix)
 
         getHitTime(Pt, stateR, stateL, tHitR, tHitL);
 
-        cout << Pt.isHitR << Pt.isHitL << "\n";
-
         trajectoryQueue.push(Pt);
 
         // // 데이터 저장
@@ -388,7 +386,7 @@ void PathManager::generateTrajectory(MatrixXd &measureMatrix)
         // fileName = "Trajectory_L";
         // fun.appendToCSV_DATA(fileName, Pt.trajectoryL[0], Pt.trajectoryL[1], Pt.trajectoryL[2]);
         fileName = "Wrist";
-        fun.appendToCSV_DATA(fileName, Pt.wristAngleR, Pt.wristAngleL, Pt.isHitR);
+        fun.appendToCSV_DATA(fileName, Pt.wristAngleR, Pt.wristAngleL, Pt.isHitL);
 
         if (i == 0)
         {
@@ -1997,6 +1995,8 @@ PathManager::Position PathManager::generateHit(float tHitR, float tHitL, Positio
 
 void PathManager::getHitTime(Position &Pt, int stateR, int stateL, float tHitR, float tHitL)
 {
+    //////////////////////////////////////////// R
+
     if (stateR == 2 || stateR == 3)
     {
         if (tHitR <= wristTimeR.liftTime)
@@ -2008,6 +2008,12 @@ void PathManager::getHitTime(Position &Pt, int stateR, int stateL, float tHitR, 
             Pt.isHitR = true;
         }
     }
+    else
+    {
+        Pt.isHitR = false;
+    }
+
+    ////////////////////////////////////////// L
 
     if (stateL == 2 || stateL == 3)
     {
@@ -2020,6 +2026,41 @@ void PathManager::getHitTime(Position &Pt, int stateR, int stateL, float tHitR, 
             Pt.isHitL = true;
         }
     }
+    else
+    {
+        Pt.isHitL = false;
+    }
+    // for (auto &motor_pair : motors)
+    // {
+    //     if (motor_pair.first == "R_wrist")
+    //     {
+    //         if (stateR == 2 || stateR == 3)
+    //         {
+    //             if (tHitR <= wristTimeR.liftTime)
+    //             {
+    //                 Pt.isHitR = false;
+    //             }
+    //             else
+    //             {
+    //                 Pt.isHitR = true;
+    //             }
+    //         }
+    //     }
+    //     else if (motor_pair.first == "L_wrist")
+    //     {
+    //         if (stateL == 2 || stateL == 3)
+    //         {
+    //             if (tHitL <= wristTimeL.liftTime)
+    //             {
+    //                 Pt.isHitL = false;
+    //             }
+    //             else
+    //             {
+    //                 Pt.isHitL = true;
+    //             }
+    //         }
+    //     }
+    // }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
