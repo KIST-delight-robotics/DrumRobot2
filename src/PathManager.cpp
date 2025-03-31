@@ -1980,7 +1980,16 @@ PathManager::Position PathManager::generateHit(float tHitR, float tHitL, Positio
     }
     else
     {
-        Pt.Kpp(7) = 1 - Kppp * (wA.stayAngle - Pt.wristAngleR) / (wA.stayAngle + 5.0 * M_PI / 180.0);
+        if (Kppp < 1.0)
+        {
+            Pt.Kpp(7) = 1 - Kppp * (wA.stayAngle - Pt.wristAngleR) / (wA.stayAngle + 5.0 * M_PI / 180.0);
+        }
+        else
+        {
+            double s = (wA.stayAngle - Pt.wristAngleR) / (wA.stayAngle + 5.0 * M_PI / 180.0);   // Pt.wristAngleR : stayAngle -> -5
+                                                                                                // s :0 -> 1
+            Pt.Kpp(7) = exp(-1.0*s*Kppp);
+        }
     }
 
     if (Pt.wristAngleL >= wA.stayAngle)
@@ -1989,7 +1998,16 @@ PathManager::Position PathManager::generateHit(float tHitR, float tHitL, Positio
     }
     else
     {
-        Pt.Kpp(8) = 1 - Kppp * (wA.stayAngle - Pt.wristAngleL) / (wA.stayAngle + 5.0 * M_PI / 180.0);
+        if (Kppp < 1.0)
+        {
+            Pt.Kpp(8) = 1 - Kppp * (wA.stayAngle - Pt.wristAngleL) / (wA.stayAngle + 5.0 * M_PI / 180.0);
+        }
+        else
+        {
+            double s = (wA.stayAngle - Pt.wristAngleL) / (wA.stayAngle + 5.0 * M_PI / 180.0);   // Pt.wristAngleL : stayAngle -> -5
+                                                                                                // s :0 -> 1
+            Pt.Kpp(8) = exp(-1.0*s*Kppp);
+        }
     }
 
     return Pt;
