@@ -315,12 +315,14 @@ void PathManager::generateTrajectory(MatrixXd &measureMatrix)
     VectorXd initialWristAngle(2);
     VectorXd finalWristAngle(2);
     VectorXd waistVector;
+    MatrixXd parsedMatrix;
 
     float n, sR, sL;
     float dt = canManager.DTSECOND;
 
     // parse
     parseMeasure(measureMatrix);
+    parsedMatrix = parseMatrix(measureMatrix);
 
     // 한 줄의 데이터 개수 (5ms 단위)
     n = (line_t2 - line_t1) / dt;
