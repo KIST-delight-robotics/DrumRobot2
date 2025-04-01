@@ -528,7 +528,24 @@ void CanManager::setMaxonCANFrame(std::shared_ptr<MaxonMotor> maxonMotor, const 
 }
 
 float CanManager::calTorque(std::shared_ptr<MaxonMotor> maxonMotor, const MaxonData &mData)
-{
+{       
+        double frictionTorque = 0;
+
+        if((mData.position - maxonMotor -> preMotorPosition)>(0.01*M_PI/180))
+        {
+            frictionTorque = 5;
+            maxonMotor -> preMotorPosition = mData.position;
+        }
+        else if((mData.position - maxonMotor -> preMotorPosition)<(0.01*M_PI/180))
+        {
+            frictionTorque = -5;
+            maxonMotor -> preMotorPosition = mData.position;
+        }
+        else
+        {
+            maxonMotor -> preMotorPosition = mData.position;
+        }
+
         double err = mData.position - maxonMotor->motorPosition;
         double err_dot = (err - maxonMotor-> pre_err)/DTSECOND;
         double alpha = 0.2;  // 적절한 필터 계수
@@ -609,6 +626,7 @@ float CanManager::calTorque(std::shared_ptr<MaxonMotor> maxonMotor, const MaxonD
         float gravityTorqueNm =  stickMassKg * 9.81 * stickLengthMeter * std::sin(gravity_angle) / gearRatio / div;
 
         torquemNm += gravityTorqueNm * 1000.0;  // N·m -> mN·m
+        // torquemNm += frictionTorque; 
 
         return torquemNm;
 }

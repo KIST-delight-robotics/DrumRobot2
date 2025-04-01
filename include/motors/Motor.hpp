@@ -43,7 +43,6 @@ public:
 
     // 명령의 최종 위치 저장
     float finalMotorPosition;
-    float prevTorque;
 
     std::queue<can_frame> sendBuffer;
     std::queue<can_frame> recieveBuffer;
@@ -143,6 +142,9 @@ public:
 
     // 1ms 궤적 만들기
     float pre_q;
+
+    // 마찰 토크 보상
+    float preMotorPosition;
 
     // 타격 감지용 변수
     queue<double> positionValues; // 포지션 값 저장을 위한 queue
