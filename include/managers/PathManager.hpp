@@ -149,30 +149,34 @@ private:
 
     
 
-    void parseMeasure(MatrixXd &measureMatrix);
+    void parseMeasure(MatrixXd measureMatrix);
     pair<VectorXd, VectorXd> parseOneArm(VectorXd t, VectorXd inst, VectorXd stateVector);
     void parseHitData(VectorXd t, VectorXd hitR, VectorXd hitL);
 
     /////////////////////////////////////////////////////////////////////////// Make Trajectory
-    // 궤적 저장할 구조체
+    // task space 궤적 저장할 구조체
     typedef struct {
         VectorXd trajectoryR; ///< 오른팔 스틱 끝 좌표 (x, y, z)
         VectorXd trajectoryL; ///< 왼팔 스틱 끝 좌표 (x, y, z)
 
-        double drumWristAngleR;  ///> IK를 풀기 위한 오른 손목 각도
-        double drumWristAngleL;  ///> IK를 풀기 위한 왼 손목 각도
+        double wristAngleR;  ///> IK를 풀기 위한 오른 손목 각도
+        double wristAngleL;  ///> IK를 풀기 위한 왼 손목 각도
+    }Position;
+    queue<Position> trajectoryQueue;
 
-        double elbowAngleR;  ///> 오른팔 팔꿈치 관절에 더해줄 각도
-        double elbowAngleL;  ///> 왼팔 팔꿈치 관절에 더해줄 각도
-        double wristAngleR;  ///> 오른팔 손목 관절에 더해줄 각도
-        double wristAngleL;  ///> 왼팔 손목 관절에 더해줄 각도
+    // 타격 궤적 저장할 구조체
+    typedef struct {
+        double elbowR;  ///> 오른팔 팔꿈치 관절에 더해줄 각도
+        double elbowL;  ///> 왼팔 팔꿈치 관절에 더해줄 각도
+        double wristR;  ///> 오른팔 손목 관절에 더해줄 각도
+        double wristL;  ///> 왼팔 손목 관절에 더해줄 각도
 
         VectorXd Kpp;       ///> Kpp : Kp 에 곱해지는 값
 
         bool isHitR = false;
         bool isHitL = false;
-    }Position;
-    queue<Position> trajectoryQueue;
+    }HitAngle;
+    queue<HitAngle> hitAngleQueue;
 
     double roundSum = 0;    ///< 5ms 스텝 단위에서 누적되는 오차 보상
 
@@ -244,8 +248,8 @@ private:
     MatrixXd makeWristCoefficient(int state, wristTime wT, wristAngle wA);
     double makeElbowAngle(double t, elbowTime eT, MatrixXd coefficientMatrix);
     double makeWristAngle(double t, wristTime wT, MatrixXd coefficientMatrix);
-    PathManager::Position generateHit(float tHitR, float tHitL, Position &Pt);
-    void getHitTime(Position &Pt, int stateR, int stateL, float tHitR, float tHitL);
+    PathManager::HitAngle generateHit(float tHitR, float tHitL, HitAngle &Pt);
+    void getHitTime(HitAngle &Pt, int stateR, int stateL, float tHitR, float tHitL);
 
     /////////////////////////////////////////////////////////////////////////// Push Command Buffer
     void pushCommandBuffer(VectorXd Qi, VectorXd Kpp, bool isHitR, bool isHitL);
