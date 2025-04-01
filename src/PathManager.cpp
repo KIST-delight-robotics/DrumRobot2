@@ -622,7 +622,7 @@ void PathManager::getAddStanceCoefficient(VectorXd Q1, VectorXd Q2, double t)
 /*                              Parse Measure                                 */
 ////////////////////////////////////////////////////////////////////////////////
 
-void PathManager::parseMeasure(MatrixXd measureMatrix)
+void PathManager::parseMeasure(MatrixXd &measureMatrix)
 {
     VectorXd measureTime = measureMatrix.col(8);
     VectorXd measureInstrumentR = measureMatrix.col(2);
@@ -668,6 +668,54 @@ void PathManager::parseMeasure(MatrixXd measureMatrix)
 
     // std::cout << "\n ////////////// state\n";
     // std::cout << measureState << std::endl;
+}
+
+MatrixXd PathManager::parseMatrix(MatrixXd &measureMatrix)
+{
+    double timeStep = 0.05;
+    int numCols = measureMatrix.cols();
+    std::vector<Eigen::VectorXd> newRows;
+
+    double prevTotalTime = 0.0;
+
+    for (int i = 0; i < measureMatrix.rows(); ++i)
+    {
+        double duration = measureMatrix(i, 1);
+        double endTime = measureMatrix(i, 8);
+        int steps = static_cast<int>(round(duration / timeStep));
+        double sumStep = (endTime-prevTotalTime) / steps;
+
+        for (int s = 1; s <= steps; ++s)
+        {
+            Eigen::VectorXd row(numCols);
+            row.setZero();
+
+            row(0) = measureMatrix(i, 0);                 
+            row(1) = timeStep;                              
+            row(8) = prevTotalTime + s * sumStep;          
+
+            if (s == steps)
+            {
+                for (int j = 2; j <= 7; ++j)
+                {
+                    row(j) = measureMatrix(i, j);
+                }
+            }
+
+            newRows.push_back(row);
+        }
+
+        prevTotalTime = endTime;
+    }
+
+    Eigen::MatrixXd parsedMatrix(newRows.size(), numCols);
+    for (size_t i = 0; i < newRows.size(); ++i)
+    {
+        parsedMatrix.row(i) = newRows[i];
+    }
+
+    return parsedMatrix;
+
 }
 
 pair<VectorXd, VectorXd> PathManager::parseOneArm(VectorXd t, VectorXd inst, VectorXd stateVector)
