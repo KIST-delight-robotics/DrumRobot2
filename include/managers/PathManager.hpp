@@ -150,7 +150,7 @@ private:
     
 
     void parseMeasure(MatrixXd &measureMatrix);
-    MatrixXd parseMatrix(MatrixXd &measureMatrix);
+    MatrixXd divideMatrix(MatrixXd &measureMatrix);
     pair<VectorXd, VectorXd> parseOneArm(VectorXd t, VectorXd inst, VectorXd stateVector);
     void parseHitData(VectorXd t, VectorXd hitR, VectorXd hitL);
 
