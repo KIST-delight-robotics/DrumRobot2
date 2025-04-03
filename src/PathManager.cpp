@@ -291,7 +291,7 @@ void PathManager::initializeValue(int bpm)
     measureState(1, 1) = 1.0;
 
     roundSum = 0.0;
-    roundSumH = 0.0;
+    roundSumHit = 0.0;
 
     lineData.resize(1, 4);
     lineData = MatrixXd::Zero(1, 4);
@@ -305,7 +305,6 @@ void PathManager::initializeValue(int bpm)
     q0_t1 = readyAngle(0);
     q0_t0 = readyAngle(0);
     t0 = -1;
-    clearBrake();
 }
 
 void PathManager::generateTrajectory(MatrixXd &measureMatrix)
@@ -547,6 +546,7 @@ void PathManager::generateTrajectory(MatrixXd &measureMatrix)
     */
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////// 손목만 0.05
     // /*
+    ///////////////////////////////////////////////////////////// 궤적
     // position
     pair<VectorXd, VectorXd> initialPosition, finalPosition;
     VectorXd initialPositionR(3);
@@ -560,7 +560,6 @@ void PathManager::generateTrajectory(MatrixXd &measureMatrix)
     double n, sR, sL;
     double dt = canManager.DTSECOND;
 
-    ///////////////////////////////////////////////////////////// 궤적
     // parse
     parseMeasure(measureMatrix);
 
@@ -653,7 +652,7 @@ void PathManager::generateTrajectory(MatrixXd &measureMatrix)
             }
 
             // parse
-            parseMeasureHit(dividedMatrix);
+            parseHitData(dividedMatrix);
 
             // 타격 궤적 만들기
             makeHitCoefficient();
@@ -683,7 +682,7 @@ void PathManager::generateTrajectory(MatrixXd &measureMatrix)
         // fun.appendToCSV_DATA(fileName, tHitL, hitL_t2 - hitL_t1, 0);
     }
 
-    // 읽은 줄 삭제
+    ///////////////////////////////////////////////////////////// 읽은 줄 삭제
     MatrixXd tmpMatrix(measureMatrix.rows() - 1, measureMatrix.cols());
     tmpMatrix = measureMatrix.block(1, 0, tmpMatrix.rows(), tmpMatrix.cols());
     measureMatrix.resize(tmpMatrix.rows(), tmpMatrix.cols());
@@ -905,7 +904,7 @@ void PathManager::getAddStanceCoefficient(VectorXd Q1, VectorXd Q2, double t)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/*                              Parse Measure                                 */
+/*                       Make Task Space Trajectory                           */
 ////////////////////////////////////////////////////////////////////////////////
 
 void PathManager::parseMeasure(MatrixXd &measureMatrix)
@@ -920,7 +919,7 @@ void PathManager::parseMeasure(MatrixXd &measureMatrix)
     line_t1 = measureMatrix(0, 8);
     line_t2 = measureMatrix(1, 8);
 
-    std::cout << "\n /// t1 -> t2 : " << line_t1 << " -> " << line_t2 << " = " << line_t2 - line_t1 <<  "\n";
+    // std::cout << "\n /// t1 -> t2 : " << line_t1 << " -> " << line_t2 << " = " << line_t2 - line_t1 <<  "\n";
 
     // std::cout << "\n /// R ///";
     pair<VectorXd, VectorXd> dataR = parseOneArm(measureTime, measureInstrumentR, measureState.row(0));
@@ -941,78 +940,8 @@ void PathManager::parseMeasure(MatrixXd &measureMatrix)
     finalTimeR = dataR.first(10);
     finalTimeL = dataL.first(10);
 
-    // // 타격
+    // // 타격 분리 안했을 때 주석 해제
     // parseHitData(measureTime, measureIntensityR, measureIntensityL);
-
-    // 여기 잠깐 주석 처리하고
-    // hitState(2) = dataR.first(20);
-    // hitState(3) = dataL.first(20);
-}
-
-void PathManager::parseMeasureHit(MatrixXd &measureMatrix)
-{
-    VectorXd measureTime = measureMatrix.col(8);
-    VectorXd measureIntensityR = measureMatrix.col(4);
-    VectorXd measureIntensityL = measureMatrix.col(5);
-
-    // parsing data
-    line_t1 = measureMatrix(0, 8);
-    line_t2 = measureMatrix(1, 8);
-
-    // 타격
-    parseHitData(measureTime, measureIntensityR, measureIntensityL);
-}
-
-MatrixXd PathManager::divideMatrix(MatrixXd &measureMatrix)
-{
-    double timeStep = 0.05;
-    int numCols = measureMatrix.cols();
-    std::vector<Eigen::VectorXd> newRows;
-    newRows.push_back(prevLine);
-
-    double prevTotalTime = prevLine(8);
-
-    for (int i = 0; i < measureMatrix.rows() - 1; ++i)
-    {
-        double duration = measureMatrix(i + 1, 1);
-        double endTime = measureMatrix(i + 1, 8);
-        int steps = static_cast<int>(round(duration / timeStep));
-        double sumStep = (endTime-prevTotalTime) / steps;
-
-        for (int s = 0; s < steps; ++s)
-        {
-            Eigen::VectorXd row(numCols);
-            row.setZero();
-
-            row(0) = measureMatrix(i + 1, 0);                 
-            row(1) = timeStep;                              
-            row(8) = prevTotalTime + (s + 1) * sumStep;          
-
-            if (s + 1 == steps)
-            {
-                for (int j = 2; j <= 7; ++j)
-                {
-                    row(j) = measureMatrix(i + 1, j);
-                }
-            }
-
-            newRows.push_back(row);
-        }
-
-        prevTotalTime = endTime;
-
-    }
-
-    Eigen::MatrixXd parsedMatrix(newRows.size(), numCols);
-    for (size_t i = 0; i < newRows.size(); ++i)
-    {
-        parsedMatrix.row(i) = newRows[i];
-    }
-
-    prevLine = measureMatrix.row(1);
-
-    return parsedMatrix;
-
 }
 
 pair<VectorXd, VectorXd> PathManager::parseOneArm(VectorXd t, VectorXd inst, VectorXd stateVector)
@@ -1031,7 +960,6 @@ pair<VectorXd, VectorXd> PathManager::parseOneArm(VectorXd t, VectorXd inst, Vec
     int detectInst = 0, initialInstNum, finalInstNum;
     int preState, nextState;
     double hitDetectionThreshold = 1.2 * 100.0 / bpmOfScore; // 일단 이렇게 하면 1줄만 읽는 일 없음
-    bool targetChangeFlag = 0;
 
     // 타격 감지
     for (int i = 1; i < t.rows(); i++)
@@ -1121,14 +1049,9 @@ pair<VectorXd, VectorXd> PathManager::parseOneArm(VectorXd t, VectorXd inst, Vec
         }
     }
 
-    if ((initialInstNum - 1 / 2) < (finalInstNum - 1 / 2))
-    {
-        targetChangeFlag = 1;
-    }
-
     initialInstrument(instrumentMapping[initialInstNum]) = 1.0;
     finalInstrument(instrumentMapping[finalInstNum]) = 1.0;
-    outputVector << initialT, initialInstrument, finalT, finalInstrument, targetChangeFlag;
+    outputVector << initialT, initialInstrument, finalT, finalInstrument;
 
     nextStateVector.resize(3);
     nextStateVector << initialT, initialInstNum, nextState;
@@ -1140,153 +1063,6 @@ pair<VectorXd, VectorXd> PathManager::parseOneArm(VectorXd t, VectorXd inst, Vec
 
     return std::make_pair(outputVector, nextStateVector);
 }
-
-void PathManager::parseHitData(VectorXd t, VectorXd hitR, VectorXd hitL)
-{
-    double hitDetectionThreshold = 0.5;
-
-    //////////////////////////////////////// R
-
-    bool detectHit = false;
-    double hitTime = t(1);
-    int intensity = 0;
-    // 다음 타격 찾기
-    for (int i = 1; i < t.rows(); i++)
-    {
-        if (round(10000 * hitDetectionThreshold) < round(10000 * (t(i) - t(0))))
-        {
-            if (i != 1)     // 이인우 : 첫 줄은 무조건 읽도록 (임시) 
-            {
-                break;
-            }
-        }
-
-        if (hitR(i) != 0)
-        {
-            detectHit = true;
-            hitTime = t(i);
-            intensity = hitR(i);
-            break;
-        }
-    }
-
-    if (hitR(0) == 0)  // 현재 줄이 타격이 아님
-    {
-        if (hitState(0,1) == 2 || hitState(0,1) == 3) // 이전에 타격 O
-        {
-            hitR_t1 = hitState(0,0);
-            hitR_t2 = hitTime;
-        }
-        else    // 이전에 타격 X
-        {
-            if (detectHit)
-            {
-                hitState(0,1) = 2;
-                hitR_t1 = t(0);
-                hitR_t2 = hitTime;
-                hitState(0,0) = t(0);
-                hitState(0,2) = intensity;
-            }
-            else
-            {
-                hitState(0,1) = 0;
-                hitR_t1 = t(0);
-                hitR_t2 = t(1);
-            }
-        }
-    }
-    else
-    {
-        // 다음 타격 찾기
-        if (detectHit)
-        {
-            hitState(0,1) = 3;
-            hitR_t1 = t(0);
-            hitR_t2 = hitTime;
-            hitState(0,0) = t(0);
-            hitState(0,2) = intensity;
-        }
-        else
-        {
-            hitState(0,1) = 1;
-            hitR_t1 = t(0);
-            hitR_t2 = t(1);
-        }
-    }
-
-    //////////////////////////////////////// L
-
-    detectHit = false;
-    hitTime = t(1);
-    intensity = 0;
-    // 다음 타격 찾기
-    for (int i = 1; i < t.rows(); i++)
-    {
-        if (round(10000 * hitDetectionThreshold) < round(10000 * (t(i) - t(0))))
-        {
-            if (i != 1)     // 이인우 : 첫 줄은 무조건 읽도록 (임시) 
-            {
-                break;
-            }
-        }
-
-        if (hitL(i) != 0)
-        {
-            detectHit = true;
-            hitTime = t(i);
-            intensity = hitL(i);
-            break;
-        }
-    }
-
-    if (hitL(0) == 0)  // 현재 줄이 타격이 아님
-    {
-        if (hitState(1,1) == 2 || hitState(1,1) == 3) // 이전에 타격 O
-        {
-            hitL_t1 = hitState(1,0);
-            hitL_t2 = hitTime;
-        }
-        else    // 이전에 타격 X
-        {
-            if (detectHit)
-            {
-                hitState(1,1) = 2;
-                hitL_t1 = t(0);
-                hitL_t2 = hitTime;
-                hitState(1,0) = t(0);
-                hitState(1,2) = intensity;
-            }
-            else
-            {
-                hitState(1,1) = 0;
-                hitL_t1 = t(0);
-                hitL_t2 = t(1);
-            }
-        }
-    }
-    else
-    {
-        // 다음 타격 찾기
-        if (detectHit)
-        {
-            hitState(1,1) = 3;
-            hitL_t1 = t(0);
-            hitL_t2 = hitTime;
-            hitState(1,0) = t(0);
-            hitState(1,2) = intensity;
-        }
-        else
-        {
-            hitState(1,1) = 1;
-            hitL_t1 = t(0);
-            hitL_t2 = t(1);
-        }
-    }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/*                       Make Task Space Trajectory                           */
-////////////////////////////////////////////////////////////////////////////////
 
 pair<VectorXd, VectorXd> PathManager::getTargetPosition(VectorXd inst)
 {
@@ -1391,25 +1167,6 @@ VectorXd PathManager::makePath(VectorXd Pi, VectorXd Pf, double s)
     }
 
     return Ps;
-}
-
-void PathManager::saveLineData(int n, VectorXd waistVector)
-{
-    if (lineData(0, 0) == -1)   // 첫 줄
-    {
-        lineData(0, 0) = n;                         // 명령 개수
-        lineData(0, 1) = waistVector(2);            // q0 최적값
-        lineData(0, 2) = waistVector(0);            // q0 min
-        lineData(0, 3) = waistVector(1);            // q0 max
-    }
-    else
-    {
-        lineData.conservativeResize(lineData.rows() + 1, lineData.cols());
-        lineData(lineData.rows() - 1, 0) = n;                       // 명령 개수
-        lineData(lineData.rows() - 1, 1) = waistVector(2);          // q0 최적값
-        lineData(lineData.rows() - 1, 2) = waistVector(0);          // q0 min
-        lineData(lineData.rows() - 1, 3) = waistVector(1);          // q0 max
-    }
 }
 
 VectorXd PathManager::calWaistAngle(VectorXd pR, VectorXd pL)
@@ -1556,365 +1313,229 @@ VectorXd PathManager::calWaistAngle(VectorXd pR, VectorXd pL)
     return output;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/*                                Waist                                       */
-////////////////////////////////////////////////////////////////////////////////
-
-vector<double> PathManager::cubicInterpolation(const vector<double> &q, const vector<double> &t)
+void PathManager::saveLineData(int n, VectorXd waistVector)
 {
-    vector<double> m = {0.0, 0.0};
-    vector<double> a(3, 0.0);
-
-    for (int i = 0; i < 3; i++)
+    if (lineData(0, 0) == -1)   // 첫 줄
     {
-        a[i] = (q[i + 1] - q[i]) / (t[i + 1] - t[i]);
-    }
-    double m1 = 0.5 * (a[0] + a[1]);
-    double m2 = 0.5 * (a[1] + a[2]);
-
-    // Monotone Cubic Interpolation 적용
-    double alph, bet;
-    if (q[1] == q[2])
-    {
-        m1 = 0;
-        m2 = 0;
+        lineData(0, 0) = n;                         // 명령 개수
+        lineData(0, 1) = waistVector(2);            // q0 최적값
+        lineData(0, 2) = waistVector(0);            // q0 min
+        lineData(0, 3) = waistVector(1);            // q0 max
     }
     else
     {
-        if((q[0] == q[1]) || (a[0] * a[1] < 0)){
-            m1 = 0;
-        }
-        else if((q[2] == q[3]) || (a[1] * a[2] < 0)){
-            m2 = 0;
-        }
-        alph = m1 / (q[2] - q[1]);
-        bet = m2 / (q[2] - q[1]);
-
-        double e = std::sqrt(std::pow(alph, 2) + std::pow(bet, 2));
-        if (e > 3.0)
-        {
-            m1 = (3 * m1) / e;
-            m2 = (3 * m2) / e;
-        }
+        lineData.conservativeResize(lineData.rows() + 1, lineData.cols());
+        lineData(lineData.rows() - 1, 0) = n;                       // 명령 개수
+        lineData(lineData.rows() - 1, 1) = waistVector(2);          // q0 최적값
+        lineData(lineData.rows() - 1, 2) = waistVector(0);          // q0 min
+        lineData(lineData.rows() - 1, 3) = waistVector(1);          // q0 max
     }
-    
-    m[0] = m1;
-    m[1] = m2;
-    
-    return m;
-}
-
-std::pair<double, vector<double>> PathManager::getNextQ0()
-{
-    VectorXd t_getNextQ0;     // getNextQ0() 함수 안에서 사용할 시간 벡터
-    double dt = canManager.DTSECOND;
-    vector<double> m_interpolation = {0.0, 0.0};
-    double q0_t2 = 0.0, q0_t3;;
-
-    VectorXd a(3);  // 기울기
-    double avg_a;   // 기울기 평균
-    double q0Min, q0Max;
-
-    // 기울기 평균 + interpolation
-    t_getNextQ0.resize(6);
-    for (int i = 0; i < 6; i++)
-    {
-        if (i == 0)
-        {
-            t_getNextQ0(i) = t0;
-        }
-        else if (i == 1)
-        {
-            t_getNextQ0(i) = 0;
-        }
-        else if (lineData.rows() >= i-1)
-        {
-            t_getNextQ0(i) = t_getNextQ0(i-1) + lineData(i-2,0)*dt;
-        }
-        else
-        {
-            t_getNextQ0(i) = t_getNextQ0(i-1) + 1;
-        }
-    }
-
-    // t1 -> t2
-    for (int i = 0; i < 3; i++)
-    {
-        if (lineData.rows() > i+1)
-        {
-            a(i) = (lineData(i+1,1) - q0_t1) / (t_getNextQ0(i+2)-t_getNextQ0(1));
-        }
-        else
-        {
-            a(i) = (t_getNextQ0(i+1)-t_getNextQ0(1)) / (t_getNextQ0(i+2)-t_getNextQ0(1)) * a(i-1);
-        }
-    }
-
-    avg_a = a.sum()/3.0;
-    q0_t2 = avg_a*(t_getNextQ0(2)-t_getNextQ0(1)) + q0_t1;
-
-    // 허리 범위 확인
-    q0Min = lineData(1,2);
-    q0Max = lineData(1,3);
-    if (q0_t2 <= q0Min || q0_t2 >= q0Max)
-    {
-        q0_t2 = 0.5*q0Min + 0.5*q0Max;
-    }
-
-    // t2 -> t3
-    if (lineData.rows() == 2)
-    {
-        q0_t3 = q0_t2;
-    }
-    else
-    {
-        for (int i = 0; i < 3; i++)
-        {
-            if (lineData.rows() > i+2)
-            {
-                a(i) = (lineData(i+2,1) - q0_t1) / (t_getNextQ0(i+3)-t_getNextQ0(2));
-            }
-            else
-            {
-                a(i) = (t_getNextQ0(i+2)-t_getNextQ0(2)) / (t_getNextQ0(i+3)-t_getNextQ0(2)) * a(i-1);
-            }
-        }
-
-        // 허리 범위 확인
-        avg_a = a.sum()/3.0;
-        q0_t3 = avg_a*(t_getNextQ0(3)-t_getNextQ0(2)) + q0_t2;
-
-        q0Min = lineData(2,2);
-        q0Max = lineData(2,3);
-        if (q0_t3 <= q0Min || q0_t3 >= q0Max)
-        {
-            q0_t3 = 0.5*q0Min + 0.5*q0Max;
-        }
-    }
-
-    // 3차 보간법
-    vector<double> y = {q0_t0, q0_t1, q0_t2, q0_t3};
-    vector<double> x = {t_getNextQ0(0), t_getNextQ0(1), t_getNextQ0(2), t_getNextQ0(3)};
-    m_interpolation = cubicInterpolation(y, x);
-
-    return std::make_pair(q0_t2, m_interpolation);
-}
-
-void PathManager::makeWaistCoefficient()
-{
-    vector<double> m = {0.0, 0.0};
-    double q0_t2;
-
-    int n = lineData(0, 0); // 명령 개수
-    double dt = canManager.DTSECOND;
-    double t21 = n * dt;    // 전체 시간
-
-    MatrixXd A;
-    MatrixXd b;
-    MatrixXd A_1;
-
-    if (lineData.rows() == 1)
-    {
-        // 마지막 줄 -> 허리 각 유지
-        q0_t2 = q0_t1;
-    }
-    else
-    {
-        std::pair<double, vector<double>> output = getNextQ0();
-        q0_t2 = output.first;
-        m = output.second; 
-    }
-
-    A.resize(4, 4);
-    b.resize(4, 1);
-
-    A << 1, 0, 0, 0,
-        1, t21, t21 * t21, t21 * t21 * t21,
-        0, 1, 0, 0,
-        0, 1, 2 * t21, 3 * t21 * t21;
-    b << q0_t1, q0_t2, m[0], m[1];
-
-    A_1 = A.inverse();
-    waistCoefficient = A_1 * b;
-
-    // 값 저장
-    q0_t0 = q0_t1;
-    q0_t1 = q0_t2;
-    t0 = -1*t21;
-}
-
-double PathManager::getWaistAngle(int index)
-{
-    double dt = canManager.DTSECOND;
-    double t = dt * index;
-
-    return waistCoefficient(0, 0) + waistCoefficient(1, 0) * t + waistCoefficient(2, 0) * t * t + waistCoefficient(3, 0) * t * t * t;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/*                                Solve IK                                    */
-////////////////////////////////////////////////////////////////////////////////
-
-float PathManager::getLength(double theta)
-{
-    PartLength partLength;
-    double l1 = partLength.lowerArm;
-    double l2 = partLength.stick;
-
-    double l3 = l1 + l2 * cos(theta);
-
-    double l4 = sqrt(l3 * l3 + ((l2 * sin(theta)) * (l2 * sin(theta))));
-
-    return l4;
-}
-
-double PathManager::getTheta(float l1, double theta)
-{
-    PartLength partLength;
-
-    float l2 = partLength.lowerArm + partLength.stick * cos(theta);
-
-    double theta_m = acos(l2 / l1);
-
-    return theta_m;
-}
-
-PathManager::Position PathManager::solveIK(VectorXd &q, double q0)
-{
-    Position nextP;
-
-    nextP = trajectoryQueue.front();
-    trajectoryQueue.pop();
-
-    q.resize(9);
-    q = IKFixedWaist(nextP.trajectoryR, nextP.trajectoryL, q0, nextP.wristAngleR, nextP.wristAngleL);
-    
-    return nextP;
-}
-
-VectorXd PathManager::IKFixedWaist(VectorXd pR, VectorXd pL, double theta0, double theta7, double theta8)
-{
-    VectorXd Qf;
-    PartLength partLength;
-
-    float XR = pR(0), YR = pR(1), ZR = pR(2);
-    float XL = pL(0), YL = pL(1), ZL = pL(2);
-    // float R1 = part_length.upperArm;
-    // float R2 = part_length.lowerArm + part_length.stick;
-    // float L1 = part_length.upperArm;
-    // float L2 = part_length.lowerArm + part_length.stick;
-    float R1 = partLength.upperArm;
-    float R2 = getLength(theta7);
-    float L1 = partLength.upperArm;
-    float L2 = getLength(theta8);
-    float s = partLength.waist;
-    float z0 = partLength.height;
-
-    float shoulderXR = 0.5 * s * cos(theta0);
-    float shoulderYR = 0.5 * s * sin(theta0);
-    float shoulderXL = -0.5 * s * cos(theta0);
-    float shoulderYL = -0.5 * s * sin(theta0);
-
-    float theta01 = atan2(YR - shoulderYR, XR - shoulderXR);
-    float theta1 = theta01 - theta0;
-
-    if (theta1 < 0 || theta1 > 150.0 * M_PI / 180.0) // the1 범위 : 0deg ~ 150deg
-    {
-        std::cout << "PR \n" << pR << "\n";
-        std::cout << "PL \n" << pL << "\n";
-        std::cout << "theta0 : " << theta0 * 180.0 / M_PI << "\n theta7 : " << theta7 * 180.0 / M_PI << "\n theta8 : " << theta8 * 180.0 / M_PI << "\n";
-        std::cout << "IKFUN (q1) is not solved!!\n";
-        std::cout << "theta1 : " << theta1 * 180.0 / M_PI << "\n";
-        state.main = Main::Error;
-    }
-
-    float theta02 = atan2(YL - shoulderYL, XL - shoulderXL);
-    float theta2 = theta02 - theta0;
-
-    if (theta2 < 30 * M_PI / 180.0 || theta2 > M_PI) // the2 범위 : 30deg ~ 180deg
-    {
-        std::cout << "PR \n" << pR << "\n";
-        std::cout << "PL \n" << pL << "\n";
-        std::cout << "theta0 : " << theta0 * 180.0 / M_PI << "\n theta7 : " << theta7 * 180.0 / M_PI << "\n theta8 : " << theta8 * 180.0 / M_PI << "\n";
-        std::cout << "IKFUN (q2) is not solved!!\n";
-        std::cout << "theta2 : " << theta2 * 180.0 / M_PI << "\n";
-        state.main = Main::Error;
-    }
-
-    float zeta = z0 - ZR;
-    float r2 = (YR - shoulderYR) * (YR - shoulderYR) + (XR - shoulderXR) * (XR - shoulderXR); // r^2
-
-    float x = zeta * zeta + r2 - R1 * R1 - R2 * R2;
-    float y = sqrt(4.0 * R1 * R1 * R2 * R2 - x * x);
-
-    float theta4 = atan2(y, x);
-
-    if (theta4 < 0 || theta4 > 140.0 * M_PI / 180.0) // the4 범위 : 0deg ~ 120deg
-    {
-        std::cout << "PR \n" << pR << "\n";
-        std::cout << "PL \n" << pL << "\n";
-        std::cout << "theta0 : " << theta0 * 180.0 / M_PI << "\n theta7 : " << theta7 * 180.0 / M_PI << "\n theta8 : " << theta8 * 180.0 / M_PI << "\n";
-        std::cout << "IKFUN (q4) is not solved!!\n";
-        std::cout << "theta4 : " << theta4 * 180.0 / M_PI << "\n";
-        state.main = Main::Error;
-    }
-
-    float theta34 = atan2(sqrt(r2), zeta);
-    float theta3 = theta34 - atan2(R2 * sin(theta4), R1 + R2 * cos(theta4));
-
-    if (theta3 < -45.0 * M_PI / 180.0 || theta3 > 90.0 * M_PI / 180.0) // the3 범위 : -45deg ~ 90deg
-    {
-        std::cout << "PR \n" << pR << "\n";
-        std::cout << "PL \n" << pL << "\n";
-        std::cout << "theta0 : " << theta0 * 180.0 / M_PI << "\n theta7 : " << theta7 * 180.0 / M_PI << "\n theta8 : " << theta8 * 180.0 / M_PI << "\n";
-        std::cout << "IKFUN (q3) is not solved!!\n";
-        std::cout << "theta3 : " << theta3 * 180.0 / M_PI << "\n";
-        state.main = Main::Error;
-    }
-
-    zeta = z0 - ZL;
-    r2 = (YL - shoulderYL) * (YL - shoulderYL) + (XL - shoulderXL) * (XL - shoulderXL); // r^2
-
-    x = zeta * zeta + r2 - L1 * L1 - L2 * L2;
-    y = sqrt(4.0 * L1 * L1 * L2 * L2 - x * x);
-
-    float theta6 = atan2(y, x);
-
-    if (theta6 < 0 || theta6 > 140.0 * M_PI / 180.0) // the6 범위 : 0deg ~ 120deg
-    {
-        std::cout << "PR \n" << pR << "\n";
-        std::cout << "PL \n" << pL << "\n";
-        std::cout << "theta0 : " << theta0 * 180.0 / M_PI << "\n theta7 : " << theta7 * 180.0 / M_PI << "\n theta8 : " << theta8 * 180.0 / M_PI << "\n";
-        std::cout << "IKFUN (q6) is not solved!!\n";
-        std::cout << "theta6 : " << theta6 * 180.0 / M_PI << "\n";
-        state.main = Main::Error;
-    }
-
-    float theta56 = atan2(sqrt(r2), zeta);
-    float theta5 = theta56 - atan2(L2 * sin(theta6), L1 + L2 * cos(theta6));
-
-    if (theta5 < -45.0 * M_PI / 180.0 || theta5 > 90.0 * M_PI / 180.0) // the5 범위 : -45deg ~ 90deg
-    {
-        std::cout << "PR \n" << pR << "\n";
-        std::cout << "PL \n" << pL << "\n";
-        std::cout << "theta0 : " << theta0 * 180.0 / M_PI << "\n theta7 : " << theta7 * 180.0 / M_PI << "\n theta8 : " << theta8 * 180.0 / M_PI << "\n";
-        std::cout << "IKFUN (q5) is not solved!!\n";
-        std::cout << "theta5 : " << theta5 * 180.0 / M_PI << "\n";
-        state.main = Main::Error;
-    }
-
-    theta4 -= getTheta(R2, theta7);
-    theta6 -= getTheta(L2, theta8);
-
-    Qf.resize(9);
-    Qf << theta0, theta1, theta2, theta3, theta4, theta5, theta6, theta7, theta8;
-
-    return Qf;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /*                           Make Hit Trajectory                              */
 ////////////////////////////////////////////////////////////////////////////////
+
+MatrixXd PathManager::divideMatrix(MatrixXd &measureMatrix)
+{
+    double timeStep = 0.05;
+    int numCols = measureMatrix.cols();
+    std::vector<Eigen::VectorXd> newRows;
+    newRows.push_back(prevLine);
+
+    double prevTotalTime = prevLine(8);
+
+    for (int i = 0; i < measureMatrix.rows() - 1; ++i)
+    {
+        double duration = measureMatrix(i + 1, 1);
+        double endTime = measureMatrix(i + 1, 8);
+        int steps = static_cast<int>(round(duration / timeStep));
+        double sumStep = (endTime-prevTotalTime) / steps;
+
+        for (int s = 0; s < steps; ++s)
+        {
+            Eigen::VectorXd row(numCols);
+            row.setZero();
+
+            row(0) = measureMatrix(i + 1, 0);                 
+            row(1) = timeStep;                              
+            row(8) = prevTotalTime + (s + 1) * sumStep;          
+
+            if (s + 1 == steps)
+            {
+                for (int j = 2; j <= 7; ++j)
+                {
+                    row(j) = measureMatrix(i + 1, j);
+                }
+            }
+
+            newRows.push_back(row);
+        }
+
+        prevTotalTime = endTime;
+
+    }
+
+    Eigen::MatrixXd parsedMatrix(newRows.size(), numCols);
+    for (size_t i = 0; i < newRows.size(); ++i)
+    {
+        parsedMatrix.row(i) = newRows[i];
+    }
+
+    prevLine = measureMatrix.row(1);
+
+    return parsedMatrix;
+}
+
+void PathManager::parseHitData(MatrixXd &measureMatrix)
+{
+    VectorXd t = measureMatrix.col(8);
+    VectorXd hitR = measureMatrix.col(4);
+    VectorXd hitL = measureMatrix.col(5);
+
+    // parsing data
+    line_t1 = measureMatrix(0, 8);
+    line_t2 = measureMatrix(1, 8);
+    double hitDetectionThreshold = 0.5;
+
+    //////////////////////////////////////// R
+
+    bool detectHit = false;
+    double hitTime = t(1);
+    int intensity = 0;
+    // 다음 타격 찾기
+    for (int i = 1; i < t.rows(); i++)
+    {
+        if (round(10000 * hitDetectionThreshold) < round(10000 * (t(i) - t(0))))
+        {
+            if (i != 1)     // 이인우 : 첫 줄은 무조건 읽도록 (임시) 
+            {
+                break;
+            }
+        }
+
+        if (hitR(i) != 0)
+        {
+            detectHit = true;
+            hitTime = t(i);
+            intensity = hitR(i);
+            break;
+        }
+    }
+
+    if (hitR(0) == 0)  // 현재 줄이 타격이 아님
+    {
+        if (hitState(0,1) == 2 || hitState(0,1) == 3) // 이전에 타격 O
+        {
+            hitR_t1 = hitState(0,0);
+            hitR_t2 = hitTime;
+        }
+        else    // 이전에 타격 X
+        {
+            if (detectHit)
+            {
+                hitState(0,1) = 2;
+                hitR_t1 = t(0);
+                hitR_t2 = hitTime;
+                hitState(0,0) = t(0);
+                hitState(0,2) = intensity;
+            }
+            else
+            {
+                hitState(0,1) = 0;
+                hitR_t1 = t(0);
+                hitR_t2 = t(1);
+            }
+        }
+    }
+    else
+    {
+        // 다음 타격 찾기
+        if (detectHit)
+        {
+            hitState(0,1) = 3;
+            hitR_t1 = t(0);
+            hitR_t2 = hitTime;
+            hitState(0,0) = t(0);
+            hitState(0,2) = intensity;
+        }
+        else
+        {
+            hitState(0,1) = 1;
+            hitR_t1 = t(0);
+            hitR_t2 = t(1);
+        }
+    }
+
+    //////////////////////////////////////// L
+
+    detectHit = false;
+    hitTime = t(1);
+    intensity = 0;
+    // 다음 타격 찾기
+    for (int i = 1; i < t.rows(); i++)
+    {
+        if (round(10000 * hitDetectionThreshold) < round(10000 * (t(i) - t(0))))
+        {
+            if (i != 1)     // 이인우 : 첫 줄은 무조건 읽도록 (임시) 
+            {
+                break;
+            }
+        }
+
+        if (hitL(i) != 0)
+        {
+            detectHit = true;
+            hitTime = t(i);
+            intensity = hitL(i);
+            break;
+        }
+    }
+
+    if (hitL(0) == 0)  // 현재 줄이 타격이 아님
+    {
+        if (hitState(1,1) == 2 || hitState(1,1) == 3) // 이전에 타격 O
+        {
+            hitL_t1 = hitState(1,0);
+            hitL_t2 = hitTime;
+        }
+        else    // 이전에 타격 X
+        {
+            if (detectHit)
+            {
+                hitState(1,1) = 2;
+                hitL_t1 = t(0);
+                hitL_t2 = hitTime;
+                hitState(1,0) = t(0);
+                hitState(1,2) = intensity;
+            }
+            else
+            {
+                hitState(1,1) = 0;
+                hitL_t1 = t(0);
+                hitL_t2 = t(1);
+            }
+        }
+    }
+    else
+    {
+        // 다음 타격 찾기
+        if (detectHit)
+        {
+            hitState(1,1) = 3;
+            hitL_t1 = t(0);
+            hitL_t2 = hitTime;
+            hitState(1,0) = t(0);
+            hitState(1,2) = intensity;
+        }
+        else
+        {
+            hitState(1,1) = 1;
+            hitL_t1 = t(0);
+            hitL_t2 = t(1);
+        }
+    }
+}
 
 void PathManager::makeHitCoefficient()
 {
@@ -2410,6 +2031,362 @@ void PathManager::getHitTime(HitAngle &Pt, int stateR, int stateL, float tHitR, 
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/*                                Waist                                       */
+////////////////////////////////////////////////////////////////////////////////
+
+vector<double> PathManager::cubicInterpolation(const vector<double> &q, const vector<double> &t)
+{
+    vector<double> m = {0.0, 0.0};
+    vector<double> a(3, 0.0);
+
+    for (int i = 0; i < 3; i++)
+    {
+        a[i] = (q[i + 1] - q[i]) / (t[i + 1] - t[i]);
+    }
+    double m1 = 0.5 * (a[0] + a[1]);
+    double m2 = 0.5 * (a[1] + a[2]);
+
+    // Monotone Cubic Interpolation 적용
+    double alph, bet;
+    if (q[1] == q[2])
+    {
+        m1 = 0;
+        m2 = 0;
+    }
+    else
+    {
+        if((q[0] == q[1]) || (a[0] * a[1] < 0)){
+            m1 = 0;
+        }
+        else if((q[2] == q[3]) || (a[1] * a[2] < 0)){
+            m2 = 0;
+        }
+        alph = m1 / (q[2] - q[1]);
+        bet = m2 / (q[2] - q[1]);
+
+        double e = std::sqrt(std::pow(alph, 2) + std::pow(bet, 2));
+        if (e > 3.0)
+        {
+            m1 = (3 * m1) / e;
+            m2 = (3 * m2) / e;
+        }
+    }
+    
+    m[0] = m1;
+    m[1] = m2;
+    
+    return m;
+}
+
+std::pair<double, vector<double>> PathManager::getNextQ0()
+{
+    VectorXd t_getNextQ0;     // getNextQ0() 함수 안에서 사용할 시간 벡터
+    double dt = canManager.DTSECOND;
+    vector<double> m_interpolation = {0.0, 0.0};
+    double q0_t2 = 0.0, q0_t3;;
+
+    VectorXd a(3);  // 기울기
+    double avg_a;   // 기울기 평균
+    double q0Min, q0Max;
+
+    // 기울기 평균 + interpolation
+    t_getNextQ0.resize(6);
+    for (int i = 0; i < 6; i++)
+    {
+        if (i == 0)
+        {
+            t_getNextQ0(i) = t0;
+        }
+        else if (i == 1)
+        {
+            t_getNextQ0(i) = 0;
+        }
+        else if (lineData.rows() >= i-1)
+        {
+            t_getNextQ0(i) = t_getNextQ0(i-1) + lineData(i-2,0)*dt;
+        }
+        else
+        {
+            t_getNextQ0(i) = t_getNextQ0(i-1) + 1;
+        }
+    }
+
+    // t1 -> t2
+    for (int i = 0; i < 3; i++)
+    {
+        if (lineData.rows() > i+1)
+        {
+            a(i) = (lineData(i+1,1) - q0_t1) / (t_getNextQ0(i+2)-t_getNextQ0(1));
+        }
+        else
+        {
+            a(i) = (t_getNextQ0(i+1)-t_getNextQ0(1)) / (t_getNextQ0(i+2)-t_getNextQ0(1)) * a(i-1);
+        }
+    }
+
+    avg_a = a.sum()/3.0;
+    q0_t2 = avg_a*(t_getNextQ0(2)-t_getNextQ0(1)) + q0_t1;
+
+    // 허리 범위 확인
+    q0Min = lineData(1,2);
+    q0Max = lineData(1,3);
+    if (q0_t2 <= q0Min || q0_t2 >= q0Max)
+    {
+        q0_t2 = 0.5*q0Min + 0.5*q0Max;
+    }
+
+    // t2 -> t3
+    if (lineData.rows() == 2)
+    {
+        q0_t3 = q0_t2;
+    }
+    else
+    {
+        for (int i = 0; i < 3; i++)
+        {
+            if (lineData.rows() > i+2)
+            {
+                a(i) = (lineData(i+2,1) - q0_t1) / (t_getNextQ0(i+3)-t_getNextQ0(2));
+            }
+            else
+            {
+                a(i) = (t_getNextQ0(i+2)-t_getNextQ0(2)) / (t_getNextQ0(i+3)-t_getNextQ0(2)) * a(i-1);
+            }
+        }
+
+        // 허리 범위 확인
+        avg_a = a.sum()/3.0;
+        q0_t3 = avg_a*(t_getNextQ0(3)-t_getNextQ0(2)) + q0_t2;
+
+        q0Min = lineData(2,2);
+        q0Max = lineData(2,3);
+        if (q0_t3 <= q0Min || q0_t3 >= q0Max)
+        {
+            q0_t3 = 0.5*q0Min + 0.5*q0Max;
+        }
+    }
+
+    // 3차 보간법
+    vector<double> y = {q0_t0, q0_t1, q0_t2, q0_t3};
+    vector<double> x = {t_getNextQ0(0), t_getNextQ0(1), t_getNextQ0(2), t_getNextQ0(3)};
+    m_interpolation = cubicInterpolation(y, x);
+
+    return std::make_pair(q0_t2, m_interpolation);
+}
+
+void PathManager::makeWaistCoefficient()
+{
+    vector<double> m = {0.0, 0.0};
+    double q0_t2;
+
+    int n = lineData(0, 0); // 명령 개수
+    double dt = canManager.DTSECOND;
+    double t21 = n * dt;    // 전체 시간
+
+    MatrixXd A;
+    MatrixXd b;
+    MatrixXd A_1;
+
+    if (lineData.rows() == 1)
+    {
+        // 마지막 줄 -> 허리 각 유지
+        q0_t2 = q0_t1;
+    }
+    else
+    {
+        std::pair<double, vector<double>> output = getNextQ0();
+        q0_t2 = output.first;
+        m = output.second; 
+    }
+
+    A.resize(4, 4);
+    b.resize(4, 1);
+
+    A << 1, 0, 0, 0,
+        1, t21, t21 * t21, t21 * t21 * t21,
+        0, 1, 0, 0,
+        0, 1, 2 * t21, 3 * t21 * t21;
+    b << q0_t1, q0_t2, m[0], m[1];
+
+    A_1 = A.inverse();
+    waistCoefficient = A_1 * b;
+
+    // 값 저장
+    q0_t0 = q0_t1;
+    q0_t1 = q0_t2;
+    t0 = -1*t21;
+}
+
+double PathManager::getWaistAngle(int index)
+{
+    double dt = canManager.DTSECOND;
+    double t = dt * index;
+
+    return waistCoefficient(0, 0) + waistCoefficient(1, 0) * t + waistCoefficient(2, 0) * t * t + waistCoefficient(3, 0) * t * t * t;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/*                                Solve IK                                    */
+////////////////////////////////////////////////////////////////////////////////
+
+float PathManager::getLength(double theta)
+{
+    PartLength partLength;
+    double l1 = partLength.lowerArm;
+    double l2 = partLength.stick;
+
+    double l3 = l1 + l2 * cos(theta);
+
+    double l4 = sqrt(l3 * l3 + ((l2 * sin(theta)) * (l2 * sin(theta))));
+
+    return l4;
+}
+
+double PathManager::getTheta(float l1, double theta)
+{
+    PartLength partLength;
+
+    float l2 = partLength.lowerArm + partLength.stick * cos(theta);
+
+    double theta_m = acos(l2 / l1);
+
+    return theta_m;
+}
+
+PathManager::Position PathManager::solveIK(VectorXd &q, double q0)
+{
+    Position nextP;
+
+    nextP = trajectoryQueue.front();
+    trajectoryQueue.pop();
+
+    q.resize(9);
+    q = IKFixedWaist(nextP.trajectoryR, nextP.trajectoryL, q0, nextP.wristAngleR, nextP.wristAngleL);
+    
+    return nextP;
+}
+
+VectorXd PathManager::IKFixedWaist(VectorXd pR, VectorXd pL, double theta0, double theta7, double theta8)
+{
+    VectorXd Qf;
+    PartLength partLength;
+
+    float XR = pR(0), YR = pR(1), ZR = pR(2);
+    float XL = pL(0), YL = pL(1), ZL = pL(2);
+    // float R1 = part_length.upperArm;
+    // float R2 = part_length.lowerArm + part_length.stick;
+    // float L1 = part_length.upperArm;
+    // float L2 = part_length.lowerArm + part_length.stick;
+    float R1 = partLength.upperArm;
+    float R2 = getLength(theta7);
+    float L1 = partLength.upperArm;
+    float L2 = getLength(theta8);
+    float s = partLength.waist;
+    float z0 = partLength.height;
+
+    float shoulderXR = 0.5 * s * cos(theta0);
+    float shoulderYR = 0.5 * s * sin(theta0);
+    float shoulderXL = -0.5 * s * cos(theta0);
+    float shoulderYL = -0.5 * s * sin(theta0);
+
+    float theta01 = atan2(YR - shoulderYR, XR - shoulderXR);
+    float theta1 = theta01 - theta0;
+
+    if (theta1 < 0 || theta1 > 150.0 * M_PI / 180.0) // the1 범위 : 0deg ~ 150deg
+    {
+        std::cout << "PR \n" << pR << "\n";
+        std::cout << "PL \n" << pL << "\n";
+        std::cout << "theta0 : " << theta0 * 180.0 / M_PI << "\n theta7 : " << theta7 * 180.0 / M_PI << "\n theta8 : " << theta8 * 180.0 / M_PI << "\n";
+        std::cout << "IKFUN (q1) is not solved!!\n";
+        std::cout << "theta1 : " << theta1 * 180.0 / M_PI << "\n";
+        state.main = Main::Error;
+    }
+
+    float theta02 = atan2(YL - shoulderYL, XL - shoulderXL);
+    float theta2 = theta02 - theta0;
+
+    if (theta2 < 30 * M_PI / 180.0 || theta2 > M_PI) // the2 범위 : 30deg ~ 180deg
+    {
+        std::cout << "PR \n" << pR << "\n";
+        std::cout << "PL \n" << pL << "\n";
+        std::cout << "theta0 : " << theta0 * 180.0 / M_PI << "\n theta7 : " << theta7 * 180.0 / M_PI << "\n theta8 : " << theta8 * 180.0 / M_PI << "\n";
+        std::cout << "IKFUN (q2) is not solved!!\n";
+        std::cout << "theta2 : " << theta2 * 180.0 / M_PI << "\n";
+        state.main = Main::Error;
+    }
+
+    float zeta = z0 - ZR;
+    float r2 = (YR - shoulderYR) * (YR - shoulderYR) + (XR - shoulderXR) * (XR - shoulderXR); // r^2
+
+    float x = zeta * zeta + r2 - R1 * R1 - R2 * R2;
+    float y = sqrt(4.0 * R1 * R1 * R2 * R2 - x * x);
+
+    float theta4 = atan2(y, x);
+
+    if (theta4 < 0 || theta4 > 140.0 * M_PI / 180.0) // the4 범위 : 0deg ~ 120deg
+    {
+        std::cout << "PR \n" << pR << "\n";
+        std::cout << "PL \n" << pL << "\n";
+        std::cout << "theta0 : " << theta0 * 180.0 / M_PI << "\n theta7 : " << theta7 * 180.0 / M_PI << "\n theta8 : " << theta8 * 180.0 / M_PI << "\n";
+        std::cout << "IKFUN (q4) is not solved!!\n";
+        std::cout << "theta4 : " << theta4 * 180.0 / M_PI << "\n";
+        state.main = Main::Error;
+    }
+
+    float theta34 = atan2(sqrt(r2), zeta);
+    float theta3 = theta34 - atan2(R2 * sin(theta4), R1 + R2 * cos(theta4));
+
+    if (theta3 < -45.0 * M_PI / 180.0 || theta3 > 90.0 * M_PI / 180.0) // the3 범위 : -45deg ~ 90deg
+    {
+        std::cout << "PR \n" << pR << "\n";
+        std::cout << "PL \n" << pL << "\n";
+        std::cout << "theta0 : " << theta0 * 180.0 / M_PI << "\n theta7 : " << theta7 * 180.0 / M_PI << "\n theta8 : " << theta8 * 180.0 / M_PI << "\n";
+        std::cout << "IKFUN (q3) is not solved!!\n";
+        std::cout << "theta3 : " << theta3 * 180.0 / M_PI << "\n";
+        state.main = Main::Error;
+    }
+
+    zeta = z0 - ZL;
+    r2 = (YL - shoulderYL) * (YL - shoulderYL) + (XL - shoulderXL) * (XL - shoulderXL); // r^2
+
+    x = zeta * zeta + r2 - L1 * L1 - L2 * L2;
+    y = sqrt(4.0 * L1 * L1 * L2 * L2 - x * x);
+
+    float theta6 = atan2(y, x);
+
+    if (theta6 < 0 || theta6 > 140.0 * M_PI / 180.0) // the6 범위 : 0deg ~ 120deg
+    {
+        std::cout << "PR \n" << pR << "\n";
+        std::cout << "PL \n" << pL << "\n";
+        std::cout << "theta0 : " << theta0 * 180.0 / M_PI << "\n theta7 : " << theta7 * 180.0 / M_PI << "\n theta8 : " << theta8 * 180.0 / M_PI << "\n";
+        std::cout << "IKFUN (q6) is not solved!!\n";
+        std::cout << "theta6 : " << theta6 * 180.0 / M_PI << "\n";
+        state.main = Main::Error;
+    }
+
+    float theta56 = atan2(sqrt(r2), zeta);
+    float theta5 = theta56 - atan2(L2 * sin(theta6), L1 + L2 * cos(theta6));
+
+    if (theta5 < -45.0 * M_PI / 180.0 || theta5 > 90.0 * M_PI / 180.0) // the5 범위 : -45deg ~ 90deg
+    {
+        std::cout << "PR \n" << pR << "\n";
+        std::cout << "PL \n" << pL << "\n";
+        std::cout << "theta0 : " << theta0 * 180.0 / M_PI << "\n theta7 : " << theta7 * 180.0 / M_PI << "\n theta8 : " << theta8 * 180.0 / M_PI << "\n";
+        std::cout << "IKFUN (q5) is not solved!!\n";
+        std::cout << "theta5 : " << theta5 * 180.0 / M_PI << "\n";
+        state.main = Main::Error;
+    }
+
+    theta4 -= getTheta(R2, theta7);
+    theta6 -= getTheta(L2, theta8);
+
+    Qf.resize(9);
+    Qf << theta0, theta1, theta2, theta3, theta4, theta5, theta6, theta7, theta8;
+
+    return Qf;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /*                           Push Command Buffer                              */
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2477,16 +2454,6 @@ void PathManager::pushCommandBuffer(VectorXd Qi, VectorXd Kpp, bool isHitR, bool
             maxonMotor->pre_q = Qi[can_id];
         }
     }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/*                                Brake                                       */
-////////////////////////////////////////////////////////////////////////////////
-
-void PathManager::clearBrake()  // 모든 brake끄기
-{
-    usbio.setUSBIO4761(0, 0);
-    usbio.outputUSBIO4761();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
