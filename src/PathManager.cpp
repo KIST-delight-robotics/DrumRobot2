@@ -300,7 +300,6 @@ void PathManager::initializeValue(int bpm)
     hitState.resize(2, 3);
     hitState = MatrixXd::Zero(2, 3);
 
-    prevEndTime = 0.0;
     prevLine = VectorXd::Zero(9);
 
     q0_t1 = readyAngle(0);
@@ -312,7 +311,7 @@ void PathManager::initializeValue(int bpm)
 void PathManager::generateTrajectory(MatrixXd &measureMatrix)
 {
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////// 기존
-    // /*
+    /*
     // position
     pair<VectorXd, VectorXd> initialPosition, finalPosition;
     VectorXd initialPositionR(3);
@@ -414,7 +413,7 @@ void PathManager::generateTrajectory(MatrixXd &measureMatrix)
     tmpMatrix = measureMatrix.block(1, 0, tmpMatrix.rows(), tmpMatrix.cols());
     measureMatrix.resize(tmpMatrix.rows(), tmpMatrix.cols());
     measureMatrix = tmpMatrix;
-    // */
+    */
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////// 궤적 손목 0.05
     /*
     MatrixXd dividedMatrix;
@@ -548,7 +547,7 @@ void PathManager::generateTrajectory(MatrixXd &measureMatrix)
     measureMatrix = tmpMatrix;
     */
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////// 손목만 0.05
-    /*
+    // /*
     // position
     pair<VectorXd, VectorXd> initialPosition, finalPosition;
     VectorXd initialPositionR(3);
@@ -607,12 +606,12 @@ void PathManager::generateTrajectory(MatrixXd &measureMatrix)
 
         trajectoryQueue.push(Pt);
 
-        // 데이터 저장
-        std::string fileName;
-        fileName = "Trajectory_R";
-        fun.appendToCSV_DATA(fileName, Pt.trajectoryR[0], Pt.trajectoryR[1], Pt.trajectoryR[2]);
-        fileName = "Trajectory_L";
-        fun.appendToCSV_DATA(fileName, Pt.trajectoryL[0], Pt.trajectoryL[1], Pt.trajectoryL[2]);
+        // // 데이터 저장
+        // std::string fileName;
+        // fileName = "Trajectory_R";
+        // fun.appendToCSV_DATA(fileName, Pt.trajectoryR[0], Pt.trajectoryR[1], Pt.trajectoryR[2]);
+        // fileName = "Trajectory_L";
+        // fun.appendToCSV_DATA(fileName, Pt.trajectoryL[0], Pt.trajectoryL[1], Pt.trajectoryL[2]);
         // fileName = "S";
         // fun.appendToCSV_DATA(fileName, sR, sL, 0);
         // fileName = "T";
@@ -675,10 +674,10 @@ void PathManager::generateTrajectory(MatrixXd &measureMatrix)
 
         hitAngleQueue.push(Ht);
 
-        // 데이터 저장
-        std::string fileName;
-        fileName = "Wrist";
-        fun.appendToCSV_DATA(fileName, Ht.wristR, Ht.wristL, 0);
+        // // 데이터 저장
+        // std::string fileName;
+        // fileName = "Wrist";
+        // fun.appendToCSV_DATA(fileName, Ht.wristR, Ht.wristL, 0);
         // fileName = "HtR";
         // fun.appendToCSV_DATA(fileName, tHitR, hitR_t2 - hitR_t1, 0);
         // fileName = "HtL";
@@ -690,7 +689,7 @@ void PathManager::generateTrajectory(MatrixXd &measureMatrix)
     tmpMatrix = measureMatrix.block(1, 0, tmpMatrix.rows(), tmpMatrix.cols());
     measureMatrix.resize(tmpMatrix.rows(), tmpMatrix.cols());
     measureMatrix = tmpMatrix;
-    */
+    // */
 }
 
 void PathManager::solveIKandPushCommand()
@@ -721,12 +720,12 @@ void PathManager::solveIKandPushCommand()
         // push command buffer
         pushCommandBuffer(q, nextP.Kpp, nextP.isHitR, nextP.isHitL);
 
-        // 데이터 기록
-        for (int i = 0; i < 9; i++)
-        {
-            std::string fileName = "solveIK_q" + to_string(i);
-            fun.appendToCSV_DATA(fileName, i, q(i), 0);
-        }
+        // // 데이터 기록
+        // for (int i = 0; i < 9; i++)
+        // {
+        //     std::string fileName = "solveIK_q" + to_string(i);
+        //     fun.appendToCSV_DATA(fileName, i, q(i), 0);
+        // }
     }
 
     std::cout << "\n/////////////// Line Data \n";
@@ -943,8 +942,8 @@ void PathManager::parseMeasure(MatrixXd &measureMatrix)
     finalTimeR = dataR.first(10);
     finalTimeL = dataL.first(10);
 
-    // 타격
-    parseHitData(measureTime, measureIntensityR, measureIntensityL);
+    // // 타격
+    // parseHitData(measureTime, measureIntensityR, measureIntensityL);
 
     // 여기 잠깐 주석 처리하고
     // hitState(2) = dataR.first(20);
@@ -963,27 +962,6 @@ void PathManager::parseMeasureHit(MatrixXd &measureMatrix)
 
     // 타격
     parseHitData(measureTime, measureIntensityR, measureIntensityL);
-
-    // if (measureMatrix.rows() == 1)
-    // {
-    //     line_t2 = line_t1 + 0.05*100.0/bpmOfScore;
-
-    //     hitR_t1 = line_t1;
-    //     hitR_t2 = line_t2;
-
-    //     hitL_t1 = line_t1;
-    //     hitL_t1 = line_t2;
-
-    //     hitState(0, 1) = 0;
-    //     hitState(1, 1) = 0; // 임시 (이인우)
-    // }
-    // else
-    // {
-    //     line_t2 = measureMatrix(1, 8);
-
-    //     // 타격
-    //     parseHitData(measureTime, measureIntensityR, measureIntensityL);
-    // }
 }
 
 MatrixXd PathManager::divideMatrix(MatrixXd &measureMatrix)
@@ -1032,7 +1010,6 @@ MatrixXd PathManager::divideMatrix(MatrixXd &measureMatrix)
         parsedMatrix.row(i) = newRows[i];
     }
 
-    prevEndTime = measureMatrix(1, 8);
     prevLine = measureMatrix.row(1);
 
     return parsedMatrix;
@@ -2451,7 +2428,7 @@ void PathManager::pushCommandBuffer(VectorXd Qi, VectorXd Kpp, bool isHitR, bool
 
             if (can_id == 0)
             {
-                float alpha = 0.5;
+                float alpha = 0.7;
                 float diff = alpha*preDiff + (1 - alpha)*std::abs(newData.position - prevWaistPos);
                 prevWaistPos = newData.position; 
                 newData.is_brake = (diff < 0.01 * M_PI / 180.0) ? 1 : 0;
