@@ -824,7 +824,7 @@ void DrumRobot::initializePlayState()
     measureMatrix.resize(1, 9);
     measureMatrix = MatrixXd::Zero(1, 9);
 
-    // endOfScore = false;
+    endOfScore = false;
     lineOfScore = 0;        ///< 현재 악보 읽은 줄.
     measureTotalTime = 0.0;     ///< 악보를 읽는 동안 누적 시간. [s]
 }
@@ -870,10 +870,6 @@ bool DrumRobot::readMeasure(ifstream& inputFile)
     // timeSum이 threshold를 넘으면 true 반환
     if (timeSum >= measureThreshold)
     {
-        // std::cout << "\n//////////////////////////////// Read Measure : " << lineOfScore + 1 << "\n";
-        // std::cout << measureMatrix;
-        // std::cout << "\n ////////////// time sum : " << timeSum << "\n";
-
         return true;
     }
 
@@ -887,6 +883,12 @@ bool DrumRobot::readMeasure(ifstream& inputFile)
         {
             item = trimWhitespace(item);
             items.push_back(item);
+        }
+
+        if (stod(items[0]) < 0)     // 종료 코드 확인 (마디 번호가 음수)
+        {
+            endOfScore = true;
+            return false;
         }
 
         measureMatrix.conservativeResize(measureMatrix.rows() + 1, measureMatrix.cols());
@@ -905,10 +907,6 @@ bool DrumRobot::readMeasure(ifstream& inputFile)
         // timeSum이 threshold를 넘으면 true 반환
         if (timeSum >= measureThreshold)
         {
-            // std::cout << "\n//////////////////////////////// Read Measure : " << lineOfScore + 1 << "\n";
-            // std::cout << measureMatrix;
-            // std::cout << "\n ////////////// time sum : " << timeSum << "\n";
-
             return true;
         }
     }
@@ -963,7 +961,7 @@ void DrumRobot::sendPlayProcess()
     std::string currentFile = basePath + musicName + std::to_string(fileIndex) + ".txt";
     inputFile.open(currentFile); // 파일 열기
 
-    if (inputFile.is_open())    //////////////////////////////////////// 파일 열기 성공
+    if (inputFile.is_open() && (!endOfScore))    //////////////////////////////////////// 파일 열기 성공
     {
         if (fileIndex == 0) // 처음 파일을 열 때 -> bpm 확인
         {
