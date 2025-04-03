@@ -604,12 +604,12 @@ void PathManager::generateTrajectory(MatrixXd &measureMatrix)
 
         trajectoryQueue.push(Pt);
 
-        // // 데이터 저장
-        // std::string fileName;
-        // fileName = "Trajectory_R";
-        // fun.appendToCSV_DATA(fileName, Pt.trajectoryR[0], Pt.trajectoryR[1], Pt.trajectoryR[2]);
-        // fileName = "Trajectory_L";
-        // fun.appendToCSV_DATA(fileName, Pt.trajectoryL[0], Pt.trajectoryL[1], Pt.trajectoryL[2]);
+        // 데이터 저장
+        std::string fileName;
+        fileName = "Trajectory_R";
+        fun.appendToCSV_DATA(fileName, Pt.trajectoryR[0], Pt.trajectoryR[1], Pt.trajectoryR[2]);
+        fileName = "Trajectory_L";
+        fun.appendToCSV_DATA(fileName, Pt.trajectoryL[0], Pt.trajectoryL[1], Pt.trajectoryL[2]);
         // fileName = "S";
         // fun.appendToCSV_DATA(fileName, sR, sL, 0);
         // fileName = "T";
@@ -672,10 +672,10 @@ void PathManager::generateTrajectory(MatrixXd &measureMatrix)
 
         hitAngleQueue.push(Ht);
 
-        // // 데이터 저장
-        // std::string fileName;
-        // fileName = "Wrist";
-        // fun.appendToCSV_DATA(fileName, Ht.wristR, Ht.wristL, 0);
+        // 데이터 저장
+        std::string fileName;
+        fileName = "Wrist";
+        fun.appendToCSV_DATA(fileName, Ht.wristR, Ht.wristL, 0);
         // fileName = "HtR";
         // fun.appendToCSV_DATA(fileName, tHitR, hitR_t2 - hitR_t1, 0);
         // fileName = "HtL";
@@ -718,12 +718,12 @@ void PathManager::solveIKandPushCommand()
         // push command buffer
         pushCommandBuffer(q, nextP.Kpp, nextP.isHitR, nextP.isHitL);
 
-        // // 데이터 기록
-        // for (int i = 0; i < 9; i++)
-        // {
-        //     std::string fileName = "solveIK_q" + to_string(i);
-        //     fun.appendToCSV_DATA(fileName, i, q(i), 0);
-        // }
+        // 데이터 기록
+        for (int i = 0; i < 9; i++)
+        {
+            std::string fileName = "solveIK_q" + to_string(i);
+            fun.appendToCSV_DATA(fileName, i, q(i), 0);
+        }
     }
 
     std::cout << "\n/////////////// Line Data \n";
@@ -919,11 +919,11 @@ void PathManager::parseMeasure(MatrixXd &measureMatrix)
     line_t1 = measureMatrix(0, 8);
     line_t2 = measureMatrix(1, 8);
 
-    // std::cout << "\n /// t1 -> t2 : " << line_t1 << " -> " << line_t2 << " = " << line_t2 - line_t1 <<  "\n";
+    std::cout << "\n /// t1 -> t2 : " << line_t1 << " -> " << line_t2 << " = " << line_t2 - line_t1 <<  "\n";
 
-    // std::cout << "\n /// R ///";
+    std::cout << "\n /// R ///";
     pair<VectorXd, VectorXd> dataR = parseOneArm(measureTime, measureInstrumentR, measureState.row(0));
-    // std::cout << "\n /// L ///";
+    std::cout << "\n /// L ///";
     pair<VectorXd, VectorXd> dataL = parseOneArm(measureTime, measureInstrumentL, measureState.row(1));
 
     // measureState 저장
@@ -951,7 +951,7 @@ pair<VectorXd, VectorXd> PathManager::parseOneArm(VectorXd t, VectorXd inst, Vec
     //    S       FT      MT      HT      HH       R      RC      LC       S        S        S        S        S        S
 
     VectorXd initialInstrument = VectorXd::Zero(9), finalInstrument = VectorXd::Zero(9);
-    VectorXd outputVector = VectorXd::Zero(21); // 20 > 40 으로 변경
+    VectorXd outputVector = VectorXd::Zero(20);
 
     VectorXd nextStateVector;
 
@@ -1056,10 +1056,10 @@ pair<VectorXd, VectorXd> PathManager::parseOneArm(VectorXd t, VectorXd inst, Vec
     nextStateVector.resize(3);
     nextStateVector << initialT, initialInstNum, nextState;
 
-    // std::cout << "\n insti -> instf : " << initialInstNum << " -> " << finalInstNum;
-    // std::cout << "\n ti -> tf : " << initialT << " -> " << finalT;
-    // std::cout << "\n state : " << nextStateVector.transpose();
-    // std::cout << "\n";
+    std::cout << "\n insti -> instf : " << initialInstNum << " -> " << finalInstNum;
+    std::cout << "\n ti -> tf : " << initialT << " -> " << finalT;
+    std::cout << "\n state : " << nextStateVector.transpose();
+    std::cout << "\n";
 
     return std::make_pair(outputVector, nextStateVector);
 }
