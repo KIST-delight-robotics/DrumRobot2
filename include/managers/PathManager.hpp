@@ -147,8 +147,7 @@ private:
                                                                                 // 2 : 1 <- 0
                                                                                 // 3 : 1 <- 1
 
-    double prevEndTime = 0.0;       // 악보 나눌 때 시작 악보 기록
-    VectorXd prevLine = VectorXd::Zero(9);
+    VectorXd prevLine = VectorXd::Zero(9);  // 악보 나눌 때 시작 악보 기록
 
     void parseMeasure(MatrixXd &measureMatrix);
     void parseMeasureHit(MatrixXd &measureMatrix);
