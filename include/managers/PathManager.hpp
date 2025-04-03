@@ -81,6 +81,7 @@ public:
                         // Kpp : Kp 에 곱해지는 값
 
     void initializeValue(int bpm);
+    void avoidCollision(MatrixXd &measureMatrix);
     void generateTrajectory(MatrixXd &measureMatrix);
     void solveIKandPushCommand();
 
