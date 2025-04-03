@@ -716,6 +716,8 @@ void PathManager::solveIKandPushCommand()
         q(7) += nextP.wristR;
         q(8) += nextP.wristL;
 
+        fun.appendToCSV_DATA("addWristAngle", nextP.wristR, nextP.wristL, 0);
+
         // push command buffer
         pushCommandBuffer(q, nextP.Kpp, nextP.isHitR, nextP.isHitL);
 
@@ -1610,7 +1612,7 @@ PathManager::elbowAngle PathManager::getElbowAngle(float t1, float t2, int inten
     double intensityFactor = 0.0179 * intensity * intensity + 0.1464 * intensity + 0.1286;  // 1 : 30%, 2: 50%, 3: 70%, 4: 100%, 5: 130%, 6: 170%, 7: 200%
 
     elbowAngle.liftAngle = std::min((T) * (10 * M_PI / 180.0) / 0.5, (10 * M_PI / 180.0));
-    elbowAngle.liftAngle = elbowAngle.liftAngle * intensityFactor;
+    elbowAngle.liftAngle = elbowAngle.stayAngle + elbowAngle.liftAngle * intensityFactor;
 
     return elbowAngle;
 }
@@ -1625,7 +1627,7 @@ PathManager::wristAngle PathManager::getWristAngle(float t1, float t2, int inten
     wristAngle.stayAngle = 10 * M_PI / 180.0;
     t2 - t1 < 0.5 ? wristAngle.liftAngle = (-100 * ((T) - 0.5) * ((T) - 0.5) + 30) * M_PI / 180.0 : wristAngle.liftAngle = 30  * M_PI / 180.0;
     wristAngle.pressAngle = -1.0 * std::min((T) * (5 * M_PI / 180.0)/ 0.5, (5 * M_PI / 180.0));
-    wristAngle.liftAngle = wristAngle.liftAngle * intensityFactor;
+    wristAngle.liftAngle = wristAngle.stayAngle + wristAngle.liftAngle * intensityFactor;
 
     return wristAngle;
 }
