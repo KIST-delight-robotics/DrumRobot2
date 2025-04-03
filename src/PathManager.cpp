@@ -291,12 +291,17 @@ void PathManager::initializeValue(int bpm)
     measureState(1, 1) = 1.0;
 
     roundSum = 0.0;
+    roundSumH = 0.0;
+
     lineData.resize(1, 4);
     lineData = MatrixXd::Zero(1, 4);
     lineData(0, 0) = -1;
 
     hitState.resize(2, 3);
     hitState = MatrixXd::Zero(2, 3);
+
+    prevEndTime = 0.0;
+    prevLine = VectorXd::Zero(9);
 
     q0_t1 = readyAngle(0);
     q0_t0 = readyAngle(0);
@@ -306,6 +311,112 @@ void PathManager::initializeValue(int bpm)
 
 void PathManager::generateTrajectory(MatrixXd &measureMatrix)
 {
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////// 기존
+    // /*
+    // position
+    pair<VectorXd, VectorXd> initialPosition, finalPosition;
+    VectorXd initialPositionR(3);
+    VectorXd initialPositionL(3);
+    VectorXd finalPositionR(3);
+    VectorXd finalPositionL(3);
+    VectorXd initialWristAngle(2);
+    VectorXd finalWristAngle(2);
+    VectorXd waistVector;
+
+    double n, sR, sL;
+    double dt = canManager.DTSECOND;
+
+    // parse
+    parseMeasure(measureMatrix);
+
+    // 한 줄의 데이터 개수 (5ms 단위)
+    n = (line_t2 - line_t1) / dt;
+    roundSum += (int)(n * 10000) % 10000;
+    if (roundSum >= 10000)
+    {
+        roundSum -= 10000;
+        n++;
+    }
+    n = floor(n);
+
+    // position
+    initialPosition = getTargetPosition(initialInstrument);
+    finalPosition = getTargetPosition(finalInstrument);
+
+    initialPositionR << initialPosition.first(0), initialPosition.first(1), initialPosition.first(2);
+    initialPositionL << initialPosition.first(3), initialPosition.first(4), initialPosition.first(5);
+    finalPositionR << finalPosition.first(0), finalPosition.first(1), finalPosition.first(2);
+    finalPositionL << finalPosition.first(3), finalPosition.first(4), finalPosition.first(5);
+
+    // 타격 시 손목 각도
+    initialWristAngle = initialPosition.second;
+    finalWristAngle = finalPosition.second;
+
+    // 타격 궤적 만들기
+    makeHitCoefficient();
+
+    int stateR = hitState(0, 1);
+    int stateL = hitState(1, 1);
+
+    for (int i = 0; i < n; i++)
+    {
+        Position Pt;
+        double tR = dt * i + line_t1 - initialTimeR;
+        double tL = dt * i + line_t1 - initialTimeL;
+
+        sR = timeScaling(0.0, finalTimeR - initialTimeR, tR);
+        sL = timeScaling(0.0, finalTimeL - initialTimeL, tL);
+        
+        Pt.trajectoryR = makePath(initialPositionR, finalPositionR, sR);
+        Pt.trajectoryL = makePath(initialPositionL, finalPositionL, sL);
+
+        // IK 풀기 위한 손목 각도
+        Pt.wristAngleR = tR*(finalWristAngle(0) - initialWristAngle(0))/(finalTimeR - initialTimeR) + initialWristAngle(0);
+        Pt.wristAngleL = tL*(finalWristAngle(1) - initialWristAngle(1))/(finalTimeL - initialTimeL) + initialWristAngle(1);
+
+        trajectoryQueue.push(Pt);
+
+        HitAngle Ht;
+        float tHitR = dt * i + line_t1 - hitR_t1;
+        float tHitL = dt * i + line_t1 - hitL_t1;
+
+        // 각 관절에 더해줄 각도
+        Ht = generateHit(tHitR, tHitL, Ht);
+
+        getHitTime(Ht, stateR, stateL, tHitR, tHitL);
+
+        hitAngleQueue.push(Ht);
+
+        // 데이터 저장
+        std::string fileName;
+        fileName = "Trajectory_R";
+        fun.appendToCSV_DATA(fileName, Pt.trajectoryR[0], Pt.trajectoryR[1], Pt.trajectoryR[2]);
+        fileName = "Trajectory_L";
+        fun.appendToCSV_DATA(fileName, Pt.trajectoryL[0], Pt.trajectoryL[1], Pt.trajectoryL[2]);
+        fileName = "Wrist";
+        fun.appendToCSV_DATA(fileName, Ht.wristR, Ht.wristL, 0);
+        fileName = "S";
+        fun.appendToCSV_DATA(fileName, sR, sL, 0);
+        fileName = "T";
+        fun.appendToCSV_DATA(fileName, tR + initialTimeR, tL + initialTimeL, 0);
+
+        if (i == 0)
+        {
+            // 허리 범위, 및 최적화 각도 계산
+            waistVector = calWaistAngle(Pt.trajectoryR, Pt.trajectoryL);
+        }
+    }
+
+    saveLineData(n, waistVector);
+
+    // 읽은 줄 삭제
+    MatrixXd tmpMatrix(measureMatrix.rows() - 1, measureMatrix.cols());
+    tmpMatrix = measureMatrix.block(1, 0, tmpMatrix.rows(), tmpMatrix.cols());
+    measureMatrix.resize(tmpMatrix.rows(), tmpMatrix.cols());
+    measureMatrix = tmpMatrix;
+    // */
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////// 궤적 손목 0.05
+    /*
     MatrixXd dividedMatrix;
 
     double timeStep = 0.05;
@@ -324,8 +435,8 @@ void PathManager::generateTrajectory(MatrixXd &measureMatrix)
     VectorXd waistVector;
     MatrixXd parsedMatrix;
 
-    float n, sR, sL;
-    float dt = canManager.DTSECOND;
+    double n, sR, sL;
+    double dt = canManager.DTSECOND;
 
     dividedMatrix = divideMatrix(measureMatrix);
 
@@ -336,14 +447,17 @@ void PathManager::generateTrajectory(MatrixXd &measureMatrix)
 
         // 한 줄의 데이터 개수 (5ms 단위)
         n = (line_t2 - line_t1) / dt;
-        roundSum += (int)(n * 1000) % 1000;
-        if (roundSum >= 1000)
+        roundSum += (int)(n * 10000) % 10000;
+        if (roundSum >= 10000)
         {
-            roundSum -= 1000;
+            roundSum -= 10000;
             n++;
         }
-        n = round(n);
+        n = floor(n);
         sumN += n;
+
+        std::cout << "n : " << n << "\n";
+        std::cout << "roundSum : " << roundSum << "\n";
 
         // position
         initialPosition = getTargetPosition(initialInstrument);
@@ -367,11 +481,11 @@ void PathManager::generateTrajectory(MatrixXd &measureMatrix)
         for (int i = 0; i < n; i++)
         {
             Position Pt;
-            float tR = dt * i + line_t1 - initialTimeR;
-            float tL = dt * i + line_t1 - initialTimeL;
+            double tR = dt * i + line_t1 - initialTimeR;
+            double tL = dt * i + line_t1 - initialTimeL;
 
-            sR = timeScaling(0.0f, finalTimeR - initialTimeR, tR);
-            sL = timeScaling(0.0f, finalTimeL - initialTimeL, tL);
+            sR = timeScaling(0.0, finalTimeR - initialTimeR, tR);
+            sL = timeScaling(0.0, finalTimeL - initialTimeL, tL);
             
             Pt.trajectoryR = makePath(initialPositionR, finalPositionR, sR);
             Pt.trajectoryL = makePath(initialPositionL, finalPositionL, sL);
@@ -394,13 +508,17 @@ void PathManager::generateTrajectory(MatrixXd &measureMatrix)
             hitAngleQueue.push(Ht);
 
             // // 데이터 저장
-            std::string fileName;
-            fileName = "Trajectory_R";
-            fun.appendToCSV_DATA(fileName, Pt.trajectoryR[0], Pt.trajectoryR[1], Pt.trajectoryR[2]);
-            fileName = "Trajectory_L";
-            fun.appendToCSV_DATA(fileName, Pt.trajectoryL[0], Pt.trajectoryL[1], Pt.trajectoryL[2]);
+            // std::string fileName;
+            // fileName = "Trajectory_R";
+            // fun.appendToCSV_DATA(fileName, Pt.trajectoryR[0], Pt.trajectoryR[1], Pt.trajectoryR[2]);
+            // fileName = "Trajectory_L";
+            // fun.appendToCSV_DATA(fileName, Pt.trajectoryL[0], Pt.trajectoryL[1], Pt.trajectoryL[2]);
             // fileName = "Wrist";
-            // fun.appendToCSV_DATA(fileName, Ht.wristR, Ht.wristL, Ht.isHitL);
+            // fun.appendToCSV_DATA(fileName, Ht.wristR, Ht.wristL, 0);
+            // fileName = "S";
+            // fun.appendToCSV_DATA(fileName, sR, sL, 0);
+            // fileName = "T";
+            // fun.appendToCSV_DATA(fileName, tR + initialTimeR, tL + initialTimeL, 0);
 
             if ((i == 0) && (line == 0))
             {
@@ -414,6 +532,11 @@ void PathManager::generateTrajectory(MatrixXd &measureMatrix)
         tmpMatrix = dividedMatrix.block(1, 0, tmpMatrix.rows(), tmpMatrix.cols());
         dividedMatrix.resize(tmpMatrix.rows(), tmpMatrix.cols());
         dividedMatrix = tmpMatrix;
+
+        if (dividedMatrix.rows() == 1)
+        {
+            break;
+        }
     }
 
     saveLineData(sumN, waistVector);
@@ -423,6 +546,151 @@ void PathManager::generateTrajectory(MatrixXd &measureMatrix)
     tmpMatrix = measureMatrix.block(1, 0, tmpMatrix.rows(), tmpMatrix.cols());
     measureMatrix.resize(tmpMatrix.rows(), tmpMatrix.cols());
     measureMatrix = tmpMatrix;
+    */
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////// 손목만 0.05
+    /*
+    // position
+    pair<VectorXd, VectorXd> initialPosition, finalPosition;
+    VectorXd initialPositionR(3);
+    VectorXd initialPositionL(3);
+    VectorXd finalPositionR(3);
+    VectorXd finalPositionL(3);
+    VectorXd initialWristAngle(2);
+    VectorXd finalWristAngle(2);
+    VectorXd waistVector;
+
+    double n, sR, sL;
+    double dt = canManager.DTSECOND;
+
+    ///////////////////////////////////////////////////////////// 궤적
+    // parse
+    parseMeasure(measureMatrix);
+
+    // 한 줄의 데이터 개수 (5ms 단위)
+    n = (line_t2 - line_t1) / dt;
+    roundSum += (int)(n * 10000) % 10000;
+    if (roundSum >= 10000)
+    {
+        roundSum -= 10000;
+        n++;
+    }
+    n = floor(n);
+
+    // position
+    initialPosition = getTargetPosition(initialInstrument);
+    finalPosition = getTargetPosition(finalInstrument);
+
+    initialPositionR << initialPosition.first(0), initialPosition.first(1), initialPosition.first(2);
+    initialPositionL << initialPosition.first(3), initialPosition.first(4), initialPosition.first(5);
+    finalPositionR << finalPosition.first(0), finalPosition.first(1), finalPosition.first(2);
+    finalPositionL << finalPosition.first(3), finalPosition.first(4), finalPosition.first(5);
+
+    // 타격 시 손목 각도
+    initialWristAngle = initialPosition.second;
+    finalWristAngle = finalPosition.second;
+
+    for (int i = 0; i < n; i++)
+    {
+        Position Pt;
+        double tR = dt * i + line_t1 - initialTimeR;
+        double tL = dt * i + line_t1 - initialTimeL;
+
+        sR = timeScaling(0.0, finalTimeR - initialTimeR, tR);
+        sL = timeScaling(0.0, finalTimeL - initialTimeL, tL);
+        
+        Pt.trajectoryR = makePath(initialPositionR, finalPositionR, sR);
+        Pt.trajectoryL = makePath(initialPositionL, finalPositionL, sL);
+
+        // IK 풀기 위한 손목 각도
+        Pt.wristAngleR = tR*(finalWristAngle(0) - initialWristAngle(0))/(finalTimeR - initialTimeR) + initialWristAngle(0);
+        Pt.wristAngleL = tL*(finalWristAngle(1) - initialWristAngle(1))/(finalTimeL - initialTimeL) + initialWristAngle(1);
+
+        trajectoryQueue.push(Pt);
+
+        // 데이터 저장
+        std::string fileName;
+        fileName = "Trajectory_R";
+        fun.appendToCSV_DATA(fileName, Pt.trajectoryR[0], Pt.trajectoryR[1], Pt.trajectoryR[2]);
+        fileName = "Trajectory_L";
+        fun.appendToCSV_DATA(fileName, Pt.trajectoryL[0], Pt.trajectoryL[1], Pt.trajectoryL[2]);
+        // fileName = "S";
+        // fun.appendToCSV_DATA(fileName, sR, sL, 0);
+        // fileName = "T";
+        // fun.appendToCSV_DATA(fileName, tR + initialTimeR, tL + initialTimeL, 0);
+
+        if (i == 0)
+        {
+            // 허리 범위, 및 최적화 각도 계산
+            waistVector = calWaistAngle(Pt.trajectoryR, Pt.trajectoryL);
+        }
+    }
+
+    saveLineData(n, waistVector);
+
+    ///////////////////////////////////////////////////////////// 손목
+
+    MatrixXd dividedMatrix;
+
+    double timeStep = 0.05;
+    double lineT = measureMatrix(1,1);
+    int repeat = static_cast<int>(round(lineT / timeStep)); // 한 줄 궤적 생성을 위한 반복 횟수
+    int k = 0;
+    int stateR = 0;
+    int stateL = 0;
+
+    dividedMatrix = divideMatrix(measureMatrix);
+
+    for (int i = 0; i < n; i++)
+    {
+        if (i >= k*n/repeat)
+        {
+            k++;
+            if(i != 0)
+            {
+                // 읽은 줄 삭제
+                MatrixXd tmpMatrix(dividedMatrix.rows() - 1, dividedMatrix.cols());
+                tmpMatrix = dividedMatrix.block(1, 0, tmpMatrix.rows(), tmpMatrix.cols());
+                dividedMatrix.resize(tmpMatrix.rows(), tmpMatrix.cols());
+                dividedMatrix = tmpMatrix;
+            }
+
+            // parse
+            parseMeasureHit(dividedMatrix);
+
+            // 타격 궤적 만들기
+            makeHitCoefficient();
+
+            stateR = hitState(0, 1);
+            stateL = hitState(1, 1);
+        }
+        
+        HitAngle Ht;
+        float tHitR = dt * (i - (k-1)*n/repeat) + line_t1 - hitR_t1;
+        float tHitL = dt * (i - (k-1)*n/repeat) + line_t1 - hitL_t1;
+
+        // 각 관절에 더해줄 각도
+        Ht = generateHit(tHitR, tHitL, Ht);
+
+        getHitTime(Ht, stateR, stateL, tHitR, tHitL);
+
+        hitAngleQueue.push(Ht);
+
+        // 데이터 저장
+        std::string fileName;
+        fileName = "Wrist";
+        fun.appendToCSV_DATA(fileName, Ht.wristR, Ht.wristL, 0);
+        // fileName = "HtR";
+        // fun.appendToCSV_DATA(fileName, tHitR, hitR_t2 - hitR_t1, 0);
+        // fileName = "HtL";
+        // fun.appendToCSV_DATA(fileName, tHitL, hitL_t2 - hitL_t1, 0);
+    }
+
+    // 읽은 줄 삭제
+    MatrixXd tmpMatrix(measureMatrix.rows() - 1, measureMatrix.cols());
+    tmpMatrix = measureMatrix.block(1, 0, tmpMatrix.rows(), tmpMatrix.cols());
+    measureMatrix.resize(tmpMatrix.rows(), tmpMatrix.cols());
+    measureMatrix = tmpMatrix;
+    */
 }
 
 void PathManager::solveIKandPushCommand()
@@ -461,9 +729,9 @@ void PathManager::solveIKandPushCommand()
         }
     }
 
-    // std::cout << "\n/////////////// Line Data \n";
-    // std::cout << lineData;
-    // std::cout << "\n ////////////// \n";
+    std::cout << "\n/////////////// Line Data \n";
+    std::cout << lineData;
+    std::cout << "\n ////////////// \n";
 
     // 커맨드 생성 후 lineData 첫 줄 삭제
     if (lineData.rows() > 1)
@@ -650,16 +918,20 @@ void PathManager::parseMeasure(MatrixXd &measureMatrix)
     VectorXd measureIntensityR = measureMatrix.col(4);
     VectorXd measureIntensityL = measureMatrix.col(5);
 
+    // parsing data
+    line_t1 = measureMatrix(0, 8);
+    line_t2 = measureMatrix(1, 8);
+
+    std::cout << "\n /// t1 -> t2 : " << line_t1 << " -> " << line_t2 << " = " << line_t2 - line_t1 <<  "\n";
+
+    // std::cout << "\n /// R ///";
     pair<VectorXd, VectorXd> dataR = parseOneArm(measureTime, measureInstrumentR, measureState.row(0));
+    // std::cout << "\n /// L ///";
     pair<VectorXd, VectorXd> dataL = parseOneArm(measureTime, measureInstrumentL, measureState.row(1));
 
     // measureState 저장
     measureState.block(0, 0, 1, 3) = dataR.second.transpose();
     measureState.block(1, 0, 1, 3) = dataL.second.transpose();
-
-    // parsing data
-    line_t1 = measureMatrix(0, 8);
-    line_t2 = measureMatrix(1, 8);
 
     // 악기
     initialInstrument << dataR.first.block(1, 0, 9, 1), dataL.first.block(1, 0, 9, 1);
@@ -677,17 +949,41 @@ void PathManager::parseMeasure(MatrixXd &measureMatrix)
     // 여기 잠깐 주석 처리하고
     // hitState(2) = dataR.first(20);
     // hitState(3) = dataL.first(20);
+}
 
-    // std::cout << "\n /// t1 -> t2 : " << t1 << " -> " << t2 << "\n";
+void PathManager::parseMeasureHit(MatrixXd &measureMatrix)
+{
+    VectorXd measureTime = measureMatrix.col(8);
+    VectorXd measureIntensityR = measureMatrix.col(4);
+    VectorXd measureIntensityL = measureMatrix.col(5);
 
-    // std::cout << "\nR : " << initialInstrument.block(0,0,9,1).transpose() << " -> " << finalInstrument.block(0,0,9,1).transpose();
-    // std::cout << "\n /// ti -> tf : " << initialTimeR << " -> " << finalTimeR;
+    // parsing data
+    line_t1 = measureMatrix(0, 8);
+    line_t2 = measureMatrix(1, 8);
 
-    // std::cout << "\nL : " << initialInstrument.block(9,0,9,1).transpose() << " -> " << finalInstrument.block(9,0,9,1).transpose();
-    // std::cout << "\n /// ti -> tf : " << initialTimeL << " -> " << finalTimeL << std::endl;
+    // 타격
+    parseHitData(measureTime, measureIntensityR, measureIntensityL);
 
-    // std::cout << "\n ////////////// state\n";
-    // std::cout << measureState << std::endl;
+    // if (measureMatrix.rows() == 1)
+    // {
+    //     line_t2 = line_t1 + 0.05*100.0/bpmOfScore;
+
+    //     hitR_t1 = line_t1;
+    //     hitR_t2 = line_t2;
+
+    //     hitL_t1 = line_t1;
+    //     hitL_t1 = line_t2;
+
+    //     hitState(0, 1) = 0;
+    //     hitState(1, 1) = 0; // 임시 (이인우)
+    // }
+    // else
+    // {
+    //     line_t2 = measureMatrix(1, 8);
+
+    //     // 타격
+    //     parseHitData(measureTime, measureIntensityR, measureIntensityL);
+    // }
 }
 
 MatrixXd PathManager::divideMatrix(MatrixXd &measureMatrix)
@@ -695,30 +991,31 @@ MatrixXd PathManager::divideMatrix(MatrixXd &measureMatrix)
     double timeStep = 0.05;
     int numCols = measureMatrix.cols();
     std::vector<Eigen::VectorXd> newRows;
+    newRows.push_back(prevLine);
 
-    double prevTotalTime = 0.0;
+    double prevTotalTime = prevLine(8);
 
-    for (int i = 0; i < measureMatrix.rows(); ++i)
+    for (int i = 0; i < measureMatrix.rows() - 1; ++i)
     {
-        double duration = measureMatrix(i, 1);
-        double endTime = measureMatrix(i, 8);
+        double duration = measureMatrix(i + 1, 1);
+        double endTime = measureMatrix(i + 1, 8);
         int steps = static_cast<int>(round(duration / timeStep));
         double sumStep = (endTime-prevTotalTime) / steps;
 
-        for (int s = 1; s <= steps; ++s)
+        for (int s = 0; s < steps; ++s)
         {
             Eigen::VectorXd row(numCols);
             row.setZero();
 
-            row(0) = measureMatrix(i, 0);                 
+            row(0) = measureMatrix(i + 1, 0);                 
             row(1) = timeStep;                              
-            row(8) = prevTotalTime + s * sumStep;          
+            row(8) = prevTotalTime + (s + 1) * sumStep;          
 
-            if (s == steps)
+            if (s + 1 == steps)
             {
                 for (int j = 2; j <= 7; ++j)
                 {
-                    row(j) = measureMatrix(i, j);
+                    row(j) = measureMatrix(i + 1, j);
                 }
             }
 
@@ -726,6 +1023,7 @@ MatrixXd PathManager::divideMatrix(MatrixXd &measureMatrix)
         }
 
         prevTotalTime = endTime;
+
     }
 
     Eigen::MatrixXd parsedMatrix(newRows.size(), numCols);
@@ -733,6 +1031,9 @@ MatrixXd PathManager::divideMatrix(MatrixXd &measureMatrix)
     {
         parsedMatrix.row(i) = newRows[i];
     }
+
+    prevEndTime = measureMatrix(1, 8);
+    prevLine = measureMatrix.row(1);
 
     return parsedMatrix;
 
@@ -856,12 +1157,17 @@ pair<VectorXd, VectorXd> PathManager::parseOneArm(VectorXd t, VectorXd inst, Vec
     nextStateVector.resize(3);
     nextStateVector << initialT, initialInstNum, nextState;
 
+    // std::cout << "\n insti -> instf : " << initialInstNum << " -> " << finalInstNum;
+    // std::cout << "\n ti -> tf : " << initialT << " -> " << finalT;
+    // std::cout << "\n state : " << nextStateVector.transpose();
+    // std::cout << "\n";
+
     return std::make_pair(outputVector, nextStateVector);
 }
 
 void PathManager::parseHitData(VectorXd t, VectorXd hitR, VectorXd hitL)
 {
-    double hitDetectionThreshold = 0.7;
+    double hitDetectionThreshold = 0.5;
 
     //////////////////////////////////////// R
 
@@ -1035,7 +1341,7 @@ pair<VectorXd, VectorXd> PathManager::getTargetPosition(VectorXd inst)
     return std::make_pair(p, angle);
 }
 
-float PathManager::timeScaling(float ti, float tf, float t)
+double PathManager::timeScaling(double ti, double tf, double t)
 {
     float s;
 
@@ -1062,7 +1368,7 @@ float PathManager::timeScaling(float ti, float tf, float t)
     return s;
 }
 
-VectorXd PathManager::makePath(VectorXd Pi, VectorXd Pf, float s)
+VectorXd PathManager::makePath(VectorXd Pi, VectorXd Pf, double s)
 {
     float degree = 2.0;
 

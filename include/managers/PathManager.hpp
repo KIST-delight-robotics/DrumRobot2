@@ -127,19 +127,19 @@ private:
     void getAddStanceCoefficient(VectorXd Q1, VectorXd Q2, double t);
 
     /////////////////////////////////////////////////////////////////////////// Parse Measure
-    float line_t1, line_t2;           // 궤적 생성 시간
+    double line_t1, line_t2;           // 궤적 생성 시간
     
     VectorXd initialInstrument = VectorXd::Zero(18);   // 전체 궤적에서 출발 악기
     VectorXd finalInstrument = VectorXd::Zero(18);   // 전체 궤적에서 도착 악기
 
-    float initialTimeR, finalTimeR;       // 전체 궤적에서 출발 시간, 도착 시간
-    float initialTimeL, finalTimeL;
+    double initialTimeR, finalTimeR;       // 전체 궤적에서 출발 시간, 도착 시간
+    double initialTimeL, finalTimeL;
 
     MatrixXd hitState;              // [이전 시간, 이전 State, intensity]  R
                                     // [이전 시간, 이전 State, intensity]  L
 
-    float hitR_t1, hitR_t2;       // 전체 타격에서 출발 시간, 도착 시간
-    float hitL_t1, hitL_t2;
+    double hitR_t1, hitR_t2;       // 전체 타격에서 출발 시간, 도착 시간
+    double hitL_t1, hitL_t2;
 
     MatrixXd measureState = MatrixXd::Zero(2, 3); // [이전 시간, 이전 악기, 상태] // state
                                                                                 // 0 : 0 <- 0
@@ -147,9 +147,11 @@ private:
                                                                                 // 2 : 1 <- 0
                                                                                 // 3 : 1 <- 1
 
-    
+    double prevEndTime = 0.0;       // 악보 나눌 때 시작 악보 기록
+    VectorXd prevLine = VectorXd::Zero(9);
 
     void parseMeasure(MatrixXd &measureMatrix);
+    void parseMeasureHit(MatrixXd &measureMatrix);
     MatrixXd divideMatrix(MatrixXd &measureMatrix);
     pair<VectorXd, VectorXd> parseOneArm(VectorXd t, VectorXd inst, VectorXd stateVector);
     void parseHitData(VectorXd t, VectorXd hitR, VectorXd hitL);
@@ -179,15 +181,16 @@ private:
     }HitAngle;
     queue<HitAngle> hitAngleQueue;
 
-    double roundSum = 0;    ///< 5ms 스텝 단위에서 누적되는 오차 보상
+    double roundSum = 0.0;    ///< 5ms 스텝 단위에서 누적되는 오차 보상
+    double roundSumH = 0.0;
 
     // 악보 한 줄의 데이터 저장한 Matrix
     // [명령 개수 / q0 최적값 / q0 min / q0 max]
     MatrixXd lineData;
 
     pair<VectorXd, VectorXd> getTargetPosition(VectorXd inst_vector);
-    float timeScaling(float ti, float tf, float t);
-    VectorXd makePath(VectorXd Pi, VectorXd Pf, float s);
+    double timeScaling(double ti, double tf, double t);
+    VectorXd makePath(VectorXd Pi, VectorXd Pf, double s);
     void saveLineData(int n, VectorXd minmax);
     VectorXd calWaistAngle(VectorXd pR, VectorXd pL);
 
