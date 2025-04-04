@@ -915,12 +915,12 @@ bool DrumRobot::readMeasure(ifstream& inputFile)
 
 void DrumRobot::playALineProcess()
 {
-    // 충돌 회피 알고리즘 자리
-
     lineOfScore++;
     std::cout << "\n//////////////////////////////// Read Measure : " << lineOfScore << "\n";
     std::cout << measureMatrix;
     std::cout << "\n ////////////// \n";
+
+    pathManager.avoidCollision(measureMatrix);      // 충돌 회피
 
     pathManager.generateTrajectory(measureMatrix);  // 궤적 생성
 
