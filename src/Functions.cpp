@@ -205,6 +205,34 @@ void Functions::appendToCSV_DATA(const std::string& filename, float A_DATA, floa
     }
 }
 
+// 절대시간과 변수를 CSV 파일에 한 줄씩 저장하는 함수
+void Functions::appendToCSV_DATA_absTime(const std::string& filename, float A_DATA, float B_DATA, float C_DATA) {
+    auto now = std::chrono::system_clock::now();
+    std::time_t now_c = std::chrono::system_clock::to_time_t(now);
+    auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()) % 1000;
+
+    std::ostringstream timestamp;
+    timestamp << std::put_time(std::localtime(&now_c), "%H:%M:%S");
+    timestamp << "." << std::setfill('0') << std::setw(3) << millis.count();  // .밀리초 붙이기
+
+    std::ofstream file;
+    std::string fullPath = basePath + filename + ".txt";
+
+    bool fileExists = std::ifstream(fullPath).good();
+    if (!fileExists) {
+        file.open(fullPath, std::ios::out | std::ios::trunc);
+    } else {
+        file.open(fullPath, std::ios::app);
+    }
+
+    if (file.is_open()) {
+        file << timestamp.str() << "," << A_DATA << "," << B_DATA << "," << C_DATA << "\n";
+        file.close();
+    } else {
+        std::cerr << "Unable to open file: " << fullPath << std::endl;
+    }
+}
+
 // 시간과 state(string)를 CSV 파일에 한 줄씩 저장하는 함수
 void Functions::appendToCSV_State(const std::string& filename, string state, string sub_state) {
     auto now = std::chrono::high_resolution_clock::now();

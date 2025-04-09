@@ -519,6 +519,7 @@ void CanManager::setMaxonCANFrame(std::shared_ptr<MaxonMotor> maxonMotor, const 
         int targetTorque = maxoncmd.setTorqueCANFrame(*maxonMotor, &maxonMotor->sendFrame, targetTorquemNm);
 
         fun.appendToCSV_DATA(fun.file_name, (float)maxonMotor->nodeId + SEND_SIGN, mData.position, targetTorque);
+        fun.appendToCSV_DATA_absTime("wristTime", (float)maxonMotor->nodeId, mData.position, 0);
         // fun.appendToCSV_DATA("torque input", (float)maxonMotor->nodeId, targetTorquemNm, targetTorque);
     }
     else if (mData.mode == maxonMotor->CSV)
@@ -729,7 +730,6 @@ bool CanManager::setCANFrame(std::map<std::string, bool>& fixFlags, int cycleCou
             
         }
     }
-
     return true;
 }
 

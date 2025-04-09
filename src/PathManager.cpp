@@ -716,8 +716,8 @@ void PathManager::solveIKandPushCommand()
         nextP = hitAngleQueue.front();
         hitAngleQueue.pop();
 
-        q(4) += nextP.elbowR;
-        q(6) += nextP.elbowL;
+        //q(4) += nextP.elbowR;
+        //q(6) += nextP.elbowL;
         q(7) += nextP.wristR;
         q(8) += nextP.wristL;
 
@@ -1597,9 +1597,9 @@ PathManager::wristTime PathManager::getWristTime(float t1, float t2, int intensi
 
     t2 - t1 < 0.15 ? wristTime.stayTime = 0.45 * (T) : wristTime.stayTime = 0.47 * (T) - 0.05;
 
-    if (intensity == 1)
+    if (intensity < 4)
         wristTime.liftTime = std::max(0.5 * (T), T - 0.25);
-    else if (intensity == 2)
+    else if (intensity == 4)
         wristTime.liftTime = std::max(0.6 * (T), T - 0.2);
     else
         wristTime.liftTime = std::max(0.7 * (T), T - 0.15);
@@ -1613,11 +1613,21 @@ PathManager::elbowAngle PathManager::getElbowAngle(float t1, float t2, int inten
 {
     float T = t2 - t1;
     elbowAngle elbowAngle;
+    int temp = intensity;
     // float intensityFactor = 0.4 * intensity + 0.2; // 1 : 약하게   2 : 기본    3 : 강하게
-    double intensityFactor = 0.0179 * intensity * intensity + 0.1464 * intensity + 0.1286;  // 1 : 30%, 2: 50%, 3: 70%, 4: 100%, 5: 130%, 6: 170%, 7: 200%
+    // double intensityFactor = 0.0179 * intensity * intensity + 0.1464 * intensity + 0.1286;  // 1 : 30%, 2: 50%, 3: 70%, 4: 100%, 5: 130%, 6: 170%, 7: 200%
+    double intensityFactor = 0.01786 * temp * temp + 0.11071 * temp;  // 1: 0%, 2: 30%, 3: 50%, 4: 70%, 5: 100%, 6: 130%, 7: 170%, 8: 200%  
 
     elbowAngle.liftAngle = std::min((T) * (10 * M_PI / 180.0) / 0.5, (10 * M_PI / 180.0));
-    elbowAngle.liftAngle = elbowAngle.stayAngle + elbowAngle.liftAngle * intensityFactor;
+    if (intensityFactor != 1)
+    {
+        elbowAngle.liftAngle = elbowAngle.stayAngle + elbowAngle.liftAngle * intensityFactor;
+    }
+    else
+    {
+        elbowAngle.liftAngle = elbowAngle.stayAngle;
+    }
+    // elbowAngle.liftAngle = elbowAngle.stayAngle + elbowAngle.liftAngle * intensityFactor;
 
     return elbowAngle;
 }
@@ -1626,13 +1636,23 @@ PathManager::wristAngle PathManager::getWristAngle(float t1, float t2, int inten
 {
     float T = t2 - t1;
     wristAngle wristAngle;
-    // float intensityFactor = 0.4 * intensity + 0.2; // 1 : 약하게   2 : 기본    3 : 강하게
-    double intensityFactor = 0.0179 * intensity * intensity + 0.1464 * intensity + 0.1286;  // 1 : 30%, 2: 50%, 3: 70%, 4: 100%, 5: 130%, 6: 170%, 7: 200%  
+    int temp = intensity;
+    // float intensityFactor = 0.4 * intensity + 0.2; // 1 : 약하게    2 : 기본    3 : 강하게
+    // double intensityFactor = 0.0179 * intensity * intensity + 0.1464 * intensity + 0.1286;  // 1 : 30%, 2: 50%, 3: 70%, 4: 100%, 5: 130%, 6: 170%, 7: 200%
+    double intensityFactor = 0.01786 * temp * temp + 0.11071 * temp;  // 1: 0%, 2: 30%, 3: 50%, 4: 70%, 5: 100%, 6: 130%, 7: 170%, 8: 200%  
 
     wristAngle.stayAngle = 10 * M_PI / 180.0;
     t2 - t1 < 0.5 ? wristAngle.liftAngle = (-100 * ((T) - 0.5) * ((T) - 0.5) + 30) * M_PI / 180.0 : wristAngle.liftAngle = 30  * M_PI / 180.0;
     wristAngle.pressAngle = -1.0 * std::min((T) * (5 * M_PI / 180.0)/ 0.5, (5 * M_PI / 180.0));
-    wristAngle.liftAngle = wristAngle.stayAngle + wristAngle.liftAngle * intensityFactor;
+    if (intensity != 1)
+    {
+        wristAngle.liftAngle = wristAngle.stayAngle + wristAngle.liftAngle * intensityFactor;
+    }
+    else
+    {
+        wristAngle.liftAngle = wristAngle.stayAngle;
+    }
+    
 
     return wristAngle;
 }
@@ -1701,15 +1721,33 @@ MatrixXd PathManager::makeElbowCoefficient(int state, elbowTime eT, elbowAngle e
         A.resize(4, 4);
         b.resize(4, 1);
 
-        A << 1, 0, 0, 0,
+        if(eA.stayAngle == eA.liftAngle)
+        {
+            sol.resize(4,1);
+            sol << eA.stayAngle, 0, 0, 0;
+        }
+        else
+        {
+            A << 1, 0, 0, 0,
             1, eT.liftTime, eT.liftTime * eT.liftTime, eT.liftTime * eT.liftTime * eT.liftTime,
             0, 1, 0, 0,
             0, 1, 2 * eT.liftTime, 3 * eT.liftTime * eT.liftTime;
 
-        b << eA.stayAngle, eA.liftAngle, 0, 0;
+            b << eA.stayAngle, eA.liftAngle, 0, 0;
 
-        A_1 = A.inverse();
-        sol = A_1 * b;
+            A_1 = A.inverse();
+            sol = A_1 * b;
+        }
+
+        // A << 1, 0, 0, 0,
+        //     1, eT.liftTime, eT.liftTime * eT.liftTime, eT.liftTime * eT.liftTime * eT.liftTime,
+        //     0, 1, 0, 0,
+        //     0, 1, 2 * eT.liftTime, 3 * eT.liftTime * eT.liftTime;
+
+        // b << eA.stayAngle, eA.liftAngle, 0, 0;
+
+        // A_1 = A.inverse();
+        // sol = A_1 * b;
 
         // Hit
         A.resize(4, 4);
@@ -1837,15 +1875,34 @@ MatrixXd PathManager::makeWristCoefficient(int state, wristTime wT, wristAngle w
         A.resize(4, 4);
         b.resize(4, 1);
 
-        A << 1, wT.stayTime, wT.stayTime * wT.stayTime, wT.stayTime * wT.stayTime * wT.stayTime,
-            1, wT.liftTime, wT.liftTime * wT.liftTime, wT.liftTime * wT.liftTime * wT.liftTime,
-            0, 1, 2 * wT.stayTime, 3 * wT.stayTime * wT.stayTime,
-            0, 1, 2 * wT.liftTime, 3 * wT.liftTime * wT.liftTime;
+        // Lift Angle = Stay Angle일 때 -> 아주 작게 칠 때
+        if (wA.stayAngle == wA.liftAngle)
+        {
+            sol.resize(4,1);
+            sol << wA.stayAngle, 0, 0, 0;
+        }
+        else
+        {
+             A << 1, wT.stayTime, wT.stayTime * wT.stayTime, wT.stayTime * wT.stayTime * wT.stayTime,
+                1, wT.liftTime, wT.liftTime * wT.liftTime, wT.liftTime * wT.liftTime * wT.liftTime,
+                0, 1, 2 * wT.stayTime, 3 * wT.stayTime * wT.stayTime,
+                0, 1, 2 * wT.liftTime, 3 * wT.liftTime * wT.liftTime;
 
-        b << wA.stayAngle, wA.liftAngle, 0, 0;
+            b << wA.stayAngle, wA.liftAngle, 0, 0;
 
-        A_1 = A.inverse();
-        sol = A_1 * b;
+            A_1 = A.inverse();
+            sol = A_1 * b;
+        }
+
+        // A << 1, wT.stayTime, wT.stayTime * wT.stayTime, wT.stayTime * wT.stayTime * wT.stayTime,
+        //     1, wT.liftTime, wT.liftTime * wT.liftTime, wT.liftTime * wT.liftTime * wT.liftTime,
+        //     0, 1, 2 * wT.stayTime, 3 * wT.stayTime * wT.stayTime,
+        //     0, 1, 2 * wT.liftTime, 3 * wT.liftTime * wT.liftTime;
+
+        // b << wA.stayAngle, wA.liftAngle, 0, 0;
+
+        // A_1 = A.inverse();
+        // sol = A_1 * b;
 
         // Hit
         A.resize(3, 3);
