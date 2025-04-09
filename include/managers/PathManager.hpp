@@ -205,7 +205,8 @@ private:
     }wristTime;
 
     typedef struct {
-        double stayAngle = 5*M_PI/180.0;
+        // double stayAngle = 5*M_PI/180.0;
+        double stayAngle = 0.0;
         double liftAngle = 15*M_PI/180.0;
     }elbowAngle;
 

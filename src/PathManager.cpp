@@ -1624,16 +1624,22 @@ PathManager::elbowAngle PathManager::getElbowAngle(float t1, float t2, int inten
     // double intensityFactor = 0.0179 * intensity * intensity + 0.1464 * intensity + 0.1286;  // 1 : 30%, 2: 50%, 3: 70%, 4: 100%, 5: 130%, 6: 170%, 7: 200%
     double intensityFactor = 0.01786 * temp * temp + 0.11071 * temp;  // 1: 0%, 2: 30%, 3: 50%, 4: 70%, 5: 100%, 6: 130%, 7: 170%, 8: 200%  
 
-    elbowAngle.liftAngle = std::min((T) * (10 * M_PI / 180.0) / 0.5, (10 * M_PI / 180.0));
-    if (intensityFactor != 1)
+    if (T < 0.2)
     {
-        elbowAngle.liftAngle = elbowAngle.stayAngle + elbowAngle.liftAngle * intensityFactor;
+        elbowAngle.liftAngle = 0;
+    }
+    else if (T <= 0.5)
+    {
+        elbowAngle.liftAngle = (T) * (10 * M_PI / 180.0) / 0.5;
     }
     else
     {
-        elbowAngle.liftAngle = elbowAngle.stayAngle;
+        elbowAngle.liftAngle = 10 * M_PI / 180.0;
     }
-    // elbowAngle.liftAngle = elbowAngle.stayAngle + elbowAngle.liftAngle * intensityFactor;
+    
+    // elbowAngle.liftAngle = std::min((T) * (10 * M_PI / 180.0) / 0.5, (10 * M_PI / 180.0));
+
+    elbowAngle.liftAngle = elbowAngle.stayAngle + elbowAngle.liftAngle * intensityFactor;
 
     return elbowAngle;
 }
