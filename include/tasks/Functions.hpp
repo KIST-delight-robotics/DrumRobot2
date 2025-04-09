@@ -8,6 +8,8 @@
 #include <linux/can/raw.h>
 #include <fstream>
 #include <memory>
+#include <iomanip>
+#include <sstream>
 
 #include "Motor.hpp"
 
@@ -33,6 +35,7 @@ public:
     std::string file_name = "data";
     void openCSVFile();
     void appendToCSV_DATA(const std::string& filename, float A_DATA, float B_DATA, float C_DATA);
+    void appendToCSV_DATA_absTime(const std::string& filename, float A_DATA, float B_DATA, float C_DATA);
     void appendToCSV_CAN(const std::string& filename, can_frame& c_frame);
     void appendToCSV_time(const std::string& filename);
     void appendToCSV_State(const std::string& filename, string state, string sub_state);

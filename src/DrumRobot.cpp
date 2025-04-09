@@ -959,6 +959,7 @@ void DrumRobot::sendPlayProcess()
     }
 
     std::string currentFile = basePath + musicName + std::to_string(fileIndex) + ".txt";
+
     inputFile.open(currentFile); // 파일 열기
 
     if (inputFile.is_open() && (!endOfScore))    //////////////////////////////////////// 파일 열기 성공
