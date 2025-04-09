@@ -1702,18 +1702,26 @@ MatrixXd PathManager::makeElbowCoefficient(int state, elbowTime eT, elbowAngle e
         //                     eA.stayAngle, 0, 0, 0;          // Stay
 
         // Release
-        A.resize(4, 4);
-        b.resize(4, 1);
+        if (eA.stayAngle == 0)
+        {
+            sol.resize(4);
+            sol << 0, 0, 0, 0;
+        }
+        else
+        {
+            A.resize(4, 4);
+            b.resize(4, 1);
 
-        A << 1, 0, 0, 0,
-            1, eT.hitTime, eT.hitTime * eT.hitTime, eT.hitTime * eT.hitTime * eT.hitTime,
-            0, 1, 0, 0,
-            0, 1, 2 * eT.hitTime, 3 * eT.hitTime * eT.hitTime;
+            A << 1, 0, 0, 0,
+                1, eT.hitTime, eT.hitTime * eT.hitTime, eT.hitTime * eT.hitTime * eT.hitTime,
+                0, 1, 0, 0,
+                0, 1, 2 * eT.hitTime, 3 * eT.hitTime * eT.hitTime;
 
-        b << 0, eA.stayAngle, 0, 0;
+            b << 0, eA.stayAngle, 0, 0;
 
-        A_1 = A.inverse();
-        sol = A_1 * b;
+            A_1 = A.inverse();
+            sol = A_1 * b;
+        }
 
         elbowCoefficient.resize(2, 4);
         elbowCoefficient << sol(0), sol(1), sol(2), sol(3), // Release
@@ -1745,29 +1753,27 @@ MatrixXd PathManager::makeElbowCoefficient(int state, elbowTime eT, elbowAngle e
             sol = A_1 * b;
         }
 
-        // A << 1, 0, 0, 0,
-        //     1, eT.liftTime, eT.liftTime * eT.liftTime, eT.liftTime * eT.liftTime * eT.liftTime,
-        //     0, 1, 0, 0,
-        //     0, 1, 2 * eT.liftTime, 3 * eT.liftTime * eT.liftTime;
-
-        // b << eA.stayAngle, eA.liftAngle, 0, 0;
-
-        // A_1 = A.inverse();
-        // sol = A_1 * b;
-
         // Hit
-        A.resize(4, 4);
-        b.resize(4, 1);
+        if (eA.liftAngle == 0)
+        {
+            sol.resize(4,1);
+            sol << 0, 0, 0, 0;
+        }
+        else
+        {
+            A.resize(4, 4);
+            b.resize(4, 1);
 
-        A << 1, eT.liftTime, eT.liftTime * eT.liftTime, eT.liftTime * eT.liftTime * eT.liftTime,
-            1, eT.hitTime, eT.hitTime * eT.hitTime, eT.hitTime * eT.hitTime * eT.hitTime,
-            0, 1, 2 * eT.liftTime, 3 * eT.liftTime * eT.liftTime,
-            0, 1, 2 * eT.hitTime, 3 * eT.hitTime * eT.hitTime;
+            A << 1, eT.liftTime, eT.liftTime * eT.liftTime, eT.liftTime * eT.liftTime * eT.liftTime,
+                1, eT.hitTime, eT.hitTime * eT.hitTime, eT.hitTime * eT.hitTime * eT.hitTime,
+                0, 1, 2 * eT.liftTime, 3 * eT.liftTime * eT.liftTime,
+                0, 1, 2 * eT.hitTime, 3 * eT.hitTime * eT.hitTime;
 
-        b << eA.liftAngle, 0, 0, 0;
+            b << eA.liftAngle, 0, 0, 0;
 
-        A_1 = A.inverse();
-        sol2 = A_1 * b;
+            A_1 = A.inverse();
+            sol2 = A_1 * b;
+        }
 
         elbowCoefficient.resize(2, 4);
         elbowCoefficient << sol(0), sol(1), sol(2), sol(3),     // Lift
@@ -1778,32 +1784,43 @@ MatrixXd PathManager::makeElbowCoefficient(int state, elbowTime eT, elbowAngle e
         // Lift - Hit
 
         // Lift
-        A.resize(4, 4);
-        b.resize(4, 1);
+        if (eA.liftAngle == 0)
+        {
+            sol.resize(4);
+            sol << 0, 0, 0, 0;
 
-        A << 1, 0, 0, 0,
-            1, eT.liftTime, eT.liftTime * eT.liftTime, eT.liftTime * eT.liftTime * eT.liftTime,
-            0, 1, 0, 0,
-            0, 1, 2 * eT.liftTime, 3 * eT.liftTime * eT.liftTime;
+            sol2.resize(4);
+            sol2 << 0, 0, 0, 0;
+        }
+        else
+        {
+            A.resize(4, 4);
+            b.resize(4, 1);
 
-        b << 0, eA.liftAngle, 0, 0;
+            A << 1, 0, 0, 0,
+                1, eT.liftTime, eT.liftTime * eT.liftTime, eT.liftTime * eT.liftTime * eT.liftTime,
+                0, 1, 0, 0,
+                0, 1, 2 * eT.liftTime, 3 * eT.liftTime * eT.liftTime;
 
-        A_1 = A.inverse();
-        sol = A_1 * b;
+            b << 0, eA.liftAngle, 0, 0;
 
-        // Hit
-        A.resize(4, 4);
-        b.resize(4, 1);
+            A_1 = A.inverse();
+            sol = A_1 * b;
 
-        A << 1, eT.liftTime, eT.liftTime * eT.liftTime, eT.liftTime * eT.liftTime * eT.liftTime,
-            1, eT.hitTime, eT.hitTime * eT.hitTime, eT.hitTime * eT.hitTime * eT.hitTime,
-            0, 1, 2 * eT.liftTime, 3 * eT.liftTime * eT.liftTime,
-            0, 1, 2 * eT.hitTime, 3 * eT.hitTime * eT.hitTime;
+            // Hit
+            A.resize(4, 4);
+            b.resize(4, 1);
 
-        b << eA.liftAngle, 0, 0, 0;
+            A << 1, eT.liftTime, eT.liftTime * eT.liftTime, eT.liftTime * eT.liftTime * eT.liftTime,
+                1, eT.hitTime, eT.hitTime * eT.hitTime, eT.hitTime * eT.hitTime * eT.hitTime,
+                0, 1, 2 * eT.liftTime, 3 * eT.liftTime * eT.liftTime,
+                0, 1, 2 * eT.hitTime, 3 * eT.hitTime * eT.hitTime;
 
-        A_1 = A.inverse();
-        sol2 = A_1 * b;
+            b << eA.liftAngle, 0, 0, 0;
+
+            A_1 = A.inverse();
+            sol2 = A_1 * b;
+        }
 
         elbowCoefficient.resize(2, 4);
         elbowCoefficient << sol(0), sol(1), sol(2), sol(3),     // Lift
@@ -1854,18 +1871,26 @@ MatrixXd PathManager::makeWristCoefficient(int state, wristTime wT, wristAngle w
         //                     wA.stayAngle, 0, 0, 0,      // Stay
         //                     wA.stayAngle, 0, 0, 0;      // Stay
 
-        // Release 
-        A.resize(3, 3);
-        b.resize(3, 1);
+        // Release
+        if (wA.pressAngle == wA.stayAngle)
+        {
+            sol.resize(4);
+            sol << wA.stayAngle, 0, 0, 0;
+        }
+        else
+        {
+            A.resize(3, 3);
+            b.resize(3, 1);
 
-        A << 1, 0, 0,
-            1, wT.hitTime, wT.hitTime * wT.hitTime,
-            0, 1, 2 * wT.hitTime;
+            A << 1, 0, 0,
+                1, wT.hitTime, wT.hitTime * wT.hitTime,
+                0, 1, 2 * wT.hitTime;
 
-        b << wA.pressAngle, wA.stayAngle, 0;
+            b << wA.pressAngle, wA.stayAngle, 0;
 
-        A_1 = A.inverse();
-        sol = A_1 * b;
+            A_1 = A.inverse();
+            sol = A_1 * b;
+        }
 
         wristCoefficient.resize(4, 4);
         wristCoefficient << sol(0), sol(1), sol(2), 0,  // Release
@@ -1900,28 +1925,26 @@ MatrixXd PathManager::makeWristCoefficient(int state, wristTime wT, wristAngle w
             sol = A_1 * b;
         }
 
-        // A << 1, wT.stayTime, wT.stayTime * wT.stayTime, wT.stayTime * wT.stayTime * wT.stayTime,
-        //     1, wT.liftTime, wT.liftTime * wT.liftTime, wT.liftTime * wT.liftTime * wT.liftTime,
-        //     0, 1, 2 * wT.stayTime, 3 * wT.stayTime * wT.stayTime,
-        //     0, 1, 2 * wT.liftTime, 3 * wT.liftTime * wT.liftTime;
-
-        // b << wA.stayAngle, wA.liftAngle, 0, 0;
-
-        // A_1 = A.inverse();
-        // sol = A_1 * b;
-
         // Hit
-        A.resize(3, 3);
-        b.resize(3, 1);
+        if (wA.liftAngle == wA.pressAngle)
+        {
+            sol2.resize(4);
+            sol2 << wA.liftAngle, 0, 0, 0;
+        }
+        else
+        {
+            A.resize(3, 3);
+            b.resize(3, 1);
 
-        A << 1, wT.liftTime, wT.liftTime * wT.liftTime,
-            1, wT.hitTime, wT.hitTime * wT.hitTime,
-            0, 1, 2 * wT.liftTime;
+            A << 1, wT.liftTime, wT.liftTime * wT.liftTime,
+                1, wT.hitTime, wT.hitTime * wT.hitTime,
+                0, 1, 2 * wT.liftTime;
 
-        b << wA.liftAngle, wA.pressAngle, 0;
+            b << wA.liftAngle, wA.pressAngle, 0;
 
-        A_1 = A.inverse();
-        sol2 = A_1 * b;
+            A_1 = A.inverse();
+            sol2 = A_1 * b;
+        }
 
         wristCoefficient.resize(4, 4);
         wristCoefficient << wA.stayAngle, 0, 0, 0,          // Stay
@@ -1934,30 +1957,46 @@ MatrixXd PathManager::makeWristCoefficient(int state, wristTime wT, wristAngle w
         // Lift - Hit
 
         // Lift
-        A.resize(3, 3);
-        b.resize(3, 1);
+        if (wA.pressAngle == wA.liftAngle)
+        {
+            sol.resize(4);
+            sol << wA.liftAngle, 0, 0, 0;
+        }
+        else
+        {
+            A.resize(3, 3);
+            b.resize(3, 1);
 
-        A << 1, 0, 0,
-            1, wT.stayTime, wT.stayTime * wT.stayTime,
-            0, 1, 2 * wT.stayTime;
+            A << 1, 0, 0,
+                1, wT.stayTime, wT.stayTime * wT.stayTime,
+                0, 1, 2 * wT.stayTime;
 
-        b << wA.pressAngle, wA.liftAngle, 0;
+            b << wA.pressAngle, wA.liftAngle, 0;
 
-        A_1 = A.inverse();
-        sol = A_1 * b;
+            A_1 = A.inverse();
+            sol = A_1 * b;
+        }
 
         // Hit
-        A.resize(3, 3);
-        b.resize(3, 1);
+        if (wA.liftAngle == wA.pressAngle)
+        {
+            sol2.resize(4);
+            sol2 << wA.pressAngle, 0, 0, 0;
+        }
+        else
+        {
+            A.resize(3, 3);
+            b.resize(3, 1);
 
-        A << 1, wT.liftTime, wT.liftTime * wT.liftTime,
-            1, wT.hitTime, wT.hitTime * wT.hitTime,
-            0, 1, 2 * wT.liftTime;
+            A << 1, wT.liftTime, wT.liftTime * wT.liftTime,
+                1, wT.hitTime, wT.hitTime * wT.hitTime,
+                0, 1, 2 * wT.liftTime;
 
-        b << wA.liftAngle, wA.pressAngle, 0;
+            b << wA.liftAngle, wA.pressAngle, 0;
 
-        A_1 = A.inverse();
-        sol2 = A_1 * b;
+            A_1 = A.inverse();
+            sol2 = A_1 * b;
+        }
 
         wristCoefficient.resize(4, 4);
         wristCoefficient << sol(0), sol(1), sol(2), 0,      // Lift
