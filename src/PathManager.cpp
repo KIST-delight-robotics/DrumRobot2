@@ -725,20 +725,20 @@ void PathManager::solveIKandPushCommand()
         nextP = hitAngleQueue.front();
         hitAngleQueue.pop();
 
-        //q(4) += nextP.elbowR;
-        //q(6) += nextP.elbowL;
+        q(4) += nextP.elbowR;
+        q(6) += nextP.elbowL;
         q(7) += nextP.wristR;
         q(8) += nextP.wristL;
 
         // push command buffer
         pushCommandBuffer(q, nextP.Kpp, nextP.isHitR, nextP.isHitL);
 
-        // // 데이터 기록
-        // for (int i = 0; i < 9; i++)
-        // {
-        //     std::string fileName = "solveIK_q" + to_string(i);
-        //     fun.appendToCSV_DATA(fileName, i, q(i), 0);
-        // }
+        // 데이터 기록
+        for (int i = 0; i < 9; i++)
+        {
+            std::string fileName = "solveIK_q" + to_string(i);
+            fun.appendToCSV_DATA(fileName, i, q(i), 0);
+        }
     }
 
     std::cout << "\n/////////////// Line Data \n";
@@ -1636,7 +1636,7 @@ PathManager::elbowAngle PathManager::getElbowAngle(float t1, float t2, int inten
     {
         elbowAngle.liftAngle = 10 * M_PI / 180.0;
     }
-    
+
     // elbowAngle.liftAngle = std::min((T) * (10 * M_PI / 180.0) / 0.5, (10 * M_PI / 180.0));
 
     elbowAngle.liftAngle = elbowAngle.stayAngle + elbowAngle.liftAngle * intensityFactor;
@@ -1710,7 +1710,7 @@ MatrixXd PathManager::makeElbowCoefficient(int state, elbowTime eT, elbowAngle e
         // Release
         if (eA.stayAngle == 0)
         {
-            sol.resize(4);
+            sol.resize(4, 1);
             sol << 0, 0, 0, 0;
         }
         else
@@ -1762,7 +1762,7 @@ MatrixXd PathManager::makeElbowCoefficient(int state, elbowTime eT, elbowAngle e
         // Hit
         if (eA.liftAngle == 0)
         {
-            sol.resize(4,1);
+            sol.resize(4, 1);
             sol << 0, 0, 0, 0;
         }
         else
@@ -1792,10 +1792,10 @@ MatrixXd PathManager::makeElbowCoefficient(int state, elbowTime eT, elbowAngle e
         // Lift
         if (eA.liftAngle == 0)
         {
-            sol.resize(4);
+            sol.resize(4, 1);
             sol << 0, 0, 0, 0;
 
-            sol2.resize(4);
+            sol2.resize(4, 1);
             sol2 << 0, 0, 0, 0;
         }
         else
@@ -1880,7 +1880,7 @@ MatrixXd PathManager::makeWristCoefficient(int state, wristTime wT, wristAngle w
         // Release
         if (wA.pressAngle == wA.stayAngle)
         {
-            sol.resize(4);
+            sol.resize(4, 1);
             sol << wA.stayAngle, 0, 0, 0;
         }
         else
@@ -1934,7 +1934,7 @@ MatrixXd PathManager::makeWristCoefficient(int state, wristTime wT, wristAngle w
         // Hit
         if (wA.liftAngle == wA.pressAngle)
         {
-            sol2.resize(4);
+            sol2.resize(4, 1);
             sol2 << wA.liftAngle, 0, 0, 0;
         }
         else
@@ -1965,7 +1965,7 @@ MatrixXd PathManager::makeWristCoefficient(int state, wristTime wT, wristAngle w
         // Lift
         if (wA.pressAngle == wA.liftAngle)
         {
-            sol.resize(4);
+            sol.resize(4, 1);
             sol << wA.liftAngle, 0, 0, 0;
         }
         else
@@ -1986,7 +1986,7 @@ MatrixXd PathManager::makeWristCoefficient(int state, wristTime wT, wristAngle w
         // Hit
         if (wA.liftAngle == wA.pressAngle)
         {
-            sol2.resize(4);
+            sol2.resize(4, 1);
             sol2 << wA.pressAngle, 0, 0, 0;
         }
         else
