@@ -309,7 +309,16 @@ void PathManager::initializeValue(int bpm)
 
 void PathManager::avoidCollision(MatrixXd &measureMatrix)
 {
-    
+    if (predictCollision(measureMatrix))    // 충돌 예측
+    {
+        for (int priority = 0; priority < 2; priority++)    // 수정방법 중 우선순위 높은 것부터 시도
+        {
+            if (modifyMeasure(measureMatrix, priority))     // 주어진 방법으로 회피되면 measureMatrix를 바꾸고 True 반환
+            {
+                break;
+            }
+        }
+    }
 }
 
 void PathManager::generateTrajectory(MatrixXd &measureMatrix)
@@ -678,10 +687,10 @@ void PathManager::generateTrajectory(MatrixXd &measureMatrix)
 
         hitAngleQueue.push(Ht);
 
-        // 데이터 저장
-        std::string fileName;
-        fileName = "Wrist";
-        fun.appendToCSV_DATA(fileName, Ht.wristR, Ht.wristL, 0);
+        // // 데이터 저장
+        // std::string fileName;
+        // fileName = "Wrist";
+        // fun.appendToCSV_DATA(fileName, Ht.wristR, Ht.wristL, 0);
         // fileName = "HtR";
         // fun.appendToCSV_DATA(fileName, tHitR, hitR_t2 - hitR_t1, 0);
         // fileName = "HtL";
@@ -721,17 +730,15 @@ void PathManager::solveIKandPushCommand()
         q(7) += nextP.wristR;
         q(8) += nextP.wristL;
 
-        fun.appendToCSV_DATA("addWristAngle", nextP.wristR, nextP.wristL, 0);
-
         // push command buffer
         pushCommandBuffer(q, nextP.Kpp, nextP.isHitR, nextP.isHitL);
 
-        // 데이터 기록
-        for (int i = 0; i < 9; i++)
-        {
-            std::string fileName = "solveIK_q" + to_string(i);
-            fun.appendToCSV_DATA(fileName, i, q(i), 0);
-        }
+        // // 데이터 기록
+        // for (int i = 0; i < 9; i++)
+        // {
+        //     std::string fileName = "solveIK_q" + to_string(i);
+        //     fun.appendToCSV_DATA(fileName, i, q(i), 0);
+        // }
     }
 
     std::cout << "\n/////////////// Line Data \n";
@@ -748,7 +755,6 @@ void PathManager::solveIKandPushCommand()
     }
     else if (lineData.rows() == 1)  // 마지막 줄에서 모든 브레이크 정리
     {
-        // clearBrake();           // 이제 실제 끝나는 시간 아님
         endOfPlayCommand = true;   // DrumRobot 에게 끝났음 알리기
     }
 }
@@ -2470,18 +2476,7 @@ void PathManager::pushCommandBuffer(VectorXd Qi, VectorXd Kpp, bool isHitR, bool
 /*                              Collision                                     */
 ////////////////////////////////////////////////////////////////////////////////
 
-string PathManager::trimWhitespace(const std::string &str)
-{
-    size_t first = str.find_first_not_of(" \t");
-    if (std::string::npos == first)
-    {
-        return str;
-    }
-    size_t last = str.find_last_not_of(" \t");
-    return str.substr(first, (last - first + 1));
-}
-
-int PathManager::predictCollision(MatrixXd measureMatrix)
+bool PathManager::predictCollision(MatrixXd measureMatrix)
 {
     VectorXd measureTime = measureMatrix.col(8);
     VectorXd measureInstrumentR = measureMatrix.col(2);
@@ -2552,7 +2547,7 @@ int PathManager::predictCollision(MatrixXd measureMatrix)
 
     // 충돌 예측
     double stepSize = 5;
-    int C = 0;
+    bool isCollision = false;
     for (int i = 0; i < endIndex; i++)
     {
         if (i == measureTime.rows()-1)
@@ -2594,15 +2589,13 @@ int PathManager::predictCollision(MatrixXd measureMatrix)
             bool CT = checkTable(PR, PL, hitR, hitL);
             if (CT && i == 0)    // 해당 줄만 체크
             {
-                C = 1;
-                aNumOfLine++;
+                isCollision = true;
                 break;
             }
         }
-        aNumOfLine++;
     }
 
-    return C;
+    return isCollision;
 }
 
 MatrixXd PathManager::parseAllLine(VectorXd t, VectorXd inst, VectorXd stateVector, char RL)
@@ -2780,6 +2773,17 @@ bool PathManager::checkTable(VectorXd PR, VectorXd PL, double hitR, double hitL)
     return false;
 }
 
+string PathManager::trimWhitespace(const std::string &str)
+{
+    size_t first = str.find_first_not_of(" \t");
+    if (std::string::npos == first)
+    {
+        return str;
+    }
+    size_t last = str.find_last_not_of(" \t");
+    return str.substr(first, (last - first + 1));
+}
+
 bool PathManager::hex2TableData(char hex1, char hex2, int index)
 {
     char hex;
@@ -2896,4 +2900,44 @@ bool PathManager::hex2TableData(char hex1, char hex2, int index)
     }
 
     return bin[index];
+}
+
+bool PathManager::modifyMeasure(MatrixXd &measureMatrix, int priority)
+{
+    // 주어진 방법으로 회피되면 measureMatrix를 바꾸고 True 반환
+
+    std::string method = modificationMethods[priority];
+    MatrixXd modifedMatrix = measureMatrix;
+    bool modificationSuccess = true;
+    int nModification = 0;  // 주어진 방법을 사용한 횟수
+
+    while (modificationSuccess)
+    {
+        if (method == "Crash")
+        {
+            modificationSuccess = crash(modifedMatrix, nModification);     // 주어진 방법으로 수정하면 True 반환
+        }
+        else if (method == "S")
+        {
+
+        }
+        else
+        {
+            modificationSuccess = false;
+        }
+
+        if (!predictCollision(modifedMatrix))   // 충돌 예측
+        {
+            measureMatrix = modifedMatrix;
+            return true;
+        }
+
+        nModification++;
+    }
+    return false;
+}
+
+bool PathManager::crash(MatrixXd &measureMatrix, int num)
+{
+    // 주어진 방법으로 수정하면 True 반환
 }

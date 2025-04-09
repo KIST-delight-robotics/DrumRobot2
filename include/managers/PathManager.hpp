@@ -260,12 +260,17 @@ private:
     void pushCommandBuffer(VectorXd Qi, VectorXd Kpp, bool isHitR, bool isHitL);
 
     /////////////////////////////////////////////////////////////////////////// Detect Collision
-    int aNumOfLine = 0;
+    map<int, std::string> modificationMethods = { ///< 악보 수정 방법 중 우선 순위
+        { 0, "Crash"},
+        { 1, "S"}};
+
     string trimWhitespace(const std::string &str);
-    int predictCollision(MatrixXd measureMatrix);
+    bool predictCollision(MatrixXd measureMatrix);
     MatrixXd parseAllLine(VectorXd t, VectorXd inst, VectorXd stateVector, char RL);
     MatrixXd getOneDrumPosition(int InstNum, char RL);
     bool checkTable(VectorXd PR, VectorXd PL, double hitR, double hitL);
     bool hex2TableData(char hex1, char hex2, int index);
 
+    bool modifyMeasure(MatrixXd &measureMatrix, int priority);
+    bool crash(MatrixXd &measureMatrix, int num);
 };
