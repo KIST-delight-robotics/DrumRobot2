@@ -28,7 +28,7 @@ void TestManager::SendTestProcess()
             }
         FK(c_MotorAngle); // 현재 q값에 대한 FK 진행
     
-        std::cout << "\nSelect Method (1 - 관절각도값 조절, 2 - 좌표값 조절, 3 - 손목 모터, -1 - 나가기) : ";
+        std::cout << "\nSelect Method (1 - 관절각도값 조절, 2 - 좌표값 조절, 3 - 손목 모터, 4 - 발 모터 -1 - 나가기) : ";
         std::cin >> method;
 
         if(method == 1)
@@ -297,6 +297,48 @@ void TestManager::SendTestProcess()
                 }
             }          
         }               
+        else if (method == 4)
+        {
+            while(1)
+            {
+                int userInput = 100;
+                int ret = system("clear");
+                if (ret == -1)
+                    std::cout << "system clear error" << endl;
+                
+                float c_MotorAngle[10] = {0};
+                getMotorPos(c_MotorAngle);
+
+                for (int i = 0; i < 10; i++)
+                {
+                    q[i] = c_MotorAngle[i];
+                    std::cout << "Q[" << i << "] : " << c_MotorAngle[i] << "\t\t" << c_MotorAngle[i] * 180.0 / M_PI << "\n";
+                }
+
+                cout << "\n Select Test Mode (1 - 타격 TEST, -1 - Back) : ";
+                cin >> userInput;
+
+                if (userInput == -1)
+                {
+                    break;
+                } 
+                if(userInput == 1)
+                {
+                    for (auto &entry : motors)
+                    {
+                        MaxonData newData;
+                        if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(entry.second))
+                        {
+                            q[motorMapping[entry.first]] = 1;
+                            newData.position = maxonMotor->jointAngleToMotorPosition(q[motorMapping[entry.first]] + 25.0*M_PI/180.0);
+                            maxonMotor->commandBuffer.push(newData);
+                        }
+
+                    }
+
+                }
+            }
+        }
         else
         {
             break;

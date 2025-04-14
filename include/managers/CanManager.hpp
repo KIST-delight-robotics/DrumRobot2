@@ -71,7 +71,8 @@ public:
         {"L_wrist", 8},
         {"maxonForTest", 9},
         {"R_foot", 10},
-        {"L_foot", 11}};
+        {"L_foot", 11}
+    };
 
     
     //////////////////////////////////////// Initialize

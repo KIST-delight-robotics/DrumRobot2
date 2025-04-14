@@ -96,7 +96,7 @@ void PathManager::getDrumPositoin()
 void PathManager::setReadyAngle()
 {
     //////////////////////////////////////// Ready Angle
-    readyAngle.resize(9);
+    readyAngle.resize(12);
 
     VectorXd defaultInstrumentR;    /// 오른팔 시작 위치
     VectorXd defaultInstrumentL;    /// 왼팔 시작 위치
@@ -137,23 +137,31 @@ void PathManager::setReadyAngle()
     readyAngle(7) += wA.stayAngle;
     readyAngle(8) += wA.stayAngle;
 
+    readyAngle(9) = 0;
+    readyAngle(10) = 0;
+    readyAngle(11) = 0;
+
     //////////////////////////////////////// Home Angle
-    homeAngle.resize(9);
+    homeAngle.resize(12);
     //              waist          R_arm1         L_arm1
     homeAngle << 10*M_PI/180.0,  90*M_PI/180.0,  90*M_PI/180.0,
     //              R_arm2         R_arm3         L_arm2
                 0*M_PI/180.0,  135*M_PI/180.0,  0*M_PI/180.0,
     //              L_arm3         R_wrist        L_wrist
-                135*M_PI/180.0, 60*M_PI/180.0, 60*M_PI/180.0;
+                135*M_PI/180.0, 60*M_PI/180.0, 60*M_PI/180.0,
+    //          Test               R_foot         L_foot            
+                0*M_PI/180.0,   60*M_PI/180.0, 60*M_PI/180.0;
 
     //////////////////////////////////////// Shutdown Angle
-    shutdownAngle.resize(9);
+    shutdownAngle.resize(12);
         //              waist          R_arm1         L_arm1
     shutdownAngle << 0*M_PI/180.0, 135*M_PI/180.0, 45*M_PI/180.0,
     //                  R_arm2         R_arm3         L_arm2
                     0*M_PI/180.0,  0*M_PI/180.0,   0*M_PI/180.0,
     //                  L_arm3         R_wrist        L_wrist
-                    0*M_PI/180.0,  90*M_PI/180.0,  90*M_PI/180.0;
+                    0*M_PI/180.0,  90*M_PI/180.0,  90*M_PI/180.0,
+    //          Test               R_foot         L_foot            
+                    0,                 0,              0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -162,9 +170,9 @@ void PathManager::setReadyAngle()
 
 void PathManager::pushAddStancePath(string flagName)
 {
-    VectorXd Q1 = VectorXd::Zero(9);
-    VectorXd Q2 = VectorXd::Zero(9);
-    VectorXd Qt = VectorXd::Zero(9);
+    VectorXd Q1 = VectorXd::Zero(12);
+    VectorXd Q2 = VectorXd::Zero(12);
+    VectorXd Qt = VectorXd::Zero(12);
     float dt = canManager.DTSECOND; // 0.005
     double T = 2.0;                // 2초동안 실행
     double stayTime = 1.0;       // 이전 대기 시간 1초
@@ -176,21 +184,21 @@ void PathManager::pushAddStancePath(string flagName)
 
     if (flagName == "isHome")
     {
-        for (int i = 0; i < 9; i++)
+        for (int i = 0; i < 12; i++)
         {
             Q2(i) = homeAngle(i);
         }
     }
     else if (flagName == "isReady")
     {
-        for (int i = 0; i < 9; i++)
+        for (int i = 0; i < 12; i++)
         {
             Q2(i) = readyAngle(i);
         }
     }
     else if (flagName == "isShutDown")
     {
-        for (int i = 0; i < 9; i++)
+        for (int i = 0; i < 12; i++)
         {
             Q2(i) = shutdownAngle(i);
         }
@@ -198,11 +206,11 @@ void PathManager::pushAddStancePath(string flagName)
 
     const float accMax = 100.0; // rad/s^2
     
-    VectorXd Vmax = VectorXd::Zero(10);
+    VectorXd Vmax = VectorXd::Zero(12);
 
     Vmax = calVmax(Q1, Q2, accMax, T);
 
-    for (int k = 0; k < 9; k++)
+    for (int k = 0; k < 12; k++)
     {
         cout << "Q1[" << k << "] : " << Q1[k] * 180.0 / M_PI << " [deg] -> Q2[" << k << "] : " << Q2[k] * 180.0 / M_PI << " [deg]" << endl;
     }
@@ -765,9 +773,9 @@ void PathManager::solveIKandPushCommand()
 
 VectorXd PathManager::calVmax(VectorXd &q1, VectorXd &q2, float acc, float t2)
 {
-    VectorXd Vmax = VectorXd::Zero(10);
+    VectorXd Vmax = VectorXd::Zero(12);
 
-    for (int i = 0; i < 9; i++)
+    for (int i = 0; i < 12; i++)
     {
         double val;
         double S = abs(q2(i) - q1(i)); // 수정됨, overflow방지
@@ -813,9 +821,9 @@ VectorXd PathManager::calVmax(VectorXd &q1, VectorXd &q2, float acc, float t2)
 
 VectorXd PathManager::makeProfile(VectorXd &q1, VectorXd &q2, VectorXd &Vmax, float acc, float t, float t2)
 {
-    VectorXd Qi = VectorXd::Zero(10);
+    VectorXd Qi = VectorXd::Zero(12);
 
-    for (int i = 0; i < 9; i++)
+    for (int i = 0; i < 12; i++)
     {
         double val, S;
         int sign;
@@ -889,7 +897,7 @@ VectorXd PathManager::makeProfile(VectorXd &q1, VectorXd &q2, VectorXd &Vmax, fl
 
 VectorXd PathManager::getMotorPos()
 {
-    VectorXd Qf = VectorXd::Zero(9);
+    VectorXd Qf = VectorXd::Zero(12);
 
     // finalMotorPosition 가져오기
     // 마지막 명령값에서 이어서 생성

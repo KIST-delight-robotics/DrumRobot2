@@ -792,7 +792,6 @@ bool CanManager::sendMotorFrame(std::shared_ptr<GenericMotor> motor)
         errorCnt++;
         if (errorCnt > 5)
         {
-            //이거 잘 작동하는지 확인할 필요는 있음 // 김태황
             deactivateAllCanPorts();
             std::cout << "Go to Error state by CAN write error " << motor->myName << "\n";
             return false;

@@ -293,6 +293,34 @@ void DrumRobot::motorSettingCmd()
                 // maxoncmd.getCurrentThresholdR(*maxonMotor, &frame);
                 // canManager.sendAndRecv(motor, frame);
             }
+            else if (name == "R_foot")
+            {
+                maxoncmd.getHomingMethodR(*maxonMotor, &frame);
+                canManager.sendAndRecv(motor, frame);
+
+                maxoncmd.getHomeoffsetDistance(*maxonMotor, &frame, 0);
+                canManager.sendAndRecv(motor, frame);
+
+                maxoncmd.getHomePosition(*maxonMotor, &frame, 0);
+                canManager.sendAndRecv(motor, frame);
+
+                // maxoncmd.getCurrentThresholdR(*maxonMotor, &frame);
+                // canManager.sendAndRecv(motor, frame);
+            }
+            else if (name == "L_foot")
+            {
+                maxoncmd.getHomingMethodR(*maxonMotor, &frame);
+                canManager.sendAndRecv(motor, frame);
+
+                maxoncmd.getHomeoffsetDistance(*maxonMotor, &frame, 0);
+                canManager.sendAndRecv(motor, frame);
+
+                maxoncmd.getHomePosition(*maxonMotor, &frame, 0);
+                canManager.sendAndRecv(motor, frame);
+
+                // maxoncmd.getCurrentThresholdR(*maxonMotor, &frame);
+                // canManager.sendAndRecv(motor, frame);
+            }
             else if (name == "maxonForTest")
             {
                 maxoncmd.getHomingMethodTest(*maxonMotor, &frame);
