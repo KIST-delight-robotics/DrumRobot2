@@ -260,11 +260,7 @@ private:
 
     void pushCommandBuffer(VectorXd Qi, VectorXd Kpp, bool isHitR, bool isHitL);
 
-    /////////////////////////////////////////////////////////////////////////// Detect Collision
-    map<int, std::string> modificationMethods = { ///< 악보 수정 방법 중 우선 순위
-        { 0, "Crash"},
-        { 1, "S"}};
-
+    /////////////////////////////////////////////////////////////////////////// Predict Collision
     string trimWhitespace(const std::string &str);
     bool predictCollision(MatrixXd measureMatrix);
     MatrixXd parseAllLine(VectorXd t, VectorXd inst, VectorXd stateVector, char RL);
@@ -272,6 +268,19 @@ private:
     bool checkTable(VectorXd PR, VectorXd PL, double hitR, double hitL);
     bool hex2TableData(char hex1, char hex2, int index);
 
+    /////////////////////////////////////////////////////////////////////////// Avoid Collision
+    map<int, std::string> modificationMethods = { ///< 악보 수정 방법 중 우선 순위
+        { 0, "Crash"},
+        { 1, "Arm"},
+        { 2, "WaitAndMove"},
+        { 3, "MoveAndWait"}
+    };
+
     bool modifyMeasure(MatrixXd &measureMatrix, int priority);
-    bool crash(MatrixXd &measureMatrix, int num);
+    pair<int, int> findModificationRange(VectorXd t, VectorXd instR, VectorXd instL);
+    bool modifyCrash(MatrixXd &measureMatrix, int num);
+    bool modifyArm(MatrixXd &measureMatrix, int num);
+    bool waitAndMove(MatrixXd &measureMatrix, int num);
+    bool moveAndWait(MatrixXd &measureMatrix, int num);
+
 };
