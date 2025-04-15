@@ -150,7 +150,7 @@ void PathManager::setReadyAngle()
     //              L_arm3         R_wrist        L_wrist
                 135*M_PI/180.0, 60*M_PI/180.0, 60*M_PI/180.0,
     //          Test               R_foot         L_foot            
-                0*M_PI/180.0,   60*M_PI/180.0, 60*M_PI/180.0;
+                0*M_PI/180.0,   180*M_PI/180.0, 180*M_PI/180.0;
 
     //////////////////////////////////////// Shutdown Angle
     shutdownAngle.resize(12);

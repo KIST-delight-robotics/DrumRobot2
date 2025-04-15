@@ -65,7 +65,7 @@ private:
 
     /*For SendTestProcess*/
     int method = 0;
-    float q[10] = {0.0};
+    float q[12] = {0.0};
 
     map<std::string, int> motorMapping = { ///< 각 관절에 해당하는 정보 [이름, CAN ID]
         {"waist", 0},
