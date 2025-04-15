@@ -319,7 +319,7 @@ void PathManager::avoidCollision(MatrixXd &measureMatrix)
 {
     if (predictCollision(measureMatrix))    // 충돌 예측
     {
-        for (int priority = 0; priority < 2; priority++)    // 수정방법 중 우선순위 높은 것부터 시도
+        for (int priority = 0; priority < 4; priority++)    // 수정방법 중 우선순위 높은 것부터 시도
         {
             if (modifyMeasure(measureMatrix, priority))     // 주어진 방법으로 회피되면 measureMatrix를 바꾸고 True 반환
             {
@@ -749,9 +749,9 @@ void PathManager::solveIKandPushCommand()
         }
     }
 
-    std::cout << "\n/////////////// Line Data \n";
-    std::cout << lineData;
-    std::cout << "\n ////////////// \n";
+    // std::cout << "\n/////////////// Line Data \n";
+    // std::cout << lineData;
+    // std::cout << "\n ////////////// \n";
 
     // 커맨드 생성 후 lineData 첫 줄 삭제
     if (lineData.rows() > 1)
@@ -941,11 +941,11 @@ void PathManager::parseMeasure(MatrixXd &measureMatrix)
     line_t1 = measureMatrix(0, 8);
     line_t2 = measureMatrix(1, 8);
 
-    std::cout << "\n /// t1 -> t2 : " << line_t1 << " -> " << line_t2 << " = " << line_t2 - line_t1 <<  "\n";
+    // std::cout << "\n /// t1 -> t2 : " << line_t1 << " -> " << line_t2 << " = " << line_t2 - line_t1 <<  "\n";
 
-    std::cout << "\n /// R ///";
+    // std::cout << "\n /// R ///";
     pair<VectorXd, VectorXd> dataR = parseOneArm(measureTime, measureInstrumentR, measureState.row(0));
-    std::cout << "\n /// L ///";
+    // std::cout << "\n /// L ///";
     pair<VectorXd, VectorXd> dataL = parseOneArm(measureTime, measureInstrumentL, measureState.row(1));
 
     // measureState 저장
@@ -1078,10 +1078,10 @@ pair<VectorXd, VectorXd> PathManager::parseOneArm(VectorXd t, VectorXd inst, Vec
     nextStateVector.resize(3);
     nextStateVector << initialT, initialInstNum, nextState;
 
-    std::cout << "\n insti -> instf : " << initialInstNum << " -> " << finalInstNum;
-    std::cout << "\n ti -> tf : " << initialT << " -> " << finalT;
-    std::cout << "\n state : " << nextStateVector.transpose();
-    std::cout << "\n";
+    // std::cout << "\n insti -> instf : " << initialInstNum << " -> " << finalInstNum;
+    // std::cout << "\n ti -> tf : " << initialT << " -> " << finalT;
+    // std::cout << "\n state : " << nextStateVector.transpose();
+    // std::cout << "\n";
 
     return std::make_pair(outputVector, nextStateVector);
 }
@@ -2583,11 +2583,13 @@ void PathManager::pushCommandBuffer(VectorXd Qi, VectorXd Kpp, bool isHitR, bool
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/*                              Collision                                     */
+/*                           Predict Collision                                */
 ////////////////////////////////////////////////////////////////////////////////
 
 bool PathManager::predictCollision(MatrixXd measureMatrix)
 {
+    return true;
+
     VectorXd measureTime = measureMatrix.col(8);
     VectorXd measureInstrumentR = measureMatrix.col(2);
     VectorXd measureInstrumentL = measureMatrix.col(3);
@@ -3012,6 +3014,10 @@ bool PathManager::hex2TableData(char hex1, char hex2, int index)
     return bin[index];
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/*                            Avoid Collision                                 */
+////////////////////////////////////////////////////////////////////////////////
+
 bool PathManager::modifyMeasure(MatrixXd &measureMatrix, int priority)
 {
     // 주어진 방법으로 회피되면 measureMatrix를 바꾸고 True 반환
@@ -3025,11 +3031,19 @@ bool PathManager::modifyMeasure(MatrixXd &measureMatrix, int priority)
     {
         if (method == "Crash")
         {
-            modificationSuccess = crash(modifedMatrix, nModification);     // 주어진 방법으로 수정하면 True 반환
+            modificationSuccess = modifyCrash(modifedMatrix, nModification);     // 주어진 방법으로 수정하면 True 반환
         }
-        else if (method == "S")
+        else if (method == "Arm")
         {
-
+            modificationSuccess = modifyArm(modifedMatrix, nModification);     // 주어진 방법으로 수정하면 True 반환
+        }
+        else if (method == "WaitAndMove")
+        {
+            modificationSuccess = waitAndMove(modifedMatrix, nModification);     // 주어진 방법으로 수정하면 True 반환
+        }
+        else if (method == "MoveAndWait")
+        {
+            modificationSuccess = moveAndWait(modifedMatrix, nModification);     // 주어진 방법으로 수정하면 True 반환
         }
         else
         {
@@ -3041,13 +3055,341 @@ bool PathManager::modifyMeasure(MatrixXd &measureMatrix, int priority)
             measureMatrix = modifedMatrix;
             return true;
         }
+        else
+        {
+            modifedMatrix = measureMatrix;
+        }
+        
+        // if (modificationSuccess)
+        // {
+        //     std::cout << "\n ////////////// modify Measure : " << method << "\n";
+        //     std::cout << "\n ////////////// modify num : " << nModification + 1 << "\n";
+        //     std::cout << modifedMatrix;
+        //     std::cout << "\n ////////////// \n";
+
+        //     modifedMatrix = measureMatrix;
+        // }
 
         nModification++;
     }
     return false;
 }
 
-bool PathManager::crash(MatrixXd &measureMatrix, int num)
+pair<int, int> PathManager::findModificationRange(VectorXd t, VectorXd instR, VectorXd instL)
+{
+    double hitDetectionThreshold = 1.2 * 100.0 / bpmOfScore; // 일단 이렇게 하면 1줄만 읽는 일 없음
+
+    int detectLineR = 1;
+    for (int i = 1; i < t.rows(); i++)
+    {
+        if (round(10000 * hitDetectionThreshold) < round(10000 * (t(i) - t(0))))
+        {
+            break;
+        }
+
+        if (instR(i) != 0)
+        {
+            detectLineR = i + 1;
+            break;
+        }
+    }
+
+    int detectLineL = 1;
+    for (int i = 1; i < t.rows(); i++)
+    {
+        if (round(10000 * hitDetectionThreshold) < round(10000 * (t(i) - t(0))))
+        {
+            break;
+        }
+
+        if (instL(i) != 0)
+        {
+            detectLineL = i + 1;
+            break;
+        }
+    }
+
+    return make_pair(detectLineR, detectLineL);
+}
+
+bool PathManager::modifyCrash(MatrixXd &measureMatrix, int num)
 {
     // 주어진 방법으로 수정하면 True 반환
+    VectorXd t = measureMatrix.col(8);
+    VectorXd instR = measureMatrix.col(2);
+    VectorXd instL = measureMatrix.col(3);
+
+    // 수정하면 안되는 부분 제외
+    pair<int, int> detectLine = findModificationRange(t, instR, instL);
+
+    int detectLineR = detectLine.first;
+    int detectLineL = detectLine.second;
+
+    // Modify Crash
+    int cnt = 0;
+
+    for (int i = detectLineR; i < t.rows(); i++)
+    {
+        if (instR(i) == 7)
+        {
+            if (cnt == num)
+            {
+                measureMatrix(i, 2) = 8;
+                return true;
+            }
+            cnt++;
+        }
+        else if (instR(i) == 8)
+        {
+            if (cnt == num)
+            {
+                measureMatrix(i, 2) = 7;
+                return true;
+            }
+            cnt++;
+        }
+    }
+
+    for (int i = detectLineL; i < t.rows(); i++)
+    {
+        if (instL(i) == 7)
+        {
+            if (cnt == num)
+            {
+                measureMatrix(i, 3) = 8;
+                return true;
+            }
+            cnt++;
+        }
+        else if (instL(i) == 8)
+        {
+            if (cnt == num)
+            {
+                measureMatrix(i, 3) = 7;
+                return true;
+            }
+            cnt++;
+        }
+    }
+
+    return false;
+}
+
+bool PathManager::modifyArm(MatrixXd &measureMatrix, int num)
+{
+    // 주어진 방법으로 수정하면 True 반환
+    VectorXd t = measureMatrix.col(8);
+    VectorXd instR = measureMatrix.col(2);
+    VectorXd instL = measureMatrix.col(3);
+
+    // 수정하면 안되는 부분 제외
+    pair<int, int> detectLine = findModificationRange(t, instR, instL);
+
+    int detectLineR = detectLine.first;
+    int detectLineL = detectLine.second;
+
+    // Modify Arm
+    int cnt = 0;
+    int maxDetectLine = 1;
+
+    if (detectLineR > detectLineL)
+    {
+        maxDetectLine = detectLineR;
+    }
+    else
+    {
+        maxDetectLine = detectLineL;
+    }
+
+    for (int i = maxDetectLine; i < t.rows(); i++)
+    {
+        if ((instR(i) != 0) && (instL(i) != 0))
+        {
+            if (cnt == num)
+            {
+                int tmp = measureMatrix(i, 2);
+                measureMatrix(i, 2) = measureMatrix(i, 3);
+                measureMatrix(i, 3) = tmp;
+                
+                tmp = measureMatrix(i, 4);
+                measureMatrix(i, 4) = measureMatrix(i, 5);
+                measureMatrix(i, 5) = tmp;
+                
+                return true;
+            }
+            cnt++;
+        }
+    }
+
+    return false;
+}
+
+bool PathManager::waitAndMove(MatrixXd &measureMatrix, int num)
+{
+    // 주어진 방법으로 수정하면 True 반환
+    VectorXd t = measureMatrix.col(8);
+    VectorXd instR = measureMatrix.col(2);
+    VectorXd instL = measureMatrix.col(3);
+
+    // 수정하면 안되는 부분 제외
+    pair<int, int> detectLine = findModificationRange(t, instR, instL);
+
+    int detectLineR = detectLine.first;
+    int detectLineL = detectLine.second;
+
+    // Wait and Move
+    int cnt = 0;
+
+    bool isStart = false;
+    int startInst, startIndex;
+    for (int i = detectLineL-1; i < t.rows(); i++)
+    {
+        if (instL(i) != 0)
+        {
+            if (isStart)
+            {
+                if (startInst != instL(i))
+                {
+                    for (int j = 1; j < i-startIndex; j++)
+                    {
+                        if (cnt == num)
+                        {
+                            measureMatrix(startIndex+j, 3) = startInst;
+                            return true;
+                        }
+                        cnt++;
+                    }
+                }
+                
+                startIndex = i;
+                startInst = instL(i);
+            }
+            else
+            {
+                isStart = true;
+                startIndex = i;
+                startInst = instL(i);
+            }
+        }
+    }
+
+    isStart = false;
+    for (int i = detectLineR-1; i < t.rows(); i++)
+    {
+        if (instR(i) != 0)
+        {
+            if (isStart)
+            {
+                if (startInst != instR(i))
+                {
+                    for (int j = 1; j < i-startIndex; j++)
+                    {
+                        if (cnt == num)
+                        {
+                            measureMatrix(startIndex+j, 2) = startInst;
+                            return true;
+                        }
+                        cnt++;
+                    }
+                }
+
+                startIndex = i;
+                startInst = instR(i);
+            }
+            else
+            {
+                isStart = true;
+                startIndex = i;
+                startInst = instR(i);
+            }
+        }
+    }
+
+    return false;
+}
+
+bool PathManager::moveAndWait(MatrixXd &measureMatrix, int num)
+{
+    // 주어진 방법으로 수정하면 True 반환
+    VectorXd t = measureMatrix.col(8);
+    VectorXd instR = measureMatrix.col(2);
+    VectorXd instL = measureMatrix.col(3);
+
+    // 수정하면 안되는 부분 제외
+    pair<int, int> detectLine = findModificationRange(t, instR, instL);
+
+    int detectLineR = detectLine.first;
+    int detectLineL = detectLine.second;
+
+    // Move and Wait
+    int cnt = 0;
+
+    bool isStart = false;
+    int startInst, endInst, startIndex;
+    for (int i = detectLineL-1; i < t.rows(); i++)
+    {
+        if (instL(i) != 0)
+        {
+            if (isStart)
+            {
+                endInst = instL(i);
+                if (endInst != startInst)
+                {
+                    for (int j = 1; j < i-startIndex; j++)
+                    {
+                        if (cnt == num)
+                        {
+                            measureMatrix(i-j, 3) = endInst;
+                            return true;
+                        }
+                        cnt++;
+                    }
+                }
+                
+                startIndex = i;
+                startInst = instL(i);
+            }
+            else
+            {
+                isStart = true;
+                startIndex = i;
+                startInst = instL(i);
+            }
+        }
+    }
+
+    isStart = false;
+    for (int i = detectLineR-1; i < t.rows(); i++)
+    {
+        if (instR(i) != 0)
+        {
+            if (isStart)
+            {
+                endInst = instR(i);
+                if (endInst != startInst)
+                {
+                    for (int j = 1; j < i-startIndex; j++)
+                    {
+                        if (cnt == num)
+                        {
+                            measureMatrix(i-j, 2) = endInst;
+                            return true;
+                        }
+                        cnt++;
+                    }
+                }
+                
+                startIndex = i;
+                startInst = instR(i);
+            }
+            else
+            {
+                isStart = true;
+                startIndex = i;
+                startInst = instR(i);
+            }
+        }
+    }
+
+    return false;
 }
