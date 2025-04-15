@@ -122,9 +122,9 @@ public:
 
 private:
 
-    USBIO &usbio;
     std::map<std::string, std::shared_ptr<GenericMotor>> &motors;
     Functions &fun;
+    USBIO &usbio;
     
     TMotorCommandParser tmotorcmd;
     MaxonCommandParser maxoncmd;

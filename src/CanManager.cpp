@@ -530,22 +530,22 @@ void CanManager::setMaxonCANFrame(std::shared_ptr<MaxonMotor> maxonMotor, const 
 
 float CanManager::calTorque(std::shared_ptr<MaxonMotor> maxonMotor, const MaxonData &mData)
 {       
-        double frictionTorque = 0;
+        // double frictionTorque = 0;
 
-        if((mData.position - maxonMotor -> preMotorPosition)>(0.01*M_PI/180))
-        {
-            frictionTorque = 5;
-            maxonMotor -> preMotorPosition = mData.position;
-        }
-        else if((mData.position - maxonMotor -> preMotorPosition)<(0.01*M_PI/180))
-        {
-            frictionTorque = -5;
-            maxonMotor -> preMotorPosition = mData.position;
-        }
-        else
-        {
-            maxonMotor -> preMotorPosition = mData.position;
-        }
+        // if((mData.position - maxonMotor -> preMotorPosition)>(0.01*M_PI/180))
+        // {
+        //     frictionTorque = 5;
+        //     maxonMotor -> preMotorPosition = mData.position;
+        // }
+        // else if((mData.position - maxonMotor -> preMotorPosition)<(0.01*M_PI/180))
+        // {
+        //     frictionTorque = -5;
+        //     maxonMotor -> preMotorPosition = mData.position;
+        // }
+        // else
+        // {
+        //     maxonMotor -> preMotorPosition = mData.position;
+        // }
 
         double err = mData.position - maxonMotor->motorPosition;
         double err_dot = (err - maxonMotor-> pre_err)/DTSECOND;
@@ -980,11 +980,12 @@ bool CanManager::distributeFramesToMotors(bool setlimit)
                     maxonMotor->motorPosition = std::get<1>(parsedData);
                     maxonMotor->motorTorque = std::get<2>(parsedData);
                     maxonMotor->statusBit = std::get<3>(parsedData);
-                    maxonMotor->positionValues.push(std::get<1>(parsedData));
-                    if ((maxonMotor->positionValues).size() >= maxonMotor->maxIndex)
-                    {
-                        maxonMotor->positionValues.pop();
-                    }
+                    // 타격 감지를 위한 코드
+                    // maxonMotor->positionValues.push(std::get<1>(parsedData));
+                    // if ((maxonMotor->positionValues).size() >= maxonMotor->maxIndex)
+                    // {
+                    //     maxonMotor->positionValues.pop();
+                    // }
 
                     maxonMotor->jointAngle = maxonMotor->motorPositionToJointAngle(std::get<1>(parsedData));
                     maxonMotor->recieveBuffer.push(frame);
@@ -1012,63 +1013,63 @@ bool CanManager::distributeFramesToMotors(bool setlimit)
 /*                              Hit Detection                                 */
 ////////////////////////////////////////////////////////////////////////////////
 
-bool CanManager::dct_fun(shared_ptr<MaxonMotor> maxonMotor)
-{
-    queue<double> positions = maxonMotor->positionValues;
-    float hittingDrumAngle = maxonMotor->hittingDrumAngle;
+// bool CanManager::dct_fun(shared_ptr<MaxonMotor> maxonMotor)
+// {
+//     queue<double> positions = maxonMotor->positionValues;
+//     float hittingDrumAngle = maxonMotor->hittingDrumAngle;
 
-    double the_k_3; // 가장 오래된 값
-    double the_k_2;
-    double the_k_1;
-    double the_k;
-    double threshold = hittingDrumAngle + wristStayAngle - maxonMotor->initialJointAngle; // 90 deg + 드럼 별 타격 각도 + 준비 각도
+//     double the_k_3; // 가장 오래된 값
+//     double the_k_2;
+//     double the_k_1;
+//     double the_k;
+//     double threshold = hittingDrumAngle + wristStayAngle - maxonMotor->initialJointAngle; // 90 deg + 드럼 별 타격 각도 + 준비 각도
 
-    if (positions.size() < 4)
-    {
-        return false;
-    }
-    else
-    {
-        the_k_3 = positions.front(); // 가장 오래된 값
-        positions.pop();
-        the_k_2 = positions.front();
-        positions.pop();
-        the_k_1 = positions.front();
-        positions.pop();
-        the_k = positions.front();
-    }
+//     if (positions.size() < 4)
+//     {
+//         return false;
+//     }
+//     else
+//     {
+//         the_k_3 = positions.front(); // 가장 오래된 값
+//         positions.pop();
+//         the_k_2 = positions.front();
+//         positions.pop();
+//         the_k_1 = positions.front();
+//         positions.pop();
+//         the_k = positions.front();
+//     }
 
-    double vel_k = the_k - the_k_1;
-    double vel_k_1 = the_k_1 - the_k_2;
+//     double vel_k = the_k - the_k_1;
+//     double vel_k_1 = the_k_1 - the_k_2;
 
-    // if (((vel_k > 0 && vel_k_1 < 0) || (abs(vel_k) * 2 < abs(vel_k_1))) && abs(vel_k_1) >= 0.01 && the_k <= threshold)
-    // {
-    //     return true;
-    // }
-    // else
-    //     return false;
+//     // if (((vel_k > 0 && vel_k_1 < 0) || (abs(vel_k) * 2 < abs(vel_k_1))) && abs(vel_k_1) >= 0.01 && the_k <= threshold)
+//     // {
+//     //     return true;
+//     // }
+//     // else
+//     //     return false;
 
-    if ((vel_k > 0 && vel_k_1 < 0) && the_k <= threshold)
-    {
-        return true;
-    }
-    else
-        return false;
-}
+//     if ((vel_k > 0 && vel_k_1 < 0) && the_k <= threshold)
+//     {
+//         return true;
+//     }
+//     else
+//         return false;
+// }
 
-void CanManager::detectHitting(shared_ptr<MaxonMotor> maxonMotor, float &desiredPosition)
-{
-    if(dct_fun(maxonMotor) && isHitL && maxonMotor->hitting == false)
-    {
-        fun.appendToCSV_DATA("hittingDetectL", 1, 0, 0);
+// void CanManager::detectHitting(shared_ptr<MaxonMotor> maxonMotor, float &desiredPosition)
+// {
+//     if(dct_fun(maxonMotor) && isHitL && maxonMotor->hitting == false)
+//     {
+//         fun.appendToCSV_DATA("hittingDetectL", 1, 0, 0);
         
-        maxonMotor->hitting = true;
-        if (isHitL) isHitL = false;
-        maxonMotor->hittingPos = maxonMotor->positionValues.back() + maxonMotor->initialJointAngle - maxonMotor->hittingDrumAngle;
-        desiredPosition = maxonMotor->positionValues.back();
-    }
-    else
-    {
-        fun.appendToCSV_DATA("hittingDetectL", 0, 0, 0);
-    }
-}
+//         maxonMotor->hitting = true;
+//         if (isHitL) isHitL = false;
+//         maxonMotor->hittingPos = maxonMotor->positionValues.back() + maxonMotor->initialJointAngle - maxonMotor->hittingDrumAngle;
+//         desiredPosition = maxonMotor->positionValues.back();
+//     }
+//     else
+//     {
+//         fun.appendToCSV_DATA("hittingDetectL", 0, 0, 0);
+//     }
+// }
