@@ -952,7 +952,7 @@ void DrumRobot::playALineProcess()
     std::cout << measureMatrix;
     std::cout << "\n ////////////// \n";
 
-    pathManager.avoidCollision(measureMatrix);      // 충돌 회피
+    // pathManager.avoidCollision(measureMatrix);      // 충돌 회피
 
     pathManager.generateTrajectory(measureMatrix);  // 궤적 생성
 
