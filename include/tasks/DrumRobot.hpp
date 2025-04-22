@@ -149,6 +149,8 @@ private:
     double measureTotalTime = 0.0;     ///< 악보를 읽는 동안 누적 시간. [s]
     bool endOfScore = false;           ///< 악보의 종료 코드 확인
 
+    bool FG_start = false;
+
     void initializePlayState();
     int maxonMotorMode = 1; // 1 : CSP // 0 : CST
 
@@ -157,6 +159,7 @@ private:
     bool readMeasure(ifstream& inputFile);
     void playALineProcess();
     void sendPlayProcess();
+    void sendFGProcess();
 
     // System
     void clearBufferforRecord();

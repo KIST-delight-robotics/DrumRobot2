@@ -345,15 +345,15 @@ void Functions::handleMetaEvent(const std::vector<unsigned char>& data, size_t& 
     } else if (metaType == 0x58 && length == 4) {
         unsigned char numerator = data[pos];
         unsigned char denominator = 1 << data[pos + 1];
-        std::cout << "  - Time Signature: " << (int)numerator << "/" << (int)denominator << "\n";
+        // std::cout << "  - Time Signature: " << (int)numerator << "/" << (int)denominator << "\n";
     } else if (metaType == 0x51 && length == 3) {
         int tempo = ((data[pos] & 0xFF) << 16) |
                     ((data[pos + 1] & 0xFF) << 8) |
                     (data[pos + 2] & 0xFF);
         int bpm = 60000000 / tempo;
-        std::cout << "  - Tempo Change: " << bpm << " BPM\n";
+        // std::cout << "  - Tempo Change: " << bpm << " BPM\n";
     } else if (metaType == 0x2F) {
-        std::cout << "  - End of Track reached\n";
+        // std::cout << "  - End of Track reached\n";
     }
     pos = startPos + length;
 }
@@ -383,7 +383,7 @@ void Functions::handleNoteOn(const std::vector<unsigned char>& data, size_t& pos
     }
     if (velocity > 0) {
         note_on_time = ((note_on_time * 60000) / (100 * tpqn)) / 1000;
-        std::cout << std::fixed << std::setprecision(1) << note_on_time << "s\t" << "Hit Drum: " << drumName << " -> " << (int)drumNote << "\n";
+        // std::cout << std::fixed << std::setprecision(1) << note_on_time << "s\t" << "Hit Drum: " << drumName << " -> " << (int)drumNote << "\n";
         this->save_to_csv(midiFilePath, note_on_time, drumNote);
     }
 }
@@ -474,7 +474,7 @@ void Functions::convertMcToC(const std::string& inputFilename, const std::string
                << std::setw(6) << hihat << "\n";
     }
 
-    std::cout << "변환 완료! 저장 위치 → " << outputFilename << "\n";
+    // std::cout << "변환 완료! 저장 위치 → " << outputFilename << "\n";
 }
 
 void Functions::assignHandsToEvents(const std::string& inputFilename, const std::string& outputFilename) {
@@ -567,7 +567,7 @@ void Functions::assignHandsToEvents(const std::string& inputFilename, const std:
                << std::setw(6) << e.hihat << "\n";
     }
 
-    std::cout << "손 어사인 포함 변환 완료! 저장 위치 → " << outputFilename << "\n";
+    // std::cout << "손 어사인 포함 변환 완료! 저장 위치 → " << outputFilename << "\n";
 }
 
 
@@ -640,7 +640,7 @@ void Functions::convertToMeasureFile(const std::string& inputFilename, const std
     output << measureNum+1 << "\t 0.600\t 0\t 0\t 0\t 0\t 0\t 0\n";
     output << measureNum+1 << "\t 0.600\t 1\t 1\t 1\t 1\t 1\t 1\n";
 
-    std::cout << "코드 끗." << std::endl;
+    // std::cout << "코드 끗." << std::endl;
 }
 
 void Functions::save_to_csv(const std::string& outputCsvPath, double &note_on_time, int drumNote) {
