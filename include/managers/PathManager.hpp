@@ -261,6 +261,8 @@ private:
     void pushCommandBuffer(VectorXd Qi, VectorXd Kpp, bool isHitR, bool isHitL);
 
     /////////////////////////////////////////////////////////////////////////// Predict Collision
+    int colli_debug = 0;
+
     string trimWhitespace(const std::string &str);
     bool predictCollision(MatrixXd measureMatrix);
     MatrixXd parseAllLine(VectorXd t, VectorXd inst, VectorXd stateVector, char RL);
@@ -273,7 +275,8 @@ private:
         { 0, "Crash"},
         { 1, "Arm"},
         { 2, "WaitAndMove"},
-        { 3, "MoveAndWait"}
+        { 3, "MoveAndWait"},
+        { 4, "Delete"}
     };
 
     bool modifyMeasure(MatrixXd &measureMatrix, int priority);
@@ -282,5 +285,6 @@ private:
     bool modifyArm(MatrixXd &measureMatrix, int num);
     bool waitAndMove(MatrixXd &measureMatrix, int num);
     bool moveAndWait(MatrixXd &measureMatrix, int num);
+    bool deleteInst(MatrixXd &measureMatrix, int num);
 
 };

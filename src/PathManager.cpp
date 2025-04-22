@@ -150,7 +150,7 @@ void PathManager::setReadyAngle()
     //              L_arm3         R_wrist        L_wrist
                 135*M_PI/180.0, 60*M_PI/180.0, 60*M_PI/180.0,
     //          Test               R_foot         L_foot            
-                0*M_PI/180.0,   180*M_PI/180.0, 180*M_PI/180.0;
+                0*M_PI/180.0,   90*M_PI/180.0, 90*M_PI/180.0;
 
     //////////////////////////////////////// Shutdown Angle
     shutdownAngle.resize(12);
@@ -319,13 +319,20 @@ void PathManager::avoidCollision(MatrixXd &measureMatrix)
 {
     if (predictCollision(measureMatrix))    // 충돌 예측
     {
-        for (int priority = 0; priority < 4; priority++)    // 수정방법 중 우선순위 높은 것부터 시도
+        for (int priority = 0; priority < 5; priority++)    // 수정방법 중 우선순위 높은 것부터 시도
         {
             if (modifyMeasure(measureMatrix, priority))     // 주어진 방법으로 회피되면 measureMatrix를 바꾸고 True 반환
             {
+                colli_debug = 0;
                 break;
             }
+            colli_debug = 1;
         }
+    }
+    else
+    {
+        // std::cout << "\n 충돌 안함 \n";
+        colli_debug = 0;
     }
 }
 
@@ -637,6 +644,8 @@ void PathManager::generateTrajectory(MatrixXd &measureMatrix)
         // fun.appendToCSV_DATA(fileName, sR, sL, 0);
         // fileName = "T";
         // fun.appendToCSV_DATA(fileName, tR + initialTimeR, tL + initialTimeL, 0);
+        fileName = "colli";
+        fun.appendToCSV_DATA(fileName, colli_debug, 0, 0);
 
         if (i == 0)
         {
@@ -2425,7 +2434,7 @@ VectorXd PathManager::IKFixedWaist(VectorXd pR, VectorXd pL, double theta0, doub
         std::cout << "theta0 : " << theta0 * 180.0 / M_PI << "\n theta7 : " << theta7 * 180.0 / M_PI << "\n theta8 : " << theta8 * 180.0 / M_PI << "\n";
         std::cout << "IKFUN (q1) is not solved!!\n";
         std::cout << "theta1 : " << theta1 * 180.0 / M_PI << "\n";
-        state.main = Main::Error;
+        // state.main = Main::Error;
     }
 
     float theta02 = atan2(YL - shoulderYL, XL - shoulderXL);
@@ -2438,7 +2447,7 @@ VectorXd PathManager::IKFixedWaist(VectorXd pR, VectorXd pL, double theta0, doub
         std::cout << "theta0 : " << theta0 * 180.0 / M_PI << "\n theta7 : " << theta7 * 180.0 / M_PI << "\n theta8 : " << theta8 * 180.0 / M_PI << "\n";
         std::cout << "IKFUN (q2) is not solved!!\n";
         std::cout << "theta2 : " << theta2 * 180.0 / M_PI << "\n";
-        state.main = Main::Error;
+        // state.main = Main::Error;
     }
 
     float zeta = z0 - ZR;
@@ -2456,7 +2465,7 @@ VectorXd PathManager::IKFixedWaist(VectorXd pR, VectorXd pL, double theta0, doub
         std::cout << "theta0 : " << theta0 * 180.0 / M_PI << "\n theta7 : " << theta7 * 180.0 / M_PI << "\n theta8 : " << theta8 * 180.0 / M_PI << "\n";
         std::cout << "IKFUN (q4) is not solved!!\n";
         std::cout << "theta4 : " << theta4 * 180.0 / M_PI << "\n";
-        state.main = Main::Error;
+        // state.main = Main::Error;
     }
 
     float theta34 = atan2(sqrt(r2), zeta);
@@ -2469,7 +2478,7 @@ VectorXd PathManager::IKFixedWaist(VectorXd pR, VectorXd pL, double theta0, doub
         std::cout << "theta0 : " << theta0 * 180.0 / M_PI << "\n theta7 : " << theta7 * 180.0 / M_PI << "\n theta8 : " << theta8 * 180.0 / M_PI << "\n";
         std::cout << "IKFUN (q3) is not solved!!\n";
         std::cout << "theta3 : " << theta3 * 180.0 / M_PI << "\n";
-        state.main = Main::Error;
+        // state.main = Main::Error;
     }
 
     zeta = z0 - ZL;
@@ -2487,7 +2496,7 @@ VectorXd PathManager::IKFixedWaist(VectorXd pR, VectorXd pL, double theta0, doub
         std::cout << "theta0 : " << theta0 * 180.0 / M_PI << "\n theta7 : " << theta7 * 180.0 / M_PI << "\n theta8 : " << theta8 * 180.0 / M_PI << "\n";
         std::cout << "IKFUN (q6) is not solved!!\n";
         std::cout << "theta6 : " << theta6 * 180.0 / M_PI << "\n";
-        state.main = Main::Error;
+        // state.main = Main::Error;
     }
 
     float theta56 = atan2(sqrt(r2), zeta);
@@ -2500,7 +2509,7 @@ VectorXd PathManager::IKFixedWaist(VectorXd pR, VectorXd pL, double theta0, doub
         std::cout << "theta0 : " << theta0 * 180.0 / M_PI << "\n theta7 : " << theta7 * 180.0 / M_PI << "\n theta8 : " << theta8 * 180.0 / M_PI << "\n";
         std::cout << "IKFUN (q5) is not solved!!\n";
         std::cout << "theta5 : " << theta5 * 180.0 / M_PI << "\n";
-        state.main = Main::Error;
+        // state.main = Main::Error;
     }
 
     theta4 -= getTheta(R2, theta7);
@@ -2588,8 +2597,6 @@ void PathManager::pushCommandBuffer(VectorXd Qi, VectorXd Kpp, bool isHitR, bool
 
 bool PathManager::predictCollision(MatrixXd measureMatrix)
 {
-    return true;
-
     VectorXd measureTime = measureMatrix.col(8);
     VectorXd measureInstrumentR = measureMatrix.col(2);
     VectorXd measureInstrumentL = measureMatrix.col(3);
@@ -2651,6 +2658,7 @@ bool PathManager::predictCollision(MatrixXd measureMatrix)
         }
     }
 
+    // endIndex = 1;   // 맵 테스트 용 (한 줄만 충돌 예측)
     // std::cout << "\n end Index \n" << endIndex;
 
     // 파싱
@@ -2659,7 +2667,6 @@ bool PathManager::predictCollision(MatrixXd measureMatrix)
 
     // 충돌 예측
     double stepSize = 5;
-    bool isCollision = false;
     for (int i = 0; i < endIndex; i++)
     {
         if (i == measureTime.rows()-1)
@@ -2670,7 +2677,7 @@ bool PathManager::predictCollision(MatrixXd measureMatrix)
         for (int j = 0; j < stepSize+1; j++)
         {
             VectorXd PR(3), PL(3), preR(3), nextR(3), preL(3), nextL(3);
-            double hitR, hitL;
+            double Tr = 1.0, hitR, hitL;
 
             preR << linePositionR.block(i,1,1,3).transpose();
             nextR << linePositionR.block(i+1,1,1,3).transpose();
@@ -2680,34 +2687,40 @@ bool PathManager::predictCollision(MatrixXd measureMatrix)
             PR = preR + (nextR - preR)*j/stepSize;
             PL = preL + (nextL - preL)*j/stepSize;
 
+            if (measureTime(i+1) - measureTime(i) < 0.5)
+            {
+                Tr = (measureTime(i+1) - measureTime(i))/0.5;
+            }
+            
             if (measureIntensityR(i+1) == 0)
             {
-                hitR = 0.07;
+                hitR = 10.0 * M_PI / 180.0;
             }
             else
             {
-                hitR = 0.07 + 0.07*sin(M_PI*j/stepSize);
+                hitR = measureIntensityR(i+1)*Tr*15.0*sin(M_PI*j/stepSize) * M_PI / 180.0;
             }
 
             if (measureIntensityL(i+1) == 0)
             {
-                hitL = 0.07;
+                hitL = 10.0 * M_PI / 180.0;
             }
             else
             {
-                hitL = 0.07 + 0.07*sin(M_PI*j/stepSize);
+                hitL = measureIntensityL(i+1)*Tr*15.0*sin(M_PI*j/stepSize) * M_PI / 180.0;
             }
 
-            bool CT = checkTable(PR, PL, hitR, hitL);
-            if (CT && i == 0)    // 해당 줄만 체크
+            if (checkTable(PR, PL, hitR, hitL))
             {
-                isCollision = true;
-                break;
+                // std::cout << "\n 충돌이 예측됨 \n";
+                // std::cout << "\n R :" << PR.transpose() << ", L :" << PL.transpose() << "\n";
+                // std::cout << "\n t :" << (measureTime(i+1) - measureTime(i))*j/stepSize + measureTime(i) << "\n";
+                return true;;
             }
         }
     }
 
-    return isCollision;
+    return false;
 }
 
 MatrixXd PathManager::parseAllLine(VectorXd t, VectorXd inst, VectorXd stateVector, char RL)
@@ -2819,42 +2832,66 @@ MatrixXd PathManager::getOneDrumPosition(int InstNum, char RL)
 bool PathManager::checkTable(VectorXd PR, VectorXd PL, double hitR, double hitL)
 {
     std::ifstream tableFile;
-    std::string tablePath = "/home/shy/DrumRobot/collision_table/";    // 테이블 위치
+    std::string tablePath = "/home/shy/DrumRobot/include/table/";    // 테이블 위치
 
     int PR_index[3] = {0};
     int PL_index[3] = {0};
-    double range[2][3] = {{-0.35, 0.45, 0.55}, {0.8, 0.35, 0.65}};
-    double dx = 0.05;
-
-    // 타격 궤적 보정
-    PR(2) = PR(2) + hitR;
-    PL(2) = PL(2) + hitL;
+    int WR_index = 0, WL_index = 0;
+    double range[2][4] = {{-0.35, 0.50, 0.60, 0.0}, {0.50, 0.75, 1.10, 30.0*M_PI/180.0}};
+    double resolution[4] = {14, 4, 8, 10};
 
     // 인덱스 공간으로 변환
-    for (int i = 0; i < 3; i++)
+    for (int i = 0; i < 4; i++)
     {
-        PR_index[i] = floor((PR(i) - range[0][i])/dx + 0.5);
-        PL_index[i] = floor((PL(i) - range[0][i])/dx + 0.5);
-
-        if (PR_index[i] > range[1][i]/dx)
+        if (i < 3)
         {
-            PR_index[i] = (int)(range[1][i]/dx);
+            PR_index[i] = round(resolution[i]*(PR(i) - range[0][i])/(range[1][i] - range[0][i]));
+            PL_index[i] = round(resolution[i]*(PL(i) - range[0][i])/(range[1][i] - range[0][i]));
+
+            if (PR_index[i] > resolution[i])
+            {
+                PR_index[i] = (int)(resolution[i]);
+            }
+
+            if (PL_index[i] > resolution[i])
+            {
+                PL_index[i] = (int)(resolution[i]);
+            }
         }
-
-        if (PL_index[i] > range[1][i]/dx)
+        else
         {
-            PL_index[i] = (int)(range[1][i]/dx);
+            WR_index = round(resolution[i]*(hitR - range[0][i])/(range[1][i] - range[0][i]));
+            WL_index = round(resolution[i]*(hitL - range[0][i])/(range[1][i] - range[0][i]));
+
+            if (WR_index > resolution[i])
+            {
+                WR_index = (int)(resolution[i]);
+            }
+
+            if (WL_index > resolution[i])
+            {
+                WL_index = (int)(resolution[i]);
+            }
         }
     }
 
-    std::string fileName = tablePath + "TABLE_" + std::to_string(PR_index[0]+1) + "_" + std::to_string(PR_index[1]+1) +".txt";
+    // std::cout << "\n W index : " << WR_index << ", " << WL_index << "\n";
+    // std::cout << "\n X index : " << PR_index[0] << ", " << PL_index[0] << "\n";
+    // std::cout << "\n Y index : " << PR_index[1] << ", " << PL_index[1] << "\n";
+    // std::cout << "\n Z index : " << PR_index[2] << ", " << PL_index[2] << "\n";
+
+    // 테이블 확인
+    std::string fileName = tablePath + "TABLE_" + std::to_string(WR_index) + "_" + std::to_string(WL_index) +".txt";
     tableFile.open(fileName); // 파일 열기
-        
+
     if (tableFile.is_open())
     {
         string row;
+        int readingLine = (resolution[2] * (resolution[0] + 1) + 1) * PR_index[1] + (resolution[0] + 1) * PR_index[2] + PR_index[0] + 1;    // 읽어야 할 줄 수
 
-        for (int j = 0; j < PL_index[0]+1; j++)
+        // std::cout << "\n readingLine : " << readingLine << "\n";
+
+        for (int j = 0; j < readingLine; j++)
         {
             getline(tableFile, row);
         }
@@ -2862,15 +2899,17 @@ bool PathManager::checkTable(VectorXd PR, VectorXd PL, double hitR, double hitL)
         istringstream iss(row);
         string item;
 
-        for (int j = 0; j < PR_index[2]+1; j++)
+        for (int j = 0; j < PL_index[2]+1; j++)
         {
             getline(iss, item, '\t');
         }
 
         item = trimWhitespace(item);
 
-        char hex1 = item.at(2*PL_index[2] + 1);
-        char hex2 = item.at(2*PL_index[2]);
+        char hex1 = item.at(2*PL_index[0] + 1);
+        char hex2 = item.at(2*PL_index[0]);
+
+        tableFile.close(); // 파일 닫기
 
         return hex2TableData(hex1, hex2, PL_index[1]);
     }
@@ -2879,8 +2918,6 @@ bool PathManager::checkTable(VectorXd PR, VectorXd PL, double hitR, double hitL)
         std::cout << "\n table file open error \n";
         std::cout << fileName;
     }
-
-    tableFile.close(); // 파일 닫기
 
     return false;
 }
@@ -3045,30 +3082,31 @@ bool PathManager::modifyMeasure(MatrixXd &measureMatrix, int priority)
         {
             modificationSuccess = moveAndWait(modifedMatrix, nModification);     // 주어진 방법으로 수정하면 True 반환
         }
+        else if (method == "Delete")
+        {
+            modificationSuccess = deleteInst(modifedMatrix, nModification);     // 주어진 방법으로 수정하면 True 반환
+        }
         else
         {
             modificationSuccess = false;
         }
 
+        // std::cout << "\n ////////////// modify Measure : " << method << "\n";
+        // std::cout << modifedMatrix;
+        // std::cout << "\n ////////////// \n";
+
         if (!predictCollision(modifedMatrix))   // 충돌 예측
         {
+            // std::cout << "\n 성공 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! \n";
+            
             measureMatrix = modifedMatrix;
             return true;
         }
         else
         {
+            // std::cout << "\n 실패 ㅜㅜ \n";
             modifedMatrix = measureMatrix;
         }
-        
-        // if (modificationSuccess)
-        // {
-        //     std::cout << "\n ////////////// modify Measure : " << method << "\n";
-        //     std::cout << "\n ////////////// modify num : " << nModification + 1 << "\n";
-        //     std::cout << modifedMatrix;
-        //     std::cout << "\n ////////////// \n";
-
-        //     modifedMatrix = measureMatrix;
-        // }
 
         nModification++;
     }
@@ -3388,6 +3426,53 @@ bool PathManager::moveAndWait(MatrixXd &measureMatrix, int num)
                 startIndex = i;
                 startInst = instR(i);
             }
+        }
+    }
+
+    return false;
+}
+
+bool PathManager::deleteInst(MatrixXd &measureMatrix, int num)
+{
+    // 주어진 방법으로 수정하면 True 반환
+    VectorXd t = measureMatrix.col(8);
+    VectorXd instR = measureMatrix.col(2);
+    VectorXd instL = measureMatrix.col(3);
+
+    // 수정하면 안되는 부분 제외
+    pair<int, int> detectLine = findModificationRange(t, instR, instL);
+
+    int detectLineR = detectLine.first;
+    int detectLineL = detectLine.second;
+
+    // Move and Wait
+    int cnt = 0;
+
+    for (int i = detectLineR; i < t.rows(); i++)
+    {
+        if (instR(i) != 0)
+        {
+            if (cnt == num)
+            {
+                measureMatrix(i, 2) = 0;
+                measureMatrix(i, 4) = 0;
+                return true;
+            }
+            cnt++;
+        }
+    }
+
+    for (int i = detectLineL; i < t.rows(); i++)
+    {
+        if (instL(i) != 0)
+        {
+            if (cnt == num)
+            {
+                measureMatrix(i, 3) = 0;
+                measureMatrix(i, 5) = 0;
+                return true;
+            }
+            cnt++;
         }
     }
 

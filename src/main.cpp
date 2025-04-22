@@ -55,6 +55,7 @@ int main(int argc, char *argv[])
     std::thread stateThread(&DrumRobot::stateMachine, &drumRobot);
     std::thread sendThread(&DrumRobot::sendLoopForThread, &drumRobot);
     std::thread receiveThread(&DrumRobot::recvLoopForThread, &drumRobot);
+    // std::thread watchThread(&DrumRobot::watchLoopForThread, &drumRobot);
     //std::thread guiThread(&GuiManager::guiThread, &guiManager);
     
     // Threads Priority Settings

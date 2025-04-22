@@ -73,8 +73,11 @@ public:
     void stateMachine();
     void sendLoopForThread();
     void recvLoopForThread();
+    void watchLoopForThread();
     
     void initializeDrumRobot();
+
+    bool file_found = false;    // mid 파일 들어왔는지 확인
     
 
 private:

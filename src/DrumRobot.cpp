@@ -737,6 +737,26 @@ void DrumRobot::recvLoopForThread()
     }
 }
 
+void DrumRobot::watchLoopForThread()
+{
+    // mid 파일 들어올 때까지 대기
+    while(!file_found) // ready 상태인지도 확인해주기
+    {
+        filesystem::path targetPath = "../DrumSound/output.mid"; // 파일 경로 + 이름
+
+        if (filesystem::exists(targetPath))
+        {
+            file_found = true;
+            break;
+        }
+    }
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(500)); // 0.5초마다 체크
+
+    // mid 파일 받아서 악보 생성하기
+
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /*                                Ideal State                                 */
 ////////////////////////////////////////////////////////////////////////////////
