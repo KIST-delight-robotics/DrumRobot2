@@ -746,7 +746,7 @@ void DrumRobot::watchLoopForThread()
 
         if (filesystem::exists(targetPath))
         {
-            file_found = true;
+            file_found = true;          // 악보 끝나면 악보 지우고 false로
             break;
         }
     }
@@ -755,6 +755,10 @@ void DrumRobot::watchLoopForThread()
 
     // mid 파일 받아서 악보 생성하기
 
+    if(file_found)
+    {
+        
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
