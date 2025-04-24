@@ -752,67 +752,72 @@ void DrumRobot::watchLoopForThread()
     filesystem::path outputPath1 = "/home/shy/DrumSound/output_mc2c.csv";  //  
     filesystem::path outputPath2 = "/home/shy/DrumSound/output_hand_assign.csv";
     filesystem::path outputPath3 = "/home/shy/DrumSound/output_final.txt";
-
-    while(!file_found) // ready 상태인지도 확인해주기
+    while (1)
     {
-        if (filesystem::exists(targetPath) && flagObj.getAddStanceFlag() == "isReady")
+        while(!file_found) // ready 상태인지도 확인해주기
         {
-            file_found = true;          // 악보 끝나면 악보 지우고 false로
-            break;
-        } 
-        std::this_thread::sleep_for(std::chrono::milliseconds(500)); // 0.5초마다 체크
-    }
-
-    // mid 파일 받아서 악보 생성하기
-
-    if(file_found)
-    {
-        size_t pos;
-        unsigned char runningStatus;
-        int initial_setting_flag = 0;
-        double note_on_time = 0;
-
-        std::vector<unsigned char> midiData;
-        if (!fun.readMidiFile(targetPath, midiData)) cout << "mid file error\n";
-        pos = 14;
-        int tpqn = (midiData[12] << 8) | midiData[13];
-
-        while (pos + 8 <= midiData.size()) {
-            if (!(midiData[pos] == 'M' && midiData[pos+1] == 'T' && midiData[pos+2] == 'r' && midiData[pos+3] == 'k')) {
-                // std::cerr << "MTrk expected at pos " << pos << "\n";
+            if (filesystem::exists(targetPath) && flagObj.getAddStanceFlag() == "isReady")
+            {
+                file_found = true;          // 악보 끝나면 악보 지우고 false로
                 break;
-            }
-            size_t trackLength = (midiData[pos+4] << 24) |
-                             (midiData[pos+5] << 16) |
-                             (midiData[pos+6] << 8) |
-                             midiData[pos+7];
-            pos += 8;
-            size_t trackEnd = pos + trackLength;
-
-            note_on_time = 0;
-            while (pos < trackEnd) {
-                size_t delta = fun.readTime(midiData, pos);
-                note_on_time += delta;
-                fun.analyzeMidiEvent(midiData, pos, runningStatus, initial_setting_flag, note_on_time, tpqn, outputPath);
-            }
-            pos = trackEnd;
+            } 
+            std::this_thread::sleep_for(std::chrono::milliseconds(500)); // 0.5초마다 체크
         }
 
-        fun.convertMcToC(outputPath, outputPath1);
+        // mid 파일 받아서 악보 생성하기
 
-        fun.assignHandsToEvents(outputPath1, outputPath2);
-
-        fun.convertToMeasureFile(outputPath2, outputPath3);
-
-        sleep(2);
-        
-        FG_start = true;
-
-        if(filesystem::exists(targetPath))
+        if(file_found)
         {
-            filesystem::remove(targetPath);
+            size_t pos;
+            unsigned char runningStatus;
+            int initial_setting_flag = 0;
+            double note_on_time = 0;
+
+            std::vector<unsigned char> midiData;
+            if (!fun.readMidiFile(targetPath, midiData)) cout << "mid file error\n";
+            pos = 14;
+            int tpqn = (midiData[12] << 8) | midiData[13];
+
+            while (pos + 8 <= midiData.size()) {
+                if (!(midiData[pos] == 'M' && midiData[pos+1] == 'T' && midiData[pos+2] == 'r' && midiData[pos+3] == 'k')) {
+                    // std::cerr << "MTrk expected at pos " << pos << "\n";
+                    break;
+                }
+                size_t trackLength = (midiData[pos+4] << 24) |
+                                (midiData[pos+5] << 16) |
+                                (midiData[pos+6] << 8) |
+                                midiData[pos+7];
+                pos += 8;
+                size_t trackEnd = pos + trackLength;
+
+                note_on_time = 0;
+                while (pos < trackEnd) {
+                    size_t delta = fun.readTime(midiData, pos);
+                    note_on_time += delta;
+                    fun.analyzeMidiEvent(midiData, pos, runningStatus, initial_setting_flag, note_on_time, tpqn, outputPath);
+                }
+                pos = trackEnd;
+            }
+
+            fun.convertMcToC(outputPath, outputPath1);
+
+            fun.assignHandsToEvents(outputPath1, outputPath2);
+
+            fun.convertToMeasureFile(outputPath2, outputPath3);
+
+            sleep(2);
+            
+            FG_start = true;
+
+            file_found = false;
+
+            if(filesystem::exists(targetPath))
+            {
+                filesystem::remove(targetPath);
+            }
         }
     }
+    
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -969,6 +974,8 @@ double DrumRobot::readBpm(ifstream& inputFile)
         item = trimWhitespace(item);
         items.push_back(item);
     }
+
+    cout << items[0].substr(4) << "\n";
 
     return stod(items[0].substr(4));
 }
@@ -1215,7 +1222,6 @@ void DrumRobot::sendFGProcess()
                 std::cout << "Play is Over\n";
                 flagObj.setAddStanceFlag("isHome"); // 연주 종료 후 Home 으로 이동
                 FG_start = false;
-                file_found = false;
                 state.main = Main::AddStance;
             }
             else if (flagObj.getFixationFlag())     ////////// 3. 로봇 상태가 fixed 로 변경 (악보가 들어오기 전 명령 소진) -> 에러
