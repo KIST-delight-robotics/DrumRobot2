@@ -152,6 +152,7 @@ private:
     bool FG_start = false;
 
     void initializePlayState();
+    void initializeFGPlayState();
     int maxonMotorMode = 1; // 1 : CSP // 0 : CST
 
     string trimWhitespace(const std::string &str);
