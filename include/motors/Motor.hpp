@@ -55,10 +55,8 @@ public:
 
     ///////////////////////////////////////////////////////////
 
-    // Fixed
+    // 에러 (쓰이는 곳은 없음)
     bool isError = false;
-    float fixedMotorPosition;
-    bool isfixed = false;
 
     //판별함수
     virtual bool isTMotor() const { return false; }  // 기본값: false
@@ -86,6 +84,7 @@ public:
     float currentLimit;
     int currentErrorCnt = 0;
 
+    // 제어 모드
     const int Position = 0;
     const int Idle = 1;
 
@@ -143,19 +142,19 @@ public:
     // 1ms 궤적 만들기
     float pre_q;
 
-    // 마찰 토크 보상
+    // 마찰 토크 보상 시 사용되는 값
     float preMotorPosition;
 
     // 타격 감지용 변수
-    queue<double> positionValues; // 포지션 값 저장을 위한 queue
-    int maxIndex = 5;
+    // queue<double> positionValues; // 포지션 값 저장을 위한 queue
+    // int maxIndex = 5;
     bool hitting = false; // 드럼이 실제로 타격일 때 켜짐
     float hittingPos = 0; // 타격 시점의 각도
-    float hittingDrumAngle = 0; // 드럼 별 타격 각도
+    // float hittingDrumAngle = 0; // 드럼 별 타격 각도
     bool isHit = false; // 타격 궤적 시작 (내려가는 궤적)
     bool drumReached = false; // 올라오는 궤적 시작
 
-    //토크 계산시 사용되는 에러
+    // 입력 토크 계산시 사용되는 에러
     float pre_err = 0;
 
     // commandBuffer

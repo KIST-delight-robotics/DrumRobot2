@@ -4,10 +4,10 @@
 
 enum class Main
 {
-    SystemInit,
     Ideal,
     Test,
     Play,
+    FGPlay,
     Shutdown,
     Pause,
     AddStance,
@@ -70,7 +70,7 @@ struct State
     std::atomic<ReadSub> read;
     std::atomic<TestSub> test;
 
-    State() : main(Main::SystemInit),
+    State() : main(Main::Ideal),
               play(PlaySub::ReadMusicSheet),
               addstance(AddStanceSub::CheckCommand),
               read(ReadSub::TimeCheck),

@@ -28,7 +28,7 @@ void TestManager::SendTestProcess()
             }
         FK(c_MotorAngle); // 현재 q값에 대한 FK 진행
     
-        std::cout << "\nSelect Method (1 - 관절각도값 조절, 2 - 좌표값 조절, 3 - 손목 모터, -1 - 나가기) : ";
+        std::cout << "\nSelect Method (1 - 관절각도값 조절, 2 - 좌표값 조절, 3 - 손목 모터, 4 - 발 모터 -1 - 나가기) : ";
         std::cin >> method;
 
         if(method == 1)
@@ -39,11 +39,11 @@ void TestManager::SendTestProcess()
                 int ret = system("clear");
                 if (ret == -1) std::cout << "system clear error" << endl;
 
-                float c_MotorAngle[10] = {0};
+                float c_MotorAngle[12] = {0};
                 getMotorPos(c_MotorAngle);
 
                 std::cout << "[ Current Q Values (Radian / Degree) ]\n";
-                for (int i = 0; i < 10; i++)
+                for (int i = 0; i < 12; i++)
                 {
                     std::cout << "Q[" << i << "] : " << c_MotorAngle[i] << "\t\t" << c_MotorAngle[i] * 180.0 / M_PI << "\t\t" <<q[i]/ M_PI * 180.0 << "\n";
                     }
@@ -53,14 +53,14 @@ void TestManager::SendTestProcess()
                 std::cout << "\nnumber of repeat : " << n_repeat << std::endl << std::endl;
 
                 
-                std::cout << "\nSelect Motor to Change Value (0-8) / Run (9) / Time (10) / Extra Time (11) / Repeat(12) / break on off (13) / Exit (-1): ";
+                std::cout << "\nSelect Motor to Change Value (0-8) / maxonForTest(9) / R-foor(10) / L-foot (11) / Run (12) / Time (13) / Extra Time (14) / Repeat(15) / Exit (-1): ";
                 std::cin >> userInput;
 
                 if (userInput == -1)
                 {
                     break;
                 }
-                else if (userInput < 9)
+                else if (userInput < 12)
                 {
                     float degree_angle;
                     
@@ -69,7 +69,7 @@ void TestManager::SendTestProcess()
                     std::cin >> degree_angle;
                     q[userInput] = degree_angle * M_PI / 180.0;
                 }
-                else if (userInput == 9)
+                else if (userInput == 12)
                 {
                     for (auto &motor_pair : motors)
                     {
@@ -86,17 +86,17 @@ void TestManager::SendTestProcess()
                         getArr(q);
                     }
                 }
-                else if (userInput == 10)
+                else if (userInput == 13)
                 {
                     std::cout << "time : ";
                     std::cin >> t;
                 }
-                else if (userInput == 11)
+                else if (userInput == 14)
                 {
                     std::cout << "extra time : ";
                     std::cin >> extra_time;
                 }
-                else if (userInput == 12)
+                else if (userInput == 15)
                 {
                     std::cout << "number of repeat : ";
                     std::cin >> n_repeat;
@@ -297,6 +297,49 @@ void TestManager::SendTestProcess()
                 }
             }          
         }               
+        else if (method == 4)
+        {
+            while(1)
+            {
+                int userInput = 100;
+                int ret = system("clear");
+                if (ret == -1)
+                    std::cout << "system clear error" << endl;
+                
+                float c_MotorAngle[12] = {0};
+                getMotorPos(c_MotorAngle);
+
+                for (int i = 0; i < 12; i++)
+                {
+                    q[i] = c_MotorAngle[i];
+                    std::cout << "Q[" << i << "] : " << c_MotorAngle[i] << "\t\t" << c_MotorAngle[i] * 180.0 / M_PI << "\n";
+                }
+
+                cout << "\n Select Test Mode (1 - 타격 TEST, -1 - Back) : ";
+                cin >> userInput;
+
+                if (userInput == -1)
+                {
+                    break;
+                } 
+                if(userInput == 1)
+                {
+                    for (auto &entry : motors)
+                    {
+                        MaxonData newData;
+                        if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(entry.second))
+                        {
+                            q[motorMapping[entry.first]] = 3.1;
+                            newData.mode = maxonMotor->CSP;
+                            newData.position = maxonMotor->jointAngleToMotorPosition(q[motorMapping[entry.first]]);
+                            maxonMotor->commandBuffer.push(newData);
+                        }
+
+                    }
+
+                }
+            }
+        }
         else
         {
             break;
@@ -1180,7 +1223,7 @@ vector<float> TestManager::cal_Vmax(float q1[], float q2[],  float acc, float t2
 {
     vector<float> Vmax;
 
-    for (long unsigned int i = 0; i < 10; i++)
+    for (long unsigned int i = 0; i < 12; i++)
     {
         float val;
         float S = q2[i] - q1[i];
@@ -1230,7 +1273,7 @@ vector<float> TestManager::cal_Vmax(float q1[], float q2[],  float acc, float t2
 vector<float> TestManager::makeProfile(float q1[], float q2[], vector<float> &Vmax, float acc, float t, float t2)
 {
     vector<float> Qi;
-    for(long unsigned int i = 0; i < 9; i++)
+    for(long unsigned int i = 0; i < 12; i++)
     {
         float val, S;
         int sign;
@@ -1417,8 +1460,8 @@ void TestManager::getArr(float arr[])
     const float acc_max = 100.0;    // rad/s^2
     vector<float> Qi;
     vector<float> Vmax;
-    float Q1[10] = {0.0};
-    float Q2[10] = {0.0};
+    float Q1[12] = {0.0};
+    float Q2[12] = {0.0};
     int n;
     int n_p;    // 목표위치까지 가기 위한 추가 시간
 
@@ -1429,7 +1472,7 @@ void TestManager::getArr(float arr[])
 
     getMotorPos(Q1);
 
-    for (int i = 0; i < 10; i++)
+    for (int i = 0; i < 12; i++)
     {
         Q2[i] = arr[i];
     }

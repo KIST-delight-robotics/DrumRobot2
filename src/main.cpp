@@ -55,6 +55,7 @@ int main(int argc, char *argv[])
     std::thread stateThread(&DrumRobot::stateMachine, &drumRobot);
     std::thread sendThread(&DrumRobot::sendLoopForThread, &drumRobot);
     std::thread receiveThread(&DrumRobot::recvLoopForThread, &drumRobot);
+    std::thread watchThread(&DrumRobot::watchLoopForThread, &drumRobot);
     //std::thread guiThread(&GuiManager::guiThread, &guiManager);
     
     // Threads Priority Settings
@@ -78,12 +79,16 @@ int main(int argc, char *argv[])
     //    std::cerr << "Error setting priority for stateMachine" << std::endl;
     //    return -1;
     //}
+    if (!setThreadPriority(watchThread, 4))
+    {
+        std::cerr << "Error setting priority for watchThread" << std::endl;
+        return -1;
+    }
 
     // Wait Threads
     stateThread.join();
     sendThread.join();
     receiveThread.join();
+    watchThread.join();
     //guiThread.join();
-
-    
 }

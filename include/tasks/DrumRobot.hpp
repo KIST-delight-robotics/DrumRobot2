@@ -73,8 +73,11 @@ public:
     void stateMachine();
     void sendLoopForThread();
     void recvLoopForThread();
+    void watchLoopForThread();
     
     void initializeDrumRobot();
+
+    bool file_found = false;    // mid 파일 들어왔는지 확인
     
 
 private:
@@ -103,7 +106,7 @@ private:
 
     // 로봇의 관절각 범위
     //                                 Waist    Rarm1   Larm1   Rarm2   Rarm3   Larm2   Larm3   Rwrist  Lwrist   maxonForTest  Rfoot   Lfoot    [deg]
-    const float jointRangeMax[12] = {   90.0,   150.0,  180.0,  90.0,   140.0,  90.0,   140.0,  135.0,  135.0,      135.0,     135.0,  135.0};
+    const float jointRangeMax[12] = {   90.0,   150.0,  180.0,  90.0,   140.0,  90.0,   140.0,  135.0,  135.0,      135.0,     200.0,  200.0};
     const float jointRangeMin[12] = {   -90.0,  0.0,    30.0,   -60.0,    0.0,  -60.0,    0.0,  -108.0, -108.0,     -90.0,     -90.0,  -90.0};
 
     FlagClass flagObj;
@@ -144,10 +147,12 @@ private:
     int preCreatedLine = 3;     ///< 미리 궤적을 생성할 줄
     double measureThreshold = 2.4;     ///< 한번에 읽을 악보의 크기. [s]
     double measureTotalTime = 0.0;     ///< 악보를 읽는 동안 누적 시간. [s]
-    // bool endOfScore = false;           ///< 악보의 종료 코드 확인
-    bool endOfScore = true;
+    bool endOfScore = false;           ///< 악보의 종료 코드 확인
+
+    bool FG_start = false;
 
     void initializePlayState();
+    void initializeFGPlayState();
     int maxonMotorMode = 1; // 1 : CSP // 0 : CST
 
     string trimWhitespace(const std::string &str);
@@ -155,6 +160,7 @@ private:
     bool readMeasure(ifstream& inputFile);
     void playALineProcess();
     void sendPlayProcess();
+    void sendFGProcess();
 
     // System
     void clearBufferforRecord();

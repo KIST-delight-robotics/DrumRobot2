@@ -82,11 +82,6 @@ void GuiManager::guiThread()
     {
         switch (state.main.load())
         {
-        case Main::SystemInit:
-        {
-            usleep(50000);
-            break;
-        }
         case Main::Ideal:
         {
             if (!testInit)

@@ -81,6 +81,7 @@ public:
                         // Kpp : Kp 에 곱해지는 값
 
     void initializeValue(int bpm);
+    void avoidCollision(MatrixXd &measureMatrix);
     void generateTrajectory(MatrixXd &measureMatrix);
     void solveIKandPushCommand();
 
@@ -126,20 +127,14 @@ private:
     VectorXd getMotorPos();
     void getAddStanceCoefficient(VectorXd Q1, VectorXd Q2, double t);
 
-    /////////////////////////////////////////////////////////////////////////// Parse Measure
-    float line_t1, line_t2;           // 궤적 생성 시간
+    /////////////////////////////////////////////////////////////////////////// Make Trajectory
+    double line_t1, line_t2;           // 궤적 생성 시간
     
     VectorXd initialInstrument = VectorXd::Zero(18);   // 전체 궤적에서 출발 악기
     VectorXd finalInstrument = VectorXd::Zero(18);   // 전체 궤적에서 도착 악기
 
-    float initialTimeR, finalTimeR;       // 전체 궤적에서 출발 시간, 도착 시간
-    float initialTimeL, finalTimeL;
-
-    MatrixXd hitState;              // [이전 시간, 이전 State, intensity]  R
-                                    // [이전 시간, 이전 State, intensity]  L
-
-    float hitR_t1, hitR_t2;       // 전체 타격에서 출발 시간, 도착 시간
-    float hitL_t1, hitL_t2;
+    double initialTimeR, finalTimeR;       // 전체 궤적에서 출발 시간, 도착 시간
+    double initialTimeL, finalTimeL;
 
     MatrixXd measureState = MatrixXd::Zero(2, 3); // [이전 시간, 이전 악기, 상태] // state
                                                                                 // 0 : 0 <- 0
@@ -147,63 +142,55 @@ private:
                                                                                 // 2 : 1 <- 0
                                                                                 // 3 : 1 <- 1
 
-    
-
-    void parseMeasure(MatrixXd &measureMatrix);
-    MatrixXd parseMatrix(MatrixXd &measureMatrix);
-    pair<VectorXd, VectorXd> parseOneArm(VectorXd t, VectorXd inst, VectorXd stateVector);
-    void parseHitData(VectorXd t, VectorXd hitR, VectorXd hitL);
-
-    /////////////////////////////////////////////////////////////////////////// Make Trajectory
-    // 궤적 저장할 구조체
+    // task space 궤적 저장할 구조체
     typedef struct {
         VectorXd trajectoryR; ///< 오른팔 스틱 끝 좌표 (x, y, z)
         VectorXd trajectoryL; ///< 왼팔 스틱 끝 좌표 (x, y, z)
 
-        double drumWristAngleR;  ///> IK를 풀기 위한 오른 손목 각도
-        double drumWristAngleL;  ///> IK를 풀기 위한 왼 손목 각도
-
-        double elbowAngleR;  ///> 오른팔 팔꿈치 관절에 더해줄 각도
-        double elbowAngleL;  ///> 왼팔 팔꿈치 관절에 더해줄 각도
-        double wristAngleR;  ///> 오른팔 손목 관절에 더해줄 각도
-        double wristAngleL;  ///> 왼팔 손목 관절에 더해줄 각도
-
-        VectorXd Kpp;       ///> Kpp : Kp 에 곱해지는 값
-
-        bool isHitR = false;
-        bool isHitL = false;
+        double wristAngleR;  ///> IK를 풀기 위한 오른 손목 각도
+        double wristAngleL;  ///> IK를 풀기 위한 왼 손목 각도
     }Position;
     queue<Position> trajectoryQueue;
 
-    double roundSum = 0;    ///< 5ms 스텝 단위에서 누적되는 오차 보상
+    double roundSum = 0.0;    ///< 5ms 스텝 단위에서 누적되는 오차 보상
 
     // 악보 한 줄의 데이터 저장한 Matrix
     // [명령 개수 / q0 최적값 / q0 min / q0 max]
     MatrixXd lineData;
 
+    void parseMeasure(MatrixXd &measureMatrix);
+    pair<VectorXd, VectorXd> parseOneArm(VectorXd t, VectorXd inst, VectorXd stateVector);
     pair<VectorXd, VectorXd> getTargetPosition(VectorXd inst_vector);
-    float timeScaling(float ti, float tf, float t);
-    VectorXd makePath(VectorXd Pi, VectorXd Pf, float s);
-    void saveLineData(int n, VectorXd minmax);
+    double timeScaling(double ti, double tf, double t);
+    VectorXd makePath(VectorXd Pi, VectorXd Pf, double s);
     VectorXd calWaistAngle(VectorXd pR, VectorXd pL);
+    void saveLineData(int n, VectorXd minmax);
 
-    /////////////////////////////////////////////////////////////////////////// Waist
-    MatrixXd waistCoefficient;
-    double q0_t1;               // 시작 위치 저장
-    double q0_t0, t0 = -1;      // 이전 위치, 이전 시간 저장
+    /////////////////////////////////////////////////////////////////////////// Make Trajectory
+    VectorXd prevLine = VectorXd::Zero(9);  // 악보 나눌 때 시작 악보 기록
 
-    vector<double> cubicInterpolation(const vector<double>& q, const vector<double>& t);
-    std::pair<double, vector<double>> getNextQ0();
-    void makeWaistCoefficient();
-    double getWaistAngle(int i);
+    MatrixXd hitState;              // [이전 시간, 이전 State, intensity]  R
+                                    // [이전 시간, 이전 State, intensity]  L
 
-    /////////////////////////////////////////////////////////////////////////// Solve IK
-    float getLength(double theta);
-    double getTheta(float l1, double theta);
-    PathManager::Position solveIK(VectorXd &q, double q0);
-    VectorXd IKFixedWaist(VectorXd pR, VectorXd pL, double theta0, double theta7, double theta8);
+    double hitR_t1, hitR_t2;       // 전체 타격에서 출발 시간, 도착 시간
+    double hitL_t1, hitL_t2;
 
-    /////////////////////////////////////////////////////////////////////////// Wrist (Hit)
+    // 타격 궤적 저장할 구조체
+    typedef struct {
+        double elbowR;  ///> 오른팔 팔꿈치 관절에 더해줄 각도
+        double elbowL;  ///> 왼팔 팔꿈치 관절에 더해줄 각도
+        double wristR;  ///> 오른팔 손목 관절에 더해줄 각도
+        double wristL;  ///> 왼팔 손목 관절에 더해줄 각도
+
+        VectorXd Kpp;       ///> Kpp : Kp 에 곱해지는 값
+
+        bool isHitR = false;
+        bool isHitL = false;
+    }HitAngle;
+    queue<HitAngle> hitAngleQueue;
+
+    double roundSumHit = 0.0;     ///< 5ms 스텝 단위에서 누적되는 오차 보상
+
     typedef struct {
         double stayTime;
         double liftTime;
@@ -218,7 +205,8 @@ private:
     }wristTime;
 
     typedef struct {
-        double stayAngle = 5*M_PI/180.0;
+        // double stayAngle = 5*M_PI/180.0;
+        double stayAngle = 0.0;
         double liftAngle = 15*M_PI/180.0;
     }elbowAngle;
 
@@ -236,6 +224,8 @@ private:
     MatrixXd wristCoefficientR;
     MatrixXd wristCoefficientL;
 
+    MatrixXd divideMatrix(MatrixXd &measureMatrix);
+    void parseHitData(MatrixXd &measureMatrix);
     void makeHitCoefficient();
     PathManager::elbowTime getElbowTime(float t1, float t2, int intensity);
     PathManager::wristTime getWristTime(float t1, float t2, int intensity);
@@ -243,26 +233,58 @@ private:
     PathManager::wristAngle getWristAngle(float t1, float t2, int intensity);
     MatrixXd makeElbowCoefficient(int state, elbowTime eT, elbowAngle eA);
     MatrixXd makeWristCoefficient(int state, wristTime wT, wristAngle wA);
+    PathManager::HitAngle generateHit(float tHitR, float tHitL, HitAngle &Pt);
     double makeElbowAngle(double t, elbowTime eT, MatrixXd coefficientMatrix);
     double makeWristAngle(double t, wristTime wT, MatrixXd coefficientMatrix);
-    PathManager::Position generateHit(float tHitR, float tHitL, Position &Pt);
-    void getHitTime(Position &Pt, int stateR, int stateL, float tHitR, float tHitL);
+    void getHitTime(HitAngle &Pt, int stateR, int stateL, float tHitR, float tHitL);
+
+    /////////////////////////////////////////////////////////////////////////// Waist
+    MatrixXd waistCoefficient;
+    double q0_t1;               // 시작 위치 저장
+    double q0_t0, t0 = -1;      // 이전 위치, 이전 시간 저장
+
+    vector<double> cubicInterpolation(const vector<double>& q, const vector<double>& t);
+    std::pair<double, vector<double>> getNextQ0();
+    void makeWaistCoefficient();
+    double getWaistAngle(int i);
+
+    /////////////////////////////////////////////////////////////////////////// Solve IK
+    float getLength(double theta);
+    double getTheta(float l1, double theta);
+    PathManager::Position solveIK(VectorXd &q, double q0);
+    VectorXd IKFixedWaist(VectorXd pR, VectorXd pL, double theta0, double theta7, double theta8);
 
     /////////////////////////////////////////////////////////////////////////// Push Command Buffer
-    void pushCommandBuffer(VectorXd Qi, VectorXd Kpp, bool isHitR, bool isHitL);
-
-    /////////////////////////////////////////////////////////////////////////// brake
-    void clearBrake(); // 모든 brake끄기
     float prevWaistPos = 0.0;   // 브레이크 판단에 사용될 허리 전 값
     float preDiff = 0.0;        // 브레이크 판단(필터)에 사용될 전 허리 차이값
 
-    /////////////////////////////////////////////////////////////////////////// Detect Collision
-    int aNumOfLine = 0;
+    void pushCommandBuffer(VectorXd Qi, VectorXd Kpp, bool isHitR, bool isHitL);
+
+    /////////////////////////////////////////////////////////////////////////// Predict Collision
+    int colli_debug = 0;
+
     string trimWhitespace(const std::string &str);
-    int predictCollision(MatrixXd measureMatrix);
+    bool predictCollision(MatrixXd measureMatrix);
     MatrixXd parseAllLine(VectorXd t, VectorXd inst, VectorXd stateVector, char RL);
     MatrixXd getOneDrumPosition(int InstNum, char RL);
     bool checkTable(VectorXd PR, VectorXd PL, double hitR, double hitL);
     bool hex2TableData(char hex1, char hex2, int index);
+
+    /////////////////////////////////////////////////////////////////////////// Avoid Collision
+    map<int, std::string> modificationMethods = { ///< 악보 수정 방법 중 우선 순위
+        { 0, "Crash"},
+        { 1, "Arm"},
+        { 2, "WaitAndMove"},
+        { 3, "MoveAndWait"},
+        { 4, "Delete"}
+    };
+
+    bool modifyMeasure(MatrixXd &measureMatrix, int priority);
+    pair<int, int> findModificationRange(VectorXd t, VectorXd instR, VectorXd instL);
+    bool modifyCrash(MatrixXd &measureMatrix, int num);
+    bool modifyArm(MatrixXd &measureMatrix, int num);
+    bool waitAndMove(MatrixXd &measureMatrix, int num);
+    bool moveAndWait(MatrixXd &measureMatrix, int num);
+    bool deleteInst(MatrixXd &measureMatrix, int num);
 
 };

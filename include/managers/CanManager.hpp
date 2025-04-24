@@ -71,7 +71,8 @@ public:
         {"L_wrist", 8},
         {"maxonForTest", 9},
         {"R_foot", 10},
-        {"L_foot", 11}};
+        {"L_foot", 11}
+    };
 
     
     //////////////////////////////////////// Initialize
@@ -121,9 +122,9 @@ public:
 
 private:
 
-    USBIO &usbio;
     std::map<std::string, std::shared_ptr<GenericMotor>> &motors;
     Functions &fun;
+    USBIO &usbio;
     
     TMotorCommandParser tmotorcmd;
     MaxonCommandParser maxoncmd;
