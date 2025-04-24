@@ -7,6 +7,7 @@ enum class Main
     Ideal,
     Test,
     Play,
+    FGPlay,
     Shutdown,
     Pause,
     AddStance,

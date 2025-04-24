@@ -388,6 +388,8 @@ void Functions::handleNoteOn(const std::vector<unsigned char>& data, size_t& pos
     }
 }
 
+
+
 void Functions::analyzeMidiEvent(const std::vector<unsigned char>& data, size_t& pos, unsigned char& runningStatus, int &initial_setting_flag, double &note_on_time, int &tpqn, const std::string& midiFilePath) {
     if (pos >= data.size()) return;
     unsigned char eventType = data[pos];
@@ -553,8 +555,10 @@ void Functions::assignHandsToEvents(const std::string& inputFilename, const std:
     }
 
     for (const auto& e : events) {
-        int rightFlag = (e.rightHand != 0) ? 1 : 0;
-        int leftFlag = (e.leftHand != 0) ? 1 : 0;
+        int rightFlag = 0;
+        int leftFlag = 0;
+        if(e.rightHand != 0)    rightFlag = 5;
+        if(e.leftHand != 0)     leftFlag = 5;
         output << std::fixed << std::setprecision(3)
                << e.time
                << std::setw(6) << e.rightHand
@@ -567,6 +571,7 @@ void Functions::assignHandsToEvents(const std::string& inputFilename, const std:
 
     // std::cout << "손 어사인 포함 변환 완료! 저장 위치 → " << outputFilename << "\n";
 }
+
 
 // 박자 단위 분할 및 마디 번호 부여 함수
 void Functions::convertToMeasureFile(const std::string& inputFilename, const std::string& outputFilename) {
@@ -612,7 +617,9 @@ void Functions::convertToMeasureFile(const std::string& inputFilename, const std
         }
     }
 
+    output << "bpm=60\n";
     output << "1\t 0.600\t 0\t 0\t 0\t 0\t 0\t 0\n";
+
     double measureTime = 0.0;
     int measureNum = 1;
     const double EPS = 1e-6;
@@ -635,7 +642,7 @@ void Functions::convertToMeasureFile(const std::string& inputFilename, const std
     }
 
     output << measureNum+1 << "\t 0.600\t 0\t 0\t 0\t 0\t 0\t 0\n";
-    output << measureNum+1 << "\t 0.600\t 1\t 1\t 1\t 1\t 1\t 1\n";
+    output << "-1" << "\t 0.600\t 1\t 1\t 1\t 1\t 1\t 1\n";
 
     // std::cout << "코드 끗." << std::endl;
 }

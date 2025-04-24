@@ -585,6 +585,12 @@ void DrumRobot::stateMachine()
                 sendPlayProcess();
                 break;
             }
+            case Main::FGPlay:
+            {
+                flagObj.setFixationFlag("moving");
+                sendFGProcess();
+                break;
+            }
             case Main::Test:
             {
                 testManager.SendTestProcess();  
@@ -744,7 +750,8 @@ void DrumRobot::watchLoopForThread()
     filesystem::path targetPath = "/home/shy/DrumSound/output.mid";        // 파일 경로 + 이름
     filesystem::path outputPath = "/home/shy/DrumSound/output_mc.csv";     // analyzeMidiEvent 거친 output
     filesystem::path outputPath1 = "/home/shy/DrumSound/output_mc2c.csv";  //  
-    filesystem::path outputPath2 = "/home/shy/DrumSound/output_final.csv";
+    filesystem::path outputPath2 = "/home/shy/DrumSound/output_hand_assign.csv";
+    filesystem::path outputPath3 = "/home/shy/DrumSound/output_final.txt";
 
     while(!file_found) // ready 상태인지도 확인해주기
     {
@@ -795,9 +802,16 @@ void DrumRobot::watchLoopForThread()
 
         fun.assignHandsToEvents(outputPath1, outputPath2);
 
+        fun.convertToMeasureFile(outputPath2, outputPath3);
+
         sleep(2);
         
         FG_start = true;
+
+        if(filesystem::exists(targetPath))
+        {
+            filesystem::remove(targetPath);
+        }
     }
 }
 
@@ -842,6 +856,11 @@ void DrumRobot::processInput(const std::string &input, string flagName)
     {
         initializePlayState();
         state.main = Main::Play;
+    }
+    else if (input == "f" && flagName == "isReady")
+    {
+        initializeFGPlayState();
+        state.main = Main::FGPlay;
     }
     else if (input == "h" && flagName == "isReady")
     {
@@ -1195,6 +1214,8 @@ void DrumRobot::sendFGProcess()
 
                 std::cout << "Play is Over\n";
                 flagObj.setAddStanceFlag("isHome"); // 연주 종료 후 Home 으로 이동
+                FG_start = false;
+                file_found = false;
                 state.main = Main::AddStance;
             }
             else if (flagObj.getFixationFlag())     ////////// 3. 로봇 상태가 fixed 로 변경 (악보가 들어오기 전 명령 소진) -> 에러
@@ -1208,6 +1229,18 @@ void DrumRobot::sendFGProcess()
             }
         }
     }
+}
+
+void DrumRobot::initializeFGPlayState()
+{
+    fileIndex = 0;
+
+    measureMatrix.resize(1, 9);
+    measureMatrix = MatrixXd::Zero(1, 9);
+
+    endOfScore = false;
+    lineOfScore = 0;        ///< 현재 악보 읽은 줄.
+    measureTotalTime = 0.0;     ///< 악보를 읽는 동안 누적 시간. [s]
 }
 
 ////////////////////////////////////////////////////////////////////////////////
