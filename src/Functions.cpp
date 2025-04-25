@@ -298,7 +298,6 @@ void Functions::appendToCSV_CAN(const std::string& filename, can_frame& c_frame)
 }
 
 //midi to chord parsing
-
 std::vector<std::string> Functions::splitByWhitespace(const std::string& line) {
     std::istringstream iss(line);
     std::vector<std::string> tokens;
@@ -362,7 +361,6 @@ void Functions::handleChannel10(const std::vector<unsigned char>& data, size_t& 
     unsigned char control = data[pos++];
     if (eventType == 0xB9) pos++;
 }
-
 
 void Functions::roundDurationsToStep(const std::string& inputFilename, const std::string& outputFilename)
 {
@@ -428,8 +426,6 @@ void Functions::handleNoteOn(const std::vector<unsigned char>& data, size_t& pos
         this->save_to_csv(midiFilePath, note_on_time, drumNote);
     }
 }
-
-
 
 void Functions::analyzeMidiEvent(const std::vector<unsigned char>& data, size_t& pos, unsigned char& runningStatus, int &initial_setting_flag, double &note_on_time, int &tpqn, const std::string& midiFilePath) {
     if (pos >= data.size()) return;
@@ -612,7 +608,6 @@ void Functions::assignHandsToEvents(const std::string& inputFilename, const std:
 
     // std::cout << "손 어사인 포함 변환 완료! 저장 위치 → " << outputFilename << "\n";
 }
-
 
 // 박자 단위 분할 및 마디 번호 부여 함수
 void Functions::convertToMeasureFile(const std::string& inputFilename, const std::string& outputFilename) {

@@ -917,15 +917,7 @@ VectorXd PathManager::makePath(VectorXd Pi, VectorXd Pf, double s)
     float xi = Pi(0), xf = Pf(0);
     float yi = Pi(1), yf = Pf(1);
     float zi = Pi(2), zf = Pf(2);
-    // vector<Pos_i> pos(3); // 미래상태 3개를 저장
 
-    // for(int i = 0; i < pos.size(); i++){
-    //     for(int dim = 0; dim < 3; dim++){
-    //         pos[i].x = Pf(dim);
-    //         pos[i].y = Pf(dim);
-    //         pos[i].z = Pf(dim);
-    //     }
-    // }
     VectorXd Ps;
     Ps.resize(3);
 
