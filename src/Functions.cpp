@@ -363,6 +363,47 @@ void Functions::handleChannel10(const std::vector<unsigned char>& data, size_t& 
     if (eventType == 0xB9) pos++;
 }
 
+
+void Functions::roundDurationsToStep(const std::string& inputFilename, const std::string& outputFilename)
+{
+    std::ifstream inputFile(inputFilename);
+    std::ofstream outputFile(outputFilename);
+
+    if (!inputFile.is_open()) {
+        std::cerr << "❌ 입력 파일 열기 실패: " << inputFilename << std::endl;
+        return;
+    }
+
+    if (!outputFile.is_open()) {
+        std::cerr << "❌ 출력 파일 열기 실패: " << outputFilename << std::endl;
+        return;
+    }
+
+    std::string line;
+    const double step = 0.005;
+
+    while (std::getline(inputFile, line)) {
+        std::istringstream iss(line);
+        double duration;
+        int note;
+
+        if (!(iss >> duration >> note)) {
+            std::cerr << "⚠️ 잘못된 형식: " << line << std::endl;
+            continue;
+        }
+
+        // ⏱️ 0.005 단위로 반올림
+        double roundedDuration = std::round(duration / step) * step;
+
+        outputFile << std::fixed << std::setprecision(3)
+                   << roundedDuration << "\t" << note << std::endl;
+    }
+
+    inputFile.close();
+    outputFile.close();
+    std::cout << "✅ 반올림 적용 완료. 저장됨: " << outputFilename << std::endl;
+}
+
 void Functions::handleNoteOn(const std::vector<unsigned char>& data, size_t& pos, double &note_on_time, int tpqn, const std::string& midiFilePath) {
     if (pos + 2 > data.size()) return;
     unsigned char drumNote = data[pos++];
@@ -617,7 +658,6 @@ void Functions::convertToMeasureFile(const std::string& inputFilename, const std
         }
     }
 
-    output << "bpm=60\n";
     output << "1\t 0.600\t 0\t 0\t 0\t 0\t 0\t 0\n";
 
     double measureTime = 0.0;

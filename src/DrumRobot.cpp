@@ -747,11 +747,13 @@ void DrumRobot::watchLoopForThread()
 {
     // mid 파일 들어올 때까지 대기
 
-    filesystem::path targetPath = "/home/shy/DrumSound/output.mid";        // 파일 경로 + 이름
+    filesystem::path targetPath = "/home/shy/DrumSound/input.mid";        // 파일 경로 + 이름
+    filesystem::path outputPath0 = "/home/shy/DrumSound/drum_hits.csv";     // analyzeMidiEvent 거친 output
     filesystem::path outputPath = "/home/shy/DrumSound/output_mc.csv";     // analyzeMidiEvent 거친 output
     filesystem::path outputPath1 = "/home/shy/DrumSound/output_mc2c.csv";  //  
     filesystem::path outputPath2 = "/home/shy/DrumSound/output_hand_assign.csv";
     filesystem::path outputPath3 = "/home/shy/DrumSound/output_final.txt";
+    /*
     while (1)
     {
         while(!file_found) // ready 상태인지도 확인해주기
@@ -811,12 +813,51 @@ void DrumRobot::watchLoopForThread()
 
             file_found = false;
 
-            if(filesystem::exists(targetPath))
-            {
-                filesystem::remove(targetPath);
-            }
+            // if(filesystem::exists(targetPath))
+            // {
+            //     filesystem::remove(targetPath);
+            // }
         }
     }
+    */
+
+
+   while(1)
+   {
+     while(!file_found) // ready 상태인지도 확인해주기
+        {
+            if (filesystem::exists(outputPath0) && flagObj.getAddStanceFlag() == "isReady")
+            {
+                file_found = true;          // 악보 끝나면 악보 지우고 false로
+                break;
+            } 
+            std::this_thread::sleep_for(std::chrono::milliseconds(500)); // 0.5초마다 체크
+        }
+
+        // mid 파일 받아서 악보 생성하기
+
+        if(file_found)
+        {
+            fun.roundDurationsToStep(outputPath0, outputPath); 
+
+            fun.convertMcToC(outputPath, outputPath1);
+
+            fun.assignHandsToEvents(outputPath1, outputPath2);
+
+            fun.convertToMeasureFile(outputPath2, outputPath3);
+
+            sleep(2);
+            
+            FG_start = true;
+
+            file_found = false;
+
+            // if(filesystem::exists(targetPath))
+            // {
+            //     filesystem::remove(targetPath);
+            // }
+        }
+   }
     
 }
 
@@ -969,12 +1010,15 @@ double DrumRobot::readBpm(ifstream& inputFile)
     string item;
     vector<string> items;
 
+    cout << "readBPM----------" << "\n";
     while (getline(iss, item, '\t'))
     {
         item = trimWhitespace(item);
+        cout << item << "\n";
         items.push_back(item);
     }
 
+    cout << items[0] << "\n";
     cout << items[0].substr(4) << "\n";
 
     return stod(items[0].substr(4));
@@ -1089,6 +1133,7 @@ void DrumRobot::sendPlayProcess()
     {
         if (fileIndex == 0) // 처음 파일을 열 때 -> bpm 확인
         {
+            std::cout << "dfdfdf------------------";
             bpmOfScore = readBpm(inputFile);
 
             if (bpmOfScore > 0)
@@ -1174,7 +1219,9 @@ void DrumRobot::sendFGProcess()
         {
             if (fileIndex == 0) // 처음 파일을 열 때 -> bpm 확인
             {
-                bpmOfScore = readBpm(inputFile);
+                std::cout << "dfdfdf";
+                bpmOfScore = 60.0;
+                std::cout << "df234242342342342423dfdf";
 
                 if (bpmOfScore > 0)
                 {
@@ -1196,7 +1243,7 @@ void DrumRobot::sendFGProcess()
             }
 
             inputFile.close(); // 파일 닫기
-            fileIndex++;    // 다음 파일 열 준비
+            fileIndex++;
         }
         else    //////////////////////////////////////////////////////////// 파일 열기 실패
         {
