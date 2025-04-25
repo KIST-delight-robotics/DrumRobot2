@@ -646,14 +646,15 @@ void Functions::convertToMeasureFile(const std::string& inputFilename, const std
         ss >> ev.time >> ev.rightInstrument >> ev.leftInstrument
            >> ev.rightPower >> ev.leftPower >> ev.isBass >> ev.hihatOpen;
 
-        double remaining = ev.time;
-        while (remaining > 0.6) {
+        int count = static_cast<int>(ev.time / 0.6);
+        double leftover = ev.time - count * 0.6;
+
+        for (int i = 0; i < count; ++i) {
             DrumEvent mid{0.6, 0, 0, 0, 0, 0, 0};
             result.push_back(mid);
-            remaining -= 0.6;
         }
-        if (remaining > 0.0) {
-            ev.time = remaining;
+        if (leftover > 1e-6) {
+            ev.time = leftover;
             result.push_back(ev);
         }
     }
