@@ -1010,7 +1010,6 @@ double DrumRobot::readBpm(ifstream& inputFile)
     string item;
     vector<string> items;
 
-    cout << "readBPM----------" << "\n";
     while (getline(iss, item, '\t'))
     {
         item = trimWhitespace(item);
@@ -1035,7 +1034,7 @@ bool DrumRobot::readMeasure(ifstream& inputFile)
     }
 
     // timeSum이 threshold를 넘으면 true 반환
-    if (timeSum >= measureThreshold)
+    if (timeSum > measureThreshold)
     {
         return true;
     }
@@ -1072,7 +1071,7 @@ bool DrumRobot::readMeasure(ifstream& inputFile)
         timeSum += measureMatrix(measureMatrix.rows() - 1, 1);
 
         // timeSum이 threshold를 넘으면 true 반환
-        if (timeSum >= measureThreshold)
+        if (timeSum > measureThreshold)
         {
             return true;
         }
@@ -1133,7 +1132,6 @@ void DrumRobot::sendPlayProcess()
     {
         if (fileIndex == 0) // 처음 파일을 열 때 -> bpm 확인
         {
-            std::cout << "dfdfdf------------------";
             bpmOfScore = readBpm(inputFile);
 
             if (bpmOfScore > 0)
@@ -1219,9 +1217,7 @@ void DrumRobot::sendFGProcess()
         {
             if (fileIndex == 0) // 처음 파일을 열 때 -> bpm 확인
             {
-                std::cout << "dfdfdf";
                 bpmOfScore = 60.0;
-                std::cout << "df234242342342342423dfdf";
 
                 if (bpmOfScore > 0)
                 {

@@ -261,13 +261,21 @@ private:
     void pushCommandBuffer(VectorXd Qi, VectorXd Kpp, bool isHitR, bool isHitL);
 
     /////////////////////////////////////////////////////////////////////////// Predict Collision
-    int colli_debug = 0;
+    double line_t1PC, line_t2PC;           // 궤적 생성 시간
+    
+    VectorXd initialInstrumentPC = VectorXd::Zero(18);   // 전체 궤적에서 출발 악기
+    VectorXd finalInstrumentPC = VectorXd::Zero(18);   // 전체 궤적에서 도착 악기
 
-    string trimWhitespace(const std::string &str);
+    double initialTimeRPC, finalTimeRPC;       // 전체 궤적에서 출발 시간, 도착 시간
+    double initialTimeLPC, finalTimeLPC;
+
+    int colli_debug[3] = {0};
+
     bool predictCollision(MatrixXd measureMatrix);
-    MatrixXd parseAllLine(VectorXd t, VectorXd inst, VectorXd stateVector, char RL);
-    MatrixXd getOneDrumPosition(int InstNum, char RL);
+    int findDetectionRange(MatrixXd measureMatrix);
+    MatrixXd parseMeasurePC(MatrixXd &measureMatrix, MatrixXd &state);
     bool checkTable(VectorXd PR, VectorXd PL, double hitR, double hitL);
+    string trimWhitespace(const std::string &str);
     bool hex2TableData(char hex1, char hex2, int index);
 
     /////////////////////////////////////////////////////////////////////////// Avoid Collision
