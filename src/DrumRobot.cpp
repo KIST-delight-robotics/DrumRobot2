@@ -749,10 +749,11 @@ void DrumRobot::watchLoopForThread()
 
     filesystem::path targetPath = "/home/shy/DrumSound/input.mid";        // 파일 경로 + 이름
     filesystem::path outputPath0 = "/home/shy/DrumSound/drum_hits.csv";     // analyzeMidiEvent 거친 output
-    filesystem::path outputPath = "/home/shy/DrumSound/output_mc.csv";     // analyzeMidiEvent 거친 output
-    filesystem::path outputPath1 = "/home/shy/DrumSound/output_mc2c.csv";  //  
-    filesystem::path outputPath2 = "/home/shy/DrumSound/output_hand_assign.csv";
-    filesystem::path outputPath3 = "/home/shy/DrumSound/output_final.txt";
+    filesystem::path outputPath1 = "/home/shy/DrumSound/drum_hits_time.csv"; 
+    filesystem::path outputPath2 = "/home/shy/DrumSound/output_mc.csv";   
+    filesystem::path outputPath3 = "/home/shy/DrumSound/output_mc2c.csv";    
+    filesystem::path outputPath4 = "/home/shy/DrumSound/output_hand_assign.csv";
+    filesystem::path outputPath5 = "/home/shy/DrumSound/output_final.txt";
     /*
     while (1)
     {
@@ -838,13 +839,16 @@ void DrumRobot::watchLoopForThread()
 
         if(file_found)
         {
-            fun.roundDurationsToStep(outputPath0, outputPath); 
 
-            fun.convertMcToC(outputPath, outputPath1);
+            fun.filterSmallDurations(outputPath0, outputPath1);
 
-            fun.assignHandsToEvents(outputPath1, outputPath2);
+            fun.roundDurationsToStep(outputPath1, outputPath2); 
 
-            fun.convertToMeasureFile(outputPath2, outputPath3);
+            fun.convertMcToC(outputPath2, outputPath3);
+
+            fun.assignHandsToEvents(outputPath3, outputPath4);
+
+            fun.convertToMeasureFile(outputPath4, outputPath5);
 
             sleep(2);
             
@@ -1217,7 +1221,7 @@ void DrumRobot::sendFGProcess()
         {
             if (fileIndex == 0) // 처음 파일을 열 때 -> bpm 확인
             {
-                bpmOfScore = 60.0;
+                bpmOfScore = 100.0;
 
                 if (bpmOfScore > 0)
                 {

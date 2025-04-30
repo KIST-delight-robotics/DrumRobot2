@@ -50,7 +50,8 @@ public:
     //csv parsing
     std::vector<std::string> splitByWhitespace(const std::string& line);
     bool readMidiFile(const std::string& filename, std::vector<unsigned char>& buffer);
-    
+
+    void filterSmallDurations(const std::string& inputFilename, const std::string& outputFilename);
     void roundDurationsToStep(const std::string& inputFilename, const std::string& outputFilename);
     size_t readTime(const std::vector<unsigned char>& data, size_t& pos);
     void handleMetaEvent(const std::vector<unsigned char>& data, size_t& pos, int& initial_setting_flag);

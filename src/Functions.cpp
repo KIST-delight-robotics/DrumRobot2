@@ -362,23 +362,23 @@ void Functions::handleChannel10(const std::vector<unsigned char>& data, size_t& 
     if (eventType == 0xB9) pos++;
 }
 
-void Functions::roundDurationsToStep(const std::string& inputFilename, const std::string& outputFilename)
+void Functions::filterSmallDurations(const std::string& inputFilename, const std::string& outputFilename)
 {
+    double threshold = 0.05;
     std::ifstream inputFile(inputFilename);
     std::ofstream outputFile(outputFilename);
 
     if (!inputFile.is_open()) {
-        std::cerr << "❌ 입력 파일 열기 실패: " << inputFilename << std::endl;
+        std::cerr << "filterSmallDurations 입력 파일 열기 실패: " << inputFilename << std::endl;
         return;
     }
 
     if (!outputFile.is_open()) {
-        std::cerr << "❌ 출력 파일 열기 실패: " << outputFilename << std::endl;
+        std::cerr << "filterSmallDurations 출력 파일 열기 실패: " << outputFilename << std::endl;
         return;
     }
 
     std::string line;
-    const double step = 0.005;
 
     while (std::getline(inputFile, line)) {
         std::istringstream iss(line);
@@ -386,7 +386,50 @@ void Functions::roundDurationsToStep(const std::string& inputFilename, const std
         int note;
 
         if (!(iss >> duration >> note)) {
-            std::cerr << "⚠️ 잘못된 형식: " << line << std::endl;
+            std::cerr << "filterSmallDurations 잘못된 형식: " << line << std::endl;
+            continue;
+        }
+
+        // 임계값 이하의 시간은 0으로 설정
+        if (duration < threshold) {
+            duration = 0.0;
+        }
+
+        // 변경된 시간과 악기 정보 출력
+        outputFile << std::fixed << std::setprecision(3)
+                   << duration << "\t" << note << std::endl;
+    }
+
+    inputFile.close();
+    outputFile.close();
+}
+
+
+void Functions::roundDurationsToStep(const std::string& inputFilename, const std::string& outputFilename)
+{
+    std::ifstream inputFile(inputFilename);
+    std::ofstream outputFile(outputFilename);
+
+    if (!inputFile.is_open()) {
+        std::cerr << "roundDurationsToStep 입력 파일 열기 실패: " << inputFilename << std::endl;
+        return;
+    }
+
+    if (!outputFile.is_open()) {
+        std::cerr << "roundDurationsToStep 출력 파일 열기 실패: " << outputFilename << std::endl;
+        return;
+    }
+
+    std::string line;
+    const double step = 0.05;
+
+    while (std::getline(inputFile, line)) {
+        std::istringstream iss(line);
+        double duration;
+        int note;
+
+        if (!(iss >> duration >> note)) {
+            std::cerr << "roundDurationsToStep 잘못된 형식: " << line << std::endl;
             continue;
         }
 
@@ -399,7 +442,7 @@ void Functions::roundDurationsToStep(const std::string& inputFilename, const std
 
     inputFile.close();
     outputFile.close();
-    std::cout << "✅ 반올림 적용 완료. 저장됨: " << outputFilename << std::endl;
+
 }
 
 void Functions::handleNoteOn(const std::vector<unsigned char>& data, size_t& pos, double &note_on_time, int tpqn, const std::string& midiFilePath) {
@@ -584,7 +627,8 @@ void Functions::assignHandsToEvents(const std::string& inputFilename, const std:
                 else e.leftHand = inst1;
             }
         }
-
+        prevRight = e.rightHand;
+        prevLeft = e.leftHand;
         if (e.rightHand != 0) { prevRightNote = e.rightHand; prevRightHit = 0; }
         if (e.leftHand != 0) { prevLeftNote = e.leftHand; prevLeftHit = 0; }
 
@@ -663,9 +707,10 @@ void Functions::convertToMeasureFile(const std::string& inputFilename, const std
 
     for (const auto& ev : result) {
         measureTime += ev.time;
-        if (measureTime + EPS >= MEASURE_LIMIT) {
+        // 마디 시간이 2.4초를 넘으면 새로운 마디로 시작
+        if (measureTime >= MEASURE_LIMIT) {
             measureNum++;
-            measureTime = 0.0;
+            measureTime = ev.time;  // 새로운 마디 시간은 현재 이벤트의 시간으로 시작
         }
         output << measureNum << "\t "
                << std::fixed << std::setprecision(3) << ev.time << "\t "
@@ -679,9 +724,8 @@ void Functions::convertToMeasureFile(const std::string& inputFilename, const std
 
     output << measureNum+1 << "\t 0.600\t 0\t 0\t 0\t 0\t 0\t 0\n";
     output << "-1" << "\t 0.600\t 1\t 1\t 1\t 1\t 1\t 1\n";
-
-    // std::cout << "코드 끗." << std::endl;
 }
+
 
 void Functions::save_to_csv(const std::string& outputCsvPath, double &note_on_time, int drumNote) {
     std::ofstream file(outputCsvPath, std::ios::app);
