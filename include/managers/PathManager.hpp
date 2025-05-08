@@ -181,6 +181,7 @@ private:
         double elbowL;  ///> 왼팔 팔꿈치 관절에 더해줄 각도
         double wristR;  ///> 오른팔 손목 관절에 더해줄 각도
         double wristL;  ///> 왼팔 손목 관절에 더해줄 각도
+        double bass;    ///> 오른발 관절에 더해줄 각도
 
         VectorXd Kpp;       ///> Kpp : Kp 에 곱해지는 값
 
@@ -205,6 +206,11 @@ private:
     }wristTime;
 
     typedef struct {
+        double stayTime;
+        double hitTime;
+    }bassTime;
+
+    typedef struct {
         // double stayAngle = 5*M_PI/180.0;
         double stayAngle = 0.0;
         double liftAngle = 15*M_PI/180.0;
@@ -215,7 +221,12 @@ private:
         double pressAngle = -5*M_PI/180.0;
         double liftAngle = 30*M_PI/180.0;
     }wristAngle;
-    
+
+    typedef struct {
+        double stayAngle = 10*M_PI/180.0;
+        double pressAngle = -5*M_PI/180.0;
+    }bassAngle;
+
     elbowTime elbowTimeR, elbowTimeL;
     wristTime wristTimeR, wristTimeL;
     
@@ -236,6 +247,7 @@ private:
     PathManager::HitAngle generateHit(float tHitR, float tHitL, HitAngle &Pt);
     double makeElbowAngle(double t, elbowTime eT, MatrixXd coefficientMatrix);
     double makeWristAngle(double t, wristTime wT, MatrixXd coefficientMatrix);
+    double makeBassAngle(double T, double t, bool bassHit);
     void getHitTime(HitAngle &Pt, int stateR, int stateL, float tHitR, float tHitL);
 
     /////////////////////////////////////////////////////////////////////////// Waist
