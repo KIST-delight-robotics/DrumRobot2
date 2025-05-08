@@ -433,7 +433,7 @@ void Functions::roundDurationsToStep(const std::string& inputFilename, const std
             continue;
         }
 
-        // ⏱️ 0.005 단위로 반올림
+        // 0.05 단위로 반올림
         double roundedDuration = std::round(duration / step) * step;
 
         outputFile << std::fixed << std::setprecision(3)
@@ -557,6 +557,48 @@ void Functions::convertMcToC(const std::string& inputFilename, const std::string
     // std::cout << "변환 완료! 저장 위치 → " << outputFilename << "\n";
 }
 
+enum Hand { LEFT, RIGHT, SAME };
+
+struct Coord {
+    double x, y, z;
+};
+
+Coord drumXYZ[9] = {
+    {0.0, 0.0, 0.0},
+    {-0.13, 0.52, 0.61}, {0.25, 0.50, 0.62}, {0.21, 0.67, 0.87},
+    {-0.05, 0.69, 0.83}, {-0.28, 0.60, 0.88}, {0.32, 0.71, 1.06},
+    {0.47, 0.52, 0.88}, {-0.06, 0.73, 1.06}
+};
+
+double Functions::dist(const Coord& a, const Coord& b) {
+    return std::sqrt(
+        (a.x - b.x)*(a.x - b.x) +
+        (a.y - b.y)*(a.y - b.y) +
+        (a.z - b.z)*(a.z - b.z)
+    );
+}
+
+Functions::Hand Functions::getPreferredHandByDistance(int instCurrent, int prevRightNote, int prevLeftNote, double prevRightHit, double prevLeftHit) {
+    if (instCurrent <= 0 || instCurrent >= 9) return RIGHT;
+    Coord curr = drumXYZ[instCurrent];
+    Coord right = drumXYZ[prevRightNote];
+    Coord left = drumXYZ[prevLeftNote];
+
+    double dMax = 0.754;
+    double dRight = Functions::dist(curr, right);
+    double dLeft = Functions::dist(curr, left);
+    double real_tRight = prevRightHit * 1.38;
+    double real_tLeft  = prevLeftHit * 1.38;
+    double normRight = std::min(dRight / dMax, 1.0);
+    double normLeft = std::min(dLeft / dMax, 1.0);
+
+    double rScore = (real_tRight / 0.6) * (1 - normRight);
+    double lScore = (real_tLeft  / 0.6) * (1 - normLeft);
+
+    if (std::abs(rScore - lScore) < 1e-6) return SAME;
+    return (lScore <= rScore) ? RIGHT : LEFT;
+}
+
 void Functions::assignHandsToEvents(const std::string& inputFilename, const std::string& outputFilename) {
     std::ifstream input(inputFilename);
     if (!input.is_open()) {
@@ -585,6 +627,7 @@ void Functions::assignHandsToEvents(const std::string& inputFilename, const std:
         auto tokens = splitByWhitespace(line);
         if (tokens.size() != 7) continue;
 
+        // inst1, inst2 가 칠 악기이며 그 전 단계에서 무조건 1부터 채운 후 2를 채우게 된다,
         FullEvent e;
         e.time = std::stod(tokens[0]);
         e.inst1 = std::stoi(tokens[1]);
@@ -596,10 +639,31 @@ void Functions::assignHandsToEvents(const std::string& inputFilename, const std:
         prevRightHit += e.time;
         prevLeftHit += e.time;
 
-        if (inst1 == 7 || inst2 == 7) {
-            e.rightHand = (inst1 == 7) ? 7 : inst2;
-            e.leftHand = (inst1 == 7) ? inst2 : inst1;
-        } else if (inst1 != 0 && inst2 != 0) {
+        //오른손으로 크러시 칠때 
+        //양손 크로스 될때 
+        //prevRight, prevLeft 전줄에 친 악기
+        //prevRightHit, prevLefttHit
+        //크러쉬 관련한 손 어사인
+        if (inst1 == 8 || inst2 == 8) {
+            if(prevLeft == 2 ||prevLeft == 3|| prevLeft == 6)
+            {
+                e.rightHand = 7;
+                e.leftHand = (inst1 == 8) ? inst2 : inst1;
+            }
+            else
+            {
+                if (inst1 == 2 || inst1 == 3 || inst1 == 6 || inst2 == 2 || inst2 == 3 || inst2 == 6) {
+                    e.rightHand = 7;
+                    e.leftHand = (inst1 == 8) ? inst2 : inst1;
+                }
+                else{
+                    e.rightHand = 8;
+                    e.leftHand = (inst1 == 8) ? inst2 : inst1;
+                }
+            }
+        } 
+        // 양손 다 칠 때 스네어가 있으면 무조건 왼손 스네어 스네어 없으면 올느쪽악기면 오른손 왼손 악기면 왼손
+        else if (inst1 != 0 && inst2 != 0) {
             if (inst1 == 1 || inst2 == 1) {
                 e.leftHand = (inst1 == 1) ? inst1 : inst2;
                 e.rightHand = (inst1 == 1) ? inst2 : inst1;
@@ -613,14 +677,10 @@ void Functions::assignHandsToEvents(const std::string& inputFilename, const std:
                     e.rightHand = (inst1 == prevRight) ? inst1 : 0;
                     e.leftHand = (inst1 == prevLeft) ? inst1 : 0;
                 } else {
-                    double dMax = 0.754;
-                    double dRight = 1.0, dLeft = 1.0; // simplified for this context
-                    double tRight = prevRightHit * 1.38;
-                    double tLeft = prevLeftHit * 1.38;
-                    double rScore = (tRight/0.6) * (1 - std::min(dRight/dMax, 1.0));
-                    double lScore = (tLeft/0.6) * (1 - std::min(dLeft/dMax, 1.0));
-                    if (lScore <= rScore) e.rightHand = inst1;
-                    else e.leftHand = inst1;
+                    Hand preferred = Functions::getPreferredHandByDistance(inst1, prevRightNote, prevLeftNote, prevRightHit, prevLeftHit);
+                    if (preferred == RIGHT) e.rightHand = inst1;
+                    else if (preferred == LEFT) e.leftHand = inst1;
+                    else e.rightHand = inst1;
                 }
             } else {
                 if (inst1 == 2 || inst1 == 3 || inst1 == 6 || inst1 == 7) e.rightHand = inst1;
@@ -741,8 +801,8 @@ void Functions::save_to_csv(const std::string& outputCsvPath, double &note_on_ti
         case 47: case 48: case 50: mappedDrumNote = 4; break;
         case 42: mappedDrumNote = 5; break;
         case 51: mappedDrumNote = 6; break;
-        case 49: mappedDrumNote = 7; break;
-        case 57: mappedDrumNote = 8; break;
+        case 49: mappedDrumNote = 8; break;
+        case 57: mappedDrumNote = 7; break;
         case 36: mappedDrumNote = 10; break;
         case 46: mappedDrumNote = 11; break;
         default: mappedDrumNote = 0; break;

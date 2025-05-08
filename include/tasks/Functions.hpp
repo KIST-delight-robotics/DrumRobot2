@@ -47,6 +47,14 @@ public:
 
     //midi to chord parsing
 
+    enum Hand { LEFT, RIGHT, SAME };
+    struct Coord {
+        double x, y, z;
+    };
+
+    Coord drumXYZ[9];
+
+    double dist(const Coord& a, const Coord& b);
     //csv parsing
     std::vector<std::string> splitByWhitespace(const std::string& line);
     bool readMidiFile(const std::string& filename, std::vector<unsigned char>& buffer);
@@ -63,9 +71,10 @@ public:
     void assignHandsToEvents(const std::string& inputFilename, const std::string& outputFilename);
     void convertToMeasureFile(const std::string& inputFilename, const std::string& outputFilename);
 
-    
+    Hand getPreferredHandByDistance(int instCurrent, int prevRightNote, int prevLeftNote, double prevRightHit, double prevLeftHit);
     void save_to_csv(const std::string& outputCsvPath, double& note_on_time, int drumNote);
-   
+
+
 
 
 private:

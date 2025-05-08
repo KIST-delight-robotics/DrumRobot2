@@ -269,8 +269,6 @@ private:
     double initialTimeRPC, finalTimeRPC;       // 전체 궤적에서 출발 시간, 도착 시간
     double initialTimeLPC, finalTimeLPC;
 
-    int colli_debug[3] = {0};
-
     bool predictCollision(MatrixXd measureMatrix);
     int findDetectionRange(MatrixXd measureMatrix);
     MatrixXd parseMeasurePC(MatrixXd &measureMatrix, MatrixXd &state);
@@ -281,9 +279,9 @@ private:
     /////////////////////////////////////////////////////////////////////////// Avoid Collision
     map<int, std::string> modificationMethods = { ///< 악보 수정 방법 중 우선 순위
         { 0, "Crash"},
-        { 1, "Arm"},
-        { 2, "WaitAndMove"},
-        { 3, "MoveAndWait"},
+        { 1, "WaitAndMove"},
+        { 2, "MoveAndWait"},
+        { 3, "Arm"},
         { 4, "Delete"}
     };
 

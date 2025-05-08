@@ -319,14 +319,13 @@ void PathManager::avoidCollision(MatrixXd &measureMatrix)
 {
     if (predictCollision(measureMatrix))    // 충돌 예측
     {
-        // for (int priority = 0; priority < 5; priority++)    // 수정방법 중 우선순위 높은 것부터 시도
-        // {
-        //     if (modifyMeasure(measureMatrix, priority))     // 주어진 방법으로 회피되면 measureMatrix를 바꾸고 True 반환
-        //     {
-        //         colli_debug = 0;
-        //         break;
-        //     }
-        // }
+        for (int priority = 0; priority < 5; priority++)    // 수정방법 중 우선순위 높은 것부터 시도
+        {
+            if (modifyMeasure(measureMatrix, priority))     // 주어진 방법으로 회피되면 measureMatrix를 바꾸고 True 반환
+            {
+                break;
+            }
+        }
     }
     else
     {
@@ -2619,40 +2618,10 @@ bool PathManager::checkTable(VectorXd PR, VectorXd PL, double hitR, double hitL,
 
         tableFile.close(); // 파일 닫기
 
-        if (test == 0)
-        {
-            if (hex2TableData(hex1, hex2, PL_index[1]))
-            {
-                colli_debug[0] = 1;
-            }
-            else
-            {
-                colli_debug[0] = 0;
-            }
-            
-            std::string fileName = "colliC";
-            fun.appendToCSV_DATA(fileName, colli_debug[0], WR_index, WL_index);
-            fileName = "colliR";
-            fun.appendToCSV_DATA(fileName, PR_index[0], PR_index[1], PR_index[2]);
-            fileName = "colliL";
-            fun.appendToCSV_DATA(fileName, PL_index[0], PL_index[1], PL_index[2]);
-        }
-
         return hex2TableData(hex1, hex2, PL_index[1]);
     }
     else
     {
-        if (test == 0)
-        {
-            colli_debug[0] = 55;
-            std::string fileName = "colliC";
-            fun.appendToCSV_DATA(fileName, colli_debug[0], WR_index, WL_index);
-            fileName = "colliR";
-            fun.appendToCSV_DATA(fileName, PR_index[0], PR_index[1], PR_index[2]);
-            fileName = "colliL";
-            fun.appendToCSV_DATA(fileName, PL_index[0], PL_index[1], PL_index[2]);
-        }
-
         std::cout << "\n table file open error \n";
         std::cout << fileName;
     }
@@ -2963,6 +2932,9 @@ bool PathManager::modifyArm(MatrixXd &measureMatrix, int num)
     // 수정하면 안되는 부분 제외
     pair<int, int> detectLine = findModificationRange(t, instR, instL);
 
+    // 뒤쪽 목표위치 없는 부분 수정하면 안됨
+    int endIndex = findDetectionRange(measureMatrix);
+
     int detectLineR = detectLine.first;
     int detectLineL = detectLine.second;
 
@@ -2996,6 +2968,46 @@ bool PathManager::modifyArm(MatrixXd &measureMatrix, int num)
                 return true;
             }
             cnt++;
+        }
+    }
+
+    for (int i = detectLineR; i < endIndex; i++)
+    {
+        if (instR(i) != 0)
+        {
+            if (instL(i) == 0)
+            {
+                if (cnt == num)
+                {
+                    measureMatrix(i, 3) = measureMatrix(i, 2);
+                    measureMatrix(i, 5) = measureMatrix(i, 4);
+
+                    measureMatrix(i, 2) = 0;
+                    measureMatrix(i, 4) = 0;
+                    return true;
+                }
+                cnt++;
+            }
+        }
+    }
+
+    for (int i = detectLineL; i < endIndex; i++)
+    {
+        if (instL(i) != 0)
+        {
+            if (instR(i) == 0)
+            {
+                if (cnt == num)
+                {
+                    measureMatrix(i, 2) = measureMatrix(i, 3);
+                    measureMatrix(i, 4) = measureMatrix(i, 5);
+
+                    measureMatrix(i, 3) = 0;
+                    measureMatrix(i, 5) = 0;
+                    return true;
+                }
+                cnt++;
+            }
         }
     }
 
@@ -3182,13 +3194,16 @@ bool PathManager::deleteInst(MatrixXd &measureMatrix, int num)
     // 수정하면 안되는 부분 제외
     pair<int, int> detectLine = findModificationRange(t, instR, instL);
 
+    // 뒤쪽 목표위치 없는 부분 수정하면 안됨
+    int endIndex = findDetectionRange(measureMatrix);
+
     int detectLineR = detectLine.first;
     int detectLineL = detectLine.second;
 
     // Move and Wait
     int cnt = 0;
 
-    for (int i = detectLineR; i < t.rows(); i++)
+    for (int i = detectLineR; i < endIndex; i++)
     {
         if (instR(i) != 0)
         {
@@ -3202,7 +3217,7 @@ bool PathManager::deleteInst(MatrixXd &measureMatrix, int num)
         }
     }
 
-    for (int i = detectLineL; i < t.rows(); i++)
+    for (int i = detectLineL; i < endIndex; i++)
     {
         if (instL(i) != 0)
         {

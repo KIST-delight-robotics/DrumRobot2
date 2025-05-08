@@ -747,19 +747,19 @@ void DrumRobot::watchLoopForThread()
 {
     // mid 파일 들어올 때까지 대기
 
-    filesystem::path targetPath = "/home/shy/DrumSound/input.mid";        // 파일 경로 + 이름
-    filesystem::path outputPath0 = "/home/shy/DrumSound/drum_hits.csv";     // analyzeMidiEvent 거친 output
+    filesystem::path magentaPath = "/home/shy/DrumSound/output.mid";        // 파일 경로 + 이름
     filesystem::path outputPath1 = "/home/shy/DrumSound/drum_hits_time.csv"; 
     filesystem::path outputPath2 = "/home/shy/DrumSound/output_mc.csv";   
     filesystem::path outputPath3 = "/home/shy/DrumSound/output_mc2c.csv";    
     filesystem::path outputPath4 = "/home/shy/DrumSound/output_hand_assign.csv";
     filesystem::path outputPath5 = "/home/shy/DrumSound/output_final.txt";
-    /*
+
     while (1)
     {
         while(!file_found) // ready 상태인지도 확인해주기
         {
-            if (filesystem::exists(targetPath) && flagObj.getAddStanceFlag() == "isReady")
+
+            if (filesystem::exists(magentaPath) && flagObj.getAddStanceFlag() == "isReady")
             {
                 file_found = true;          // 악보 끝나면 악보 지우고 false로
                 break;
@@ -777,7 +777,12 @@ void DrumRobot::watchLoopForThread()
             double note_on_time = 0;
 
             std::vector<unsigned char> midiData;
-            if (!fun.readMidiFile(targetPath, midiData)) cout << "mid file error\n";
+
+            if (filesystem::exists(magentaPath) && flagObj.getAddStanceFlag() == "isReady")
+            {
+                if (!fun.readMidiFile(magentaPath, midiData)) cout << "mid file error\n";
+            } 
+            // if (!fun.readMidiFile(targetPath, midiData)) cout << "mid file error\n";
             pos = 14;
             int tpqn = (midiData[12] << 8) | midiData[13];
 
@@ -797,52 +802,12 @@ void DrumRobot::watchLoopForThread()
                 while (pos < trackEnd) {
                     size_t delta = fun.readTime(midiData, pos);
                     note_on_time += delta;
-                    fun.analyzeMidiEvent(midiData, pos, runningStatus, initial_setting_flag, note_on_time, tpqn, outputPath);
+                    fun.analyzeMidiEvent(midiData, pos, runningStatus, initial_setting_flag, note_on_time, tpqn, outputPath2);
                 }
                 pos = trackEnd;
             }
 
-            fun.convertMcToC(outputPath, outputPath1);
-
-            fun.assignHandsToEvents(outputPath1, outputPath2);
-
-            fun.convertToMeasureFile(outputPath2, outputPath3);
-
-            sleep(2);
-            
-            FG_start = true;
-
-            file_found = false;
-
-            // if(filesystem::exists(targetPath))
-            // {
-            //     filesystem::remove(targetPath);
-            // }
-        }
-    }
-    */
-
-
-   while(1)
-   {
-     while(!file_found) // ready 상태인지도 확인해주기
-        {
-            if (filesystem::exists(outputPath0) && flagObj.getAddStanceFlag() == "isReady")
-            {
-                file_found = true;          // 악보 끝나면 악보 지우고 false로
-                break;
-            } 
-            std::this_thread::sleep_for(std::chrono::milliseconds(500)); // 0.5초마다 체크
-        }
-
-        // mid 파일 받아서 악보 생성하기
-
-        if(file_found)
-        {
-
-            fun.filterSmallDurations(outputPath0, outputPath1);
-
-            fun.roundDurationsToStep(outputPath1, outputPath2); 
+            //fun.roundDurationsToStep(outputPath1, outputPath2); 
 
             fun.convertMcToC(outputPath2, outputPath3);
 
@@ -861,7 +826,49 @@ void DrumRobot::watchLoopForThread()
             //     filesystem::remove(targetPath);
             // }
         }
-   }
+    }
+
+
+
+//    while(1)
+//    {
+//      while(!file_found) // ready 상태인지도 확인해주기
+//         {
+//             if (filesystem::exists(outputPath0) && flagObj.getAddStanceFlag() == "isReady")
+//             {
+//                 file_found = true;          // 악보 끝나면 악보 지우고 false로
+//                 break;
+//             } 
+//             std::this_thread::sleep_for(std::chrono::milliseconds(500)); // 0.5초마다 체크
+//         }
+
+//         // mid 파일 받아서 악보 생성하기
+
+//         if(file_found)
+//         {
+
+//             fun.filterSmallDurations(outputPath0, outputPath1);
+
+//             fun.roundDurationsToStep(outputPath1, outputPath2); 
+
+//             fun.convertMcToC(outputPath2, outputPath3);
+
+//             fun.assignHandsToEvents(outputPath3, outputPath4);
+
+//             fun.convertToMeasureFile(outputPath4, outputPath5);
+
+//             sleep(2);
+            
+//             FG_start = true;
+
+//             file_found = false;
+
+//             // if(filesystem::exists(targetPath))
+//             // {
+//             //     filesystem::remove(targetPath);
+//             // }
+//         }
+//    }
     
 }
 
