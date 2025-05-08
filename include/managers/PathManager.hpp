@@ -286,7 +286,7 @@ private:
     bool predictCollision(MatrixXd measureMatrix);
     int findDetectionRange(MatrixXd measureMatrix);
     MatrixXd parseMeasurePC(MatrixXd &measureMatrix, MatrixXd &state);
-    bool checkTable(VectorXd PR, VectorXd PL, double hitR, double hitL);
+    bool checkTable(VectorXd PR, VectorXd PL, double hitR, double hitL, int test);
     string trimWhitespace(const std::string &str);
     bool hex2TableData(char hex1, char hex2, int index);
 

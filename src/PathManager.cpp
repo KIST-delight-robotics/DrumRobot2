@@ -2458,7 +2458,7 @@ bool PathManager::predictCollision(MatrixXd measureMatrix)
                 hitL = measureIntensityL(i+1)*Tr*15.0*sin(M_PI*j/stepSize) * M_PI / 180.0;
             }
 
-            if (checkTable(PR, PL, hitR, hitL))
+            if (checkTable(PR, PL, hitR, hitL, i))
             {
                 // std::cout << "\n 충돌이 예측됨 \n";
                 // std::cout << "\n R :" << PR.transpose() << ", L :" << PL.transpose() << "\n";
@@ -2466,30 +2466,6 @@ bool PathManager::predictCollision(MatrixXd measureMatrix)
 
                 // return true;
                 isColli = true;
-
-                if (i == 0)
-                {
-                    colli_debug[0] = 1;
-                    std::string fileName = "colliC";
-                    fun.appendToCSV_DATA(fileName, colli_debug[0], hitR, hitL);
-                    fileName = "colliR";
-                    fun.appendToCSV_DATA(fileName, PR(0), PR(1), PR(2));
-                    fileName = "colliL";
-                    fun.appendToCSV_DATA(fileName, PL(0), PL(1), PL(2));
-                }
-            }
-            else
-            {
-                if (i == 0)
-                {
-                    colli_debug[0] = 0;
-                    std::string fileName = "colliC";
-                    fun.appendToCSV_DATA(fileName, colli_debug[0], hitR, hitL);
-                    fileName = "colliR";
-                    fun.appendToCSV_DATA(fileName, PR(0), PR(1), PR(2));
-                    fileName = "colliL";
-                    fun.appendToCSV_DATA(fileName, PL(0), PL(1), PL(2));
-                }
             }
         }
 
@@ -2589,7 +2565,7 @@ MatrixXd PathManager::parseMeasurePC(MatrixXd &measureMatrix, MatrixXd &state)
     return nextState;
 }
 
-bool PathManager::checkTable(VectorXd PR, VectorXd PL, double hitR, double hitL)
+bool PathManager::checkTable(VectorXd PR, VectorXd PL, double hitR, double hitL, int test)
 {
     std::ifstream tableFile;
     std::string tablePath = "/home/shy/DrumRobot/include/table/";    // 테이블 위치
@@ -2647,7 +2623,7 @@ bool PathManager::checkTable(VectorXd PR, VectorXd PL, double hitR, double hitL)
     if (tableFile.is_open())
     {
         string row;
-        int readingLine = (resolution[2] * (resolution[0] + 1) + 1) * PR_index[1] + (resolution[0] + 1) * PR_index[2] + PR_index[0] + 1;    // 읽어야 할 줄 수
+        int readingLine = ((resolution[2] + 1) * (resolution[0] + 2) + 1) * PR_index[1] + (resolution[0] + 2) * PR_index[2] + PR_index[0] + 1;    // 읽어야 할 줄 수
 
         // std::cout << "\n readingLine : " << readingLine << "\n";
 
@@ -2671,10 +2647,40 @@ bool PathManager::checkTable(VectorXd PR, VectorXd PL, double hitR, double hitL)
 
         tableFile.close(); // 파일 닫기
 
+        if (test == 0)
+        {
+            if (hex2TableData(hex1, hex2, PL_index[1]))
+            {
+                colli_debug[0] = 1;
+            }
+            else
+            {
+                colli_debug[0] = 0;
+            }
+            
+            std::string fileName = "colliC";
+            fun.appendToCSV_DATA(fileName, colli_debug[0], WR_index, WL_index);
+            fileName = "colliR";
+            fun.appendToCSV_DATA(fileName, PR_index[0], PR_index[1], PR_index[2]);
+            fileName = "colliL";
+            fun.appendToCSV_DATA(fileName, PL_index[0], PL_index[1], PL_index[2]);
+        }
+
         return hex2TableData(hex1, hex2, PL_index[1]);
     }
     else
     {
+        if (test == 0)
+        {
+            colli_debug[0] = 55;
+            std::string fileName = "colliC";
+            fun.appendToCSV_DATA(fileName, colli_debug[0], WR_index, WL_index);
+            fileName = "colliR";
+            fun.appendToCSV_DATA(fileName, PR_index[0], PR_index[1], PR_index[2]);
+            fileName = "colliL";
+            fun.appendToCSV_DATA(fileName, PL_index[0], PL_index[1], PL_index[2]);
+        }
+
         std::cout << "\n table file open error \n";
         std::cout << fileName;
     }
