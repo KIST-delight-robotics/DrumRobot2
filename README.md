@@ -256,3 +256,13 @@ T모터 Multi Mode → 범위 0-3599도
 C++ 프로그램상 돌아가는 T모터 자체 각도 범위 → 0-3599도
 CubeMars에서 Single/Multi Mode 적절하게 세팅 필요
 </pre>
+
+## System Architecture
+![System Architecture](./doc/svg/system_architecture.svg)
+
+## State Diagram
+![State Diagram](./doc/svg/state.svg)
+
+## Sequence Diagram - Play (In Progress)
+![Sequence Diagram](./doc/svg/play_state_sequence.svg)
+
