@@ -158,7 +158,7 @@ private:
     string trimWhitespace(const std::string &str);
     double readBpm(ifstream& inputFile);
     bool readMeasure(ifstream& inputFile);
-    void playALineProcess();
+    void processLine();
     void sendPlayProcess();
     void sendFGProcess();
 

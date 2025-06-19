@@ -298,7 +298,6 @@ void Functions::appendToCSV_CAN(const std::string& filename, can_frame& c_frame)
 }
 
 //midi to chord parsing
-
 std::vector<std::string> Functions::splitByWhitespace(const std::string& line) {
     std::istringstream iss(line);
     std::vector<std::string> tokens;
@@ -336,12 +335,11 @@ size_t Functions::readTime(const std::vector<unsigned char>& data, size_t& pos) 
     return value;
 }
 
-void Functions::handleMetaEvent(const std::vector<unsigned char>& data, size_t& pos, int &initial_setting_flag) {
+void Functions::handleMetaEvent(const std::vector<unsigned char>& data, size_t& pos) {
     unsigned char metaType = data[pos++];
     int length = static_cast<int>(data[pos++]);
     size_t startPos = pos;
     if (metaType == 0x21 && length == 1) {
-        initial_setting_flag = 1;
     } else if (metaType == 0x58 && length == 4) {
         unsigned char numerator = data[pos];
         unsigned char denominator = 1 << data[pos + 1];
@@ -361,6 +359,89 @@ void Functions::handleMetaEvent(const std::vector<unsigned char>& data, size_t& 
 void Functions::handleChannel10(const std::vector<unsigned char>& data, size_t& pos, unsigned char eventType) {
     unsigned char control = data[pos++];
     if (eventType == 0xB9) pos++;
+}
+
+void Functions::filterSmallDurations(const std::string& inputFilename, const std::string& outputFilename)
+{
+    double threshold = 0.05;
+    std::ifstream inputFile(inputFilename);
+    std::ofstream outputFile(outputFilename);
+
+    if (!inputFile.is_open()) {
+        std::cerr << "filterSmallDurations 입력 파일 열기 실패: " << inputFilename << std::endl;
+        return;
+    }
+
+    if (!outputFile.is_open()) {
+        std::cerr << "filterSmallDurations 출력 파일 열기 실패: " << outputFilename << std::endl;
+        return;
+    }
+
+    std::string line;
+
+    while (std::getline(inputFile, line)) {
+        std::istringstream iss(line);
+        double duration;
+        int note;
+
+        if (!(iss >> duration >> note)) {
+            std::cerr << "filterSmallDurations 잘못된 형식: " << line << std::endl;
+            continue;
+        }
+
+        // 임계값 이하의 시간은 0으로 설정
+        if (duration < threshold) {
+            duration = 0.0;
+        }
+
+        // 변경된 시간과 악기 정보 출력
+        outputFile << std::fixed << std::setprecision(3)
+                   << duration << "\t" << note << std::endl;
+    }
+
+    inputFile.close();
+    outputFile.close();
+}
+
+
+void Functions::roundDurationsToStep(const std::string& inputFilename, const std::string& outputFilename)
+{
+    std::ifstream inputFile(inputFilename);
+    std::ofstream outputFile(outputFilename);
+
+    if (!inputFile.is_open()) {
+        std::cerr << "roundDurationsToStep 입력 파일 열기 실패: " << inputFilename << std::endl;
+        return;
+    }
+
+    if (!outputFile.is_open()) {
+        std::cerr << "roundDurationsToStep 출력 파일 열기 실패: " << outputFilename << std::endl;
+        return;
+    }
+
+    std::string line;
+    const double step = 0.05;
+
+    while (std::getline(inputFile, line)) {
+        std::istringstream iss(line);
+        double duration;
+        int note;
+
+        if (!(iss >> duration >> note)) {
+            std::cerr << "roundDurationsToStep 잘못된 형식: " << line << std::endl;
+            continue;
+        }
+
+        // 0.05 단위로 반올림
+        double roundedDuration = std::round(duration / step) * step;
+
+        outputFile << std::fixed << std::setprecision(3)
+                   << roundedDuration << "\t" << note << std::endl;
+    }
+
+    inputFile.close();
+    outputFile.close();
+
 }
 
 void Functions::handleNoteOn(const std::vector<unsigned char>& data, size_t& pos, double &note_on_time, int tpqn, const std::string& midiFilePath) {
@@ -388,9 +469,7 @@ void Functions::handleNoteOn(const std::vector<unsigned char>& data, size_t& pos
     }
 }
 
-
-
-void Functions::analyzeMidiEvent(const std::vector<unsigned char>& data, size_t& pos, unsigned char& runningStatus, int &initial_setting_flag, double &note_on_time, int &tpqn, const std::string& midiFilePath) {
+void Functions::analyzeMidiEvent(const std::vector<unsigned char>& data, size_t& pos, unsigned char& runningStatus, double &note_on_time, int &tpqn, const std::string& midiFilePath) {
     if (pos >= data.size()) return;
     unsigned char eventType = data[pos];
     if (eventType == 0xFF || eventType == 0xB9 || eventType == 0xC9 || eventType == 0x99) {
@@ -400,7 +479,7 @@ void Functions::analyzeMidiEvent(const std::vector<unsigned char>& data, size_t&
         eventType = runningStatus;
     }
     if (eventType == 0xFF) {
-        handleMetaEvent(data, pos, initial_setting_flag);
+        handleMetaEvent(data, pos);
     } else if (eventType == 0xB9 || eventType == 0xC9) {
         handleChannel10(data, pos, eventType);
     } else if (eventType == 0x99) {
@@ -477,6 +556,48 @@ void Functions::convertMcToC(const std::string& inputFilename, const std::string
     // std::cout << "변환 완료! 저장 위치 → " << outputFilename << "\n";
 }
 
+enum Hand { LEFT, RIGHT, SAME };
+
+struct Coord {
+    double x, y, z;
+};
+
+Coord drumXYZ[9] = {
+    {0.0, 0.0, 0.0},
+    {-0.13, 0.52, 0.61}, {0.25, 0.50, 0.62}, {0.21, 0.67, 0.87},
+    {-0.05, 0.69, 0.83}, {-0.28, 0.60, 0.88}, {0.32, 0.71, 1.06},
+    {0.47, 0.52, 0.88}, {-0.06, 0.73, 1.06}
+};
+
+double Functions::dist(const Coord& a, const Coord& b) {
+    return std::sqrt(
+        (a.x - b.x)*(a.x - b.x) +
+        (a.y - b.y)*(a.y - b.y) +
+        (a.z - b.z)*(a.z - b.z)
+    );
+}
+
+Functions::Hand Functions::getPreferredHandByDistance(int instCurrent, int prevRightNote, int prevLeftNote, double prevRightHit, double prevLeftHit) {
+    if (instCurrent <= 0 || instCurrent >= 9) return RIGHT;
+    Coord curr = drumXYZ[instCurrent];
+    Coord right = drumXYZ[prevRightNote];
+    Coord left = drumXYZ[prevLeftNote];
+
+    double dMax = 0.754;
+    double dRight = Functions::dist(curr, right);
+    double dLeft = Functions::dist(curr, left);
+    double real_tRight = prevRightHit * 1.38;
+    double real_tLeft  = prevLeftHit * 1.38;
+    double normRight = std::min(dRight / dMax, 1.0);
+    double normLeft = std::min(dLeft / dMax, 1.0);
+
+    double rScore = (real_tRight / 0.6) * (1 - normRight);
+    double lScore = (real_tLeft  / 0.6) * (1 - normLeft);
+
+    if (std::abs(rScore - lScore) < 1e-6) return SAME;
+    return (lScore <= rScore) ? RIGHT : LEFT;
+}
+
 void Functions::assignHandsToEvents(const std::string& inputFilename, const std::string& outputFilename) {
     std::ifstream input(inputFilename);
     if (!input.is_open()) {
@@ -505,6 +626,7 @@ void Functions::assignHandsToEvents(const std::string& inputFilename, const std:
         auto tokens = splitByWhitespace(line);
         if (tokens.size() != 7) continue;
 
+        // inst1, inst2 가 칠 악기이며 그 전 단계에서 무조건 1부터 채운 후 2를 채우게 된다,
         FullEvent e;
         e.time = std::stod(tokens[0]);
         e.inst1 = std::stoi(tokens[1]);
@@ -516,10 +638,31 @@ void Functions::assignHandsToEvents(const std::string& inputFilename, const std:
         prevRightHit += e.time;
         prevLeftHit += e.time;
 
-        if (inst1 == 7 || inst2 == 7) {
-            e.rightHand = (inst1 == 7) ? 7 : inst2;
-            e.leftHand = (inst1 == 7) ? inst2 : inst1;
-        } else if (inst1 != 0 && inst2 != 0) {
+        //오른손으로 크러시 칠때 
+        //양손 크로스 될때 
+        //prevRight, prevLeft 전줄에 친 악기
+        //prevRightHit, prevLefttHit
+        //크러쉬 관련한 손 어사인
+        if (inst1 == 8 || inst2 == 8) {
+            if(prevLeft == 2 ||prevLeft == 3|| prevLeft == 6)
+            {
+                e.rightHand = 7;
+                e.leftHand = (inst1 == 8) ? inst2 : inst1;
+            }
+            else
+            {
+                if (inst1 == 2 || inst1 == 3 || inst1 == 6 || inst2 == 2 || inst2 == 3 || inst2 == 6) {
+                    e.rightHand = 7;
+                    e.leftHand = (inst1 == 8) ? inst2 : inst1;
+                }
+                else{
+                    e.rightHand = 8;
+                    e.leftHand = (inst1 == 8) ? inst2 : inst1;
+                }
+            }
+        } 
+        // 양손 다 칠 때 스네어가 있으면 무조건 왼손 스네어 스네어 없으면 올느쪽악기면 오른손 왼손 악기면 왼손
+        else if (inst1 != 0 && inst2 != 0) {
             if (inst1 == 1 || inst2 == 1) {
                 e.leftHand = (inst1 == 1) ? inst1 : inst2;
                 e.rightHand = (inst1 == 1) ? inst2 : inst1;
@@ -533,21 +676,18 @@ void Functions::assignHandsToEvents(const std::string& inputFilename, const std:
                     e.rightHand = (inst1 == prevRight) ? inst1 : 0;
                     e.leftHand = (inst1 == prevLeft) ? inst1 : 0;
                 } else {
-                    double dMax = 0.754;
-                    double dRight = 1.0, dLeft = 1.0; // simplified for this context
-                    double tRight = prevRightHit * 1.38;
-                    double tLeft = prevLeftHit * 1.38;
-                    double rScore = (tRight/0.6) * (1 - std::min(dRight/dMax, 1.0));
-                    double lScore = (tLeft/0.6) * (1 - std::min(dLeft/dMax, 1.0));
-                    if (lScore <= rScore) e.rightHand = inst1;
-                    else e.leftHand = inst1;
+                    Hand preferred = Functions::getPreferredHandByDistance(inst1, prevRightNote, prevLeftNote, prevRightHit, prevLeftHit);
+                    if (preferred == RIGHT) e.rightHand = inst1;
+                    else if (preferred == LEFT) e.leftHand = inst1;
+                    else e.rightHand = inst1;
                 }
             } else {
                 if (inst1 == 2 || inst1 == 3 || inst1 == 6 || inst1 == 7) e.rightHand = inst1;
                 else e.leftHand = inst1;
             }
         }
-
+        prevRight = e.rightHand;
+        prevLeft = e.leftHand;
         if (e.rightHand != 0) { prevRightNote = e.rightHand; prevRightHit = 0; }
         if (e.leftHand != 0) { prevLeftNote = e.leftHand; prevLeftHit = 0; }
 
@@ -571,7 +711,6 @@ void Functions::assignHandsToEvents(const std::string& inputFilename, const std:
 
     // std::cout << "손 어사인 포함 변환 완료! 저장 위치 → " << outputFilename << "\n";
 }
-
 
 // 박자 단위 분할 및 마디 번호 부여 함수
 void Functions::convertToMeasureFile(const std::string& inputFilename, const std::string& outputFilename) {
@@ -605,19 +744,19 @@ void Functions::convertToMeasureFile(const std::string& inputFilename, const std
         ss >> ev.time >> ev.rightInstrument >> ev.leftInstrument
            >> ev.rightPower >> ev.leftPower >> ev.isBass >> ev.hihatOpen;
 
-        double remaining = ev.time;
-        while (remaining > 0.6) {
+        int count = static_cast<int>(ev.time / 0.6);
+        double leftover = ev.time - count * 0.6;
+
+        for (int i = 0; i < count; ++i) {
             DrumEvent mid{0.6, 0, 0, 0, 0, 0, 0};
             result.push_back(mid);
-            remaining -= 0.6;
         }
-        if (remaining > 0.0) {
-            ev.time = remaining;
+        if (leftover > 1e-6) {
+            ev.time = leftover;
             result.push_back(ev);
         }
     }
 
-    output << "bpm=60\n";
     output << "1\t 0.600\t 0\t 0\t 0\t 0\t 0\t 0\n";
 
     double measureTime = 0.0;
@@ -627,9 +766,10 @@ void Functions::convertToMeasureFile(const std::string& inputFilename, const std
 
     for (const auto& ev : result) {
         measureTime += ev.time;
-        if (measureTime + EPS >= MEASURE_LIMIT) {
+        // 마디 시간이 2.4초를 넘으면 새로운 마디로 시작
+        if (measureTime >= MEASURE_LIMIT) {
             measureNum++;
-            measureTime = 0.0;
+            measureTime = ev.time;  // 새로운 마디 시간은 현재 이벤트의 시간으로 시작
         }
         output << measureNum << "\t "
                << std::fixed << std::setprecision(3) << ev.time << "\t "
@@ -643,9 +783,8 @@ void Functions::convertToMeasureFile(const std::string& inputFilename, const std
 
     output << measureNum+1 << "\t 0.600\t 0\t 0\t 0\t 0\t 0\t 0\n";
     output << "-1" << "\t 0.600\t 1\t 1\t 1\t 1\t 1\t 1\n";
-
-    // std::cout << "코드 끗." << std::endl;
 }
+
 
 void Functions::save_to_csv(const std::string& outputCsvPath, double &note_on_time, int drumNote) {
     std::ofstream file(outputCsvPath, std::ios::app);
@@ -661,8 +800,8 @@ void Functions::save_to_csv(const std::string& outputCsvPath, double &note_on_ti
         case 47: case 48: case 50: mappedDrumNote = 4; break;
         case 42: mappedDrumNote = 5; break;
         case 51: mappedDrumNote = 6; break;
-        case 49: mappedDrumNote = 7; break;
-        case 57: mappedDrumNote = 8; break;
+        case 49: mappedDrumNote = 8; break;
+        case 57: mappedDrumNote = 7; break;
         case 36: mappedDrumNote = 10; break;
         case 46: mappedDrumNote = 11; break;
         default: mappedDrumNote = 0; break;
