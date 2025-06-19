@@ -98,7 +98,8 @@ private:
     typedef struct{
 
         float upperArm = 0.250;         ///< 상완 길이. [m]
-        float lowerArm = 0.328;         ///< 하완 길이. [m]
+        // float lowerArm = 0.328;         ///< 하완 길이. [m]
+        float lowerArm = 0.178;         ///< 하완 길이. [m]
         float stick = 0.325+0.048;      ///< 스틱 길이 + 브라켓 길이. [m]
         float waist = 0.520;            ///< 허리 길이. [m]
         float height = 1.020-0.0605;    ///< 바닥부터 허리까지의 높이. [m]
@@ -182,11 +183,9 @@ private:
         double wristR;  ///> 오른팔 손목 관절에 더해줄 각도
         double wristL;  ///> 왼팔 손목 관절에 더해줄 각도
         double bass;    ///> 오른발 관절에 더해줄 각도
+        double hihat;   ///> 왼발 관절에 더해줄 각도
 
         VectorXd Kpp;       ///> Kpp : Kp 에 곱해지는 값
-
-        bool isHitR = false;
-        bool isHitL = false;
     }HitAngle;
     queue<HitAngle> hitAngleQueue;
 
@@ -207,6 +206,7 @@ private:
 
     typedef struct {
         double stayTime;
+        double liftTime;
         double hitTime;
     }bassTime;
 
@@ -223,12 +223,13 @@ private:
     }wristAngle;
 
     typedef struct {
-        double stayAngle = 10*M_PI/180.0;
-        double pressAngle = -5*M_PI/180.0;
+        double stayAngle = 0*M_PI/180.0;
+        double pressAngle = -20*M_PI/180.0;
     }bassAngle;
 
     elbowTime elbowTimeR, elbowTimeL;
     wristTime wristTimeR, wristTimeL;
+    bassTime bassTimeR;
     
     MatrixXd elbowCoefficientR;
     MatrixXd elbowCoefficientL;
@@ -237,18 +238,19 @@ private:
 
     MatrixXd divideMatrix(MatrixXd &measureMatrix);
     void parseHitData(MatrixXd &measureMatrix);
+    int getBassState(bool bassHit, bool nextBaseHit);
     void makeHitCoefficient();
     PathManager::elbowTime getElbowTime(float t1, float t2, int intensity);
     PathManager::wristTime getWristTime(float t1, float t2, int intensity);
+    PathManager::bassTime getBassTime(float t1, float t2);
     PathManager::elbowAngle getElbowAngle(float t1, float t2, int intensity);
     PathManager::wristAngle getWristAngle(float t1, float t2, int intensity);
     MatrixXd makeElbowCoefficient(int state, elbowTime eT, elbowAngle eA);
     MatrixXd makeWristCoefficient(int state, wristTime wT, wristAngle wA);
-    PathManager::HitAngle generateHit(float tHitR, float tHitL, HitAngle &Pt);
+    void generateHit(float tHitR, float tHitL, HitAngle &Pt);
     double makeElbowAngle(double t, elbowTime eT, MatrixXd coefficientMatrix);
     double makeWristAngle(double t, wristTime wT, MatrixXd coefficientMatrix);
-    double makeBassAngle(double T, double t, bool bassHit);
-    void getHitTime(HitAngle &Pt, int stateR, int stateL, float tHitR, float tHitL);
+    double makeBassAngle(double t, bassTime bt, int bassState);
 
     /////////////////////////////////////////////////////////////////////////// Waist
     MatrixXd waistCoefficient;
@@ -270,7 +272,7 @@ private:
     float prevWaistPos = 0.0;   // 브레이크 판단에 사용될 허리 전 값
     float preDiff = 0.0;        // 브레이크 판단(필터)에 사용될 전 허리 차이값
 
-    void pushCommandBuffer(VectorXd Qi, VectorXd Kpp, bool isHitR, bool isHitL);
+    void pushCommandBuffer(VectorXd Qi, VectorXd Kpp);
 
     /////////////////////////////////////////////////////////////////////////// Predict Collision
     double line_t1PC, line_t2PC;           // 궤적 생성 시간

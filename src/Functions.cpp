@@ -335,12 +335,11 @@ size_t Functions::readTime(const std::vector<unsigned char>& data, size_t& pos) 
     return value;
 }
 
-void Functions::handleMetaEvent(const std::vector<unsigned char>& data, size_t& pos, int &initial_setting_flag) {
+void Functions::handleMetaEvent(const std::vector<unsigned char>& data, size_t& pos) {
     unsigned char metaType = data[pos++];
     int length = static_cast<int>(data[pos++]);
     size_t startPos = pos;
     if (metaType == 0x21 && length == 1) {
-        initial_setting_flag = 1;
     } else if (metaType == 0x58 && length == 4) {
         unsigned char numerator = data[pos];
         unsigned char denominator = 1 << data[pos + 1];
@@ -470,7 +469,7 @@ void Functions::handleNoteOn(const std::vector<unsigned char>& data, size_t& pos
     }
 }
 
-void Functions::analyzeMidiEvent(const std::vector<unsigned char>& data, size_t& pos, unsigned char& runningStatus, int &initial_setting_flag, double &note_on_time, int &tpqn, const std::string& midiFilePath) {
+void Functions::analyzeMidiEvent(const std::vector<unsigned char>& data, size_t& pos, unsigned char& runningStatus, double &note_on_time, int &tpqn, const std::string& midiFilePath) {
     if (pos >= data.size()) return;
     unsigned char eventType = data[pos];
     if (eventType == 0xFF || eventType == 0xB9 || eventType == 0xC9 || eventType == 0x99) {
@@ -480,7 +479,7 @@ void Functions::analyzeMidiEvent(const std::vector<unsigned char>& data, size_t&
         eventType = runningStatus;
     }
     if (eventType == 0xFF) {
-        handleMetaEvent(data, pos, initial_setting_flag);
+        handleMetaEvent(data, pos);
     } else if (eventType == 0xB9 || eventType == 0xC9) {
         handleChannel10(data, pos, eventType);
     } else if (eventType == 0x99) {

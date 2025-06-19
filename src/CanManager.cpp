@@ -268,23 +268,6 @@ bool CanManager::sendAndRecv(std::shared_ptr<GenericMotor> &motor, struct can_fr
     return true;
 }
 
-bool CanManager::recvToBuff(std::shared_ptr<GenericMotor> &motor, int readCount)
-{
-    struct can_frame frame;
-    for (int i = 0; i < readCount; i++)
-    {
-        if (rxFrame(motor, frame))
-        {
-            motor->recieveBuffer.push(frame);
-        }
-        else
-        {
-            return false;
-        }
-    }
-    return true;
-}
-
 void CanManager::clearReadBuffers()
 {
     for (const auto &socketPair : sockets)
@@ -343,6 +326,19 @@ void CanManager::clearCanBuffer(int canSocket)
     }
 }
 
+void CanManager::setSocketsTimeout(int sec, int usec)
+{
+    for (const auto &socketPair : sockets)
+    {
+        int socket_fd = socketPair.second;
+        if (setSocketTimeout(socket_fd, sec, usec) != 0)
+        {
+            std::cerr << "Failed to set socket timeout for " << socketPair.first << std::endl;
+        }
+    }
+}
+
+//NONBLOCK 일때는 써봐짜 의미업승ㅁ
 int CanManager::setSocketTimeout(int socket, int sec, int usec)
 {
     struct timeval timeout;
@@ -356,18 +352,6 @@ int CanManager::setSocketTimeout(int socket, int sec, int usec)
     }
 
     return 0;
-}
-
-void CanManager::setSocketsTimeout(int sec, int usec)
-{
-    for (const auto &socketPair : sockets)
-    {
-        int socket_fd = socketPair.second;
-        if (setSocketTimeout(socket_fd, sec, usec) != 0)
-        {
-            std::cerr << "Failed to set socket timeout for " << socketPair.first << std::endl;
-        }
-    }
 }
 
 bool CanManager::setMotorsSocket()
@@ -475,6 +459,23 @@ bool CanManager::setMotorsSocket()
     return allMotorsUnConected;
 }
 
+//안씀
+bool CanManager::recvToBuff(std::shared_ptr<GenericMotor> &motor, int readCount)
+{
+    struct can_frame frame;
+    for (int i = 0; i < readCount; i++)
+    {
+        if (rxFrame(motor, frame))
+        {
+            motor->recieveBuffer.push(frame);
+        }
+        else
+        {
+            return false;
+        }
+    }
+    return true;
+}
 ////////////////////////////////////////////////////////////////////////////////
 /*                             Send Functions                                 */
 ////////////////////////////////////////////////////////////////////////////////
@@ -727,7 +728,6 @@ bool CanManager::setCANFrame(std::map<std::string, bool>& fixFlags, int cycleCou
             }
 
             setMaxonCANFrame(maxonMotor, mData);
-            
         }
     }
     return true;
