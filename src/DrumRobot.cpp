@@ -928,6 +928,8 @@ bool DrumRobot::readMeasure(ifstream& inputFile)
     string row;
     double timeSum = 0.0;
 
+    // dldldldldl
+
     for (int i = 1; i < measureMatrix.rows(); i++)
     {
         timeSum += measureMatrix(i, 1);
