@@ -42,7 +42,7 @@ void TMotorServoCommandParser::comm_can_set_origin(TMotor &motor, struct can_fra
     frame->data[0] = set_origin_mode; 
 }
 
-void TMotorServoCommandParser::comm_can_set_pos_spd(TMotor &motor, struct can_frame *frame, float pos, int32_t spd, int32_t RPA)
+void TMotorServoCommandParser::comm_can_set_pos_spd(TMotor &motor, struct can_frame *frame, float pos, int32_t spd, int32_t RPA)    //안씀
 {
     // 라디안에서 도로 변환
     float pos_deg = pos * (180.0 / M_PI);
@@ -66,7 +66,7 @@ void TMotorServoCommandParser::comm_can_set_pos_spd(TMotor &motor, struct can_fr
     frame->data[7] = (RPA / 10) & 0xFF;
 }
 
-void TMotorServoCommandParser::comm_can_set_cb(TMotor &motor, struct can_frame *frame, float current)
+void TMotorServoCommandParser::comm_can_set_cb(TMotor &motor, struct can_frame *frame, float current)   //안씀
 {
     frame->can_id = motor.nodeId |
                     ((uint32_t)CAN_PACKET_ID::CAN_PACKET_SET_DUTY_CURRENT_BRAKE << 8 | CAN_EFF_FLAG);
@@ -78,7 +78,7 @@ void TMotorServoCommandParser::comm_can_set_cb(TMotor &motor, struct can_frame *
     frame->data[3] = current_int & 0xFF;
 }
 
-void TMotorServoCommandParser::comm_can_set_spd(TMotor &motor, struct can_frame *frame, float spd_erpm)
+void TMotorServoCommandParser::comm_can_set_spd(TMotor &motor, struct can_frame *frame, float spd_erpm) //안씀
 {
     frame->can_id = motor.nodeId |
                     ((uint32_t)CAN_PACKET_ID::CAN_PACKET_SET_RPM << 8 | CAN_EFF_FLAG);
@@ -110,7 +110,7 @@ void TMotorServoCommandParser::setPositionCANFrame(TMotor &motor, struct can_fra
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
-/*                                                      Tmotor Parser definition                           */
+/*                                          Tmotor Parser definition  (지금 안씀)                         */
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void TMotorCommandParser::parseSendCommand(TMotor &motor, struct can_frame *frame, int canId, int dlc, float p_des, float v_des, float kp, float kd, float t_ff)

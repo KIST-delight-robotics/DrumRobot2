@@ -25,6 +25,7 @@ CanManager::~CanManager()
 /*                          Initialize Functions                              */
 ////////////////////////////////////////////////////////////////////////////////
 
+// CAN 포트 활성화 상태 확인
 bool CanManager::getCanPortStatus(const char *port)
 {
     char command[50];
@@ -58,6 +59,7 @@ bool CanManager::getCanPortStatus(const char *port)
     return false;
 }
 
+// CAN 포트 활성화
 void CanManager::activateCanPort(const char *port)
 {
     char command1[100], command2[100], command3[100], command4[100];
@@ -81,6 +83,7 @@ void CanManager::activateCanPort(const char *port)
     sleep(2);
 }
 
+// Down 상태인 CAN 포트 활성화 및 활성화 포트 저장
 void CanManager::listAndActivateAvailableCANPorts()
 {
     int portCount = 0; // CAN 포트 수를 세기 위한 변수
@@ -137,6 +140,7 @@ void CanManager::listAndActivateAvailableCANPorts()
     }
 }
 
+// CAN 소켓 생성 및 바인딩
 int CanManager::createSocket(const std::string &ifname)
 {
     int result;
@@ -172,6 +176,7 @@ int CanManager::createSocket(const std::string &ifname)
     return localSocket; // 생성된 소켓 디스크립터 반환
 }
 
+// CAN 포트 초기화 : 사용가능 포트 확인 및 소켓 할당
 void CanManager::initializeCAN()
 {
     listAndActivateAvailableCANPorts();
@@ -200,6 +205,7 @@ void CanManager::flushCanBuffer(int socket)
     setsockopt(socket, SOL_CAN_RAW, CAN_RAW_FILTER, &filter, sizeof(filter));
 }
 
+// CAN 포트 연결 상태 확인
 void CanManager::checkCanPortsStatus()
 {
     for (const auto &ifname : this->ifnames)
@@ -530,22 +536,6 @@ void CanManager::setMaxonCANFrame(std::shared_ptr<MaxonMotor> maxonMotor, const 
 
 float CanManager::calTorque(std::shared_ptr<MaxonMotor> maxonMotor, const MaxonData &mData)
 {       
-        // double frictionTorque = 0;
-
-        // if((mData.position - maxonMotor -> preMotorPosition)>(0.01*M_PI/180))
-        // {
-        //     frictionTorque = 5;
-        //     maxonMotor -> preMotorPosition = mData.position;
-        // }
-        // else if((mData.position - maxonMotor -> preMotorPosition)<(0.01*M_PI/180))
-        // {
-        //     frictionTorque = -5;
-        //     maxonMotor -> preMotorPosition = mData.position;
-        // }
-        // else
-        // {
-        //     maxonMotor -> preMotorPosition = mData.position;
-        // }
 
         double err = mData.position - maxonMotor->motorPosition;
         double err_dot = (err - maxonMotor-> pre_err)/DTSECOND;
@@ -553,38 +543,6 @@ float CanManager::calTorque(std::shared_ptr<MaxonMotor> maxonMotor, const MaxonD
 
         double err_dot_filtered = alpha * ((err - maxonMotor-> pre_err) / DTSECOND) + (1 - alpha) * err_dot;
         float torquemNm = mData.kp * err + mData.kd * err_dot_filtered;
-
-        // if (maxonMotor -> myName == "R_wrist")
-        // {
-        //     if (mData.isHitR)
-        //     {
-        //         if (torquemNm > 0)
-        //         {
-        //             torquemNm = maxonMotor->prevTorque; 
-        //         }
-        //         else if (torquemNm < 0)
-        //         {
-        //             maxonMotor -> prevTorque = torquemNm;
-        //         }
-        //     }
-        // }
-        
-        // else if (maxonMotor -> myName == "L_wrist")
-        // {
-        //     if (mData.isHitL)
-        //     {
-        //         if (torquemNm > 0)
-        //         {
-        //             torquemNm = maxonMotor->prevTorque; 
-        //         }
-        //         else if (torquemNm < 0)
-        //         {
-        //             maxonMotor -> prevTorque = torquemNm;
-        //         }
-        //     }
-        // }
-
-        //fun.appendToCSV_DATA("isHitRL", (float)maxonMotor->nodeId, mData.isHitR, mData.isHitL);
 
         maxonMotor-> pre_err = err;
 
@@ -618,16 +576,13 @@ float CanManager::calTorque(std::shared_ptr<MaxonMotor> maxonMotor, const MaxonD
                     }
                 }
             }
-
         }
-
         
         gravity_angle += maxonMotor -> jointAngle;
 
         float gravityTorqueNm =  stickMassKg * 9.81 * stickLengthMeter * std::sin(gravity_angle) / gearRatio / div;
 
-        torquemNm += gravityTorqueNm * 1000.0;  // N·m -> mN·m
-        // torquemNm += frictionTorque; 
+        torquemNm += gravityTorqueNm * 1000.0;  // N·m -> mN·m 
 
         return torquemNm;
 }
@@ -727,7 +682,6 @@ bool CanManager::setCANFrame(std::map<std::string, bool>& fixFlags, int cycleCou
             }
 
             setMaxonCANFrame(maxonMotor, mData);
-            
         }
     }
     return true;
