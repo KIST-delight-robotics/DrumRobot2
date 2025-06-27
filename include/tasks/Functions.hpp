@@ -47,6 +47,14 @@ public:
 
     //midi to chord parsing
 
+    enum Hand { LEFT, RIGHT, SAME };
+    struct Coord {
+        double x, y, z;
+    };
+
+    Coord drumXYZ[9];
+
+    double dist(const Coord& a, const Coord& b);
     //csv parsing
     std::vector<std::string> splitByWhitespace(const std::string& line);
     bool readMidiFile(const std::string& filename, std::vector<unsigned char>& buffer);
@@ -54,18 +62,19 @@ public:
     void filterSmallDurations(const std::string& inputFilename, const std::string& outputFilename);
     void roundDurationsToStep(const std::string& inputFilename, const std::string& outputFilename);
     size_t readTime(const std::vector<unsigned char>& data, size_t& pos);
-    void handleMetaEvent(const std::vector<unsigned char>& data, size_t& pos, int& initial_setting_flag);
+    void handleMetaEvent(const std::vector<unsigned char>& data, size_t& pos);
     void handleChannel10(const std::vector<unsigned char>& data, size_t& pos, unsigned char eventType);
     void handleNoteOn(const std::vector<unsigned char>& data, size_t& pos, double& note_on_time, int tpqn, const std::string& midiFilePath);
-    void analyzeMidiEvent(const std::vector<unsigned char>& data, size_t& pos, unsigned char& runningStatus, int& initial_setting_flag, double& note_on_time, int& tpqn, const std::string& midiFilePath);
+    void analyzeMidiEvent(const std::vector<unsigned char>& data, size_t& pos, unsigned char& runningStatus, double& note_on_time, int& tpqn, const std::string& midiFilePath);
     
     void convertMcToC(const std::string& inputFilename, const std::string& outputFilename);
     void assignHandsToEvents(const std::string& inputFilename, const std::string& outputFilename);
     void convertToMeasureFile(const std::string& inputFilename, const std::string& outputFilename);
 
-    
+    Hand getPreferredHandByDistance(int instCurrent, int prevRightNote, int prevLeftNote, double prevRightHit, double prevLeftHit);
     void save_to_csv(const std::string& outputCsvPath, double& note_on_time, int drumNote);
-   
+
+
 
 
 private:

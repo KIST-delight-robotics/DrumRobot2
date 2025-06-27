@@ -110,7 +110,8 @@ private:
     const float jointRangeMin[12] = {   -90.0,  0.0,    30.0,   -60.0,    0.0,  -60.0,    0.0,  -108.0, -108.0,     -90.0,     -90.0,  -90.0};
 
     FlagClass flagObj;
-    bool allMotorsUnConected = true;
+    bool allMotorsUnConected = true;    // 모든 모터 연결 안됨 - 모터 없이 테스트하는 경우
+    bool isLockKeyRemoved = false;      // 키 제거했는지 확인
 
     // Initialize
     int maxonMotorCount = 0;    // 1 이상이면 virtual Maxon Motor를 사용하기 위해
@@ -157,8 +158,8 @@ private:
 
     string trimWhitespace(const std::string &str);
     double readBpm(ifstream& inputFile);
-    bool readMeasure(ifstream& inputFile);
-    void playALineProcess();
+    bool readMeasure(ifstream& inputFile);  // 한번에 읽을 악보의 크기(measureThreshold)만큼 읽으면 true 반환
+    void processLine();
     void sendPlayProcess();
     void sendFGProcess();
 

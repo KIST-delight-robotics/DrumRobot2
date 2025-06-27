@@ -74,16 +74,16 @@ int main(int argc, char *argv[])
         std::cerr << "Error setting priority for stateMachine" << std::endl;
         return -1;
     }
-    //if (!setThreadPriority(guiThread, 4))
-    //{
-    //    std::cerr << "Error setting priority for stateMachine" << std::endl;
-    //    return -1;
-    //}
     if (!setThreadPriority(watchThread, 4))
     {
         std::cerr << "Error setting priority for watchThread" << std::endl;
         return -1;
     }
+    //if (!setThreadPriority(guiThread, 4))
+    //{
+    //    std::cerr << "Error setting priority for stateMachine" << std::endl;
+    //    return -1;
+    //}
 
     // Wait Threads
     stateThread.join();
