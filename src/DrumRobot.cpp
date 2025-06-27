@@ -371,7 +371,7 @@ bool DrumRobot::initializePos(const std::string &input)
         state.main = Main::AddStance;
         flagObj.setAddStanceFlag("isHome");
 
-        return false;
+        return true;
     }
     else if (input == "i")
     {
@@ -380,14 +380,13 @@ bool DrumRobot::initializePos(const std::string &input)
 
         // state.main = Main::AddStance;
         // flagObj.setAddStanceFlag("isHome");
-
-        // return false;
-        return true;
+        
+        return false;
     }
     else
     {
         std::cout << "Invalid command or not allowed in current state!\n";
-        return true;
+        return false;
     }
 }
 
@@ -412,7 +411,7 @@ void DrumRobot::initializeDrumRobot()
     {
         std::cout << "Enter command: ";
         std::getline(std::cin, input);
-    } while (initializePos(input));
+    } while (!initializePos(input));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -627,15 +626,14 @@ void DrumRobot::sendLoopForThread()
     sleep(2);   // read thead에서 clear / initial pos Path 생성 할 때까지 기다림
 
     bool wasFixed = false; // 이전 `fixed` 상태 추적
-    int cycleCounter = 0; // 주기 조절을 위한 변수
+    int cycleCounter = 0; // 주기 조절을 위한 변수 (Tmotor : 5ms, Maxon : 1ms)
 
     while (state.main != Main::Shutdown)
     {
         sendLoopPeriod = std::chrono::steady_clock::now();
-        sendLoopPeriod += std::chrono::microseconds(1000);  // 주기 : 5msec
+        sendLoopPeriod += std::chrono::microseconds(1000);  // 주기 : 1msec
         
         std::map<std::string, bool> fixFlags; // 각 모터의 고정 상태 저장
-
         
         if (!canManager.setCANFrame(fixFlags, cycleCounter))
         {
@@ -746,8 +744,10 @@ void DrumRobot::recvLoopForThread()
 
 void DrumRobot::watchLoopForThread()
 {
-
-
+    while (state.main != Main::Shutdown)
+    {
+        sleep(1);
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -819,6 +819,19 @@ void DrumRobot::processInput(const std::string &input, string flagName)
 
 void DrumRobot::idealStateRoutine()
 {
+    std::string input;
+
+    if (!isLockKeyRemoved)
+    {
+        do
+        {
+            std::cout << "키 뽑았는지 확인(k) : ";
+            std::getline(std::cin, input);
+        } while (input != "k");
+
+        isLockKeyRemoved = true;
+    }
+
     if (flagObj.getFixationFlag())
     {
         string flag = flagObj.getAddStanceFlag();
@@ -834,8 +847,6 @@ void DrumRobot::idealStateRoutine()
             std::cout << "system clear error" << endl;
 
         displayAvailableCommands(flag);
-
-        std::string input;
 
         std::cout << "Enter command: ";
         std::getline(std::cin, input);
@@ -1154,7 +1165,7 @@ void DrumRobot::sendFGProcess()
             {
                 size_t pos;
                 unsigned char runningStatus;
-                int initial_setting_flag = 0;
+                // int initial_setting_flag = 0;
                 double note_on_time = 0;
 
                 std::vector<unsigned char> midiData;

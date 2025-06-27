@@ -204,6 +204,11 @@ void PathManager::pushAddStancePath(string flagName)
             Q2(i) = shutdownAngle(i);
         }
     }
+    else
+    {
+        std::cout << "Flag Error !\n";
+        return;
+    }
 
     const float accMax = 100.0; // rad/s^2
     
@@ -213,7 +218,7 @@ void PathManager::pushAddStancePath(string flagName)
 
     for (int k = 0; k < 12; k++)
     {
-        cout << "Q1[" << k << "] : " << Q1[k] * 180.0 / M_PI << " [deg] -> Q2[" << k << "] : " << Q2[k] * 180.0 / M_PI << " [deg]" << endl;
+        std::cout << "Q1[" << k << "] : " << Q1[k] * 180.0 / M_PI << " [deg] -> Q2[" << k << "] : " << Q2[k] * 180.0 / M_PI << " [deg]" << endl;
     }
 
     for (int k = 1; k <= n + stayN; ++k)
@@ -243,7 +248,7 @@ void PathManager::pushAddStancePath(string flagName)
                 }
                 else if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(entry.second))
                 {
-                    // 1ms 로 동작 (이인우)
+                    // 1ms 로 동작
                     for (int i = 0; i < 5; i++)
                     {
                         MaxonData newData;
@@ -274,7 +279,7 @@ void PathManager::pushAddStancePath(string flagName)
                 }
                 else if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(entry.second))
                 {
-                    // 1ms 로 동작 (이인우)
+                    // 1ms 로 동작
                     for (int i = 0; i < 5; i++)
                     {
                         MaxonData newData;
@@ -426,8 +431,6 @@ void PathManager::generateTrajectory(MatrixXd &measureMatrix)
     // bool bassHit = measureMatrix(1,7);      // 베이스가 히트인지 확인
     int repeat = static_cast<int>(round(lineT / timeStep)); // 한 줄 궤적 생성을 위한 반복 횟수
     int k = 0;
-    int stateR = 0;
-    int stateL = 0;
 
     dividedMatrix = divideMatrix(measureMatrix);
 
@@ -456,9 +459,6 @@ void PathManager::generateTrajectory(MatrixXd &measureMatrix)
 
             // 타격 궤적 만들기
             makeHitCoefficient();
-
-            stateR = hitState(0, 1);
-            stateL = hitState(1, 1);
         }
         
         HitAngle Ht;
