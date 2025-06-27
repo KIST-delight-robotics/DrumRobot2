@@ -309,14 +309,15 @@ void TestManager::SendTestProcess()
                 std::cout << "[ Current Q Values (Radian / Degree) ]\n";
                 for (int i = 10; i < 12; i++)
                 {
-                    std::cout << "Q[" << i << "] : " << c_MotorAngle[i] << "\t\t" << c_MotorAngle[i] * 180.0 / M_PI << "\t\t" <<q[i]/ M_PI * 180.0 << "\n";
-                    }
+                    std::cout << "Q[" << i << "] : " << c_MotorAngle[i] << "\t\t" << c_MotorAngle[i] * 180.0 / M_PI << "\t\t" << q[i]/ M_PI * 180.0 << "\n";
+                }
 
                 std::cout << "\ntime : " << t << "s";
+                std::cout << "\nextra time : " << extra_time << "s";
                 std::cout << "\nnumber of repeat : " << n_repeat << std::endl << std::endl;
 
 
-                std::cout << "\nSelect Motor to Change Value (R: 10, L: 11) / Run (1) / Time (2) / Extra Time (3) / Repeat(4) / Exit (-1): ";
+                std::cout << "\nSelect Motor to Change Value (R: 10, L: 11) / Time (2) / Extra Time (3) / Repeat(4) / Run (1) / Exit (-1): ";
                 std::cin >> userInput;
 
                 if (userInput == -1)
