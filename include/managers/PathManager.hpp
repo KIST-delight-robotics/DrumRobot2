@@ -113,7 +113,7 @@ private:
     MatrixXd wristAnglesR;                               ///< 오른팔의 각 악기별 타격 시 손목 각도.
     MatrixXd wristAnglesL;                                ///< 왼팔의 각 악기별 타격 시 손목 각도.
 
-    // AddStace 에서 사용하는 위치
+    // AddStace 에서 사용하는 위치 (자세)
     VectorXd readyAngle;
     VectorXd homeAngle;
     VectorXd shutdownAngle;
