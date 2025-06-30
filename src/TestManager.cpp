@@ -28,7 +28,7 @@ void TestManager::SendTestProcess()
             }
         FK(c_MotorAngle); // 현재 q값에 대한 FK 진행
     
-        std::cout << "\nSelect Method (1 - 관절각도값 조절, 2 - 좌표값 조절, 3 - 손목 모터, 4 - 발 모터 -1 - 나가기) : ";
+        std::cout << "\nSelect Method (1 - 관절각도값 조절, 2 - 좌표값 조절, 3 - 손목 모터, 4 - 발 모터, -1 - 나가기) : ";
         std::cin >> method;
 
         if(method == 1)
@@ -316,7 +316,7 @@ void TestManager::SendTestProcess()
                 std::cout << "\nnumber of repeat : " << n_repeat << std::endl << std::endl;
 
 
-                std::cout << "\nSelect Motor to Change Value (R: 10, L: 11) / Run (1) / Time (2) / Extra Time (3) / Repeat(4) / Exit (-1): ";
+                std::cout << "\nSelect Motor to Change Value (R: 10, L: 11) / Run (1) / Time (2) / Extra Time (3) / Repeat(4) / 강시우(5) / Exit (-1): ";
                 std::cin >> userInput;
 
                 if (userInput == -1)
@@ -364,13 +364,63 @@ void TestManager::SendTestProcess()
                     std::cout << "number of repeat : ";
                     std::cin >> n_repeat;
                 }
+                else if (userInput == 5)
+                {
+                    float A = 90.0;
+                    
+                    std::cout << "A : ";
+                    std::cin >> A;
+                    
+                    float t_now = 0.0;
+                    float dt = 0.005;
+                    
+                    while(t_now<=t)
+                    {   
+                        vector<float> Qi(12);
+
+                        for (int i = 0; i < 12; i++)
+                        {
+                            Qi[i] = A * sin (2 * M_PI * t_now / t) * M_PI / 180.0 + c_MotorAngle[i];
+
+                            if (i == 11)
+                            {
+                                fun.appendToCSV_DATA("test", Qi[i], 0, 0);
+                            }
+                        }
+                        // Send to Buffer
+                        for (auto &entry : motors)
+                        {
+                            if (std::shared_ptr<TMotor> tMotor = std::dynamic_pointer_cast<TMotor>(entry.second))
+                            {
+                                TMotorData newData;
+                                newData.position = tMotor->jointAngleToMotorPosition(Qi[motorMapping[entry.first]]);
+                                newData.mode = tMotor->Position;
+                                tMotor->commandBuffer.push(newData);
+                                
+                                tMotor->finalMotorPosition = newData.position;
+                            }
+                            else if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(entry.second))
+                            {
+                                MaxonData newData;
+                                newData.position = maxonMotor->jointAngleToMotorPosition(Qi[motorMapping[entry.first]]);
+                                newData.mode = maxonMotor->CSP;
+                                maxonMotor->commandBuffer.push(newData);
+
+                                maxonMotor->finalMotorPosition = newData.position;
+                            }
+                        }
+                        
+                        t_now += dt;
+                    }
+                
+                }
+            
             }
         }
         else
         {
             break;
         }
-
     }    
 }
 

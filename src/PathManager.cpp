@@ -2393,7 +2393,14 @@ void PathManager::pushCommandBuffer(VectorXd Qi, VectorXd Kpp)
                 MaxonData newData;
                 float Qi1ms = ((i+1)*Qi[can_id] + (4-i)*maxonMotor->pre_q)/5.0;
                 newData.position = maxonMotor->jointAngleToMotorPosition(Qi1ms);
-                if (MaxonMode == "CST" && can_id != 10)
+                if (can_id == 10 || can_id == 11)
+                {
+                    // 발 모터는 항상 CSP mode
+                    newData.mode = maxonMotor->CSP;
+                    newData.kp = 0;
+                    newData.kd = 0;
+                }
+                else if (MaxonMode == "CST")
                 {
                     newData.mode = maxonMotor->CST;
                     newData.kp = Kpp[can_id] * Kp;
