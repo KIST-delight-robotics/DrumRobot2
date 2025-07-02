@@ -97,12 +97,16 @@ private:
 
     typedef struct{
 
-        float upperArm = 0.250;         ///< 상완 길이. [m]
+        // float upperArm = 0.250;         ///< 상완 길이. [m]
+        float upperArm = 0.230;         ///< 상완 길이. [m]
         // float lowerArm = 0.328;         ///< 하완 길이. [m]
-        float lowerArm = 0.178;         ///< 하완 길이. [m]
+        // float lowerArm = 0.178;         ///< 하완 길이. [m]
+        float lowerArm = 0.200;         ///< 하완 길이. [m]
         float stick = 0.325+0.048;      ///< 스틱 길이 + 브라켓 길이. [m]
         float waist = 0.520;            ///< 허리 길이. [m]
         float height = 1.020-0.0605;    ///< 바닥부터 허리까지의 높이. [m]
+
+        // TestManager.hpp 에서도 수정해줘야 함
 
     }PartLength;
 
