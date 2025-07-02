@@ -112,7 +112,6 @@ private:
 
     FlagClass flagObj;
     bool allMotorsUnConected = true;    // 모든 모터 연결 안됨 - 모터 없이 테스트하는 경우
-    bool isLockKeyRemoved = false;      // 키 제거했는지 확인
 
     // Initialize
     int maxonMotorCount = 0;    // 1 이상이면 virtual Maxon Motor를 사용하기 위해

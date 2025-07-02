@@ -369,7 +369,7 @@ bool DrumRobot::initializePos(const std::string &input)
         setMaxonMotorMode("CSP");
 
         state.main = Main::AddStance;
-        flagObj.setAddStanceFlag("isHome");
+        flagObj.setAddStanceFlag("isHome"); // 시작 자세는 Home 자세와 같음
 
         return true;
     }
@@ -820,6 +820,8 @@ void DrumRobot::processInput(const std::string &input, string flagName)
 void DrumRobot::idealStateRoutine()
 {
     std::string input;
+
+    static bool isLockKeyRemoved = false;      // 키 제거했는지 확인
 
     if (!isLockKeyRemoved)
     {
