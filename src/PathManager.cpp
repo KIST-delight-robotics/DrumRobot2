@@ -149,7 +149,7 @@ void PathManager::setReadyAngle()
     //              R_arm2         R_arm3         L_arm2
                 0*M_PI/180.0,   90*M_PI/180.0,  0*M_PI/180.0,
     //              L_arm3         R_wrist        L_wrist
-                90*M_PI/180.0, 90*M_PI/180.0, 90*M_PI/180.0,
+                90*M_PI/180.0, 75*M_PI/180.0, 75*M_PI/180.0,
     //          Test               R_foot         L_foot            
                 0*M_PI/180.0,   0*M_PI/180.0,   0*M_PI/180.0;
 
