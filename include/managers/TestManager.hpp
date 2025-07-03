@@ -72,14 +72,14 @@ private:
 
     }PartLength;
 
-    /*For SendTestProcess*/
-    int method = 0;
-    float q[12] = {0.0};
-
     // 로봇의 관절각 범위
     //                                 Waist    Rarm1   Larm1   Rarm2   Rarm3   Larm2   Larm3   Rwrist  Lwrist   maxonForTest  Rfoot   Lfoot    [deg]
     const float jointRangeMax[12] = {   90.0,   150.0,  180.0,  90.0,   140.0,  90.0,   140.0,  135.0,  135.0,      135.0,     200.0,  200.0};
     const float jointRangeMin[12] = {   -90.0,  0.0,    30.0,   -60.0,    0.0,  -60.0,    0.0,  -108.0, -108.0,     -90.0,     -90.0,  -90.0};
+
+    /*For SendTestProcess*/
+    int method = 0;
+    float q[12] = {0.0};
 
     std::shared_ptr<MaxonMotor> virtualMaxonMotor;
     int maxonMotorCount = 0;
@@ -94,7 +94,6 @@ private:
     void getArr(float arr[]);
 
     // setQ
-
     bool brake_flag[7] = {false, false, false, false, false, false, false};
     bool single_brake_flag[7] = {false, false, false, false, false, false, false};
     float brake_start_time[7] = {2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0};
@@ -131,11 +130,6 @@ private:
     tuple <double, int, int, int> MaxonHitLoop();
     float getDesiredTorque(float desiredPosition, shared_ptr<MaxonMotor> maxonMotor);
     
-    // test table
-    void testTable();
-    string trimWhitespace(const std::string &str);
-    bool hex2TableData(char hex1, char hex2, int index);
-
     VectorXd IKFixedWaist(VectorXd pR, VectorXd pL, double theta0);
     VectorXd calWaistAngle(VectorXd pR, VectorXd pL);
 };
