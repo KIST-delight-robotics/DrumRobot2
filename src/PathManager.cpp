@@ -158,9 +158,9 @@ void PathManager::setReadyAngle()
         //              waist          R_arm1         L_arm1
     shutdownAngle << 0*M_PI/180.0, 135*M_PI/180.0, 45*M_PI/180.0,
     //                  R_arm2         R_arm3         L_arm2
-                    0*M_PI/180.0,  0*M_PI/180.0,   0*M_PI/180.0,
+                    0*M_PI/180.0,  30*M_PI/180.0,   0*M_PI/180.0,
     //                  L_arm3         R_wrist        L_wrist
-                    0*M_PI/180.0,  90*M_PI/180.0,  90*M_PI/180.0,
+                    30*M_PI/180.0,  90*M_PI/180.0,  90*M_PI/180.0,
     //          Test               R_foot         L_foot            
                     0,                 0,              0;
 }
@@ -496,6 +496,19 @@ void PathManager::solveIKandPushCommand()
     int n = lineData(0, 0); // 명령 개수
 
     makeWaistCoefficient();
+
+    // 여기서 첫 접근 때 정지하기
+    if (firstPerform)
+    {
+        int temp = 0;
+        while(1) // 시작 신호 받을 때까지 대기
+        {
+            cout << "enter 1 to continue : \n";
+            cin >> temp;
+            if (temp == 1) break;
+        }
+        firstPerform = false;
+    }
 
     for (int i = 0; i < n; i++)
     {

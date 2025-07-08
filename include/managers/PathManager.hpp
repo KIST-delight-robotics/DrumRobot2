@@ -74,6 +74,7 @@ public:
     
     /////////////////////////////////////////////////////////////////////////// Play
     bool endOfPlayCommand = false;
+    bool firstPerform = false;
     double bpmOfScore = 0;      ///< 악보의 BPM 정보.
     string MaxonMode = "CSP";
     int Kp, Kd;

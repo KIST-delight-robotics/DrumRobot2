@@ -8,6 +8,7 @@ enum class Main
     Test,
     Play,
     FGPlay,
+    TFGPlay,
     Shutdown,
     Pause,
     AddStance,

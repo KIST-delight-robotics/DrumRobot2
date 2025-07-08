@@ -154,6 +154,7 @@ private:
 
     void initializePlayState();
     void initializeFGPlayState();
+    void initializeTFGPlayState();
     int maxonMotorMode = 1; // 1 : CSP // 0 : CST
 
     string trimWhitespace(const std::string &str);
@@ -162,6 +163,7 @@ private:
     void processLine();
     void sendPlayProcess();
     void sendFGProcess();
+    void sendTFGProcess();
 
     // System
     void clearBufferforRecord();
