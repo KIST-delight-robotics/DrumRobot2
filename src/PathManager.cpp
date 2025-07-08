@@ -397,8 +397,8 @@ void PathManager::generateTrajectory(MatrixXd &measureMatrix)
         Pt.trajectoryL = makePath(initialPositionL, finalPositionL, sL);
 
         // IK 풀기 위한 손목 각도
-        Pt.wristAngleR = tR*(finalWristAngle(0) - initialWristAngle(0))/(finalTimeR - initialTimeR) + initialWristAngle(0);
-        Pt.wristAngleL = tL*(finalWristAngle(1) - initialWristAngle(1))/(finalTimeL - initialTimeL) + initialWristAngle(1);
+        Pt.wristAngleR = sR*(finalWristAngle(0) - initialWristAngle(0)) + initialWristAngle(0);
+        Pt.wristAngleL = sL*(finalWristAngle(1) - initialWristAngle(1)) + initialWristAngle(1);
 
         trajectoryQueue.push(Pt);
 
