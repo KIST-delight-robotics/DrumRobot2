@@ -990,7 +990,7 @@ void DrumRobot::processLine()
 
     if (measureMatrix.rows() > 1)
     {
-        pathManager.avoidCollision(measureMatrix);      // 충돌 회피
+        // pathManager.avoidCollision(measureMatrix);      // 충돌 회피
         pathManager.generateTrajectory(measureMatrix);  // 궤적 생성
     }
 
