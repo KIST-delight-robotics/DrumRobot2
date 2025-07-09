@@ -22,6 +22,7 @@
 #include <cmath>
 #include <chrono>
 #include <set>
+#include <SFML/Audio.hpp>
 
 #include "SystemState.hpp"
 #include "../include/managers/CanManager.hpp"
@@ -73,8 +74,7 @@ public:
     void stateMachine();
     void sendLoopForThread();
     void recvLoopForThread();
-    void watchLoopForThread();
-    
+    void musicMachine();
     void initializeDrumRobot();
 
     bool file_found = false;    // mid 파일 들어왔는지 확인
