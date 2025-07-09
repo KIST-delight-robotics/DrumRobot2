@@ -45,7 +45,10 @@ int main(int argc, char *argv[])
     TestManager testManager(state, canManager, motors, usbio, fun);
     DrumRobot drumRobot(state, canManager, pathManager, testManager, motors, usbio, fun);
     GuiManager guiManager(state, canManager, motors);
-
+    
+    sf::Music warmup;
+    warmup.setVolume(50);
+    
     // 포트를 비활성화하고 다시 활성화
     fun.restCanPort();
     // 드럼 로봇 초기화

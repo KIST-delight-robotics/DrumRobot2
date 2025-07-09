@@ -750,7 +750,7 @@ void DrumRobot::recvLoopForThread()
 
 void DrumRobot::musicMachine()
 {
-
+    
     bool musicReady = false;
     bool played = false;
     sf::Music music;
@@ -1391,7 +1391,7 @@ void DrumRobot::sendTFGProcess()
             pathManager.Kp = 60;
             pathManager.Kd= 7;
             pathManager.Kppp = 0.0;
-            pathManager.syncTime = std::chrono::steady_clock::now() + std::chrono::seconds(10);
+            pathManager.syncTime = std::chrono::steady_clock::now() + std::chrono::seconds(3);
             pathManager.firstPerform = true;    // 악보를 읽고 처음 동작 시작
         }
 
