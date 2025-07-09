@@ -750,48 +750,44 @@ void DrumRobot::recvLoopForThread()
 
 void DrumRobot::musicMachine()
 {
-
-    bool musicReady = false;
     bool played = false;
-    sf::Music music;
+    std::unique_ptr<sf::Music> music;
 
     while (state.main != Main::Shutdown)
     {
-        // 1. 음악 파일 열기 (한 번만)
-        if (state.main == Main::TFGPlay && !musicReady && pathManager.firstPerform)
+        // 음악 초기화
+        if (state.main == Main::TFGPlay && !music && pathManager.firstPerform)
         {
-            if (!music.openFromFile(pathManager.wavPath)) {
-                std::cerr << "🎵 음악 파일 열기 실패: " << pathManager.wavPath << "\n";
-                break;
+            music = std::make_unique<sf::Music>();
+            if (!music->openFromFile(pathManager.wavPath)) {
+                std::cerr << "음악 파일 열기 실패: " << pathManager.wavPath << "\n";
+                music.reset(); // 파괴
+                continue;
             }
-
-            std::cout << "🎵 음악 준비 완료. 동기화 타이밍 대기 중...\n";
-            musicReady = true;
+            std::cout << "음악 준비 완료. 동기화 타이밍 대기 중...\n";
         }
 
-        // 2. 지정된 시간(syncTime)에 도달하면 음악 재생
-        if (musicReady && !played &&
-            std::chrono::steady_clock::now() >= pathManager.syncTime)
+        // 재생
+        if (music && !played && std::chrono::steady_clock::now() >= pathManager.syncTime)
         {
             pathManager.firstPerform = false;
-            music.play();
+            music->play();
             played = true;
-            std::cout << "🎵 음악 재생 시작 (동기화 완료)\n";
+            std::cout << "음악 재생 시작 (동기화 완료)\n";
         }
 
-        // 3. 음악 재생 종료 감지
-        if (played && music.getStatus() != sf::Music::Playing)
+        // 재생 종료
+        if (music && played && music->getStatus() != sf::Music::Playing)
         {
-            std::cout << "🎵 음악 재생 완료\n";
+            std::cout << "음악 재생 완료\n";
             played = false;
-            musicReady = false;
+            music.reset();  // 안전하게 소멸
         }
 
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
-
-
 }
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /*                                Ideal State                                 */
@@ -1365,15 +1361,15 @@ void DrumRobot::sendTFGProcess()
         std::cout << "\n 1 - 연주 시작\n";
         std::cout << "Enter Command: ";
         std::cin >> userInput;
-    
+        
         if (userInput == 1)
         {
             std::string baseName;
             std::cout << "파일 이름을 입력하세요 : ";
             std::cin >> baseName;
         
-            pathManager.wavPath = "/home/taehwang/DrumRobot/DrumRobot2/include/music/" + baseName + ".wav";
-            pathManager.txtPath = "/home/taehwang/DrumRobot/DrumRobot2/include/codes/" + baseName + ".txt";
+            pathManager.wavPath = "/home/shy/DrumRobot/include/music/" + baseName + ".wav";
+            pathManager.txtPath = "/home/shy/DrumRobot/include/codes/" + baseName + ".txt";
             
     
             FG_start = true;
