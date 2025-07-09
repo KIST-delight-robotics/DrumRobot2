@@ -68,6 +68,7 @@ public:
     void analyzeMidiEvent(const std::vector<unsigned char>& data, size_t& pos, unsigned char& runningStatus, double& note_on_time, int& tpqn, const std::string& midiFilePath);
     
     void convertMcToC(const std::string& inputFilename, const std::string& outputFilename);
+    pair<int, int> assignHandsByPosition(int inst1, int inst2);
     void assignHandsToEvents(const std::string& inputFilename, const std::string& outputFilename);
     void convertToMeasureFile(const std::string& inputFilename, const std::string& outputFilename);
 
