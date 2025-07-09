@@ -74,7 +74,12 @@ public:
     
     /////////////////////////////////////////////////////////////////////////// Play
     bool endOfPlayCommand = false;
+    //싱크 연주를 위한 변수들
+    std::chrono::steady_clock::time_point syncTime;
     bool firstPerform = false;
+    std::string wavPath;
+    std::string txtPath;
+    //
     double bpmOfScore = 0;      ///< 악보의 BPM 정보.
     string MaxonMode = "CSP";
     int Kp, Kd;
