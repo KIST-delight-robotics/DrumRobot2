@@ -13,7 +13,7 @@
                 {
                     "name": "LD_LIBRARY_PATH",
                     "value": "${workspaceFolder}/lib:${env:LD_LIBRARY_PATH}"
-                }        
+                },
             ],
             "externalConsole": false,
             "MIMode": "gdb",
