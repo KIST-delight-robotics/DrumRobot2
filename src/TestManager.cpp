@@ -28,7 +28,7 @@ void TestManager::SendTestProcess()
             }
         FK(c_MotorAngle); // 현재 q값에 대한 FK 진행
     
-        std::cout << "\nSelect Method (1 - 관절각도값 조절, 2 - 좌표값 조절, 3 - 손목 모터, 4 - 발 모터 -1 - 나가기) : ";
+        std::cout << "\nSelect Method (1 - 관절각도값 조절, 2 - 좌표값 조절, 3 - 손목 모터, 4 - 발 모터, -1 - 나가기) : ";
         std::cin >> method;
 
         if(method == 1)
@@ -219,15 +219,15 @@ void TestManager::SendTestProcess()
                                                 maxonMotor->hitting = false; // 타격감지 X
                                                 if (repeatCnt == repeat)
                                                 {
-                                                    q[motorMapping[entry.first]] = makeWristAngle(0, hit_time, i * dt, 1, intensity, maxonMotor);
+                                                    q[canManager.motorMapping[entry.first]] = makeWristAngle(0, hit_time, i * dt, 1, intensity, maxonMotor);
                                                 }
                                                 else if (repeatCnt == 0)
                                                 {
-                                                    q[motorMapping[entry.first]] = makeWristAngle(0, hit_time, i * dt, 2, intensity, maxonMotor);
+                                                    q[canManager.motorMapping[entry.first]] = makeWristAngle(0, hit_time, i * dt, 2, intensity, maxonMotor);
                                                 }
                                                 else
                                                 {
-                                                    q[motorMapping[entry.first]] = makeWristAngle(0, hit_time, i * dt, 3, intensity, maxonMotor);
+                                                    q[canManager.motorMapping[entry.first]] = makeWristAngle(0, hit_time, i * dt, 3, intensity, maxonMotor);
                                                 }
                                                 newData.mode = maxonMotor->CSP;
                                             }
@@ -236,15 +236,15 @@ void TestManager::SendTestProcess()
                                                 
                                                 if (repeatCnt == repeat)
                                                 {
-                                                    q[motorMapping[entry.first]] = makeWristAngle(0, hit_time, i * dt, 1, intensity, maxonMotor);
+                                                    q[canManager.motorMapping[entry.first]] = makeWristAngle(0, hit_time, i * dt, 1, intensity, maxonMotor);
                                                 }
                                                 else if (repeatCnt == 0)
                                                 {
-                                                    q[motorMapping[entry.first]] = makeWristAngle(0, hit_time, i * dt, 2, intensity, maxonMotor);
+                                                    q[canManager.motorMapping[entry.first]] = makeWristAngle(0, hit_time, i * dt, 2, intensity, maxonMotor);
                                                 }
                                                 else
                                                 {
-                                                    q[motorMapping[entry.first]] = makeWristAngle(0, hit_time, i * dt, 3, intensity, maxonMotor);
+                                                    q[canManager.motorMapping[entry.first]] = makeWristAngle(0, hit_time, i * dt, 3, intensity, maxonMotor);
                                                 }
                                                 newData.mode = maxonMotor->CSP;
                                             }
@@ -252,15 +252,15 @@ void TestManager::SendTestProcess()
                                             {
                                                 if (repeatCnt == repeat)
                                                 {
-                                                    q[motorMapping[entry.first]] = makeWristAngle_CST(0, hit_time, i * dt, 1, intensity, maxonMotor->hitting, maxonMotor->hittingPos);
+                                                    q[canManager.motorMapping[entry.first]] = makeWristAngle_CST(0, hit_time, i * dt, 1, intensity, maxonMotor->hitting, maxonMotor->hittingPos);
                                                 }
                                                 else if (repeatCnt == 0)
                                                 {
-                                                    q[motorMapping[entry.first]] = makeWristAngle_CST(0, hit_time, i * dt, 2, intensity, maxonMotor->hitting, maxonMotor->hittingPos);
+                                                    q[canManager.motorMapping[entry.first]] = makeWristAngle_CST(0, hit_time, i * dt, 2, intensity, maxonMotor->hitting, maxonMotor->hittingPos);
                                                 }
                                                 else
                                                 {
-                                                    q[motorMapping[entry.first]] = makeWristAngle_CST(0, hit_time, i * dt, 3, intensity, maxonMotor->hitting, maxonMotor->hittingPos);
+                                                    q[canManager.motorMapping[entry.first]] = makeWristAngle_CST(0, hit_time, i * dt, 3, intensity, maxonMotor->hitting, maxonMotor->hittingPos);
                                                 }
                                                 newData.mode = maxonMotor->CSP;
                                             }
@@ -268,23 +268,23 @@ void TestManager::SendTestProcess()
                                             {
                                                 if (repeatCnt == repeat)
                                                 {
-                                                    q[motorMapping[entry.first]] = makeWristAngle_TC(0, hit_time, i * dt, 1, intensity, maxonMotor);    
+                                                    q[canManager.motorMapping[entry.first]] = makeWristAngle_TC(0, hit_time, i * dt, 1, intensity, maxonMotor);    
                                                 }
                                                 else if (repeatCnt == 0)
                                                 {
-                                                    q[motorMapping[entry.first]] = makeWristAngle_TC(0, hit_time, i * dt, 2, intensity, maxonMotor);
+                                                    q[canManager.motorMapping[entry.first]] = makeWristAngle_TC(0, hit_time, i * dt, 2, intensity, maxonMotor);
                                                 }
                                                 else
                                                 {
-                                                    q[motorMapping[entry.first]] = makeWristAngle_TC(0, hit_time, i * dt, 3, intensity, maxonMotor);
+                                                    q[canManager.motorMapping[entry.first]] = makeWristAngle_TC(0, hit_time, i * dt, 3, intensity, maxonMotor);
                                                 }
                                                 newData.mode = maxonMotor->CST;
-                                                desiredTorque = getDesiredTorque(maxonMotor->jointAngleToMotorPosition(q[motorMapping[entry.first]]), maxonMotor);
+                                                desiredTorque = getDesiredTorque(maxonMotor->jointAngleToMotorPosition(q[canManager.motorMapping[entry.first]]), maxonMotor);
                                             }
-                                            newData.position = maxonMotor->jointAngleToMotorPosition(q[motorMapping[entry.first]] + 25.0*M_PI/180.0);
+                                            newData.position = maxonMotor->jointAngleToMotorPosition(q[canManager.motorMapping[entry.first]] + 25.0*M_PI/180.0);
                                             // newData.torque = desiredTorque;
                                             maxonMotor->commandBuffer.push(newData);
-                                            fun.appendToCSV_DATA("wristTrajectory", (float)maxonMotor->nodeId, q[motorMapping[entry.first]], 0);
+                                            fun.appendToCSV_DATA("wristTrajectory", (float)maxonMotor->nodeId, q[canManager.motorMapping[entry.first]], 0);
                                         }
                                     }
                                 }
@@ -309,14 +309,15 @@ void TestManager::SendTestProcess()
                 std::cout << "[ Current Q Values (Radian / Degree) ]\n";
                 for (int i = 10; i < 12; i++)
                 {
-                    std::cout << "Q[" << i << "] : " << c_MotorAngle[i] << "\t\t" << c_MotorAngle[i] * 180.0 / M_PI << "\t\t" <<q[i]/ M_PI * 180.0 << "\n";
-                    }
+                    std::cout << "Q[" << i << "] : " << c_MotorAngle[i] << "\t\t" << c_MotorAngle[i] * 180.0 / M_PI << "\t\t" << q[i]/ M_PI * 180.0 << "\n";
+                }
 
                 std::cout << "\ntime : " << t << "s";
+                std::cout << "\nextra time : " << extra_time << "s";
                 std::cout << "\nnumber of repeat : " << n_repeat << std::endl << std::endl;
 
 
-                std::cout << "\nSelect Motor to Change Value (R: 10, L: 11) / Run (1) / Time (2) / Extra Time (3) / Repeat(4) / Exit (-1): ";
+                std::cout << "\nSelect Motor to Change Value (R: 10, L: 11) / Run (1) / Time (2) / Extra Time (3) / Repeat(4) / 강시우(5) / Exit (-1): ";
                 std::cin >> userInput;
 
                 if (userInput == -1)
@@ -364,13 +365,64 @@ void TestManager::SendTestProcess()
                     std::cout << "number of repeat : ";
                     std::cin >> n_repeat;
                 }
+                else if (userInput == 5)
+                {
+                    float A = 90.0;
+                    
+                    std::cout << "A : ";
+                    std::cin >> A;
+                    
+                    float t_now = 0.0;
+                    float dt = 0.005;
+                    
+                    while(t_now<=t)
+                    {   
+                        vector<float> Qi(12);
+
+                        for (int i = 0; i < 12; i++)
+                        {
+                            Qi[i] = A * sin (2 * M_PI * t_now / t) * M_PI / 180.0 + c_MotorAngle[i];
+                            //Qi[i] = A * (1 - cos(2 * M_PI * t_now / t)) / 2.0 * M_PI / 180.0 + c_MotorAngle[i];
+
+                            if (i == 11)
+                            {
+                                fun.appendToCSV_DATA("test", Qi[i], 0, 0);
+                            }
+                        }
+                        // Send to Buffer
+                        for (auto &entry : motors)
+                        {
+                            if (std::shared_ptr<TMotor> tMotor = std::dynamic_pointer_cast<TMotor>(entry.second))
+                            {
+                                TMotorData newData;
+                                newData.position = tMotor->jointAngleToMotorPosition(Qi[canManager.motorMapping[entry.first]]);
+                                newData.mode = tMotor->Position;
+                                tMotor->commandBuffer.push(newData);
+                                
+                                tMotor->finalMotorPosition = newData.position;
+                            }
+                            else if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(entry.second))
+                            {
+                                MaxonData newData;
+                                newData.position = maxonMotor->jointAngleToMotorPosition(Qi[canManager.motorMapping[entry.first]]);
+                                newData.mode = maxonMotor->CSP;
+                                maxonMotor->commandBuffer.push(newData);
+
+                                maxonMotor->finalMotorPosition = newData.position;
+                            }
+                        }
+                        //std::this_thread::sleep_for(std::chrono::milliseconds(5));
+                        t_now += dt;
+                    }
+                
+                }
+            
             }
         }
         else
         {
             break;
         }
-
     }    
 }
 
@@ -1212,7 +1264,15 @@ void TestManager::FK(float theta[])
 {
     vector<float> P;
 
-    float r1 = partLength[0], r2 = partLength[1], l1 = partLength[2], l2 = partLength[3], stick = partLength[4];
+    PartLength partLength;
+
+    float r1 = partLength.upperArm;
+    float r2 = partLength.lowerArm;
+    float l1 = partLength.upperArm;
+    float l2 = partLength.lowerArm;
+    float stick = partLength.stick;
+    float s = partLength.waist;
+    float z0 = partLength.height;
 
     P.push_back(0.5 * s * cos(theta[0]) + r1 * sin(theta[3]) * cos(theta[0] + theta[1]) + r2 * sin(theta[3] + theta[4]) * cos(theta[0] + theta[1]) + stick * sin(theta[3] + theta[4] + theta[7]) * cos(theta[0] + theta[1]));
     P.push_back(0.5 * s * sin(theta[0]) + r1 * sin(theta[3]) * sin(theta[0] + theta[1]) + r2 * sin(theta[3] + theta[4]) * sin(theta[0] + theta[1]) + stick * sin(theta[3] + theta[4] + theta[7]) * sin(theta[0] + theta[1]));
@@ -1236,11 +1296,11 @@ void TestManager::getMotorPos(float c_MotorAngle[])
     {
         if (std::shared_ptr<TMotor> tMotor = std::dynamic_pointer_cast<TMotor>(entry.second))
         {
-            c_MotorAngle[motorMapping[entry.first]] = tMotor->jointAngle;
+            c_MotorAngle[canManager.motorMapping[entry.first]] = tMotor->jointAngle;
         }
         if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(entry.second))
         {
-            c_MotorAngle[motorMapping[entry.first]] = maxonMotor->jointAngle;
+            c_MotorAngle[canManager.motorMapping[entry.first]] = maxonMotor->jointAngle;
         }
     }
 }
@@ -1525,7 +1585,7 @@ void TestManager::getArr(float arr[])
                 if (std::shared_ptr<TMotor> tMotor = std::dynamic_pointer_cast<TMotor>(entry.second))
                 {
                     TMotorData newData;
-                    newData.position = tMotor->jointAngleToMotorPosition(Qi[motorMapping[entry.first]]);
+                    newData.position = tMotor->jointAngleToMotorPosition(Qi[canManager.motorMapping[entry.first]]);
                     newData.mode = tMotor->Position;
                     tMotor->commandBuffer.push(newData);
                     
@@ -1534,7 +1594,7 @@ void TestManager::getArr(float arr[])
                 else if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(entry.second))
                 {
                     MaxonData newData;
-                    newData.position = maxonMotor->jointAngleToMotorPosition(Qi[motorMapping[entry.first]]);
+                    newData.position = maxonMotor->jointAngleToMotorPosition(Qi[canManager.motorMapping[entry.first]]);
                     newData.mode = maxonMotor->CSP;
                     maxonMotor->commandBuffer.push(newData);
 

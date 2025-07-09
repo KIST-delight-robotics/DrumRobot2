@@ -147,9 +147,9 @@ void PathManager::setReadyAngle()
     //              waist          R_arm1         L_arm1
     homeAngle << 10*M_PI/180.0,  90*M_PI/180.0,  90*M_PI/180.0,
     //              R_arm2         R_arm3         L_arm2
-                0*M_PI/180.0,  135*M_PI/180.0,  0*M_PI/180.0,
+                0*M_PI/180.0,   90*M_PI/180.0,  0*M_PI/180.0,
     //              L_arm3         R_wrist        L_wrist
-                135*M_PI/180.0, 40*M_PI/180.0, 40*M_PI/180.0,
+                90*M_PI/180.0, 75*M_PI/180.0, 75*M_PI/180.0,
     //          Test               R_foot         L_foot            
                 0*M_PI/180.0,   0*M_PI/180.0,   0*M_PI/180.0;
 
@@ -158,9 +158,9 @@ void PathManager::setReadyAngle()
         //              waist          R_arm1         L_arm1
     shutdownAngle << 0*M_PI/180.0, 135*M_PI/180.0, 45*M_PI/180.0,
     //                  R_arm2         R_arm3         L_arm2
-                    0*M_PI/180.0,  0*M_PI/180.0,   0*M_PI/180.0,
+                    0*M_PI/180.0,  30*M_PI/180.0,   0*M_PI/180.0,
     //                  L_arm3         R_wrist        L_wrist
-                    0*M_PI/180.0,  90*M_PI/180.0,  90*M_PI/180.0,
+                    30*M_PI/180.0,  90*M_PI/180.0,  90*M_PI/180.0,
     //          Test               R_foot         L_foot            
                     0,                 0,              0;
 }
@@ -204,6 +204,11 @@ void PathManager::pushAddStancePath(string flagName)
             Q2(i) = shutdownAngle(i);
         }
     }
+    else
+    {
+        std::cout << "Flag Error !\n";
+        return;
+    }
 
     const float accMax = 100.0; // rad/s^2
     
@@ -213,7 +218,7 @@ void PathManager::pushAddStancePath(string flagName)
 
     for (int k = 0; k < 12; k++)
     {
-        cout << "Q1[" << k << "] : " << Q1[k] * 180.0 / M_PI << " [deg] -> Q2[" << k << "] : " << Q2[k] * 180.0 / M_PI << " [deg]" << endl;
+        std::cout << "Q1[" << k << "] : " << Q1[k] * 180.0 / M_PI << " [deg] -> Q2[" << k << "] : " << Q2[k] * 180.0 / M_PI << " [deg]" << endl;
     }
 
     for (int k = 1; k <= n + stayN; ++k)
@@ -243,7 +248,7 @@ void PathManager::pushAddStancePath(string flagName)
                 }
                 else if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(entry.second))
                 {
-                    // 1ms 로 동작 (이인우)
+                    // 1ms 로 동작
                     for (int i = 0; i < 5; i++)
                     {
                         MaxonData newData;
@@ -274,7 +279,7 @@ void PathManager::pushAddStancePath(string flagName)
                 }
                 else if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(entry.second))
                 {
-                    // 1ms 로 동작 (이인우)
+                    // 1ms 로 동작
                     for (int i = 0; i < 5; i++)
                     {
                         MaxonData newData;
@@ -392,8 +397,8 @@ void PathManager::generateTrajectory(MatrixXd &measureMatrix)
         Pt.trajectoryL = makePath(initialPositionL, finalPositionL, sL);
 
         // IK 풀기 위한 손목 각도
-        Pt.wristAngleR = tR*(finalWristAngle(0) - initialWristAngle(0))/(finalTimeR - initialTimeR) + initialWristAngle(0);
-        Pt.wristAngleL = tL*(finalWristAngle(1) - initialWristAngle(1))/(finalTimeL - initialTimeL) + initialWristAngle(1);
+        Pt.wristAngleR = sR*(finalWristAngle(0) - initialWristAngle(0)) + initialWristAngle(0);
+        Pt.wristAngleL = sL*(finalWristAngle(1) - initialWristAngle(1)) + initialWristAngle(1);
 
         trajectoryQueue.push(Pt);
 
@@ -426,8 +431,6 @@ void PathManager::generateTrajectory(MatrixXd &measureMatrix)
     // bool bassHit = measureMatrix(1,7);      // 베이스가 히트인지 확인
     int repeat = static_cast<int>(round(lineT / timeStep)); // 한 줄 궤적 생성을 위한 반복 횟수
     int k = 0;
-    int stateR = 0;
-    int stateL = 0;
 
     dividedMatrix = divideMatrix(measureMatrix);
 
@@ -456,9 +459,6 @@ void PathManager::generateTrajectory(MatrixXd &measureMatrix)
 
             // 타격 궤적 만들기
             makeHitCoefficient();
-
-            stateR = hitState(0, 1);
-            stateL = hitState(1, 1);
         }
         
         HitAngle Ht;
@@ -496,6 +496,19 @@ void PathManager::solveIKandPushCommand()
     int n = lineData(0, 0); // 명령 개수
 
     makeWaistCoefficient();
+
+    // 여기서 첫 접근 때 정지하기
+    if (firstPerform)
+    {
+        int temp = 0;
+        while(1) // 시작 신호 받을 때까지 대기
+        {
+            cout << "enter 1 to continue : \n";
+            cin >> temp;
+            if (temp == 1) break;
+        }
+        firstPerform = false;
+    }
 
     for (int i = 0; i < n; i++)
     {
@@ -2393,7 +2406,14 @@ void PathManager::pushCommandBuffer(VectorXd Qi, VectorXd Kpp)
                 MaxonData newData;
                 float Qi1ms = ((i+1)*Qi[can_id] + (4-i)*maxonMotor->pre_q)/5.0;
                 newData.position = maxonMotor->jointAngleToMotorPosition(Qi1ms);
-                if (MaxonMode == "CST" && can_id != 10)
+                if (can_id == 10 || can_id == 11)
+                {
+                    // 발 모터는 항상 CSP mode
+                    newData.mode = maxonMotor->CSP;
+                    newData.kp = 0;
+                    newData.kd = 0;
+                }
+                else if (MaxonMode == "CST")
                 {
                     newData.mode = maxonMotor->CST;
                     newData.kp = Kpp[can_id] * Kp;

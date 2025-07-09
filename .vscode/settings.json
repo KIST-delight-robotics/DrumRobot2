@@ -105,7 +105,9 @@
         "numbers": "cpp",
         "semaphore": "cpp",
         "span": "cpp",
-        "stop_token": "cpp"
+        "stop_token": "cpp",
+        "tensorsymmetry": "cpp",
+        "matrixfunctions": "cpp"
     },
     "makefile.launchConfigurations": [
         {
@@ -114,5 +116,6 @@
             "binaryArgs": []
         }
     ],
-    "cmake.configureOnOpen": false
+    "cmake.configureOnOpen": false,
+    "C_Cpp.errorSquiggles": "disabled"
 }

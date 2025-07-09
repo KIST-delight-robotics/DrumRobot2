@@ -761,7 +761,7 @@ void Functions::convertToMeasureFile(const std::string& inputFilename, const std
 
     double measureTime = 0.0;
     int measureNum = 1;
-    const double EPS = 1e-6;
+    // const double EPS = 1e-6;
     const double MEASURE_LIMIT = 2.4;
 
     for (const auto& ev : result) {
