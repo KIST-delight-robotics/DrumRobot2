@@ -522,7 +522,7 @@ void CanManager::setMaxonCANFrame(std::shared_ptr<MaxonMotor> maxonMotor, const 
             maxonMotor->controlMode = maxonMotor->CST;
         }
 
-        float targetTorquemNm = calTorque(maxonMotor,mData);
+        float targetTorquemNm = calTorque(maxonMotor, mData);
         int targetTorque = maxoncmd.setTorqueCANFrame(*maxonMotor, &maxonMotor->sendFrame, targetTorquemNm);
 
         fun.appendToCSV_DATA(fun.file_name, (float)maxonMotor->nodeId + SEND_SIGN, mData.position, targetTorque);
@@ -581,9 +581,10 @@ float CanManager::calTorque(std::shared_ptr<MaxonMotor> maxonMotor, const MaxonD
         
         gravity_angle += maxonMotor -> jointAngle;
 
+        // float gravityTorqueNm =  stickMassKg * 9.81 * stickLengthMeter * std::sin(gravity_angle - 1.5708) / gearRatio; // gravity angle에서 90도 빼주기 (지면 기준 각도로 변환)
         float gravityTorqueNm =  stickMassKg * 9.81 * stickLengthMeter * std::sin(gravity_angle) / gearRatio / div;
 
-        torquemNm += gravityTorqueNm * 1000.0;  // N·m -> mN·m 
+        torquemNm -= gravityTorqueNm * 1000.0;  // N·m -> mN·m 
 
         return torquemNm;
 }
