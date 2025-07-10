@@ -750,8 +750,6 @@ void DrumRobot::recvLoopForThread()
 
 void DrumRobot::musicMachine()
 {
-    
-    bool musicReady = false;
     bool played = false;
     std::unique_ptr<sf::Music> music;
 
@@ -1382,8 +1380,6 @@ void DrumRobot::sendTFGProcess()
     {
         if (fileIndex == 0) // 처음 파일을 열 때
         {
-
-            cout << "fileIndex \n";
             musicName = pathManager.txtPath;
             maxonMotorMode = 0;
             pathManager.Kp = 60;
@@ -1395,11 +1391,15 @@ void DrumRobot::sendTFGProcess()
 
         inputFile.open(musicName); // 파일 열기
 
+        inputFile.seekg(0, ios::beg); // 안전하게 파일 맨 처음으로 이동
+        inputFile.clear();            // 상태 비트 초기화
+
         if (inputFile.is_open() && (!endOfScore))    //////////////////////////////////////// 파일 열기 성공
         {
             if (fileIndex == 0) // 처음 파일을 열 때 -> bpm 확인
             {
-                bpmOfScore = 60.0;
+                // bpmOfScore = 88.0;
+                bpmOfScore = readBpm(inputFile);
 
                 if (bpmOfScore > 0)
                 {

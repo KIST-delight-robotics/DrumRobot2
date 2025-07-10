@@ -62,7 +62,7 @@ int main(int argc, char *argv[])
     //std::thread guiThread(&GuiManager::guiThread, &guiManager);
     
     // Threads Priority Settings
-    if (!setThreadPriority(sendThread, 3))
+    if (!setThreadPriority(sendThread, 4))
     {
         std::cerr << "Error setting priority for sendCanFrame" << std::endl;
         return -1;
@@ -72,12 +72,12 @@ int main(int argc, char *argv[])
         std::cerr << "Error setting priority for receiveCanFrame" << std::endl;
         return -1;
     }
-    if (!setThreadPriority(stateThread, 1))
+    if (!setThreadPriority(stateThread, 3))
     {
         std::cerr << "Error setting priority for stateMachine" << std::endl;
         return -1;
     }
-    if (!setThreadPriority(musicThread, 4))
+    if (!setThreadPriority(musicThread, 1))
     {
         std::cerr << "Error setting priority for watchThread" << std::endl;
         return -1;
