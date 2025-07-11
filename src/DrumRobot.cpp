@@ -665,6 +665,9 @@ void DrumRobot::sendLoopForThread()
         {
             flagObj.setFixationFlag("fixed");
             wasFixed = true;
+
+            string fileName = "Time";
+            fun.appendToCSV_DATA(fileName, 1, 0, 0);
         }
         else if (newData) // 새로운 데이터가 들어오면 wasFixed 해제
         {
@@ -748,93 +751,95 @@ void DrumRobot::recvLoopForThread()
     }
 }
 
-// void DrumRobot::musicMachine()
-// {
-//     bool played = false;
-//     std::unique_ptr<sf::Music> music;
-
-//     while (state.main != Main::Shutdown)
-//     {
-//         // 음악 초기화
-//         if (state.main == Main::TFGPlay && !music && pathManager.firstPerform)
-//         {
-//             music = std::make_unique<sf::Music>();
-//             if (!music->openFromFile(pathManager.wavPath)) {
-//                 std::cerr << "음악 파일 열기 실패: " << pathManager.wavPath << "\n";
-//                 music.reset(); // 파괴
-//                 continue;
-//             }
-//             std::cout << "음악 준비 완료. 동기화 타이밍 대기 중...\n";
-//         }
-
-//         // 재생
-//         if (music && !played && std::chrono::steady_clock::now() >= pathManager.syncTime)
-//         {
-//             pathManager.firstPerform = false;
-//             music->play();
-//             played = true;
-//             std::cout << "음악 재생 시작 (동기화 완료)\n";
-//         }
-
-//         // 재생 종료
-//         if (music && played && music->getStatus() != sf::Music::Playing)
-//         {
-//             std::cout << "음악 재생 완료\n";
-//             played = false;
-//             music.reset();  // 안전하게 소멸
-//         }
-
-//         std::this_thread::sleep_for(std::chrono::milliseconds(10));
-//     }
-// }
-
 void DrumRobot::musicMachine()
 {
-    bool musicReady = false;
     bool played = false;
+    std::unique_ptr<sf::Music> music;
 
     while (state.main != Main::Shutdown)
     {
-        
-        if (state.main == Main::TFGPlay && !musicReady && pathManager.firstPerform)
+        // 음악 초기화
+        if (state.main == Main::TFGPlay && !music && pathManager.firstPerform)
         {
-            // 파일 존재 여부 확인
-            if (access(pathManager.wavPath.c_str(), F_OK) != 0) {
-                std::cerr << "음악 파일 없음: " << pathManager.wavPath << "\n";
-                break;
+            music = std::make_unique<sf::Music>();
+            if (!music->openFromFile(pathManager.wavPath)) {
+                std::cerr << "음악 파일 열기 실패: " << pathManager.wavPath << "\n";
+                music.reset(); // 파괴
+                continue;
             }
-
             std::cout << "음악 준비 완료. 동기화 타이밍 대기 중...\n";
-            musicReady = true;
         }
 
-        // 지정된 시간에 도달하면 외부 플레이어로 음악 재생
-        if (musicReady && !played &&
-            std::chrono::steady_clock::now() >= pathManager.syncTime)
+        // 재생
+        if (music && !played && std::chrono::steady_clock::now() >= pathManager.syncTime)
         {
+            string fileName = "Time";
+            fun.appendToCSV_DATA(fileName, 0, 0, 0);
             pathManager.firstPerform = false;
-
-            
-            std::string command = "aplay \"" + pathManager.wavPath + "\" &";
-            int ret = system(command.c_str());
-            if (ret != 0) {
-                std::cerr << "aplay 실행 실패\n";
-            } else {
-                std::cout << "음악 재생 시작 (동기화 완료)\n";
-
-                played = true;
-                std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-            }
+            music->play();
+            played = true;
+            std::cout << "음악 재생 시작 (동기화 완료)\n";
         }
 
-        // 3. 한 번만 실행되도록 유지
-        if (played) {
-            musicReady = false;
+        // 재생 종료
+        if (music && played && music->getStatus() != sf::Music::Playing)
+        {
+            std::cout << "음악 재생 완료\n";
+            played = false;
+            music.reset();  // 안전하게 소멸
         }
 
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
 }
+
+// void DrumRobot::musicMachine()
+// {
+//     bool musicReady = false;
+//     bool played = false;
+
+//     while (state.main != Main::Shutdown)
+//     {
+        
+//         if (state.main == Main::TFGPlay && !musicReady && pathManager.firstPerform)
+//         {
+//             // 파일 존재 여부 확인
+//             if (access(pathManager.wavPath.c_str(), F_OK) != 0) {
+//                 std::cerr << "음악 파일 없음: " << pathManager.wavPath << "\n";
+//                 break;
+//             }
+
+//             std::cout << "음악 준비 완료. 동기화 타이밍 대기 중...\n";
+//             musicReady = true;
+//         }
+
+//         // 지정된 시간에 도달하면 외부 플레이어로 음악 재생
+//         if (musicReady && !played &&
+//             std::chrono::steady_clock::now() >= pathManager.syncTime)
+//         {
+//             pathManager.firstPerform = false;
+
+            
+//             std::string command = "aplay \"" + pathManager.wavPath + "\" &";
+//             int ret = system(command.c_str());
+//             if (ret != 0) {
+//                 std::cerr << "aplay 실행 실패\n";
+//             } else {
+//                 std::cout << "음악 재생 시작 (동기화 완료)\n";
+
+//                 played = true;
+//                 std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+//             }
+//         }
+
+//         // 3. 한 번만 실행되도록 유지
+//         if (played) {
+//             musicReady = false;
+//         }
+
+//         std::this_thread::sleep_for(std::chrono::milliseconds(10));
+//     }
+// }
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1102,6 +1107,9 @@ void DrumRobot::sendPlayProcess()
 
         std::cout << "enter control mode (CSP : 1 / CST : 0): ";
         std::cin >> maxonMotorMode;
+
+        string fileName = "Time";
+        fun.appendToCSV_DATA(fileName, 0, 0, 0);
 
         if (maxonMotorMode == 0)
         {
@@ -1417,12 +1425,12 @@ void DrumRobot::sendTFGProcess()
             std::cin >> baseName;
         
             
-            pathManager.wavPath = "/home/taehwang/DrumRobot/DrumRobot2/include/music/" + baseName + ".wav";
-            pathManager.txtPath = "/home/taehwang/DrumRobot/DrumRobot2/include/codes/" + baseName + ".txt";
+            // pathManager.wavPath = "/home/taehwang/DrumRobot/DrumRobot2/include/music/" + baseName + ".wav";
+            // pathManager.txtPath = "/home/taehwang/DrumRobot/DrumRobot2/include/codes/" + baseName + ".txt";
 
 
-            //pathManager.wavPath = "/home/shy/DrumRobot/include/music/" + baseName + ".wav";
-            //pathManager.txtPath = "/home/shy/DrumRobot/include/codes/" + baseName + ".txt";
+            pathManager.wavPath = "/home/shy/DrumRobot/include/music/" + baseName + ".wav";
+            pathManager.txtPath = "/home/shy/DrumRobot/include/codes/" + baseName + ".txt";
             
     
             FG_start = true;
@@ -1438,6 +1446,7 @@ void DrumRobot::sendTFGProcess()
             pathManager.Kp = 60;
             pathManager.Kd= 7;
             pathManager.Kppp = 0.0;
+            pathManager.MaxonMode = "CST";
             pathManager.syncTime = std::chrono::steady_clock::now() + std::chrono::seconds(3);
             pathManager.firstPerform = true;    // 악보를 읽고 처음 동작 시작
         }
