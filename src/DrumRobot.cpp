@@ -773,6 +773,13 @@ void DrumRobot::musicMachine()
 
     while (state.main != Main::Shutdown)
     {
+        //음악재생을 할지 파이썬을 할지 
+        //1. 드럼로봇 1 이 치는거에 따라서 정해진 악보를 연주하는 드럼로봇2
+        //2. 드럼 로봇 1 이 치는거에 따라서//bpm이런 정보들이 뭐가 필요한게 있으면 말해주세요 새로 생성한게 원곡 bpm 어울려야함 연주하는 드럼로봇 2
+        //3. 음악에 따라서 정해진 악보를 연주하는 드럼로봇 2 
+        // 파이썬 들어갈거고 
+        //1. 버전 들머패드로 입력 받아서 첫타격입력이 들어오면 그 시간을 재서 써주는 코드
+        //2. 첫타격입력이 들어오면 그시간 써서 써주고 녹음도 하고 끝나면 마젠타 돌려서 mid 아웃풋으로 내주는 코드
         // 음악 초기화
         if (state.main == Main::TFGPlay && !music && pathManager.firstPerform)
         {
@@ -807,55 +814,6 @@ void DrumRobot::musicMachine()
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
 }
-
-// void DrumRobot::musicMachine()
-// {
-//     bool musicReady = false;
-//     bool played = false;
-
-//     while (state.main != Main::Shutdown)
-//     {
-        
-//         if (state.main == Main::TFGPlay && !musicReady && pathManager.firstPerform)
-//         {
-//             // 파일 존재 여부 확인
-//             if (access(pathManager.wavPath.c_str(), F_OK) != 0) {
-//                 std::cerr << "음악 파일 없음: " << pathManager.wavPath << "\n";
-//                 break;
-//             }
-
-//             std::cout << "음악 준비 완료. 동기화 타이밍 대기 중...\n";
-//             musicReady = true;
-//         }
-
-//         // 지정된 시간에 도달하면 외부 플레이어로 음악 재생
-//         if (musicReady && !played &&
-//             std::chrono::steady_clock::now() >= pathManager.syncTime)
-//         {
-//             pathManager.firstPerform = false;
-
-            
-//             std::string command = "aplay \"" + pathManager.wavPath + "\" &";
-//             int ret = system(command.c_str());
-//             if (ret != 0) {
-//                 std::cerr << "aplay 실행 실패\n";
-//             } else {
-//                 std::cout << "음악 재생 시작 (동기화 완료)\n";
-
-//                 played = true;
-//                 std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-//             }
-//         }
-
-//         // 3. 한 번만 실행되도록 유지
-//         if (played) {
-//             musicReady = false;
-//         }
-
-//         std::this_thread::sleep_for(std::chrono::milliseconds(10));
-//     }
-// }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /*                                Ideal State                                 */
