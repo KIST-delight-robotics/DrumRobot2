@@ -637,14 +637,16 @@ void DrumRobot::sendLoopForThread()
     while (state.main != Main::Shutdown)
     {
         
+        auto loopStart = std::chrono::steady_clock::now();  // 루프 실행 시작
+
         sendLoopPeriod += std::chrono::microseconds(1000);  // 주기 : 1msec
 
-        auto now = std::chrono::steady_clock::now();
-        auto drift = std::chrono::duration_cast<std::chrono::microseconds>(now - sendLoopPeriod).count();
+        // auto now = std::chrono::steady_clock::now();
+        // auto drift = std::chrono::duration_cast<std::chrono::microseconds>(now - sendLoopPeriod).count();
 
-        if (drift > 500) {
-            std::cout << "루프가 기준 시간보다 " << drift << "us 늦게 실행됨!\n";
-        }
+        // if (drift > 500) {
+        //     std::cout << "루프가 기준 시간보다 " << drift << "us 늦게 실행됨!\n";
+        // }
         
         std::map<std::string, bool> fixFlags; // 각 모터의 고정 상태 저장
         
@@ -734,6 +736,12 @@ void DrumRobot::sendLoopForThread()
         }
 
         cycleCounter = (cycleCounter + 1) % 5;
+
+        auto loopEnd = std::chrono::steady_clock::now(); // 루프 종료
+        auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(loopEnd - loopStart).count();
+        if (elapsed > 1000) {
+            std::cout << "루프 실행에 " << elapsed << "us 소요됨\n";
+        }
         std::this_thread::sleep_until(sendLoopPeriod);
     }
 }
