@@ -638,6 +638,13 @@ void DrumRobot::sendLoopForThread()
     {
         
         sendLoopPeriod += std::chrono::microseconds(1000);  // 주기 : 1msec
+
+        auto now = std::chrono::steady_clock::now();
+        auto drift = std::chrono::duration_cast<std::chrono::microseconds>(now - sendLoopPeriod).count();
+
+        if (drift > 500) {
+            std::cout << "루프가 기준 시간보다 " << drift << "us 늦게 실행됨!\n";
+        }
         
         std::map<std::string, bool> fixFlags; // 각 모터의 고정 상태 저장
         
