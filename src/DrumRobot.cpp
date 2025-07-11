@@ -633,10 +633,10 @@ void DrumRobot::sendLoopForThread()
 
     bool wasFixed = false; // 이전 `fixed` 상태 추적
     int cycleCounter = 0; // 주기 조절을 위한 변수 (Tmotor : 5ms, Maxon : 1ms)
-
+    sendLoopPeriod = std::chrono::steady_clock::now();
     while (state.main != Main::Shutdown)
     {
-        sendLoopPeriod = std::chrono::steady_clock::now();
+        
         sendLoopPeriod += std::chrono::microseconds(1000);  // 주기 : 1msec
         
         std::map<std::string, bool> fixFlags; // 각 모터의 고정 상태 저장
