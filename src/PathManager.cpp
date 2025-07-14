@@ -499,21 +499,10 @@ void PathManager::solveIKandPushCommand()
 
     // 여기서 첫 접근 때 정지하기
 
-    while(firstPerform) // 시작 신호 받을 때까지 대기
+    while(!startOfPlay) // 시작 신호 받을 때까지 대기
     {
         usleep(500);
     }
-    // if (firstPerform)
-    // {
-    //     int temp = 0;
-    //     while(1) // 시작 신호 받을 때까지 대기
-    //     {
-    //         cout << "enter 1 to continue : \n";
-    //         cin >> temp;
-    //         if (temp == 1) break;
-    //     }
-    //     firstPerform = false;
-    // }
 
     for (int i = 0; i < n; i++)
     {

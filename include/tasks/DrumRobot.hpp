@@ -138,8 +138,17 @@ private:
     void sendAddStanceProcess();
     
     // Play State
-    std::string basePath = "/home/shy/DrumRobot/include/codes/";    // 악보 위치
-    std::string musicName;
+
+    // path
+    std::string txtBasePath = "/home/shy/DrumRobot/include/codes/";    // 악보 위치
+    std::string wavBasePath = "/home/shy/DrumRobot/include/music/";    // 음악 위치
+    std::string magentaPath = "/home/shy/DrumSound/";                  // 마젠타 경로
+    std::string txtFileName;
+    std::string txtPath;        // txt 파일 경로
+    std::string wavPath;        // wav 파일 경로
+    
+    // 
+    std::chrono::steady_clock::time_point syncTime; // 싱크 연주를 위한 변수들
     int fileIndex = 0;
     std::ifstream inputFile;
     MatrixXd measureMatrix;     ///< 궤적을 생성하기 위해 읽은 악보 부분 (마디)
@@ -153,8 +162,10 @@ private:
     bool FG_start = false;
 
     void initializePlayState();
-    void initializeFGPlayState();
-    void initializeTFGPlayState();
+    bool selectPlayMode();
+
+    // void initializeFGPlayState();
+    // void initializeTFGPlayState();
     int maxonMotorMode = 1; // 1 : CSP // 0 : CST
 
     string trimWhitespace(const std::string &str);
@@ -162,10 +173,13 @@ private:
     bool readMeasure(ifstream& inputFile);  // 한번에 읽을 악보의 크기(measureThreshold)만큼 읽으면 true 반환
     void processLine();
     void sendPlayProcess();
-    void sendFGProcess();
-    void sendTFGProcess();
+    // void sendFGProcess();
+    // void sendTFGProcess();
+
+    // python (magenta)
+    void runPythonForMagenta();
 
     // System
-    void clearBufferforRecord();
-    void clearMotorsCommandBuffer();
+    // void clearBufferforRecord();
+    // void clearMotorsCommandBuffer();
 };
