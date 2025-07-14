@@ -1110,6 +1110,7 @@ bool DrumRobot::selectPlayMode()
     bool useMagenta = false;
     std::string input;
 
+    //1 음악 입력 2 그냥연주
     std::cout << "Drumming With Music (1) / Just Drumming (2)";
     std::cout << "\nEnter command: ";
     std::cin >> input;
@@ -1122,7 +1123,7 @@ bool DrumRobot::selectPlayMode()
         wavPath = wavBasePath + wavFileName + ".wav";
         playMusic = true;
     }
-    else
+    else //2
     {
         playMusic = false;
     }
@@ -1141,6 +1142,8 @@ bool DrumRobot::selectPlayMode()
         useMagenta = false;
     }
 
+    // bpm, 연주모드 입력받기
+    ////////////////////////////////////////////
     std::cout << "enter BPM of music ";
     std::cin >> bpmOfScore;
 
@@ -1158,32 +1161,29 @@ bool DrumRobot::selectPlayMode()
     {
         pathManager.MaxonMode = "CSP";
     }
-
+    ////////////////////////////////////////////
+    // 시작 트리거 정하기 1 -> 일정시간뒤에 2 -> 입력들어오고 난 후에 일정시간 뒤에 0 -> back
     std::cout << "Play After Waiting (1) / Play When Receiving Input (2) / Return to Ideal State (0)";
     std::cout << "\nEnter command: ";
     std::cin >> input;
 
     if (input == "1")
     {
-        int waitingTime = 1;
+        float waitingTime = 1;
         std::cout << "Enter Waiting Time : ";
         std::cin >> waitingTime;
-        
-        if (useMagenta)
-        {
-            pythonClass = 0;
-            runPython = true;
-        }
+        waitingTime *= 1000;
 
-        syncTime = std::chrono::steady_clock::now() + std::chrono::seconds(waitingTime);
+        syncTime = std::chrono::steady_clock::now() + std::chrono::milliseconds(waitingTime);
         setWaitingTime = true;
     }
     else if (input == "2")
     {
-        int waitingTime = 1;
+        float waitingTime = 1;
         std::cout << "Enter Waiting Time : ";
         std::cin >> waitingTime;
-        
+        waitingTime *= 1000;
+
         if (useMagenta)
         {
             pythonClass = 0;
@@ -1195,7 +1195,11 @@ bool DrumRobot::selectPlayMode()
             runPython = true;
         }
 
-        syncTime = 111 + std::chrono::seconds(waitingTime);
+        while (!fs::exists(txtPath)) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(100)); // 100ms 대기
+        }
+        
+        syncTime = 111 + std::chrono::milliseconds(waitingTime);
         setWaitingTime = true;
     }
     else
