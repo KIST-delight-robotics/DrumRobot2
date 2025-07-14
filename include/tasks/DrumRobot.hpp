@@ -79,7 +79,6 @@ public:
 
     bool file_found = false;    // mid 파일 들어왔는지 확인
     
-
 private:
     State &state;
     CanManager &canManager;
@@ -129,6 +128,13 @@ private:
     void maxonMotorEnable();
     void setMaxonMotorMode(std::string targetMode);
 
+    // 싱크 연주를 위한 변수들
+    bool playMusic = false;
+    std::chrono::steady_clock::time_point syncTime;
+    bool setWaitingTime = false;
+    bool runPython = false;
+    int pythonClass = 0;    // 1 : 시간 측정, 0 : 시간 측정 + 마젠타
+
     // Ideal State
     void displayAvailableCommands(string flagName) const;
     void processInput(const std::string &input, string flagName);
@@ -148,7 +154,6 @@ private:
     std::string wavPath;        // wav 파일 경로
     
     // 
-    std::chrono::steady_clock::time_point syncTime; // 싱크 연주를 위한 변수들
     int fileIndex = 0;
     std::ifstream inputFile;
     MatrixXd measureMatrix;     ///< 궤적을 생성하기 위해 읽은 악보 부분 (마디)

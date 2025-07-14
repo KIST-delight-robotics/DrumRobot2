@@ -755,32 +755,50 @@ void DrumRobot::musicMachine()
 
     while (state.main != Main::Shutdown)
     {
-        if (state.main == Main::Play && !music && !pathManager.startOfPlay)
+        if (state.main == Main::Play && playMusic)
         {
-            music = std::make_unique<sf::Music>();
-            if (!music->openFromFile(wavPath)) {
-                std::cerr << "음악 파일 열기 실패: " << wavPath << "\n";
-                music.reset(); // 파괴
-                continue;
+            if (!music && setWaitingTime)
+            {
+                music = std::make_unique<sf::Music>();
+                if (!music->openFromFile(wavPath)) {
+                    std::cerr << "음악 파일 열기 실패: " << wavPath << "\n";
+                    music.reset(); // 파괴
+                    continue;
+                }
+                std::cout << "음악 준비 완료. 동기화 타이밍 대기 중...\n";    
             }
-            std::cout << "음악 준비 완료. 동기화 타이밍 대기 중...\n";
+
+            // 재생
+            if (music && !played && std::chrono::steady_clock::now() >= syncTime)
+            {
+                pathManager.startOfPlay = true;
+                music->play();
+                played = true;
+                std::cout << "음악 재생 시작 (동기화 완료)\n";
+            }
+
+            // 재생 종료
+            if (music && played && music->getStatus() != sf::Music::Playing)
+            {
+                std::cout << "음악 재생 완료\n";
+                played = false;
+                setWaitingTime = false;
+                music.reset();  // 안전하게 소멸
+            }
         }
 
-        // 재생
-        if (music && !played && std::chrono::steady_clock::now() >= syncTime)
+        if (state.main == Main::Play && runPython)
         {
-            pathManager.startOfPlay = true;
-            music->play();
-            played = true;
-            std::cout << "음악 재생 시작 (동기화 완료)\n";
-        }
-
-        // 재생 종료
-        if (music && played && music->getStatus() != sf::Music::Playing)
-        {
-            std::cout << "음악 재생 완료\n";
-            played = false;
-            music.reset();  // 안전하게 소멸
+            if (pythonClass == 0)
+            {
+                // 마젠타
+            }
+            else
+            {
+                // 시간만 측정
+                
+            }
+            runPython = false;
         }
 
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
@@ -1083,79 +1101,55 @@ void DrumRobot::initializePlayState()
     endOfScore = false;
     lineOfScore = 0;        ///< 현재 악보 읽은 줄.
     measureTotalTime = 0.0;     ///< 악보를 읽는 동안 누적 시간. [s]
+
+    pathManager.startOfPlay = false; // true 로 변경시키면 연주 시작
 }
 
 bool DrumRobot::selectPlayMode()
 {
+    bool useMagenta = false;
     std::string input;
 
-    std::cout << "Play After Waiting (1) / Play When Receiving Input (2) / Return to Ideal State (0)";
+    std::cout << "Drumming With Music (1) / Just Drumming (2)";
     std::cout << "\nEnter command: ";
-    // std::getline(std::cin, input);
-    std::cin >> input;
-
-    if (input == "1")
-    {
-        int waitingTime = 1;
-        std::cout << "Enter Waiting Time : ";
-        std::cin >> waitingTime;
-        syncTime = std::chrono::steady_clock::now() + std::chrono::seconds(waitingTime);
-    }
-    else if (input == "2")
-    {
-        int bpm = 60;
-        std::cin >> bpm;    // 박선우 : 파이썬이 가져가
-    }
-    else
-    {
-        flagObj.setFixationFlag("fixed");
-        state.main = Main::Ideal;
-    }
-
-    std::cout << "Drumming With Music (1) / Just Drumming (2) / Return to Ideal State (0)";
-    std::cout << "\nEnter command: ";
-    // std::getline(std::cin, input);
     std::cin >> input;
 
     if (input == "1")
     {
         std::string wavFileName;
         std::cout << "enter music name : ";
-        // std::getline(std::cin, wavFileName);
         std::cin >> wavFileName;
         wavPath = wavBasePath + wavFileName + ".wav";
-    }
-    else if (input == "2")
-    {
-        // 음악 X
+        playMusic = true;
     }
     else
     {
-        flagObj.setFixationFlag("fixed");
-        state.main = Main::Ideal;
+        playMusic = false;
     }
 
-    pathManager.startOfPlay = false; // true 로 변경시키면 연주 시작
-
-    std::cout << "enter music code name : ";
-    // std::getline(std::cin, txtFileName);
+    std::cout << "enter music code name (Use Magenta : output5_final): ";
     std::cin >> txtFileName;
+
+    if (txtFileName == "output5_final") // 마젠타 사용 시 최종 출력 파일 이름
+    {
+        txtPath = magentaPath + txtFileName + ".txt";
+        useMagenta = true;
+    }
+    else
+    {
+        txtPath = txtBasePath + txtFileName + std::to_string(fileIndex) + ".txt";
+        useMagenta = false;
+    }
+
+    std::cout << "enter BPM of music ";
+    std::cin >> bpmOfScore;
 
     std::cout << "enter control mode (CSP : 1 / CST : 0): ";
     std::cin >> maxonMotorMode;
-
+    
     if (maxonMotorMode == 0)
     {
         pathManager.MaxonMode = "CST";
-        // std::cout << "enter Kp : ";
-        // std::cin >> pathManager.Kp;
-
-        // std::cout << "enter Kd : ";
-        // std::cin >> pathManager.Kd;
-
-        // std::cout << "enter Kppp (0 ~ 0.9): ";
-        // std::cin >> pathManager.Kppp;
-
         pathManager.Kp = 60;
         pathManager.Kd = 7;
         pathManager.Kppp = 0.0;
@@ -1165,16 +1159,52 @@ bool DrumRobot::selectPlayMode()
         pathManager.MaxonMode = "CSP";
     }
 
-    if (txtFileName == "output5_final")
+    std::cout << "Play After Waiting (1) / Play When Receiving Input (2) / Return to Ideal State (0)";
+    std::cout << "\nEnter command: ";
+    std::cin >> input;
+
+    if (input == "1")
     {
-        txtPath = magentaPath + txtFileName + ".txt";
-        return true;
+        int waitingTime = 1;
+        std::cout << "Enter Waiting Time : ";
+        std::cin >> waitingTime;
+        
+        if (useMagenta)
+        {
+            pythonClass = 0;
+            runPython = true;
+        }
+
+        syncTime = std::chrono::steady_clock::now() + std::chrono::seconds(waitingTime);
+        setWaitingTime = true;
+    }
+    else if (input == "2")
+    {
+        int waitingTime = 1;
+        std::cout << "Enter Waiting Time : ";
+        std::cin >> waitingTime;
+        
+        if (useMagenta)
+        {
+            pythonClass = 0;
+            runPython = true;
+        }
+        else
+        {
+            pythonClass = 1;
+            runPython = true;
+        }
+
+        syncTime = 111 + std::chrono::seconds(waitingTime);
+        setWaitingTime = true;
     }
     else
     {
-        txtPath = txtBasePath + txtFileName + std::to_string(fileIndex) + ".txt";
-        return false;
+        flagObj.setFixationFlag("fixed");
+        state.main = Main::Ideal;
     }
+
+    return useMagenta;
 }
 
 string DrumRobot::trimWhitespace(const std::string &str)
@@ -1288,71 +1318,13 @@ void DrumRobot::sendPlayProcess()
 {
     bool useMagenta = selectPlayMode();
 
-    // if (fileIndex == 0) // 처음 파일을 열 때
-    // {
-    //     std::cout << "enter music name : ";
-    //     std::getline(std::cin, musicName);
-
-    //     std::cout << "enter control mode (CSP : 1 / CST : 0): ";
-    //     std::cin >> maxonMotorMode;
-
-    //     if (maxonMotorMode == 0)
-    //     {
-    //         pathManager.MaxonMode = "CST";
-    //         // std::cout << "enter Kp : ";
-    //         // std::cin >> pathManager.Kp;
-
-    //         // std::cout << "enter Kd : ";
-    //         // std::cin >> pathManager.Kd;
-
-    //         // std::cout << "enter Kppp (0 ~ 0.9): ";
-    //         // std::cin >> pathManager.Kppp;
-
-    //         pathManager.Kp = 60;
-    //         pathManager.Kd = 7;
-    //         pathManager.Kppp = 0.0;
-    //     }
-    //     else
-    //     {
-    //         pathManager.MaxonMode = "CSP";
-    //     }
-    // }
-
-    // std::string currentFile = txtBasePath + musicName + std::to_string(fileIndex) + ".txt";
-
     inputFile.open(txtPath); // 파일 열기
 
     inputFile.seekg(0, ios::beg); // 안전하게 파일 맨 처음으로 이동
     inputFile.clear();            // 상태 비트 초기화
 
     if (inputFile.is_open() && (!endOfScore))    //////////////////////////////////////// 파일 열기 성공
-    {
-        if (fileIndex == 0) // 처음 파일을 열 때 -> bpm 확인
-        {
-            if (useMagenta)
-            {
-                bpmOfScore = 60.0;
-            }
-            else
-            {
-                // bpm을 써준 악보와 입력받는 경우를 구분 필요!!!!
-                bpmOfScore = readBpm(inputFile);
-            }
-
-            if (bpmOfScore > 0)
-            {
-                std::cout << "music bpm = " << bpmOfScore << "\n";
-                pathManager.initializeValue(bpmOfScore);
-            }
-            else
-            {
-                std::cout << "\n bpm Read Error !!! \n";
-                inputFile.close(); // 파일 닫기
-                state.main = Main::Ideal;
-                return;
-            }
-        }
-        
+    {   
         while(readMeasure(inputFile))    // 한마디 분량 미만으로 남을 때까지 궤적/명령 생성
         {
             processLine();
@@ -1360,7 +1332,14 @@ void DrumRobot::sendPlayProcess()
 
         inputFile.close(); // 파일 닫기
         fileIndex++;    // 다음 파일 열 준비
-        txtPath = txtBasePath + txtFileName + std::to_string(fileIndex) + ".txt";
+        if (useMagenta)
+        {
+            txtPath = magentaPath + txtFileName + std::to_string(fileIndex) + ".txt";
+        }
+        else
+        {
+            txtPath = txtBasePath + txtFileName + std::to_string(fileIndex) + ".txt";
+        }
     }
     else    //////////////////////////////////////////////////////////// 파일 열기 실패
     {
