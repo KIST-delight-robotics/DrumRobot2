@@ -294,10 +294,10 @@ void PathManager::pushAddStancePath(string flagName)
     }
 }
 
-void PathManager::initializeValue(int bpm)
+void PathManager::initializeValue()
 {
+    startOfPlay = false; // true 로 변경시키면 연주 시작
     endOfPlayCommand = false;
-    bpmOfScore = bpm;
 
     measureState.resize(2, 3);
     measureState = MatrixXd::Zero(2, 3);
@@ -729,7 +729,7 @@ void PathManager::parseMeasure(MatrixXd &measureMatrix)
     line_t1 = measureMatrix(0, 8);
     line_t2 = measureMatrix(1, 8);
 
-    // std::cout << "\n /// t1 -> t2 : " << line_t1 << " -> " << line_t2 << " = " << line_t2 - line_t1 <<  "\n";
+    // std::cout << "\n /// t1 -> t2 : " << line_t1 << " -> " << line_t2 << " : " << line_t2 - line_t1 <<  "\n";
 
     // std::cout << "\n /// R ///";
     pair<VectorXd, VectorXd> dataR = parseOneArm(measureTime, measureInstrumentR, measureState.row(0));

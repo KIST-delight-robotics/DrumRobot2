@@ -74,7 +74,7 @@ public:
     
     /////////////////////////////////////////////////////////////////////////// Play
     bool endOfPlayCommand = false;
-    bool startOfPlay = true;
+    bool startOfPlay = false;
     //
     double bpmOfScore = 0;      ///< 악보의 BPM 정보.
     string MaxonMode = "CSP";
@@ -82,7 +82,7 @@ public:
     double Kppp = 0.0;  // Kpp 에 곱해지는 값 : 0 -> Kp 감소 없음, 0.9 -> kp 10% 까지 감소
                         // Kpp : Kp 에 곱해지는 값
 
-    void initializeValue(int bpm);
+    void initializeValue();
     void avoidCollision(MatrixXd &measureMatrix);
     void generateTrajectory(MatrixXd &measureMatrix);
     void solveIKandPushCommand();

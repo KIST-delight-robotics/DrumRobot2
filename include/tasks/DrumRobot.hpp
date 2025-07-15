@@ -130,7 +130,7 @@ private:
 
     // 싱크 연주를 위한 변수들
     bool playMusic = false;
-    std::chrono::steady_clock::time_point syncTime;
+    std::chrono::system_clock::time_point syncTime;
     bool setWaitingTime = false;
     bool runPython = false;
     int pythonClass = 0;    // 1 : 시간 측정, 0 : 시간 측정 + 마젠타
@@ -157,7 +157,6 @@ private:
     int fileIndex = 0;
     std::ifstream inputFile;
     MatrixXd measureMatrix;     ///< 궤적을 생성하기 위해 읽은 악보 부분 (마디)
-    double bpmOfScore = 0;
     int lineOfScore = 0;        ///< 현재 악보 읽은 줄.
     int preCreatedLine = 3;     ///< 미리 궤적을 생성할 줄
     double measureThreshold = 2.4;     ///< 한번에 읽을 악보의 크기. [s]
