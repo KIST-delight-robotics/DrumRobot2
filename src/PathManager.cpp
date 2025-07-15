@@ -133,6 +133,7 @@ void PathManager::setReadyAngle()
     elbowAngle eA;
     wristAngle wA;
     bassAngle bA;
+    HHAngle hA;
     readyAngle(4) += eA.stayAngle;
     readyAngle(6) += eA.stayAngle;
     readyAngle(7) += wA.stayAngle;
@@ -140,7 +141,7 @@ void PathManager::setReadyAngle()
 
     readyAngle(9) = 0;
     readyAngle(10) = bA.stayAngle;
-    readyAngle(11) = 0;
+    readyAngle(11) = hA.openAngle;
 
     //////////////////////////////////////// Home Angle
     homeAngle.resize(12);
@@ -158,9 +159,9 @@ void PathManager::setReadyAngle()
         //              waist          R_arm1         L_arm1
     shutdownAngle << 0*M_PI/180.0, 135*M_PI/180.0, 45*M_PI/180.0,
     //                  R_arm2         R_arm3         L_arm2
-                    0*M_PI/180.0,  30*M_PI/180.0,   0*M_PI/180.0,
+                    0*M_PI/180.0,  0*M_PI/180.0,   0*M_PI/180.0,
     //                  L_arm3         R_wrist        L_wrist
-                    30*M_PI/180.0,  90*M_PI/180.0,  90*M_PI/180.0,
+                    0*M_PI/180.0,  90*M_PI/180.0,  90*M_PI/180.0,
     //          Test               R_foot         L_foot            
                     0,                 0,              0;
 }
@@ -440,6 +441,12 @@ void PathManager::generateTrajectory(MatrixXd &measureMatrix)
     int bassState = getBassState(bassHit, nextBaseHit);
     bassTimeR = getBassTime(line_t1, line_t2);
 
+    // Hihat 관련 변수
+    bool HHclosed = measureMatrix(0, 7);
+    bool nextHHclosed = measureMatrix(1, 7);
+    int HHstate = getHHstate(HHclosed, nextHHclosed);
+    HHTimeL = getHHTime(line_t1, line_t2);
+    
     for (int i = 0; i < n; i++)
     {
         if (i >= k*n/repeat)
@@ -470,7 +477,7 @@ void PathManager::generateTrajectory(MatrixXd &measureMatrix)
 
         // 양 발 모터 각도
         Ht.bass = makeBassAngle(i * dt, bassTimeR, bassState);
-        Ht.hihat = 0.0;
+        Ht.hihat = makeHHAngle(i * dt, HHTimeL, HHstate);
         
         hitAngleQueue.push(Ht);
 
@@ -482,6 +489,10 @@ void PathManager::generateTrajectory(MatrixXd &measureMatrix)
         // fun.appendToCSV_DATA(fileName, tHitR, hitR_t2 - hitR_t1, 0);
         // fileName = "HtL";
         // fun.appendToCSV_DATA(fileName, tHitL, hitL_t2 - hitL_t1, 0);
+
+        std::string fileName;
+        fileName = "HHAngle.csv";
+        fun.appendToCSV_DATA(fileName, Ht.hihat, HHstate, 0);
     }
 
     ///////////////////////////////////////////////////////////// 읽은 줄 삭제
@@ -496,19 +507,6 @@ void PathManager::solveIKandPushCommand()
     int n = lineData(0, 0); // 명령 개수
 
     makeWaistCoefficient();
-
-    // 여기서 첫 접근 때 정지하기
-    if (firstPerform)
-    {
-        int temp = 0;
-        while(1) // 시작 신호 받을 때까지 대기
-        {
-            cout << "enter 1 to continue : \n";
-            cin >> temp;
-            if (temp == 1) break;
-        }
-        firstPerform = false;
-    }
 
     for (int i = 0; i < n; i++)
     {
@@ -1368,6 +1366,30 @@ int PathManager::getBassState(bool bassHit, bool nextBaseHit)
     return state;
 }
 
+int PathManager::getHHstate(bool HHclosed, bool nextHHclosed)
+{
+    int state = 0;
+
+    if(!HHclosed && !nextHHclosed)
+    {
+        state = 0;
+    }
+    else if (HHclosed && !nextHHclosed)
+    {
+        state = 1;
+    }
+    else if (!HHclosed && nextHHclosed)
+    {
+        state = 2;
+    }
+    else if (HHclosed && nextHHclosed)
+    {
+        state = 3;
+    }
+
+    return state;
+}
+
 void PathManager::makeHitCoefficient()
 {
     int stateR = hitState(0, 1);
@@ -1443,6 +1465,18 @@ PathManager::bassTime PathManager::getBassTime(float t1, float t2)
     bassTime.hitTime = T;
 
     return bassTime;
+}
+
+PathManager::HHTime PathManager::getHHTime(float t1, float t2)
+{
+    float T = t2 - t1;
+    HHTime HHTime;
+
+    HHTime.liftTime = 0.2 * T;
+    HHTime.settlingTime = 0.8 * T;
+    HHTime.hitTime = T;
+
+    return HHTime;
 }
 
 PathManager::elbowAngle PathManager::getElbowAngle(float t1, float t2, int intensity)
@@ -1957,6 +1991,67 @@ double PathManager::makeBassAngle(double t, bassTime bt, int bassState)
     }
     
     return X0 + Xl + Xh;
+}
+
+double PathManager::makeHHAngle(double t, HHTime ht, int HHstate)
+{
+    HHAngle HA;
+
+    double X0 = HA.openAngle;
+    double Xp = HA.closedAngle;
+
+    double Xl = 0.0;
+
+    if(HHstate == 3)
+    {
+        Xl = Xp;
+    }
+
+    if(ht.hitTime <= 0.2)
+    {
+        if(HHstate == 1)
+        {
+            Xl = - 0.5 * (Xp - X0) * (cos(M_PI * (t / ht.hitTime + 1)) - 1);
+        }
+        else if(HHstate == 2)
+        {
+            Xl = - 0.5 * (Xp - X0) * (cos(M_PI * (t / ht.hitTime)) - 1);
+        }
+    }
+    else if(t < ht.liftTime)
+    {
+        if(HHstate == 1)
+        {
+            Xl = HA.closedAngle;
+        }
+        else if(HHstate == 2)
+        {
+            Xl = HA.openAngle;
+        }
+    }
+    else if(t > ht.liftTime && t <= ht.settlingTime)
+    {
+        if(HHstate == 1)
+        {
+            Xl = - 0.5 * (Xp - X0) * (cos(M_PI * ((t - ht.liftTime) / (ht.settlingTime - ht.liftTime) + 1)) - 1);
+        }
+        else if(HHstate == 2)
+        {
+            Xl = - 0.5 * (Xp - X0) * (cos(M_PI * (t - ht.liftTime) / (ht.settlingTime - ht.liftTime)) - 1);
+        }
+    }
+    else if(t > ht.settlingTime)
+    {
+        if(HHstate == 1)
+        {
+            Xl = HA.openAngle;
+        }
+        else if(HHstate == 2)
+        {
+            Xl = HA.closedAngle;
+        }
+    }
+    return Xl;
 }
 
 void PathManager::generateHit(float tHitR, float tHitL, HitAngle &Pt)

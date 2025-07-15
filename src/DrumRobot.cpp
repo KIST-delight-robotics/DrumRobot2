@@ -177,7 +177,7 @@ void DrumRobot::initializeMotors()
             }
             else if (motor_pair.first == "L_foot")
             {
-                maxonMotor->cwDir = 1.0f;
+                maxonMotor->cwDir = -1.0f;
                 maxonMotor->rMin = jointRangeMin[can_id] * M_PI / 180.0f; // -90deg
                 maxonMotor->rMax = jointRangeMax[can_id] * M_PI / 180.0f; // 135deg
                 maxonMotor->txPdoIds[0] = 0x20B; // Controlword
@@ -590,12 +590,6 @@ void DrumRobot::stateMachine()
                 sendFGProcess();
                 break;
             }
-            case Main::TFGPlay:
-            {
-                flagObj.setFixationFlag("moving");
-                sendTFGProcess();
-                break;
-            }
             case Main::Test:
             {
                 testManager.SendTestProcess();  
@@ -778,7 +772,6 @@ void DrumRobot::displayAvailableCommands(string flagName) const
             std::cout << "- t : Start Test\n";
             std::cout << "- h : Move to Home Pos\n";
             std::cout << "- f : FG performance\n";
-            std::cout << "- g : TFG performance\n";
         }
     }
     else
@@ -803,11 +796,6 @@ void DrumRobot::processInput(const std::string &input, string flagName)
     {
         initializeFGPlayState();
         state.main = Main::FGPlay;
-    }
-    else if (input == "g" && flagName == "isReady")
-    {
-        initializeTFGPlayState();
-        state.main = Main::TFGPlay;
     }
     else if (input == "h" && flagName == "isReady")
     {
@@ -1304,212 +1292,6 @@ void DrumRobot::sendFGProcess()
 }
 
 void DrumRobot::initializeFGPlayState()
-{
-    fileIndex = 0;
-
-    measureMatrix.resize(1, 9);
-    measureMatrix = MatrixXd::Zero(1, 9);
-
-    endOfScore = false;
-    lineOfScore = 0;        ///< 현재 악보 읽은 줄.
-    measureTotalTime = 0.0;     ///< 악보를 읽는 동안 누적 시간. [s]
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/*                             TFG performance State                          */
-////////////////////////////////////////////////////////////////////////////////
-
-void DrumRobot::sendTFGProcess()
-{
-    filesystem::path magentaPath;
-
-    filesystem::path outputPath1 = "/home/shy/DrumSound/output1_drum_hits_time.csv"; 
-    filesystem::path outputPath2 = "/home/shy/DrumSound/output2_mc.csv";   
-    filesystem::path outputPath3 = "/home/shy/DrumSound/output3_mc2c.csv";    
-    filesystem::path outputPath4 = "/home/shy/DrumSound/output4_hand_assign.csv";
-    filesystem::path outputPath5 = "/home/shy/DrumSound/output5_final.txt";
-    
-    if (!FG_start)
-    {
-        int userInput = 100;
-        cout << "\n 1 - 녹음 시작 \n 2 - 연주 시작\n";
-        cout << "Enter Command: ";
-        cin >> userInput;
-
-        if (userInput == 1)
-        {
-            //이부분에 파이썬 파일 실행시키기 
-            std::string pythonCmd = "/home/shy/DrumSound/magenta-env/bin/python /home/shy/DrumSound/getMIDI_input.py";
-
-            int ret = std::system(pythonCmd.c_str());
-            if (ret != 0) {
-                std::cerr << "Python 스크립트 실행 실패!\n";
-                return;
-            }
-
-            // mid 파일 들어올 때까지 대기
-            //filesystem::path magentaPath = "/home/shy/DrumSound/output.mid";        // 파일 경로 + 이름
-        }
-        else if (userInput == 2)
-        {
-            // 2. 사용자에게 사용할 파일 선택
-            std::string selected_input;
-            std::cout << "\n원하는 리듬 스타일을 선택하세요:\n";
-            std::cout << "1 - 안정적인 리듬 (temperature 0.3)\n";
-            std::cout << "2 - 창의적인 리듬 (temperature 0.8)\n";
-            std::cout << "입력: ";
-            std::cin >> selected_input;
-
-            if (selected_input == "1") {
-                magentaPath = "/home/shy/DrumSound/output_temp_03.mid";
-            } else if (selected_input == "2") {
-                magentaPath = "/home/shy/DrumSound/output_temp_08.mid";
-            } else {
-                std::cerr << "잘못된 입력입니다. 1 또는 2를 입력하세요.\n";
-                return;
-            }
-            while(!file_found && !FG_start) // ready 상태인지도 확인해주기
-            {
-                if (filesystem::exists(magentaPath) && flagObj.getAddStanceFlag() == "isReady")
-                {
-                    file_found = true;          // 악보 끝나면 악보 지우고 false로
-                    break;
-                } 
-                std::this_thread::sleep_for(std::chrono::milliseconds(500)); // 0.5초마다 체크
-            }
-
-            // mid 파일 받아서 악보 생성하기
-            if(file_found)
-            {
-                size_t pos;
-                unsigned char runningStatus;
-                // int initial_setting_flag = 0;
-                double note_on_time = 0;
-
-                std::vector<unsigned char> midiData;
-
-                if (filesystem::exists(magentaPath) && flagObj.getAddStanceFlag() == "isReady")
-                {
-                    if (!fun.readMidiFile(magentaPath, midiData)) cout << "mid file error\n";
-                } 
-                // if (!fun.readMidiFile(targetPath, midiData)) cout << "mid file error\n";
-                pos = 14;
-                int tpqn = (midiData[12] << 8) | midiData[13];
-
-                while (pos + 8 <= midiData.size()) {
-                    if (!(midiData[pos] == 'M' && midiData[pos+1] == 'T' && midiData[pos+2] == 'r' && midiData[pos+3] == 'k')) {
-                        // std::cerr << "MTrk expected at pos " << pos << "\n";
-                        break;
-                    }
-                    size_t trackLength = (midiData[pos+4] << 24) |
-                                    (midiData[pos+5] << 16) |
-                                    (midiData[pos+6] << 8) |
-                                    midiData[pos+7];
-                    pos += 8;
-                    size_t trackEnd = pos + trackLength;
-
-                    note_on_time = 0;
-                    while (pos < trackEnd) {
-                        size_t delta = fun.readTime(midiData, pos);
-                        note_on_time += delta;
-                        fun.analyzeMidiEvent(midiData, pos, runningStatus, note_on_time, tpqn, outputPath1);
-                    }
-                    pos = trackEnd;
-                }
-
-                fun.roundDurationsToStep(outputPath1, outputPath2); 
-                fun.convertMcToC(outputPath2, outputPath3);
-                fun.assignHandsToEvents(outputPath3, outputPath4);
-                fun.convertToMeasureFile(outputPath4, outputPath5);
-                
-                FG_start = true;
-
-                file_found = false;
-                // if(filesystem::exists(magentaPath))
-                // {
-                //     filesystem::remove(magentaPath);
-                // }
-            }
-        }
-    }
-    else if (FG_start)
-    {
-        if (fileIndex == 0) // 처음 파일을 열 때
-        {
-            musicName = outputPath5;
-            maxonMotorMode = 0;
-            pathManager.Kp = 60;
-            pathManager.Kd= 7;
-            pathManager.Kppp = 0.0;
-
-            pathManager.firstPerform = true;    // 악보를 읽고 처음 동작 시작
-        }
-
-        inputFile.open(musicName); // 파일 열기
-
-        if (inputFile.is_open() && (!endOfScore))    //////////////////////////////////////// 파일 열기 성공
-        {
-            if (fileIndex == 0) // 처음 파일을 열 때 -> bpm 확인
-            {
-                bpmOfScore = 60.0;
-
-                if (bpmOfScore > 0)
-                {
-                    std::cout << "music bpm = " << bpmOfScore << "\n";
-                    pathManager.initializeValue(bpmOfScore);
-                }
-                else
-                {
-                    std::cout << "\n bpm Read Error !!! \n";
-                    inputFile.close(); // 파일 닫기
-                    state.main = Main::Ideal;
-                    return;
-                }
-            }
-            
-            while(readMeasure(inputFile))    // 한마디 분량 미만으로 남을 때까지 궤적/명령 생성
-            {
-                processLine();
-            }
-
-            inputFile.close(); // 파일 닫기
-            fileIndex++;
-        }
-        else    //////////////////////////////////////////////////////////// 파일 열기 실패
-        {
-            if (fileIndex == 0)                     ////////// 1. Play 시작도 못한 경우 (악보 입력 오타 등) -> Ideal 로 이동
-            {
-                std::cout << "not find " << musicName << "\n";
-                flagObj.setFixationFlag("fixed");
-                state.main = Main::Ideal;
-                return;
-            }
-            else if (endOfScore)                    ////////// 2. 종료 코드가 확인된 경우 : 남은 궤적/명령 만들고 종료
-            {
-                while (!pathManager.endOfPlayCommand)      // 명령 전부 생성할 때까지
-                {
-                    processLine();
-                }
-
-                FG_start = false;
-                std::cout << "Play is Over\n";
-                flagObj.setAddStanceFlag("isHome"); // 연주 종료 후 Home 으로 이동
-                state.main = Main::AddStance;
-            }
-            else if (flagObj.getFixationFlag())     ////////// 3. 로봇 상태가 fixed 로 변경 (악보가 들어오기 전 명령 소진) -> 에러
-            {
-                std::cout << "Error : not find " << musicName << "\n";
-                state.main = Main::Error;
-            }
-            else                                    ////////// 4. 다음 악보 생성될 때까지 대기
-            {
-                usleep(100);
-            }
-        }
-    }
-}
-
-void DrumRobot::initializeTFGPlayState()
 {
     fileIndex = 0;
 

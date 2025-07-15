@@ -74,7 +74,6 @@ public:
     
     /////////////////////////////////////////////////////////////////////////// Play
     bool endOfPlayCommand = false;
-    bool firstPerform = false;
     double bpmOfScore = 0;      ///< 악보의 BPM 정보.
     string MaxonMode = "CSP";
     int Kp, Kd;
@@ -214,6 +213,12 @@ private:
         double liftTime;
         double hitTime;
     }bassTime;
+    
+    typedef struct {
+        double settlingTime;
+        double liftTime;
+        double hitTime;
+    }HHTime;
 
     typedef struct {
         // double stayAngle = 5*M_PI/180.0;
@@ -232,9 +237,15 @@ private:
         double pressAngle = -20*M_PI/180.0;
     }bassAngle;
 
+    typedef struct {
+        double openAngle = -3*M_PI/180.0;
+        double closedAngle = -15*M_PI/180.0;
+    }HHAngle;
+
     elbowTime elbowTimeR, elbowTimeL;
     wristTime wristTimeR, wristTimeL;
     bassTime bassTimeR;
+    HHTime HHTimeL;
     
     MatrixXd elbowCoefficientR;
     MatrixXd elbowCoefficientL;
@@ -256,6 +267,9 @@ private:
     double makeElbowAngle(double t, elbowTime eT, MatrixXd coefficientMatrix);
     double makeWristAngle(double t, wristTime wT, MatrixXd coefficientMatrix);
     double makeBassAngle(double t, bassTime bt, int bassState);
+    int getHHstate(bool HHclosed, bool nextHHclosed);
+    PathManager::HHTime getHHTime(float t1, float t2);
+    double makeHHAngle(double t, HHTime ht, int HHstate);
 
     /////////////////////////////////////////////////////////////////////////// Waist
     MatrixXd waistCoefficient;
