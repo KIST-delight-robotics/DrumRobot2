@@ -71,11 +71,12 @@ def plot_pos_by_can_id(receive_df, send_df, can_id, ax):
     """
     CAN ID별 Actual/Desire Position 그래프 그리기 함수
     """
-    if can_id == 4:
+    if can_id in [4, 7, 8]:
         receive_df = receive_df.copy()
         send_df = send_df.copy()
         receive_df['Pos'] *= -1
         send_df['Pos'] *= -1
+
 
     ax.plot(receive_df['시간'], receive_df['Pos'], 
             label=f'Actual Pos (Receive) - ID {can_id}', 

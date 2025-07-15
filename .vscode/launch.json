@@ -13,6 +13,10 @@
                 {
                     "name": "LD_LIBRARY_PATH",
                     "value": "${workspaceFolder}/lib:${env:LD_LIBRARY_PATH}"
+                },
+                {
+                    "name": "ALSOFT_DRIVERS",
+                    "value": "alsa"
                 }
             ],
             "externalConsole": false,
@@ -25,8 +29,8 @@
                 }
             ],
             "preLaunchTask": "build - DrumRobot",
+            // "miDebuggerPath": "/home/taehwang/DrumRobot/DrumRobot2/scripts/sudo-gdb.sh"
             "miDebuggerPath": "/home/shy/DrumRobot/scripts/sudo-gdb.sh"
-
         }
     ]
 }

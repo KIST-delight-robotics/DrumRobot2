@@ -45,7 +45,10 @@ int main(int argc, char *argv[])
     TestManager testManager(state, canManager, motors, usbio, fun);
     DrumRobot drumRobot(state, canManager, pathManager, testManager, motors, usbio, fun);
     GuiManager guiManager(state, canManager, motors);
-
+    
+    // sf::Music warmup;
+    // warmup.setVolume(50);
+    
     // 포트를 비활성화하고 다시 활성화
     fun.restCanPort();
     // 드럼 로봇 초기화
@@ -55,11 +58,11 @@ int main(int argc, char *argv[])
     std::thread stateThread(&DrumRobot::stateMachine, &drumRobot);
     std::thread sendThread(&DrumRobot::sendLoopForThread, &drumRobot);
     std::thread receiveThread(&DrumRobot::recvLoopForThread, &drumRobot);
-    std::thread watchThread(&DrumRobot::watchLoopForThread, &drumRobot);
+    std::thread musicThread(&DrumRobot::musicMachine, &drumRobot);
     //std::thread guiThread(&GuiManager::guiThread, &guiManager);
     
     // Threads Priority Settings
-    if (!setThreadPriority(sendThread, 3))
+    if (!setThreadPriority(sendThread, 4))
     {
         std::cerr << "Error setting priority for sendCanFrame" << std::endl;
         return -1;
@@ -69,12 +72,12 @@ int main(int argc, char *argv[])
         std::cerr << "Error setting priority for receiveCanFrame" << std::endl;
         return -1;
     }
-    if (!setThreadPriority(stateThread, 1))
+    if (!setThreadPriority(stateThread, 3))
     {
         std::cerr << "Error setting priority for stateMachine" << std::endl;
         return -1;
     }
-    if (!setThreadPriority(watchThread, 4))
+    if (!setThreadPriority(musicThread, 1))
     {
         std::cerr << "Error setting priority for watchThread" << std::endl;
         return -1;
@@ -89,6 +92,6 @@ int main(int argc, char *argv[])
     stateThread.join();
     sendThread.join();
     receiveThread.join();
-    watchThread.join();
+    musicThread.join();
     //guiThread.join();
 }
