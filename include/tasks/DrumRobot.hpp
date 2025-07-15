@@ -130,10 +130,11 @@ private:
 
     // 싱크 연주를 위한 변수들
     bool playMusic = false;
+    std::string syncPath = "/home/shy/DrumRobot/include/sync/sync.txt";      // 싱크 파일 경로
     std::chrono::system_clock::time_point syncTime;
     bool setWaitingTime = false;
     bool runPython = false;
-    int pythonClass = 0;    // 1 : 시간 측정, 0 : 시간 측정 + 마젠타
+    int pythonClass = 0;    // 어떤 파이썬을 실행할지 (1 : 시간 측정, 0 : 마젠타)
 
     // Ideal State
     void displayAvailableCommands(string flagName) const;

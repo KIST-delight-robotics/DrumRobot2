@@ -481,16 +481,14 @@ void PathManager::generateTrajectory(MatrixXd &measureMatrix)
         
         hitAngleQueue.push(Ht);
 
-        // // 데이터 저장
-        // std::string fileName;
+        // 데이터 저장
+        std::string fileName;
         // fileName = "hitAngle";
         // fun.appendToCSV_DATA(fileName, Ht.bass, Ht.wristL, Ht.wristR);
         // fileName = "HtR";
         // fun.appendToCSV_DATA(fileName, tHitR, hitR_t2 - hitR_t1, 0);
         // fileName = "HtL";
         // fun.appendToCSV_DATA(fileName, tHitL, hitL_t2 - hitL_t1, 0);
-
-        std::string fileName;
         fileName = "HHAngle.csv";
         fun.appendToCSV_DATA(fileName, Ht.hihat, HHstate, 0);
     }

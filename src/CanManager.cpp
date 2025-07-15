@@ -656,10 +656,13 @@ bool CanManager::setCANFrame(std::map<std::string, bool>& fixFlags, int cycleCou
                     tMotor->commandBuffer.pop();
                 }
 
-                //isbrake가 1이면 브레이크 켜줌 0이면 꺼줌
-                usbio.setUSBIO4761(0, tData.is_brake == 1); //세팅
-                usbio.outputUSBIO4761();                    //실행
-
+                if (motorMapping[motorName] == 0)
+                {
+                    //isbrake가 1이면 브레이크 켜줌 0이면 꺼줌
+                    usbio.setUSBIO4761(0, tData.is_brake == 1); //세팅
+                    usbio.outputUSBIO4761();                    //실행
+                }
+                
                 setTMotorCANFrame(tMotor, tData);
                 if(!safetyCheckSendT(tMotor, tData))
                 {

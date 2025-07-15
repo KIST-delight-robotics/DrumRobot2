@@ -1230,13 +1230,13 @@ bool DrumRobot::selectPlayMode()
             pythonClass = 1;
             runPython = true;
 
-            while (!std::filesystem::exists("/home/shy/DrumRobot/include/sync/sync.txt")) {
+            while (!std::filesystem::exists(syncPath)) {
             std::this_thread::sleep_for(std::chrono::milliseconds(100)); // 100ms 대기
             }
         }
 
         // txt 파일 시간 읽어오기
-        std::ifstream infile("/home/shy/DrumRobot/include/sync/sync.txt");
+        std::ifstream infile(syncPath);
         std::string time_str;
         if (!infile || !(infile >> time_str)) {
             std::cerr << "파일을 읽을 수 없습니다.\n";
@@ -1381,9 +1381,8 @@ void DrumRobot::processLine()
 void DrumRobot::sendPlayProcess()
 {
     bool useMagenta = false;
-    if (fileIndex == 0)
+    if (fileIndex == 0)     // 처음 들어올 때 모드 세팅
     {
-        // 처음 들어올 때 모드 세팅
         useMagenta = selectPlayMode();
     }
 
