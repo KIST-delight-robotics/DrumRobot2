@@ -751,16 +751,16 @@ void DrumRobot::recvLoopForThread()
 void DrumRobot::musicMachine()
 {
     bool played = false;
+    bool waiting = false;
     std::unique_ptr<sf::Music> music;
 
     while (state.main != Main::Shutdown)
     {
         if (state.main == Main::Play)
         {
-            // 음악 재생
             if (playMusic)
             {
-                if (!music && setWaitingTime)
+                if (setWaitingTime)
                 {
                     music = std::make_unique<sf::Music>();
                     if (!music->openFromFile(wavPath)) {
@@ -768,32 +768,47 @@ void DrumRobot::musicMachine()
                         music.reset(); // 파괴
                         continue;
                     }
-                    std::cout << "음악 준비 완료. 동기화 타이밍 대기 중...\n";    
-                }
-
-                // 재생
-                if (music && !played && std::chrono::system_clock::now() >= syncTime)
-                {
-                    pathManager.startOfPlay = true;
-                    music->play();
-                    played = true;
-                    std::cout << "음악 재생 시작 (동기화 완료)\n";
-                }
-
-                // 재생 종료
-                if (music && played && music->getStatus() != sf::Music::Playing)
-                {
-                    std::cout << "음악 재생 완료\n";
-                    played = false;
+                    std::cout << "음악 준비 완료. 동기화 타이밍 대기 중...\n";
                     setWaitingTime = false;
-                    music.reset();  // 안전하게 소멸
+                    waiting = true;
+                }
+
+                if (waiting)
+                {
+                    // 재생
+                    if (!played && std::chrono::system_clock::now() >= syncTime)
+                    {
+                        pathManager.startOfPlay = true;
+                        music->play();
+                        played = true;
+                        std::cout << "음악 재생 시작 (동기화 완료)\n";
+                    }
+
+                    // 재생 종료
+                    if (played && music->getStatus() != sf::Music::Playing)
+                    {
+                        std::cout << "음악 재생 완료\n";
+                        played = false;
+                        waiting = false;
+                        music.reset();  // 안전하게 소멸
+                    }
                 }
             }
             else
             {
-                if (std::chrono::system_clock::now() >= syncTime)
+                if (setWaitingTime)
                 {
-                    pathManager.startOfPlay = true;
+                    setWaitingTime = false;
+                    waiting = true;
+                }
+
+                if (waiting)
+                {
+                    if (std::chrono::system_clock::now() >= syncTime)
+                    {
+                        pathManager.startOfPlay = true;
+                        waiting = false;
+                    }
                 }
             }
 
@@ -1250,8 +1265,7 @@ bool DrumRobot::selectPlayMode()
     }
     else
     {
-        flagObj.setFixationFlag("fixed");
-        state.main = Main::Ideal;
+        txtPath = magentaPath + "null.txt"; // 존재하지 않는 악보
     }
 
     return useMagenta;
@@ -1366,7 +1380,7 @@ void DrumRobot::processLine()
 
 void DrumRobot::sendPlayProcess()
 {
-    bool useMagenta;
+    bool useMagenta = false;
     if (fileIndex == 0)
     {
         // 처음 들어올 때 모드 세팅
