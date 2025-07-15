@@ -2009,7 +2009,7 @@ double PathManager::makeHHAngle(double t, HHTime ht, int HHstate)
 
     if(HHstate == 3)
     {
-        Xl = Xp;
+        Xl = Xp - X0;
     }
 
     if(ht.hitTime <= 0.2)
@@ -2027,11 +2027,11 @@ double PathManager::makeHHAngle(double t, HHTime ht, int HHstate)
     {
         if(HHstate == 1)
         {
-            Xl = HA.closedAngle;
+            Xl = Xp - X0;
         }
         else if(HHstate == 2)
         {
-            Xl = HA.openAngle;
+            Xl = 0.0;
         }
     }
     else if(t > ht.liftTime && t <= ht.settlingTime)
@@ -2049,14 +2049,14 @@ double PathManager::makeHHAngle(double t, HHTime ht, int HHstate)
     {
         if(HHstate == 1)
         {
-            Xl = HA.openAngle;
+            Xl = 0.0;
         }
         else if(HHstate == 2)
         {
-            Xl = HA.closedAngle;
+            Xl = Xp - X0;
         }
     }
-    return Xl;
+    return Xl + X0;
 }
 
 void PathManager::generateHit(float tHitR, float tHitL, HitAngle &Pt)
