@@ -746,8 +746,13 @@ void CanManager::deactivateAllCanPorts()
 
 bool CanManager::sendMotorFrame(std::shared_ptr<GenericMotor> motor)
 {
-    if (write(motor->socket, &motor->sendFrame, sizeof(motor->sendFrame)) != sizeof(motor->sendFrame))
+    ssize_t written = write(motor->socket, &motor->sendFrame, sizeof(motor->sendFrame));
+    if (written != sizeof(motor->sendFrame))
     {
+        int err = errno;
+        std::cerr << "[CAN WRITE ERROR] motor: " << motor->myName
+                  << " errno: " << err << " (" << strerror(err) << ")\n";
+
         errorCnt++;
         if (errorCnt > 5)
         {
@@ -756,6 +761,9 @@ bool CanManager::sendMotorFrame(std::shared_ptr<GenericMotor> motor)
             return false;
         }
     }
+    
+    fun.appendToCSV_DATA("send", motor->nodeId, motor->socket, 0);
+    
     return true;
 }
 

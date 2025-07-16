@@ -43,7 +43,7 @@ void Functions::restCanPort()
     //shy-MINIPC-VC66-C2 -> 2반환
     int com_number = getComNumberByHostname();   //com_number = 1 드럼로봇 컴퓨터 com_number = 2 테스트 환경 컴퓨터
 
-    char can1_on[100], can2_on[100], can3_on[100], can1_off[100], can2_off[100], can3_off[100];
+    char can1_on[100], can2_on[100], can3_on[100], can4_on[100], can1_off[100], can2_off[100], can3_off[100], can4_off[100];
 
     // Reset the commands based on com_number
     if (com_number == 1) {
@@ -64,10 +64,12 @@ void Functions::restCanPort()
         snprintf(can1_off, sizeof(can1_off), "sudo uhubctl -l 1-4 -p 1 -a off");
         snprintf(can2_off, sizeof(can2_off), "sudo uhubctl -l 1-4 -p 2 -a off");
         snprintf(can3_off, sizeof(can3_off), "sudo uhubctl -l 1-4 -p 3 -a off");
+        snprintf(can4_off, sizeof(can4_off), "sudo uhubctl -l 1-4 -p 4 -a off");
 
         snprintf(can1_on, sizeof(can1_on), "sudo uhubctl -l 1-4 -p 1 -a on");
         snprintf(can2_on, sizeof(can2_on), "sudo uhubctl -l 1-4 -p 2 -a on");
         snprintf(can3_on, sizeof(can3_on), "sudo uhubctl -l 1-4 -p 3 -a on");
+        snprintf(can4_on, sizeof(can4_on), "sudo uhubctl -l 1-4 -p 4 -a on");
     } else if (com_number == 2) {
         // com_number_2
         snprintf(can1_off, sizeof(can1_off), "sudo uhubctl -l 1-6.1 -p 1 -a off");
@@ -93,18 +95,22 @@ void Functions::restCanPort()
     std::cout << std::endl;
     int ret3 = system(can3_off);
     std::cout << std::endl;
+    int ret4 = system(can4_off);
+    std::cout << std::endl;
 
     sleep(2);
 
-    int ret4 = system(can1_on);
+    int ret5 = system(can1_on);
     std::cout << std::endl;
-    int ret5 = system(can2_on);
+    int ret6 = system(can2_on);
     std::cout << std::endl;
-    int ret6 = system(can3_on);
+    int ret7 = system(can3_on);
+    std::cout << std::endl;
+    int ret8 = system(can4_on);
     std::cout << std::endl;
 
     
-    if (ret1 != 0 || ret2 != 0 || ret3 != 0 || ret4 != 0 || ret5 != 0 || ret6 != 0)
+    if (ret1 != 0 || ret2 != 0 || ret3 != 0 || ret4 != 0 || ret5 != 0 || ret6 != 0 || ret7 != 0 || ret8 != 0)
     {
         fprintf(stderr, "Failed to reset port\n");
     }
