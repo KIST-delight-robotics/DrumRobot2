@@ -2007,56 +2007,61 @@ double PathManager::makeHHAngle(double t, HHTime ht, int HHstate)
 
     double Xl = 0.0;
 
+    if(HHstate == 0)
+    {
+        Xl = X0;
+    }
+
     if(HHstate == 3)
     {
-        Xl = Xp - X0;
+        Xl = Xp;
     }
 
     if(ht.hitTime <= 0.2)
     {
         if(HHstate == 1)
         {
-            Xl = - 0.5 * (Xp - X0) * (cos(M_PI * (t / ht.hitTime + 1)) - 1);
+            Xl = - 0.5 * (Xp - X0) * (cos(M_PI * (t / ht.hitTime + 1)) - 1) + X0;
         }
         else if(HHstate == 2)
         {
-            Xl = - 0.5 * (Xp - X0) * (cos(M_PI * (t / ht.hitTime)) - 1);
+            Xl = - 0.5 * (Xp - X0) * (cos(M_PI * (t / ht.hitTime)) - 1) + X0;
         }
     }
     else if(t < ht.liftTime)
     {
         if(HHstate == 1)
         {
-            Xl = Xp - X0;
+            Xl = Xp;
         }
         else if(HHstate == 2)
         {
-            Xl = 0.0;
+            Xl = X0;
         }
     }
     else if(t > ht.liftTime && t <= ht.settlingTime)
     {
         if(HHstate == 1)
         {
-            Xl = - 0.5 * (Xp - X0) * (cos(M_PI * ((t - ht.liftTime) / (ht.settlingTime - ht.liftTime) + 1)) - 1);
+            Xl = - 0.5 * (Xp - X0) * (cos(M_PI * ((t - ht.liftTime) / (ht.settlingTime - ht.liftTime) + 1)) - 1) + X0;
         }
         else if(HHstate == 2)
         {
-            Xl = - 0.5 * (Xp - X0) * (cos(M_PI * (t - ht.liftTime) / (ht.settlingTime - ht.liftTime)) - 1);
+            Xl = - 0.5 * (Xp - X0) * (cos(M_PI * (t - ht.liftTime) / (ht.settlingTime - ht.liftTime)) - 1) + X0;
         }
     }
     else if(t > ht.settlingTime)
     {
         if(HHstate == 1)
         {
-            Xl = 0.0;
+            Xl = X0;
         }
         else if(HHstate == 2)
         {
-            Xl = Xp - X0;
+            Xl = Xp;
         }
     }
-    return Xl + X0;
+    return Xl;
 }
 
 void PathManager::generateHit(float tHitR, float tHitL, HitAngle &Pt)

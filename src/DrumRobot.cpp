@@ -127,7 +127,7 @@ void DrumRobot::initializeMotors()
                 tMotor->initialJointAngle = initialJointAngles[can_id] * M_PI / 180.0f;
                 tMotor->currentLimit = 23.2;  // [A]    // ak70-10
                 tMotor->useFourBarLinkage = false;
-                // tMotor->setInitialMotorAngle(tMotor->initialJointAngle);
+                // tMotor->setInitialMotorAngle(tMotor->initialJointAngle);     // 4-bar-linkage 사용하면 쓰는 함수
             }
         }
         else if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motor))
