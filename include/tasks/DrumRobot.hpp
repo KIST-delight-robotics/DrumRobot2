@@ -94,7 +94,8 @@ private:
     MaxonCommandParser maxoncmd;
 
     // Sync command
-    std::shared_ptr<MaxonMotor> virtualMaxonMotor;
+    vector<std::shared_ptr<MaxonMotor>> virtualMaxonMotor;
+    // std::shared_ptr<MaxonMotor> virtualMaxonMotor;
 
     // 쓰레드 루프 주기
     std::chrono::_V2::steady_clock::time_point sendLoopPeriod;
@@ -113,7 +114,7 @@ private:
     bool allMotorsUnConected = true;    // 모든 모터 연결 안됨 - 모터 없이 테스트하는 경우
 
     // Initialize
-    int maxonMotorCount = 0;    // 1 이상이면 virtual Maxon Motor를 사용하기 위해
+    int maxonMotorSocketCount = 0;    // 1 이상이면 virtual Maxon Motor를 사용하기 위해
 
     void initializePathManager();
     void initializeMotors();

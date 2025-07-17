@@ -223,8 +223,27 @@ void DrumRobot::motorSettingCmd()
         // 각 요소가 MaxonMotor 타입인지 확인
         if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motor_pair.second))
         {
-            maxonMotorCount++;
-            virtualMaxonMotor = maxonMotor;
+
+            if (virtualMaxonMotor.size() == 0)
+            {
+                virtualMaxonMotor.push_back(maxonMotor);
+            }
+            else
+            {
+                bool otherSocket = true;
+                for(int i = 0; i < virtualMaxonMotor.size(); i++)
+                {
+                    if (virtualMaxonMotor[i]->socket == maxonMotor->socket)
+                    {
+                        otherSocket = false;
+                    }
+                }
+
+                if (otherSocket)
+                {
+                    virtualMaxonMotor.push_back(maxonMotor);
+                }
+            }
         }
     }
 
@@ -265,7 +284,7 @@ void DrumRobot::motorSettingCmd()
             maxoncmd.getHomeMode(*maxonMotor, &frame);
             canManager.sendAndRecv(motor, frame);
 
-            if (name == "L_wrist")
+            if(name == "L_wrist")
             {
                 maxoncmd.getHomingMethodL(*maxonMotor, &frame);
                 canManager.sendAndRecv(motor, frame);
@@ -636,8 +655,7 @@ void DrumRobot::sendLoopForThread()
     sendLoopPeriod = std::chrono::steady_clock::now();
     while (state.main != Main::Shutdown)
     {
-
-        sendLoopPeriod += std::chrono::microseconds(2000);  // 주기 : 1msec
+        sendLoopPeriod += std::chrono::microseconds(1000);  // 주기 : 1msec
         
         std::map<std::string, bool> fixFlags; // 각 모터의 고정 상태 저장
         
@@ -701,15 +719,25 @@ void DrumRobot::sendLoopForThread()
             }
         }
 
-        if (maxonMotorCount != 0)
+        for(int i = 0; i < virtualMaxonMotor.size(); i++)
         {
-            maxoncmd.getSync(&virtualMaxonMotor->sendFrame);
+            maxoncmd.getSync(&virtualMaxonMotor[i]->sendFrame);
 
-            if (!canManager.sendMotorFrame(virtualMaxonMotor))
+            if (!canManager.sendMotorFrame(virtualMaxonMotor[i]))
             {
                 isWriteError = true;
             };
         }
+        // if (maxonMotorCount)
+        // {   
+        //     maxoncmd.getSync(&virtualMaxonMotor->sendFrame);
+
+        //     if (!canManager.sendMotorFrame(virtualMaxonMotor))
+        //     {
+        //         isWriteError = true;
+        //     };
+        // }
+        
 
         if (isWriteError)
         {
