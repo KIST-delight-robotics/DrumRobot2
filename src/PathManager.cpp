@@ -483,8 +483,8 @@ void PathManager::generateTrajectory(MatrixXd &measureMatrix)
 
         // 데이터 저장
         std::string fileName;
-        // fileName = "hitAngle";
-        // fun.appendToCSV_DATA(fileName, Ht.bass, Ht.wristL, Ht.wristR);
+        fileName = "hitAngle";
+        fun.appendToCSV_DATA(fileName, Ht.bass, Ht.wristL, Ht.wristR);
         // fileName = "HtR";
         // fun.appendToCSV_DATA(fileName, tHitR, hitR_t2 - hitR_t1, 0);
         // fileName = "HtL";
@@ -1409,8 +1409,8 @@ void PathManager::makeHitCoefficient()
     elbowTimeR = getElbowTime(hitR_t1, hitR_t2, intensityR);
     elbowTimeL = getElbowTime(hitL_t1, hitL_t2, intensityL);
 
-    wristTimeR = getWristTime(hitR_t1, hitR_t2, intensityR);
-    wristTimeL = getWristTime(hitL_t1, hitL_t2, intensityL);
+    wristTimeR = getWristTime(hitR_t1, hitR_t2, intensityR, stateR);
+    wristTimeL = getWristTime(hitL_t1, hitL_t2, intensityL, stateL);
 
     elbowAngleR = getElbowAngle(hitR_t1, hitR_t2, intensityR);
     elbowAngleL = getElbowAngle(hitL_t1, hitL_t2, intensityL);
@@ -1438,23 +1438,25 @@ PathManager::elbowTime PathManager::getElbowTime(float t1, float t2, int intensi
     return elbowTime;
 }
 
-PathManager::wristTime PathManager::getWristTime(float t1, float t2, int intensity)
+PathManager::wristTime PathManager::getWristTime(float t1, float t2, int intensity, int state)
 {
     float T = t2 - t1;
     wristTime wristTime;
 
     wristTime.releaseTime = std::min(0.2 * (T), 0.1);
 
-    t2 - t1 < 0.15 ? wristTime.stayTime = 0.45 * (T) : wristTime.stayTime = 0.47 * (T) - 0.05;
-
-    if (intensity < 4)
-        wristTime.liftTime = std::max(0.5 * (T), T - 0.25);
-    else if (intensity == 4)
-        wristTime.liftTime = std::max(0.6 * (T), T - 0.2);
-    else
-        wristTime.liftTime = std::max(0.7 * (T), T - 0.15);
+    wristTime.liftTime = std::max(0.6 * (T), T - 0.2);
     
     wristTime.hitTime = T;
+
+    if (state == 2)
+    {
+        t2 - t1 < 0.15 ? wristTime.stayTime = 0.45 * T : wristTime.stayTime = 0.47 * (T) - 0.05;
+    }
+    else
+    {
+        t2 - t1 < 0.3 ? wristTime.stayTime = wristTime.liftTime : wristTime.stayTime = 0.5 * (T);
+    }
     
     return wristTime;
 }
@@ -1527,7 +1529,7 @@ PathManager::wristAngle PathManager::getWristAngle(float t1, float t2, int inten
     wristAngle.stayAngle = 10 * M_PI / 180.0;
     // T < 0.5 ? wristAngle.liftAngle = (-100 * ((T) - 0.5) * ((T) - 0.5) + 30) * M_PI / 180.0 : wristAngle.liftAngle = 30  * M_PI / 180.0;
     T < 0.5 ? wristAngle.liftAngle = (60 * T) * M_PI / 180.0 : wristAngle.liftAngle = 30  * M_PI / 180.0;
-    wristAngle.pressAngle = -1.0 * std::min((T) * (5 * M_PI / 180.0)/ 0.5, (5 * M_PI / 180.0));
+    wristAngle.pressAngle = -5 * M_PI / 180.0;
     if (intensity != 1)
     {
         wristAngle.liftAngle = wristAngle.stayAngle + wristAngle.liftAngle * intensityFactor;
@@ -1727,27 +1729,6 @@ MatrixXd PathManager::makeWristCoefficient(int state, wristTime wT, wristAngle w
     }
     else if (state == 1)
     {
-        // Release - Stay
-
-        // // Release
-        // A.resize(3, 3);
-        // b.resize(3, 1);
-
-        // A << 1, 0, 0,
-        //     1, wT.releaseTime, wT.releaseTime * wT.releaseTime,
-        //     0, 1, 2 * wT.releaseTime;
-
-        // b << wA.pressAngle, wA.stayAngle, 0;
-
-        // A_1 = A.inverse();
-        // sol = A_1 * b;
-
-        // wristCoefficient.resize(4, 4);
-        // wristCoefficient << sol(0), sol(1), sol(2), 0,  // Release
-        //                     wA.stayAngle, 0, 0, 0,      // Stay
-        //                     wA.stayAngle, 0, 0, 0,      // Stay
-        //                     wA.stayAngle, 0, 0, 0;      // Stay
-
         // Release
         if (wA.pressAngle == wA.stayAngle)
         {
@@ -1791,10 +1772,10 @@ MatrixXd PathManager::makeWristCoefficient(int state, wristTime wT, wristAngle w
         }
         else
         {
-             A << 1, wT.stayTime, wT.stayTime * wT.stayTime, wT.stayTime * wT.stayTime * wT.stayTime,
-                1, wT.liftTime, wT.liftTime * wT.liftTime, wT.liftTime * wT.liftTime * wT.liftTime,
-                0, 1, 2 * wT.stayTime, 3 * wT.stayTime * wT.stayTime,
-                0, 1, 2 * wT.liftTime, 3 * wT.liftTime * wT.liftTime;
+            A << 1, wT.stayTime, wT.stayTime * wT.stayTime, wT.stayTime * wT.stayTime * wT.stayTime,
+            1, wT.liftTime, wT.liftTime * wT.liftTime, wT.liftTime * wT.liftTime * wT.liftTime,
+            0, 1, 2 * wT.stayTime, 3 * wT.stayTime * wT.stayTime,
+            0, 1, 2 * wT.liftTime, 3 * wT.liftTime * wT.liftTime;
 
             b << wA.stayAngle, wA.liftAngle, 0, 0;
 

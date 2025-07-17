@@ -259,7 +259,7 @@ private:
     int getBassState(bool bassHit, bool nextBaseHit);
     void makeHitCoefficient();
     PathManager::elbowTime getElbowTime(float t1, float t2, int intensity);
-    PathManager::wristTime getWristTime(float t1, float t2, int intensity);
+    PathManager::wristTime getWristTime(float t1, float t2, int intensity, int state);
     PathManager::bassTime getBassTime(float t1, float t2);
     PathManager::elbowAngle getElbowAngle(float t1, float t2, int intensity);
     PathManager::wristAngle getWristAngle(float t1, float t2, int intensity);
