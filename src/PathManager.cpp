@@ -1444,18 +1444,27 @@ PathManager::wristTime PathManager::getWristTime(float t1, float t2, int intensi
     wristTime wristTime;
 
     wristTime.releaseTime = std::min(0.2 * (T), 0.1);
-
-    wristTime.liftTime = std::max(0.6 * (T), T - 0.2);
     
     wristTime.hitTime = T;
 
     if (state == 2)
     {
+        wristTime.liftTime = std::max(0.6 * (T), T - 0.2);
         t2 - t1 < 0.15 ? wristTime.stayTime = 0.45 * T : wristTime.stayTime = 0.47 * (T) - 0.05;
     }
     else
     {
-        t2 - t1 < 0.3 ? wristTime.stayTime = wristTime.liftTime : wristTime.stayTime = 0.5 * (T);
+        wristTime.liftTime = std::max(0.6 * (T), T - 0.2);
+        if (T <= 0.3)
+        {
+            wristTime.liftTime = 0.5 * (T);
+        }
+        else
+        {
+            wristTime.liftTime = std::max(0.6 * (T), T - 0.2);
+        }
+        wristTime.stayTime = 0.5 * (T);
+        // t2 - t1 < 0.3 ? wristTime.stayTime = wristTime.liftTime : wristTime.stayTime = 0.5 * (T);
     }
     
     return wristTime;
@@ -2020,7 +2029,7 @@ double PathManager::makeHHAngle(double t, HHTime ht, int HHstate)
             Xl = X0;
         }
     }
-    else if(t > ht.liftTime && t <= ht.settlingTime)
+    else if(t >= ht.liftTime && t < ht.settlingTime)
     {
         if(HHstate == 1)
         {
@@ -2031,7 +2040,7 @@ double PathManager::makeHHAngle(double t, HHTime ht, int HHstate)
             Xl = - 0.5 * (Xp - X0) * (cos(M_PI * (t - ht.liftTime) / (ht.settlingTime - ht.liftTime)) - 1) + X0;
         }
     }
-    else if(t > ht.settlingTime)
+    else if(t >= ht.settlingTime)
     {
         if(HHstate == 1)
         {

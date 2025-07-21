@@ -846,7 +846,11 @@ void DrumRobot::musicMachine()
                 if (pythonClass == 0)
                 {
                     // 마젠타
+                    std::string pythonCmd = "/home/shy/DrumSound/magenta-env/bin/python /home/shy/DrumSound/getMIDITimeMagenta.py";
 
+                    int ret = std::system(pythonCmd.c_str());
+
+                    getMagentaSheet();
                 }
                 else
                 {
@@ -1145,6 +1149,80 @@ void DrumRobot::runPythonForMagenta()
     }
 }
 
+void DrumRobot::getMagentaSheet()
+{
+    filesystem::path midPath;
+
+    filesystem::path outputPath1 = "/home/shy/DrumSound/output1_drum_hits_time.csv"; 
+    filesystem::path outputPath2 = "/home/shy/DrumSound/output2_mc.csv";   
+    filesystem::path outputPath3 = "/home/shy/DrumSound/output3_mc2c.csv";    
+    filesystem::path outputPath4 = "/home/shy/DrumSound/output4_hand_assign.csv";
+    filesystem::path outputPath5 = "/home/shy/DrumSound/output5_final.txt";
+
+    midPath = "/home/shy/DrumSound/output.mid";
+
+    while(!file_found) // ready 상태인지도 확인해주기
+    {
+        if (filesystem::exists(midPath) && flagObj.getAddStanceFlag() == "isReady")
+        {
+            file_found = true;          // 악보 끝나면 악보 지우고 false로
+            break;
+        } 
+        std::this_thread::sleep_for(std::chrono::milliseconds(500)); // 0.5초마다 체크
+    }
+
+    // mid 파일 받아서 악보 생성하기
+    if(file_found)
+    {
+        size_t pos;
+        unsigned char runningStatus;
+        // int initial_setting_flag = 0;
+        double note_on_time = 0;
+
+        std::vector<unsigned char> midiData;
+
+        if (filesystem::exists(midPath) && flagObj.getAddStanceFlag() == "isReady")
+        {
+            if (!fun.readMidiFile(midPath, midiData)) cout << "mid file error\n";
+        } 
+        // if (!fun.readMidiFile(targetPath, midiData)) cout << "mid file error\n";
+        pos = 14;
+        int tpqn = (midiData[12] << 8) | midiData[13];
+
+        while (pos + 8 <= midiData.size()) {
+            if (!(midiData[pos] == 'M' && midiData[pos+1] == 'T' && midiData[pos+2] == 'r' && midiData[pos+3] == 'k')) {
+                // std::cerr << "MTrk expected at pos " << pos << "\n";
+                break;
+            }
+            size_t trackLength = (midiData[pos+4] << 24) |
+                            (midiData[pos+5] << 16) |
+                            (midiData[pos+6] << 8) |
+                            midiData[pos+7];
+            pos += 8;
+            size_t trackEnd = pos + trackLength;
+
+            note_on_time = 0;
+            while (pos < trackEnd) {
+                size_t delta = fun.readTime(midiData, pos);
+                note_on_time += delta;
+                fun.analyzeMidiEvent(midiData, pos, runningStatus, note_on_time, tpqn, outputPath1);
+            }
+            pos = trackEnd;
+        }
+
+        fun.roundDurationsToStep(outputPath1, outputPath2); 
+        fun.convertMcToC(outputPath2, outputPath3);
+        fun.assignHandsToEvents(outputPath3, outputPath4);
+        fun.convertToMeasureFile(outputPath4, outputPath5);
+
+        file_found = false;
+        // if(filesystem::exists(midPath))
+        // {
+        //     filesystem::remove(midPath);
+        // }
+    }
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /*                              Play State                                    */
 ////////////////////////////////////////////////////////////////////////////////
@@ -1225,8 +1303,16 @@ bool DrumRobot::selectPlayMode()
     ////////////////////////////////////////////
     // 시작 트리거 정하기 1 -> 일정시간뒤에 2 -> 입력들어오고 난 후에 일정시간 뒤에 0 -> back
 
-    std::cout << "\nEnter (Play After Waiting : 1 / Play When Receiving Input : 2 / Return to Ideal State : 0): ";
-    std::cin >> input;
+    if (useMagenta)
+    {
+        std::cout << "\nPlay When Receiving Input : 2";
+        input = 2;
+    }
+    else
+    {
+        std::cout << "\nEnter (Play After Waiting : 1 / Play When Receiving Input : 2 / Return to Ideal State : 0): ";
+        std::cin >> input;
+    }
 
     if (input == "1")
     {
@@ -1287,6 +1373,8 @@ bool DrumRobot::selectPlayMode()
         local_tm->tm_min = min;
         local_tm->tm_sec = sec;
         auto base_time = std::chrono::system_clock::from_time_t(std::mktime(local_tm)) + std::chrono::milliseconds(millis);
+
+        std::remove(syncPath.c_str());      // syncTime 업데이트 하고 sync.txt 바로 지움
         
         syncTime = base_time + std::chrono::milliseconds((int)waitingTime);
         setWaitingTime = true;
