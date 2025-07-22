@@ -166,7 +166,8 @@ private:
     MatrixXd lineData;
 
     void parseMeasure(MatrixXd &measureMatrix);
-    pair<VectorXd, VectorXd> parseOneArm(VectorXd t, VectorXd inst, VectorXd stateVector);
+    pair<VectorXd, VectorXd> parseOneArm(VectorXd t, VectorXd inst, VectorXd hh, VectorXd stateVector);
+    int checkOpenHH(int instNum, int isHH);
     pair<VectorXd, VectorXd> getTargetPosition(VectorXd inst_vector);
     double timeScaling(double ti, double tf, double t);
     VectorXd makePath(VectorXd Pi, VectorXd Pf, double s);
@@ -241,7 +242,7 @@ private:
 
     typedef struct {
         double openAngle = -3*M_PI/180.0;
-        double closedAngle = -18*M_PI/180.0;
+        double closedAngle = -15*M_PI/180.0;
     }HHAngle;
 
     elbowTime elbowTimeR, elbowTimeL;
