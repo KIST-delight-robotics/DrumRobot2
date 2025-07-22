@@ -492,8 +492,8 @@ void PathManager::generateTrajectory(MatrixXd &measureMatrix)
         // fun.appendToCSV_DATA(fileName, tHitR, hitR_t2 - hitR_t1, 0);
         // fileName = "HtL";
         // fun.appendToCSV_DATA(fileName, tHitL, hitL_t2 - hitL_t1, 0);
-        // fileName = "HHAngle.csv";
-        // fun.appendToCSV_DATA(fileName, Ht.hihat, HHstate, 0);
+        fileName = "HHAngle.csv";
+        fun.appendToCSV_DATA(fileName, Ht.hihat, Ht.bass, 0);
     }
 
     ///////////////////////////////////////////////////////////// 읽은 줄 삭제
@@ -2014,7 +2014,7 @@ double PathManager::makeHHAngle(double t, HHTime ht, int HHstate, int nextHHclos
 
     // 각도 수정 원할 시 헤더파일에서 해당 각도 수정하면 됨
     double X0 = HA.openAngle;       // Open Hihat : -3도
-    double Xp = HA.closedAngle;     // Closed Hihat : -18도
+    double Xp = HA.closedAngle;     // Closed Hihat : -15도 
 
     double Xl = 0.0;
 
@@ -2033,7 +2033,7 @@ double PathManager::makeHHAngle(double t, HHTime ht, int HHstate, int nextHHclos
         }
         else if(HHstate == 2)
         {
-            if(nextHHclosed == 2)
+            if(nextHHclosed == 2)       // 악보에서 open/closed HH을 나타내는 열(measureMatrix.col(7)에 2가 들어오면 Hihat splash로 연주함
             {
                 if(t < temp_liftTime)
                 {
@@ -2080,7 +2080,7 @@ double PathManager::makeHHAngle(double t, HHTime ht, int HHstate, int nextHHclos
         {
             if(nextHHclosed == 2)
             {
-                Xl = - 0.5 * (Xp - X0) * (cos(M_PI * ((t) / (ht.settlingTime) + 1)) - 1) + X0;
+                Xl = - 0.5 * (Xp - X0) * (cos(M_PI * (t / ht.settlingTime + 1)) - 1) + X0;
             }
             else
             {
