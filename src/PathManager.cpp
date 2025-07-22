@@ -443,7 +443,7 @@ void PathManager::generateTrajectory(MatrixXd &measureMatrix)
 
     // Hihat 관련 변수
     bool HHclosed = measureMatrix(0, 7);
-    bool nextHHclosed = measureMatrix(1, 7);
+    int nextHHclosed = measureMatrix(1, 7);
     int HHstate = getHHstate(HHclosed, nextHHclosed);
     HHTimeL = getHHTime(line_t1, line_t2);
     
@@ -477,7 +477,7 @@ void PathManager::generateTrajectory(MatrixXd &measureMatrix)
 
         // 양 발 모터 각도
         Ht.bass = makeBassAngle(i * dt, bassTimeR, bassState);
-        Ht.hihat = makeHHAngle(i * dt, HHTimeL, HHstate);
+        Ht.hihat = makeHHAngle(i * dt, HHTimeL, HHstate, nextHHclosed);
         
         hitAngleQueue.push(Ht);
 
@@ -1979,37 +1979,65 @@ double PathManager::makeBassAngle(double t, bassTime bt, int bassState)
     return X0 + Xl + Xh;
 }
 
-double PathManager::makeHHAngle(double t, HHTime ht, int HHstate)
+double PathManager::makeHHAngle(double t, HHTime ht, int HHstate, int nextHHclosed)
 {
     HHAngle HA;
 
-    double X0 = HA.openAngle;
-    double Xp = HA.closedAngle;
+    // 각도 수정 원할 시 헤더파일에서 해당 각도 수정하면 됨
+    double X0 = HA.openAngle;       // Open Hihat : -3도
+    double Xp = HA.closedAngle;     // Closed Hihat : -18도
 
     double Xl = 0.0;
 
     if(HHstate == 0)
-    {
-        Xl = X0;
-    }
+        {
+            Xl = X0;
+        }
 
-    if(HHstate == 3)
-    {
-        Xl = Xp;
-    }
-
+    // 한 박의 시간이 0.2초보다 작으면 전체 시간에 걸쳐 궤적 생성
     if(ht.hitTime <= 0.2)
     {
+        double temp_liftTime = ht.hitTime / 2;
         if(HHstate == 1)
         {
             Xl = - 0.5 * (Xp - X0) * (cos(M_PI * (t / ht.hitTime + 1)) - 1) + X0;
         }
         else if(HHstate == 2)
         {
-            Xl = - 0.5 * (Xp - X0) * (cos(M_PI * (t / ht.hitTime)) - 1) + X0;
+            if(nextHHclosed == 2)
+            {
+                if(t < temp_liftTime)
+                {
+                    Xl = X0;
+                }
+                else
+                {
+                    Xl = - 0.5 * (Xp - X0) * (cos(M_PI * (t - temp_liftTime) / (ht.hitTime - temp_liftTime)) - 1) + X0;
+                }
+            }
+            else
+            {
+                Xl = - 0.5 * (Xp - X0) * (cos(M_PI * (t / ht.hitTime)) - 1) + X0;
+            }
+        }
+        else if(HHstate == 3)
+        {
+            if(nextHHclosed == 2)
+            {   
+                if(t < temp_liftTime)
+                {
+                    Xl = - 0.5 * (Xp - X0) * (cos(M_PI * (t / temp_liftTime + 1)) - 1) + X0;
+                }
+                else
+                {
+                    Xl = - 0.5 * (Xp - X0) * (cos(M_PI * ((t - temp_liftTime) / (ht.hitTime - temp_liftTime))) - 1) + X0;
+                }
+            }
+            else 
+                Xl = Xp;
         }
     }
-    else if(t < ht.liftTime)
+    else if(t < ht.liftTime) // t : 0 ~ lifttime(0.2T) ~ settlingtime(0.8T) ~ hittime(T)
     {
         if(HHstate == 1)
         {
@@ -2019,19 +2047,48 @@ double PathManager::makeHHAngle(double t, HHTime ht, int HHstate)
         {
             Xl = X0;
         }
+        else if(HHstate == 3)
+        {
+            if(nextHHclosed == 2)
+            {
+                Xl = - 0.5 * (Xp - X0) * (cos(M_PI * ((t) / (ht.settlingTime) + 1)) - 1) + X0;
+            }
+            else
+            {
+                Xl = Xp;
+            } 
+        }
     }
-    else if(t > ht.liftTime && t <= ht.settlingTime)
+    else if(t >= ht.liftTime && t < ht.settlingTime)
     {
         if(HHstate == 1)
         {
             Xl = - 0.5 * (Xp - X0) * (cos(M_PI * ((t - ht.liftTime) / (ht.settlingTime - ht.liftTime) + 1)) - 1) + X0;
         }
         else if(HHstate == 2)
+        {      
+            if(nextHHclosed == 2)
+            {
+                Xl = X0;
+            }
+            else
+            {
+                Xl = - 0.5 * (Xp - X0) * (cos(M_PI * (t - ht.liftTime) / (ht.settlingTime - ht.liftTime)) - 1) + X0;
+            }
+        }
+        else if(HHstate == 3)
         {
-            Xl = - 0.5 * (Xp - X0) * (cos(M_PI * (t - ht.liftTime) / (ht.settlingTime - ht.liftTime)) - 1) + X0;
+            if(nextHHclosed == 2)
+            {
+                Xl = - 0.5 * (Xp - X0) * (cos(M_PI * ((t) / (ht.settlingTime) + 1)) - 1) + X0;
+            }
+            else
+            {
+                Xl = Xp;
+            }
         }
     }
-    else if(t > ht.settlingTime)
+    else if(t >= ht.settlingTime)
     {
         if(HHstate == 1)
         {
@@ -2039,9 +2096,28 @@ double PathManager::makeHHAngle(double t, HHTime ht, int HHstate)
         }
         else if(HHstate == 2)
         {
-            Xl = Xp;
+            if(nextHHclosed == 2)
+            {
+                Xl = - 0.5 * (Xp - X0) * (cos(M_PI * (t - ht.settlingTime) / (ht.hitTime - ht.settlingTime)) - 1) + X0;
+            }
+            else
+            {
+                Xl = Xp;
+            }
+        }
+        else if(HHstate == 3)
+        {
+            if(nextHHclosed == 2)
+            {
+                Xl = - 0.5 * (Xp - X0) * (cos(M_PI * (t - ht.settlingTime) / (ht.hitTime - ht.settlingTime)) - 1) + X0;
+            }
+            else
+            {
+                Xl = Xp;
+            }
         }
     }
+    
     return Xl;
 }
 

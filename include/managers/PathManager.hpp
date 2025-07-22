@@ -271,7 +271,7 @@ private:
     double makeBassAngle(double t, bassTime bt, int bassState);
     int getHHstate(bool HHclosed, bool nextHHclosed);
     PathManager::HHTime getHHTime(float t1, float t2);
-    double makeHHAngle(double t, HHTime ht, int HHstate);
+    double makeHHAngle(double t, HHTime ht, int HHstate, int nextHHclosed);
 
     /////////////////////////////////////////////////////////////////////////// Waist
     MatrixXd waistCoefficient;
