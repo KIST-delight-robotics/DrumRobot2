@@ -25,15 +25,13 @@ void PathManager::getDrumPositoin()
     }
 
     // Read data into a 2D vector
-    MatrixXd instXYZ(6, 8);
+    MatrixXd instXYZ(6, 9);
 
     for (int i = 0; i < 6; ++i)
     {
-        for (int j = 0; j < 8; ++j)
+        for (int j = 0; j < 9; ++j)
         {
             inputFile >> instXYZ(i, j);
-            if (i == 1 || i == 4)
-                instXYZ(i, j) *= 1.0;
         }
     }
 
@@ -49,6 +47,7 @@ void PathManager::getDrumPositoin()
     Vector3d right_R;
     Vector3d right_RC;
     Vector3d right_LC;
+    Vector3d right_OHH;
 
     Vector3d left_S;
     Vector3d left_FT;
@@ -58,6 +57,7 @@ void PathManager::getDrumPositoin()
     Vector3d left_R;
     Vector3d left_RC;
     Vector3d left_LC;
+    Vector3d left_OHH;
 
     for (int i = 0; i < 3; ++i)
     {
@@ -69,6 +69,7 @@ void PathManager::getDrumPositoin()
         right_R(i) = instXYZ(i, 5);
         right_RC(i) = instXYZ(i, 6);
         right_LC(i) = instXYZ(i, 7);
+        right_OHH(i) = instXYZ(i, 8);
 
         left_S(i) = instXYZ(i + 3, 0);
         left_FT(i) = instXYZ(i + 3, 1);
@@ -78,19 +79,19 @@ void PathManager::getDrumPositoin()
         left_R(i) = instXYZ(i + 3, 5);
         left_RC(i) = instXYZ(i + 3, 6);
         left_LC(i) = instXYZ(i + 3, 7);
+        left_OHH(i) = instXYZ(i + 3, 8);
     }
 
-    drumCoordinateR << right_S, right_FT, right_MT, right_HT, right_HH, right_R, right_RC, right_LC, right_LC;
-    drumCoordinateL << left_S, left_FT, left_MT, left_HT, left_HH, left_R, left_RC, left_LC, left_LC;
+    drumCoordinateR << right_S, right_FT, right_MT, right_HT, right_HH, right_R, right_RC, right_LC, right_OHH;
+    drumCoordinateL << left_S, left_FT, left_MT, left_HT, left_HH, left_R, left_RC, left_LC, left_OHH;
 
     // 악기 별 타격 시 손목 각도
     wristAnglesR.resize(1, 9);
     wristAnglesL.resize(1, 9);
 
-    //              S                  FT                  MT                  HT                  HH                  R                   RC                 LC
-    wristAnglesR << 10.0*M_PI/180.0,   10.0*M_PI/180.0,     0.0*M_PI/180.0,     0.0*M_PI/180.0,    10.0*M_PI/180.0,    15.0*M_PI/180.0,    10.0*M_PI/180.0,    10.0*M_PI/180.0, 0;
-    wristAnglesL << 10.0*M_PI/180.0,   10.0*M_PI/180.0,     0.0*M_PI/180.0,     0.0*M_PI/180.0,    10.0*M_PI/180.0,    15.0*M_PI/180.0,    10.0*M_PI/180.0,    10.0*M_PI/180.0, 0;
-    // wristAnglesL << 0, 0, 0, 0, 0, 0, 0, 0, 0;
+    //              S                  FT                  MT                  HT                  HH                  R                   RC                 LC                Open HH
+    wristAnglesR << 10.0*M_PI/180.0,   10.0*M_PI/180.0,     5.0*M_PI/180.0,     5.0*M_PI/180.0,    10.0*M_PI/180.0,    15.0*M_PI/180.0,    10.0*M_PI/180.0,   10.0*M_PI/180.0,  10.0*M_PI/180.0;
+    wristAnglesL << 10.0*M_PI/180.0,   10.0*M_PI/180.0,     5.0*M_PI/180.0,     5.0*M_PI/180.0,    10.0*M_PI/180.0,    15.0*M_PI/180.0,    10.0*M_PI/180.0,   10.0*M_PI/180.0,  10.0*M_PI/180.0;
 }
 
 void PathManager::setReadyAngle()
@@ -159,9 +160,9 @@ void PathManager::setReadyAngle()
         //              waist          R_arm1         L_arm1
     shutdownAngle << 0*M_PI/180.0, 135*M_PI/180.0, 45*M_PI/180.0,
     //                  R_arm2         R_arm3         L_arm2
-                    0*M_PI/180.0,  0*M_PI/180.0,   0*M_PI/180.0,
+                    0*M_PI/180.0,  20*M_PI/180.0,   0*M_PI/180.0,
     //                  L_arm3         R_wrist        L_wrist
-                    0*M_PI/180.0,  90*M_PI/180.0,  90*M_PI/180.0,
+                    20*M_PI/180.0,  90*M_PI/180.0,  90*M_PI/180.0,
     //          Test               R_foot         L_foot            
                     0,                 0,              0;
 }
@@ -475,6 +476,8 @@ void PathManager::generateTrajectory(MatrixXd &measureMatrix)
         // 각 관절에 더해줄 각도
         generateHit(tHitR, tHitL, Ht);
 
+        // fun.appendToCSV_DATA("hitTime", hitR_t2 - hitR_t1, hitL_t2 - hitL_t1, 0);
+
         // 양 발 모터 각도
         Ht.bass = makeBassAngle(i * dt, bassTimeR, bassState);
         Ht.hihat = makeHHAngle(i * dt, HHTimeL, HHstate, nextHHclosed);
@@ -483,14 +486,14 @@ void PathManager::generateTrajectory(MatrixXd &measureMatrix)
 
         // 데이터 저장
         std::string fileName;
-        fileName = "hitAngle";
-        fun.appendToCSV_DATA(fileName, Ht.bass, Ht.wristL, Ht.wristR);
+        // fileName = "hitAngle";
+        // fun.appendToCSV_DATA(fileName, Ht.bass, Ht.wristL, Ht.wristR);
         // fileName = "HtR";
         // fun.appendToCSV_DATA(fileName, tHitR, hitR_t2 - hitR_t1, 0);
         // fileName = "HtL";
         // fun.appendToCSV_DATA(fileName, tHitL, hitL_t2 - hitL_t1, 0);
-        fileName = "HHAngle.csv";
-        fun.appendToCSV_DATA(fileName, Ht.hihat, HHstate, 0);
+        // fileName = "HHAngle.csv";
+        // fun.appendToCSV_DATA(fileName, Ht.hihat, HHstate, 0);
     }
 
     ///////////////////////////////////////////////////////////// 읽은 줄 삭제
@@ -731,8 +734,8 @@ void PathManager::parseMeasure(MatrixXd &measureMatrix)
     VectorXd measureTime = measureMatrix.col(8);
     VectorXd measureInstrumentR = measureMatrix.col(2);
     VectorXd measureInstrumentL = measureMatrix.col(3);
-    // VectorXd measureIntensityR = measureMatrix.col(4);       // 이거 안쓰네?
-    // VectorXd measureIntensityL = measureMatrix.col(5);
+
+    VectorXd measureHH = measureMatrix.col(7);
 
     // parsing data
     line_t1 = measureMatrix(0, 8);
@@ -741,9 +744,9 @@ void PathManager::parseMeasure(MatrixXd &measureMatrix)
     // std::cout << "\n /// t1 -> t2 : " << line_t1 << " -> " << line_t2 << " : " << line_t2 - line_t1 <<  "\n";
 
     // std::cout << "\n /// R ///";
-    pair<VectorXd, VectorXd> dataR = parseOneArm(measureTime, measureInstrumentR, measureState.row(0));
+    pair<VectorXd, VectorXd> dataR = parseOneArm(measureTime, measureInstrumentR, measureHH, measureState.row(0));
     // std::cout << "\n /// L ///";
-    pair<VectorXd, VectorXd> dataL = parseOneArm(measureTime, measureInstrumentL, measureState.row(1));
+    pair<VectorXd, VectorXd> dataL = parseOneArm(measureTime, measureInstrumentL, measureHH, measureState.row(1));
 
     // measureState 저장
     measureState.block(0, 0, 1, 3) = dataR.second.transpose();
@@ -760,11 +763,11 @@ void PathManager::parseMeasure(MatrixXd &measureMatrix)
     finalTimeL = dataL.first(10);
 }
 
-pair<VectorXd, VectorXd> PathManager::parseOneArm(VectorXd t, VectorXd inst, VectorXd stateVector)
+pair<VectorXd, VectorXd> PathManager::parseOneArm(VectorXd t, VectorXd inst, VectorXd hh, VectorXd stateVector)
 {
     map<int, int> instrumentMapping = {
-        {1, 0}, {2, 1}, {3, 2}, {4, 3}, {5, 4}, {6, 5}, {7, 6}, {8, 7}, {11, 0}, {51, 0}, {61, 0}, {71, 0}, {81, 0}, {91, 0}};
-    //    S       FT      MT      HT      HH       R      RC      LC       S        S        S        S        S        S
+        {1, 0}, {2, 1}, {3, 2}, {4, 3}, {5, 4}, {6, 5}, {7, 6}, {8, 7}, {11, 0}, {51, 0}, {61, 0}, {71, 0}, {81, 0}, {91, 0}, {9, 8}};
+    //    S       FT      MT      HT      HH       R      RC      LC       S        S        S        S        S        S     Open HH
 
     VectorXd initialInstrument = VectorXd::Zero(9), finalInstrument = VectorXd::Zero(9);
     VectorXd outputVector = VectorXd::Zero(20);
@@ -789,7 +792,7 @@ pair<VectorXd, VectorXd> PathManager::parseOneArm(VectorXd t, VectorXd inst, Vec
         {
             detectHit = true;
             detectTime = t(i);
-            detectInst = inst(i);
+            detectInst = checkOpenHH(inst(i), hh(i));
 
             break;
         }
@@ -846,7 +849,7 @@ pair<VectorXd, VectorXd> PathManager::parseOneArm(VectorXd t, VectorXd inst, Vec
         {
             nextState = 3;
 
-            initialInstNum = inst(0);
+            initialInstNum = checkOpenHH(inst(0), hh(0));
             finalInstNum = detectInst;
 
             initialT = t(0);
@@ -857,8 +860,8 @@ pair<VectorXd, VectorXd> PathManager::parseOneArm(VectorXd t, VectorXd inst, Vec
         {
             nextState = 1;
 
-            initialInstNum = inst(0);
-            finalInstNum = inst(0);
+            initialInstNum = checkOpenHH(inst(0), hh(0));
+            finalInstNum = checkOpenHH(inst(0), hh(0));
 
             initialT = t(0);
             finalT = t(1);
@@ -878,6 +881,25 @@ pair<VectorXd, VectorXd> PathManager::parseOneArm(VectorXd t, VectorXd inst, Vec
     // std::cout << "\n";
 
     return std::make_pair(outputVector, nextStateVector);
+}
+
+int PathManager::checkOpenHH(int instNum, int isHH)
+{
+    if (instNum == 5)       // 하이햇인 경우
+    {
+        if (isHH == 0)  // 오픈
+        {
+            return 9;
+        }
+        else            // 클로즈
+        {
+            return instNum;
+        }
+    }
+    else                // 하이햇이 아니면 그냥 반환
+    {
+        return instNum;
+    }
 }
 
 pair<VectorXd, VectorXd> PathManager::getTargetPosition(VectorXd inst)
@@ -1444,18 +1466,27 @@ PathManager::wristTime PathManager::getWristTime(float t1, float t2, int intensi
     wristTime wristTime;
 
     wristTime.releaseTime = std::min(0.2 * (T), 0.1);
-
-    wristTime.liftTime = std::max(0.6 * (T), T - 0.2);
     
     wristTime.hitTime = T;
 
     if (state == 2)
     {
+        wristTime.liftTime = std::max(0.6 * (T), T - 0.2);
         t2 - t1 < 0.15 ? wristTime.stayTime = 0.45 * T : wristTime.stayTime = 0.47 * (T) - 0.05;
     }
     else
     {
-        t2 - t1 < 0.3 ? wristTime.stayTime = wristTime.liftTime : wristTime.stayTime = 0.5 * (T);
+        wristTime.liftTime = std::max(0.6 * (T), T - 0.2);
+        if (T <= 0.3)
+        {
+            wristTime.liftTime = 0.5 * (T);
+        }
+        else
+        {
+            wristTime.liftTime = std::max(0.6 * (T), T - 0.2);
+        }
+        wristTime.stayTime = 0.5 * (T);
+        // t2 - t1 < 0.3 ? wristTime.stayTime = wristTime.liftTime : wristTime.stayTime = 0.5 * (T);
     }
     
     return wristTime;
@@ -1488,13 +1519,12 @@ PathManager::HHTime PathManager::getHHTime(float t1, float t2)
 
 PathManager::elbowAngle PathManager::getElbowAngle(float t1, float t2, int intensity)
 {
-    // float T = (t2 - t1);
-    float T = (t2 - t1) * 100.0 / (float)bpmOfScore;
+    float T = (t2 - t1);
     elbowAngle elbowAngle;
+
     int temp = intensity;
-    // float intensityFactor = 0.4 * intensity + 0.2; // 1 : 약하게   2 : 기본    3 : 강하게
-    // double intensityFactor = 0.0179 * intensity * intensity + 0.1464 * intensity + 0.1286;  // 1 : 30%, 2: 50%, 3: 70%, 4: 100%, 5: 130%, 6: 170%, 7: 200%
-    double intensityFactor = 0.01786 * temp * temp + 0.11071 * temp;  // 1: 0%, 2: 30%, 3: 50%, 4: 70%, 5: 100%, 6: 130%, 7: 170%, 8: 200%  
+
+    double intensityFactor = 0.1 * temp + 0.5;  // 1: 0%, 2: 70%, 3: 80%, 4: 90%, 5: 100%, 6: 110%, 7: 120%  
 
     if (T < 0.2)
     {
@@ -1502,14 +1532,12 @@ PathManager::elbowAngle PathManager::getElbowAngle(float t1, float t2, int inten
     }
     else if (T <= 0.5)
     {
-        elbowAngle.liftAngle = (T) * (10 * M_PI / 180.0) / 0.5;
+        elbowAngle.liftAngle = (T) * (15 * M_PI / 180.0) / 0.5;
     }
     else
     {
-        elbowAngle.liftAngle = 10 * M_PI / 180.0;
+        elbowAngle.liftAngle = 15 * M_PI / 180.0;
     }
-
-    // elbowAngle.liftAngle = std::min((T) * (10 * M_PI / 180.0) / 0.5, (10 * M_PI / 180.0));
 
     elbowAngle.liftAngle = elbowAngle.stayAngle + elbowAngle.liftAngle * intensityFactor;
 
@@ -1518,18 +1546,19 @@ PathManager::elbowAngle PathManager::getElbowAngle(float t1, float t2, int inten
 
 PathManager::wristAngle PathManager::getWristAngle(float t1, float t2, int intensity)
 {
-    // float T = (t2 - t1);
-    float T = (t2 - t1) * 100.0 / (float)bpmOfScore;
+    float T = (t2 - t1);
     wristAngle wristAngle;
+
     int temp = intensity;
-    // float intensityFactor = 0.4 * intensity + 0.2; // 1 : 약하게    2 : 기본    3 : 강하게
-    // double intensityFactor = 0.0179 * intensity * intensity + 0.1464 * intensity + 0.1286;  // 1 : 30%, 2: 50%, 3: 70%, 4: 100%, 5: 130%, 6: 170%, 7: 200%
-    double intensityFactor = 0.01786 * temp * temp + 0.11071 * temp;  // 1: 0%, 2: 30%, 3: 50%, 4: 70%, 5: 100%, 6: 130%, 7: 170%, 8: 200%  
+   
+    double intensityFactor = 0.1 * temp + 0.5;  // 1: 0%, 2: 70%, 3: 80%, 4: 90%, 5: 100%, 6: 110%, 7: 120%   
 
     wristAngle.stayAngle = 10 * M_PI / 180.0;
-    // T < 0.5 ? wristAngle.liftAngle = (-100 * ((T) - 0.5) * ((T) - 0.5) + 30) * M_PI / 180.0 : wristAngle.liftAngle = 30  * M_PI / 180.0;
-    T < 0.5 ? wristAngle.liftAngle = (60 * T) * M_PI / 180.0 : wristAngle.liftAngle = 30  * M_PI / 180.0;
+
+    T < 0.5 ? wristAngle.liftAngle = (80 * T) * M_PI / 180.0 : wristAngle.liftAngle = 40  * M_PI / 180.0;
+
     wristAngle.pressAngle = -5 * M_PI / 180.0;
+
     if (intensity != 1)
     {
         wristAngle.liftAngle = wristAngle.stayAngle + wristAngle.liftAngle * intensityFactor;
@@ -2764,6 +2793,8 @@ MatrixXd PathManager::parseMeasurePC(MatrixXd &measureMatrix, MatrixXd &state)
     VectorXd measureInstrumentR = measureMatrix.col(2);
     VectorXd measureInstrumentL = measureMatrix.col(3);
 
+    VectorXd measureHH = measureMatrix.col(7);
+
     MatrixXd nextState(2, 3);
 
     // parsing data
@@ -2773,9 +2804,9 @@ MatrixXd PathManager::parseMeasurePC(MatrixXd &measureMatrix, MatrixXd &state)
     // std::cout << "\n /// t1 -> t2 : " << line_t1 << " -> " << line_t2 << " = " << line_t2 - line_t1 <<  "\n";
 
     // std::cout << "\n /// R ///";
-    pair<VectorXd, VectorXd> dataR = parseOneArm(measureTime, measureInstrumentR, state.row(0));
+    pair<VectorXd, VectorXd> dataR = parseOneArm(measureTime, measureInstrumentR, measureHH, state.row(0));
     // std::cout << "\n /// L ///";
-    pair<VectorXd, VectorXd> dataL = parseOneArm(measureTime, measureInstrumentL, state.row(1));
+    pair<VectorXd, VectorXd> dataL = parseOneArm(measureTime, measureInstrumentL, measureHH, state.row(1));
 
     // nextState 저장
     nextState.block(0, 0, 1, 3) = dataR.second.transpose();

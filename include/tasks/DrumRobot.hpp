@@ -183,7 +183,8 @@ private:
     // void sendTFGProcess();
 
     // python (magenta)
-    void runPythonForMagenta();
+    void runPythonForMagenta();         // 기존 파이썬 코드 실행 후 악보 생성
+    void getMagentaSheet();    // 파이썬 코드 실행 x 악보만 생성
 
     // System
     // void clearBufferforRecord();
