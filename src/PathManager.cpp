@@ -476,8 +476,6 @@ void PathManager::generateTrajectory(MatrixXd &measureMatrix)
         // 각 관절에 더해줄 각도
         generateHit(tHitR, tHitL, Ht);
 
-        // fun.appendToCSV_DATA("hitTime", hitR_t2 - hitR_t1, hitL_t2 - hitL_t1, 0);
-
         // 양 발 모터 각도
         Ht.bass = makeBassAngle(i * dt, bassTimeR, bassState);
         Ht.hihat = makeHHAngle(i * dt, HHTimeL, HHstate, nextHHclosed);
@@ -718,11 +716,6 @@ VectorXd PathManager::getMotorPos()
     }
 
     return Qf;
-}
-
-void PathManager::getAddStanceCoefficient(VectorXd Q1, VectorXd Q2, double t)
-{
-    // 이인우
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1450,10 +1443,9 @@ void PathManager::makeHitCoefficient()
 
 PathManager::elbowTime PathManager::getElbowTime(float t1, float t2, int intensity)
 {
-    float T = t2 - t1;
     elbowTime elbowTime;
+    float T = t2 - t1; // 전체 타격 시간
 
-    elbowTime.stayTime = std::max(0.5 * (T), T - 0.2);
     elbowTime.liftTime = std::max(0.5 * (T), T - 0.2);
     elbowTime.hitTime = T;
     
@@ -1462,21 +1454,22 @@ PathManager::elbowTime PathManager::getElbowTime(float t1, float t2, int intensi
 
 PathManager::wristTime PathManager::getWristTime(float t1, float t2, int intensity, int state)
 {
-    float T = t2 - t1;
     wristTime wristTime;
+    float T = t2 - t1;  // 전체 타격 시간
 
+    // 타격 후 복귀 시간
     wristTime.releaseTime = std::min(0.2 * (T), 0.1);
-    
-    wristTime.hitTime = T;
 
     if (state == 2)
     {
+        // state 2 (0 -> 1) 일 때
         wristTime.liftTime = std::max(0.6 * (T), T - 0.2);
         t2 - t1 < 0.15 ? wristTime.stayTime = 0.45 * T : wristTime.stayTime = 0.47 * (T) - 0.05;
     }
     else
     {
-        wristTime.liftTime = std::max(0.6 * (T), T - 0.2);
+        // state 1 or 3일 때 (복귀 모션 필요)
+        // state 3일 때 시간이 0.3초 이하이면 전체 타격 시간의 절반을 기준으로 들고 내리는 궤적(stay 없음)
         if (T <= 0.3)
         {
             wristTime.liftTime = 0.5 * (T);
@@ -1486,19 +1479,20 @@ PathManager::wristTime PathManager::getWristTime(float t1, float t2, int intensi
             wristTime.liftTime = std::max(0.6 * (T), T - 0.2);
         }
         wristTime.stayTime = 0.5 * (T);
-        // t2 - t1 < 0.3 ? wristTime.stayTime = wristTime.liftTime : wristTime.stayTime = 0.5 * (T);
     }
+
+    wristTime.hitTime = T;
     
     return wristTime;
 }
 
 PathManager::bassTime PathManager::getBassTime(float t1, float t2)
 {
-    float T = t2 - t1;
     bassTime bassTime;
+    float T = t2 - t1;      // 전체 타격 시간
     
-    bassTime.liftTime = std::max(0.6 * (T), T - 0.2);
-    bassTime.stayTime = 0.45 * (T);
+    bassTime.liftTime = std::max(0.6 * (T), T - 0.2);   // 전체 타격 시간의 60% , 최대값은 0.2초
+    bassTime.stayTime = 0.45 * (T);     // 전체 타격 시간의 45%
     
     bassTime.hitTime = T;
 
@@ -1519,19 +1513,19 @@ PathManager::HHTime PathManager::getHHTime(float t1, float t2)
 
 PathManager::elbowAngle PathManager::getElbowAngle(float t1, float t2, int intensity)
 {
-    float T = (t2 - t1);
     elbowAngle elbowAngle;
-
-    int temp = intensity;
-
-    double intensityFactor = 0.1 * temp + 0.5;  // 1: 0%, 2: 70%, 3: 80%, 4: 90%, 5: 100%, 6: 110%, 7: 120%  
+    float T = (t2 - t1);        // 전체 타격 시간
+    
+    double intensityFactor = 0.1 * intensity + 0.5;  // 1: 0%, 2: 70%, 3: 80%, 4: 90%, 5: 100%, 6: 110%, 7: 120%  
 
     if (T < 0.2)
     {
+        // 0.2초보다 짧을 땐 안 들게
         elbowAngle.liftAngle = 0;
     }
     else if (T <= 0.5)
     {
+        // 0.2초 ~ 0.5초에선 시간에 따라 선형적으로 줄여서 사용
         elbowAngle.liftAngle = (T) * (15 * M_PI / 180.0) / 0.5;
     }
     else
@@ -1546,26 +1540,22 @@ PathManager::elbowAngle PathManager::getElbowAngle(float t1, float t2, int inten
 
 PathManager::wristAngle PathManager::getWristAngle(float t1, float t2, int intensity)
 {
-    float T = (t2 - t1);
     wristAngle wristAngle;
-
-    int temp = intensity;
+    float T = (t2 - t1);        // 타격 전체 시간
    
-    double intensityFactor = 0.1 * temp + 0.5;  // 1: 0%, 2: 70%, 3: 80%, 4: 90%, 5: 100%, 6: 110%, 7: 120%   
+    double intensityFactor = 0.1 * intensity + 0.5;  // 1: 0%, 2: 70%, 3: 80%, 4: 90%, 5: 100%, 6: 110%, 7: 120% 
 
-    wristAngle.stayAngle = 10 * M_PI / 180.0;
-
+    // Lift Angle (최고점 각도) 계산, 최대 40도 * 세기
     T < 0.5 ? wristAngle.liftAngle = (80 * T) * M_PI / 180.0 : wristAngle.liftAngle = 40  * M_PI / 180.0;
 
-    wristAngle.pressAngle = -5 * M_PI / 180.0;
-
-    if (intensity != 1)
+    if (intensity == 1)
     {
-        wristAngle.liftAngle = wristAngle.stayAngle + wristAngle.liftAngle * intensityFactor;
+        // intensity 1일 땐 아예 안들도록
+        wristAngle.liftAngle = wristAngle.stayAngle;
     }
     else
     {
-        wristAngle.liftAngle = wristAngle.stayAngle;
+        wristAngle.liftAngle = wristAngle.stayAngle + wristAngle.liftAngle * intensityFactor;
     }
     
     return wristAngle;
@@ -1942,17 +1932,21 @@ double PathManager::makeWristAngle(double t, wristTime wT, MatrixXd coefficientM
 double PathManager::makeBassAngle(double t, bassTime bt, int bassState)
 {
     bassAngle bA;
+    // Xl : lift 궤적 , Xh : hit 궤적
     double X0 = 0.0, Xp = 0.0, Xl = 0.0, Xh = 0.0;
 
-    X0 = bA.stayAngle;
-    Xp = bA.pressAngle;
+    X0 = bA.stayAngle;          // 준비 각도
+    Xp = bA.pressAngle;         // 최저점 각도
 
+    // 타격 시간이 0.2초 이하일 때
     if (bt.hitTime <= 0.2)
     {
         if (bassState == 3)
         {
+            // 짧은 시간에 연속으로 타격하는 경우 덜 들도록 올라오는 궤적과 내려가는 궤적을 합쳐서 사용 (- 영역이라 가능)
             double temp_liftTime = bt.hitTime / 2;
             Xl = -0.5 * (Xp - X0) * (cos(M_PI * (t / bt.hitTime + 1)) - 1);
+
             if (t < temp_liftTime)
             {
                 Xh = 0;
@@ -1964,11 +1958,13 @@ double PathManager::makeBassAngle(double t, bassTime bt, int bassState)
         }
         else if (bassState == 1)
         {
+            // 내려가는 궤적
             Xl = -0.5 * (Xp - X0) * (cos(M_PI * (t / bt.hitTime + 1)) - 1);
             Xh = 0;
         }
         else if (bassState == 2)
         {
+            // 올라가는 궤적
             Xl = 0;
             Xh = -0.5 * (Xp - X0) * (cos(M_PI * t / bt.hitTime) - 1);
         }
@@ -1978,10 +1974,13 @@ double PathManager::makeBassAngle(double t, bassTime bt, int bassState)
             Xh = 0;
         } 
     }
+
+    // 0.2초 이상일 때 시간에 따른 궤적
     else if (t < bt.stayTime)
     {
-        if(bassState == 1 || bassState == 3)
+        if(bassState == 1 || bassState == 3)    
         {
+            // 내려가는 궤적
             Xl = -0.5 * (Xp - X0) * (cos(M_PI * (t / bt.stayTime + 1)) - 1);
             Xh = 0;
         }
@@ -1995,6 +1994,7 @@ double PathManager::makeBassAngle(double t, bassTime bt, int bassState)
     {
         if (bassState == 2 || bassState == 3)
         {
+            // 올라가는 궤적
             Xl = 0;
             Xh = -0.5 * (Xp - X0) * (cos(M_PI * (t - bt.liftTime) / (bt.hitTime - bt.liftTime)) - 1);
         }

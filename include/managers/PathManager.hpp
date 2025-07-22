@@ -132,7 +132,6 @@ private:
     // q1[rad], q2[rad], Vmax[rad/s], acc[rad/s^2], t[s], t2[s]
     VectorXd makeProfile(VectorXd &q1, VectorXd &q2, VectorXd &Vmax, float acc, float t, float t2);
     VectorXd getMotorPos();
-    void getAddStanceCoefficient(VectorXd Q1, VectorXd Q2, double t);
 
     /////////////////////////////////////////////////////////////////////////// Make Trajectory
     double line_t1, line_t2;           // 궤적 생성 시간
