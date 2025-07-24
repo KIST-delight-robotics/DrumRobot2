@@ -1557,7 +1557,7 @@ PathManager::wristAngle PathManager::getWristAngle(float t1, float t2, int inten
    
     if (intensity < 5)
     {
-        intensityFactor = 0.25 * intensity - 0.25;  // 
+        intensityFactor = 0.25 * intensity - 0.25;  // 1: 0%, 2: 25%, 3: 50%, 4: 75%
     }
     else
     {
