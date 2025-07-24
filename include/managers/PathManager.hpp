@@ -241,7 +241,7 @@ private:
 
     typedef struct {
         double openAngle = -3*M_PI/180.0;
-        double closedAngle = -15*M_PI/180.0;
+        double closedAngle = -27*M_PI/180.0;
     }HHAngle;
 
     elbowTime elbowTimeR, elbowTimeL;
