@@ -528,7 +528,9 @@ void PathManager::solveIKandPushCommand()
         nextP = hitAngleQueue.front();
         hitAngleQueue.pop();
 
+        q(3) += nextP.elbowR / 3.0;
         q(4) += nextP.elbowR;
+        q(5) += nextP.elbowL / 3.0;
         q(6) += nextP.elbowL;
         q(7) += nextP.wristR;
         q(8) += nextP.wristL;
@@ -1515,8 +1517,17 @@ PathManager::elbowAngle PathManager::getElbowAngle(float t1, float t2, int inten
 {
     elbowAngle elbowAngle;
     float T = (t2 - t1);        // 전체 타격 시간
-    
-    double intensityFactor = 0.1 * intensity + 0.5;  // 1: 0%, 2: 70%, 3: 80%, 4: 90%, 5: 100%, 6: 110%, 7: 120%  
+
+    double intensityFactor;  // 1: 0%, 2: 0%, 3: 0%, 4: 90%, 5: 100%, 6: 110%, 7: 120%  
+
+    if (intensity <= 3)
+    {
+        intensityFactor = 0;
+    }
+    else
+    {
+        intensityFactor = 0.1 * intensity + 0.5;  
+    }
 
     if (T < 0.2)
     {
@@ -1542,8 +1553,16 @@ PathManager::wristAngle PathManager::getWristAngle(float t1, float t2, int inten
 {
     wristAngle wristAngle;
     float T = (t2 - t1);        // 타격 전체 시간
+    double intensityFactor;
    
-    double intensityFactor = 0.1 * intensity + 0.5;  // 1: 0%, 2: 70%, 3: 80%, 4: 90%, 5: 100%, 6: 110%, 7: 120% 
+    if (intensity < 5)
+    {
+        intensityFactor = 0.25 * intensity - 0.25;  // 
+    }
+    else
+    {
+        intensityFactor = 0.1 * intensity + 0.5;  // 5: 100%, 6: 110%, 7: 120% 
+    }
 
     // Lift Angle (최고점 각도) 계산, 최대 40도 * 세기
     T < 0.5 ? wristAngle.liftAngle = (80 * T) * M_PI / 180.0 : wristAngle.liftAngle = 40  * M_PI / 180.0;
@@ -1579,26 +1598,6 @@ MatrixXd PathManager::makeElbowCoefficient(int state, elbowTime eT, elbowAngle e
     }
     else if (state == 1)
     {
-        // Release - Stay
-
-        // // Release
-        // A.resize(4, 4);
-        // b.resize(4, 1);
-
-        // A << 1, 0, 0, 0,
-        //     1, eT.stayTime, eT.stayTime * eT.stayTime, eT.stayTime * eT.stayTime * eT.stayTime,
-        //     0, 1, 0, 0,
-        //     0, 1, 2 * eT.stayTime, 3 * eT.stayTime * eT.stayTime;
-
-        // b << 0, eA.stayAngle, 0, 0;
-
-        // A_1 = A.inverse();
-        // sol = A_1 * b;
-
-        // elbowCoefficient.resize(2, 4);
-        // elbowCoefficient << sol(0), sol(1), sol(2), sol(3), // Release
-        //                     eA.stayAngle, 0, 0, 0;          // Stay
-
         // Release
         if (eA.stayAngle == 0)
         {
@@ -1627,13 +1626,11 @@ MatrixXd PathManager::makeElbowCoefficient(int state, elbowTime eT, elbowAngle e
     }
     else if (state == 2)
     {
-        // Lift - Hit
-
         // Lift
         A.resize(4, 4);
         b.resize(4, 1);
 
-        if(eA.stayAngle == eA.liftAngle)
+        if(eA.liftAngle == eA.stayAngle)
         {
             sol.resize(4,1);
             sol << eA.stayAngle, 0, 0, 0;
@@ -1652,10 +1649,10 @@ MatrixXd PathManager::makeElbowCoefficient(int state, elbowTime eT, elbowAngle e
         }
 
         // Hit
-        if (eA.liftAngle == 0)
+        if (eA.liftAngle == eA.stayAngle)
         {
-            sol.resize(4, 1);
-            sol << 0, 0, 0, 0;
+            sol2.resize(4, 1);
+            sol2 << 0, 0, 0, 0;
         }
         else
         {
@@ -1679,10 +1676,8 @@ MatrixXd PathManager::makeElbowCoefficient(int state, elbowTime eT, elbowAngle e
     }
     else if (state == 3)
     {
-        // Lift - Hit
-
         // Lift
-        if (eA.liftAngle == 0)
+        if (eA.liftAngle == eA.stayAngle)
         {
             sol.resize(4, 1);
             sol << 0, 0, 0, 0;
