@@ -550,9 +550,8 @@ float CanManager::calTorque(std::shared_ptr<MaxonMotor> maxonMotor, const MaxonD
         //여기에서 보상을 해주고!!
         // 무게 중력 거리
         float gearRatio = 35.0;
-        float stickLengthMeter = 0.17;
-        float stickMassKg = 0.47;
-        float div = 10.0;
+        float stickLengthMeter = 0.121;
+        float stickMassKg = 0.0845;
         float gravity_angle = 0;
         for (auto &motor_pair : motors)
         {
@@ -581,8 +580,7 @@ float CanManager::calTorque(std::shared_ptr<MaxonMotor> maxonMotor, const MaxonD
         
         gravity_angle += maxonMotor -> jointAngle;
 
-        // float gravityTorqueNm =  stickMassKg * 9.81 * stickLengthMeter * std::sin(gravity_angle - 1.5708) / gearRatio; // gravity angle에서 90도 빼주기 (지면 기준 각도로 변환)
-        float gravityTorqueNm =  stickMassKg * 9.81 * stickLengthMeter * std::sin(gravity_angle) / gearRatio / div;
+        float gravityTorqueNm =  stickMassKg * 9.81 * stickLengthMeter * std::sin(gravity_angle) / gearRatio;
 
         torquemNm -= gravityTorqueNm * 1000.0;  // N·m -> mN·m 
 

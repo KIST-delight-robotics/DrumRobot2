@@ -231,7 +231,7 @@ private:
     typedef struct {
         double stayAngle = 10*M_PI/180.0;
         double pressAngle = -5*M_PI/180.0;
-        double liftAngle = 30*M_PI/180.0;
+        double liftAngle = 40*M_PI/180.0;
     }wristAngle;
 
     typedef struct {
@@ -241,7 +241,7 @@ private:
 
     typedef struct {
         double openAngle = -3*M_PI/180.0;
-        double closedAngle = -27*M_PI/180.0;
+        double closedAngle = -22*M_PI/180.0;
     }HHAngle;
 
     elbowTime elbowTimeR, elbowTimeL;

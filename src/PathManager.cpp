@@ -1464,9 +1464,8 @@ PathManager::wristTime PathManager::getWristTime(float t1, float t2, int intensi
 
     if (state == 2)
     {
-        // state 2 (0 -> 1) 일 때
-        wristTime.liftTime = std::max(0.6 * (T), T - 0.2);
-        t2 - t1 < 0.15 ? wristTime.stayTime = 0.45 * T : wristTime.stayTime = 0.47 * (T) - 0.05;
+        wristTime.liftTime = std::max(0.6 * (T), T - 0.2);      // 최고점에 도달하는 시간 
+        wristTime.stayTime = 0.45 * T;                          // 상승하기 시작하는 시간
     }
     else
     {
@@ -1493,8 +1492,8 @@ PathManager::bassTime PathManager::getBassTime(float t1, float t2)
     bassTime bassTime;
     float T = t2 - t1;      // 전체 타격 시간
     
-    bassTime.liftTime = std::max(0.6 * (T), T - 0.2);   // 전체 타격 시간의 60% , 최대값은 0.2초
-    bassTime.stayTime = 0.45 * (T);     // 전체 타격 시간의 45%
+    bassTime.liftTime = std::max(0.6 * (T), T - 0.2);   // 최고점 시간, 전체 타격 시간의 60% , 타격 시간의 최대값은 0.2초
+    bassTime.stayTime = 0.45 * (T);     // 복귀 시간, 전체 타격 시간의 45%
     
     bassTime.hitTime = T;
 
@@ -1507,7 +1506,7 @@ PathManager::HHTime PathManager::getHHTime(float t1, float t2)
     HHTime HHTime;
 
     HHTime.liftTime = 0.2 * T;
-    HHTime.settlingTime = 0.8 * T;
+    HHTime.settlingTime = std::min(0.8 * T, T - 0.1);
     HHTime.hitTime = T;
 
     return HHTime;
@@ -1778,7 +1777,7 @@ MatrixXd PathManager::makeWristCoefficient(int state, wristTime wT, wristAngle w
         A.resize(4, 4);
         b.resize(4, 1);
 
-        // Lift Angle = Stay Angle일 때 -> 아주 작게 칠 때
+        // Lift Angle = Stay Angle일 때(아주 작게 칠 때) -> 드는 궤적 없이 내리기만
         if (wA.stayAngle == wA.liftAngle)
         {
             sol.resize(4, 1);
@@ -1938,7 +1937,8 @@ double PathManager::makeBassAngle(double t, bassTime bt, int bassState)
     {
         if (bassState == 3)
         {
-            // 짧은 시간에 연속으로 타격하는 경우 덜 들도록 올라오는 궤적과 내려가는 궤적을 합쳐서 사용 (- 영역이라 가능)
+            // 짧은 시간에 연속으로 타격하는 경우 덜 들도록, 올라오는 궤적과 내려가는 궤적을 합쳐서 사용 (- 영역이라 가능)
+            // 조정수 박사님 자료 BassAngle 부분 참고
             double temp_liftTime = bt.hitTime / 2;
             Xl = -0.5 * (Xp - X0) * (cos(M_PI * (t / bt.hitTime + 1)) - 1);
 
@@ -1951,15 +1951,17 @@ double PathManager::makeBassAngle(double t, bassTime bt, int bassState)
                 Xh = -0.5 * (Xp - X0) * (cos(M_PI * (t - temp_liftTime) / (bt.hitTime - temp_liftTime)) - 1);
             }
         }
+
+        // 시간이 짧을 땐 전체 시간을 다 써서 궤적 생성
         else if (bassState == 1)
         {
-            // 내려가는 궤적
+            // 복귀하는 궤적
             Xl = -0.5 * (Xp - X0) * (cos(M_PI * (t / bt.hitTime + 1)) - 1);
             Xh = 0;
         }
         else if (bassState == 2)
         {
-            // 올라가는 궤적
+            // 타격하는 궤적
             Xl = 0;
             Xh = -0.5 * (Xp - X0) * (cos(M_PI * t / bt.hitTime) - 1);
         }
@@ -1970,12 +1972,13 @@ double PathManager::makeBassAngle(double t, bassTime bt, int bassState)
         } 
     }
 
-    // 0.2초 이상일 때 시간에 따른 궤적
+    // 0.2초 이상일 때 
+    // StayTime 이전 -> 타격 후 들어올림
     else if (t < bt.stayTime)
     {
         if(bassState == 1 || bassState == 3)    
         {
-            // 내려가는 궤적
+            // 복귀하는 궤적
             Xl = -0.5 * (Xp - X0) * (cos(M_PI * (t / bt.stayTime + 1)) - 1);
             Xh = 0;
         }
@@ -1985,11 +1988,13 @@ double PathManager::makeBassAngle(double t, bassTime bt, int bassState)
             Xh = 0;
         }
     }
+
+    // LiftTime부터 HitTime까지 -> 타격
     else if (t > bt.liftTime && t <= bt.hitTime)
     {
         if (bassState == 2 || bassState == 3)
         {
-            // 올라가는 궤적
+            // 타격하는 궤적
             Xl = 0;
             Xh = -0.5 * (Xp - X0) * (cos(M_PI * (t - bt.liftTime) / (bt.hitTime - bt.liftTime)) - 1);
         }
@@ -2000,7 +2005,7 @@ double PathManager::makeBassAngle(double t, bassTime bt, int bassState)
         }
     }
     
-    return X0 + Xl + Xh;
+    return X0 + Xl + Xh;        // 준비 각도 + 하강 각도 + 상승 각도
 }
 
 double PathManager::makeHHAngle(double t, HHTime ht, int HHstate, int nextHHclosed)
@@ -2018,7 +2023,7 @@ double PathManager::makeHHAngle(double t, HHTime ht, int HHstate, int nextHHclos
             Xl = X0;
         }
 
-    // 한 박의 시간이 0.2초보다 작으면 전체 시간에 걸쳐 궤적 생성
+    // 한 박의 시간이 0.2초 이하면 전체 시간에 걸쳐 궤적 생성
     if(ht.hitTime <= 0.2)
     {
         double temp_liftTime = ht.hitTime / 2;
