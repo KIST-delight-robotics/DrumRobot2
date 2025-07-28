@@ -1244,7 +1244,7 @@ void DrumRobot::initializePlayState()
 bool DrumRobot::selectPlayMode()
 {
     bool useMagenta = false;
-    std::string input;
+    int input;
 
     ////////////////////////////////////////////
     // 악보, bpm, 연주모드 입력받기
@@ -1256,6 +1256,7 @@ bool DrumRobot::selectPlayMode()
     {
         txtPath = magentaPath + txtFileName + ".txt";
         useMagenta = true;
+        cout << "\nuseMagenta--------------------\n";
     }
     else
     {
@@ -1287,7 +1288,7 @@ bool DrumRobot::selectPlayMode()
     std::cout << "\nEnter (Drumming With Music : 1 / Just Drumming : 2): ";
     std::cin >> input;
 
-    if (input == "1")
+    if (input == 1)
     {
         std::string wavFileName;
         std::cout << "Enter Music Name: ";
@@ -1298,6 +1299,7 @@ bool DrumRobot::selectPlayMode()
     else //2
     {
         playMusic = false;
+        cout << "\nplayMusic--------------------\n";
     }
 
     ////////////////////////////////////////////
@@ -1314,7 +1316,7 @@ bool DrumRobot::selectPlayMode()
         std::cin >> input;
     }
 
-    if (input == "1")
+    if (input == 1)
     {
         float waitingTime = 1;
         std::cout << "Enter Waiting Time: ";
@@ -1324,7 +1326,7 @@ bool DrumRobot::selectPlayMode()
         syncTime = std::chrono::system_clock::now() + std::chrono::milliseconds((int)waitingTime);
         setWaitingTime = true;
     }
-    else if (input == "2")
+    else if (input == 2)
     {
         float waitingTime = 1;
         std::cout << "Enter Waiting Time: ";
