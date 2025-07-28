@@ -25,15 +25,13 @@ void PathManager::getDrumPositoin()
     }
 
     // Read data into a 2D vector
-    MatrixXd instXYZ(6, 8);
+    MatrixXd instXYZ(6, 9);
 
     for (int i = 0; i < 6; ++i)
     {
-        for (int j = 0; j < 8; ++j)
+        for (int j = 0; j < 9; ++j)
         {
             inputFile >> instXYZ(i, j);
-            if (i == 1 || i == 4)
-                instXYZ(i, j) *= 1.0;
         }
     }
 
@@ -49,6 +47,7 @@ void PathManager::getDrumPositoin()
     Vector3d right_R;
     Vector3d right_RC;
     Vector3d right_LC;
+    Vector3d right_OHH;
 
     Vector3d left_S;
     Vector3d left_FT;
@@ -58,6 +57,7 @@ void PathManager::getDrumPositoin()
     Vector3d left_R;
     Vector3d left_RC;
     Vector3d left_LC;
+    Vector3d left_OHH;
 
     for (int i = 0; i < 3; ++i)
     {
@@ -69,6 +69,7 @@ void PathManager::getDrumPositoin()
         right_R(i) = instXYZ(i, 5);
         right_RC(i) = instXYZ(i, 6);
         right_LC(i) = instXYZ(i, 7);
+        right_OHH(i) = instXYZ(i, 8);
 
         left_S(i) = instXYZ(i + 3, 0);
         left_FT(i) = instXYZ(i + 3, 1);
@@ -78,19 +79,19 @@ void PathManager::getDrumPositoin()
         left_R(i) = instXYZ(i + 3, 5);
         left_RC(i) = instXYZ(i + 3, 6);
         left_LC(i) = instXYZ(i + 3, 7);
+        left_OHH(i) = instXYZ(i + 3, 8);
     }
 
-    drumCoordinateR << right_S, right_FT, right_MT, right_HT, right_HH, right_R, right_RC, right_LC, right_LC;
-    drumCoordinateL << left_S, left_FT, left_MT, left_HT, left_HH, left_R, left_RC, left_LC, left_LC;
+    drumCoordinateR << right_S, right_FT, right_MT, right_HT, right_HH, right_R, right_RC, right_LC, right_OHH;
+    drumCoordinateL << left_S, left_FT, left_MT, left_HT, left_HH, left_R, left_RC, left_LC, left_OHH;
 
     // 악기 별 타격 시 손목 각도
     wristAnglesR.resize(1, 9);
     wristAnglesL.resize(1, 9);
 
-    //              S                  FT                  MT                  HT                  HH                  R                   RC                 LC
-    wristAnglesR << 10.0*M_PI/180.0,   10.0*M_PI/180.0,     0.0*M_PI/180.0,     0.0*M_PI/180.0,    10.0*M_PI/180.0,    15.0*M_PI/180.0,    10.0*M_PI/180.0,    10.0*M_PI/180.0, 0;
-    wristAnglesL << 10.0*M_PI/180.0,   10.0*M_PI/180.0,     0.0*M_PI/180.0,     0.0*M_PI/180.0,    10.0*M_PI/180.0,    15.0*M_PI/180.0,    10.0*M_PI/180.0,    10.0*M_PI/180.0, 0;
-    // wristAnglesL << 0, 0, 0, 0, 0, 0, 0, 0, 0;
+    //              S                  FT                  MT                  HT                  HH                  R                   RC                 LC                Open HH
+    wristAnglesR << 10.0*M_PI/180.0,   10.0*M_PI/180.0,     5.0*M_PI/180.0,     5.0*M_PI/180.0,    10.0*M_PI/180.0,    15.0*M_PI/180.0,    10.0*M_PI/180.0,   10.0*M_PI/180.0,  10.0*M_PI/180.0;
+    wristAnglesL << 10.0*M_PI/180.0,   10.0*M_PI/180.0,     5.0*M_PI/180.0,     5.0*M_PI/180.0,    10.0*M_PI/180.0,    15.0*M_PI/180.0,    10.0*M_PI/180.0,   10.0*M_PI/180.0,  10.0*M_PI/180.0;
 }
 
 void PathManager::setReadyAngle()
@@ -133,6 +134,7 @@ void PathManager::setReadyAngle()
     elbowAngle eA;
     wristAngle wA;
     bassAngle bA;
+    HHAngle hA;
     readyAngle(4) += eA.stayAngle;
     readyAngle(6) += eA.stayAngle;
     readyAngle(7) += wA.stayAngle;
@@ -140,7 +142,7 @@ void PathManager::setReadyAngle()
 
     readyAngle(9) = 0;
     readyAngle(10) = bA.stayAngle;
-    readyAngle(11) = 0;
+    readyAngle(11) = hA.openAngle;
 
     //////////////////////////////////////// Home Angle
     homeAngle.resize(12);
@@ -158,9 +160,9 @@ void PathManager::setReadyAngle()
         //              waist          R_arm1         L_arm1
     shutdownAngle << 0*M_PI/180.0, 135*M_PI/180.0, 45*M_PI/180.0,
     //                  R_arm2         R_arm3         L_arm2
-                    0*M_PI/180.0,  30*M_PI/180.0,   0*M_PI/180.0,
+                    0*M_PI/180.0,  20*M_PI/180.0,   0*M_PI/180.0,
     //                  L_arm3         R_wrist        L_wrist
-                    30*M_PI/180.0,  90*M_PI/180.0,  90*M_PI/180.0,
+                    20*M_PI/180.0,  90*M_PI/180.0,  90*M_PI/180.0,
     //          Test               R_foot         L_foot            
                     0,                 0,              0;
 }
@@ -440,6 +442,12 @@ void PathManager::generateTrajectory(MatrixXd &measureMatrix)
     int bassState = getBassState(bassHit, nextBaseHit);
     bassTimeR = getBassTime(line_t1, line_t2);
 
+    // Hihat 관련 변수
+    bool HHclosed = measureMatrix(0, 7);
+    int nextHHclosed = measureMatrix(1, 7);
+    int HHstate = getHHstate(HHclosed, nextHHclosed);
+    HHTimeL = getHHTime(line_t1, line_t2);
+    
     for (int i = 0; i < n; i++)
     {
         if (i >= k*n/repeat)
@@ -470,18 +478,20 @@ void PathManager::generateTrajectory(MatrixXd &measureMatrix)
 
         // 양 발 모터 각도
         Ht.bass = makeBassAngle(i * dt, bassTimeR, bassState);
-        Ht.hihat = 0.0;
+        Ht.hihat = makeHHAngle(i * dt, HHTimeL, HHstate, nextHHclosed);
         
         hitAngleQueue.push(Ht);
 
-        // // 데이터 저장
-        // std::string fileName;
+        // 데이터 저장
+        std::string fileName;
         // fileName = "hitAngle";
         // fun.appendToCSV_DATA(fileName, Ht.bass, Ht.wristL, Ht.wristR);
         // fileName = "HtR";
         // fun.appendToCSV_DATA(fileName, tHitR, hitR_t2 - hitR_t1, 0);
         // fileName = "HtL";
         // fun.appendToCSV_DATA(fileName, tHitL, hitL_t2 - hitL_t1, 0);
+        fileName = "HHAngle.csv";
+        fun.appendToCSV_DATA(fileName, Ht.hihat, Ht.bass, 0);
     }
 
     ///////////////////////////////////////////////////////////// 읽은 줄 삭제
@@ -518,7 +528,9 @@ void PathManager::solveIKandPushCommand()
         nextP = hitAngleQueue.front();
         hitAngleQueue.pop();
 
+        q(3) += nextP.elbowR / 3.0;
         q(4) += nextP.elbowR;
+        q(5) += nextP.elbowL / 3.0;
         q(6) += nextP.elbowL;
         q(7) += nextP.wristR;
         q(8) += nextP.wristL;
@@ -708,11 +720,6 @@ VectorXd PathManager::getMotorPos()
     return Qf;
 }
 
-void PathManager::getAddStanceCoefficient(VectorXd Q1, VectorXd Q2, double t)
-{
-    // 이인우
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 /*                       Make Task Space Trajectory                           */
 ////////////////////////////////////////////////////////////////////////////////
@@ -722,8 +729,8 @@ void PathManager::parseMeasure(MatrixXd &measureMatrix)
     VectorXd measureTime = measureMatrix.col(8);
     VectorXd measureInstrumentR = measureMatrix.col(2);
     VectorXd measureInstrumentL = measureMatrix.col(3);
-    // VectorXd measureIntensityR = measureMatrix.col(4);       // 이거 안쓰네?
-    // VectorXd measureIntensityL = measureMatrix.col(5);
+
+    VectorXd measureHH = measureMatrix.col(7);
 
     // parsing data
     line_t1 = measureMatrix(0, 8);
@@ -732,9 +739,9 @@ void PathManager::parseMeasure(MatrixXd &measureMatrix)
     // std::cout << "\n /// t1 -> t2 : " << line_t1 << " -> " << line_t2 << " : " << line_t2 - line_t1 <<  "\n";
 
     // std::cout << "\n /// R ///";
-    pair<VectorXd, VectorXd> dataR = parseOneArm(measureTime, measureInstrumentR, measureState.row(0));
+    pair<VectorXd, VectorXd> dataR = parseOneArm(measureTime, measureInstrumentR, measureHH, measureState.row(0));
     // std::cout << "\n /// L ///";
-    pair<VectorXd, VectorXd> dataL = parseOneArm(measureTime, measureInstrumentL, measureState.row(1));
+    pair<VectorXd, VectorXd> dataL = parseOneArm(measureTime, measureInstrumentL, measureHH, measureState.row(1));
 
     // measureState 저장
     measureState.block(0, 0, 1, 3) = dataR.second.transpose();
@@ -751,11 +758,11 @@ void PathManager::parseMeasure(MatrixXd &measureMatrix)
     finalTimeL = dataL.first(10);
 }
 
-pair<VectorXd, VectorXd> PathManager::parseOneArm(VectorXd t, VectorXd inst, VectorXd stateVector)
+pair<VectorXd, VectorXd> PathManager::parseOneArm(VectorXd t, VectorXd inst, VectorXd hh, VectorXd stateVector)
 {
     map<int, int> instrumentMapping = {
-        {1, 0}, {2, 1}, {3, 2}, {4, 3}, {5, 4}, {6, 5}, {7, 6}, {8, 7}, {11, 0}, {51, 0}, {61, 0}, {71, 0}, {81, 0}, {91, 0}};
-    //    S       FT      MT      HT      HH       R      RC      LC       S        S        S        S        S        S
+        {1, 0}, {2, 1}, {3, 2}, {4, 3}, {5, 4}, {6, 5}, {7, 6}, {8, 7}, {11, 0}, {51, 0}, {61, 0}, {71, 0}, {81, 0}, {91, 0}, {9, 8}};
+    //    S       FT      MT      HT      HH       R      RC      LC       S        S        S        S        S        S     Open HH
 
     VectorXd initialInstrument = VectorXd::Zero(9), finalInstrument = VectorXd::Zero(9);
     VectorXd outputVector = VectorXd::Zero(20);
@@ -780,7 +787,7 @@ pair<VectorXd, VectorXd> PathManager::parseOneArm(VectorXd t, VectorXd inst, Vec
         {
             detectHit = true;
             detectTime = t(i);
-            detectInst = inst(i);
+            detectInst = checkOpenHH(inst(i), hh(i));
 
             break;
         }
@@ -837,7 +844,7 @@ pair<VectorXd, VectorXd> PathManager::parseOneArm(VectorXd t, VectorXd inst, Vec
         {
             nextState = 3;
 
-            initialInstNum = inst(0);
+            initialInstNum = checkOpenHH(inst(0), hh(0));
             finalInstNum = detectInst;
 
             initialT = t(0);
@@ -848,8 +855,8 @@ pair<VectorXd, VectorXd> PathManager::parseOneArm(VectorXd t, VectorXd inst, Vec
         {
             nextState = 1;
 
-            initialInstNum = inst(0);
-            finalInstNum = inst(0);
+            initialInstNum = checkOpenHH(inst(0), hh(0));
+            finalInstNum = checkOpenHH(inst(0), hh(0));
 
             initialT = t(0);
             finalT = t(1);
@@ -869,6 +876,25 @@ pair<VectorXd, VectorXd> PathManager::parseOneArm(VectorXd t, VectorXd inst, Vec
     // std::cout << "\n";
 
     return std::make_pair(outputVector, nextStateVector);
+}
+
+int PathManager::checkOpenHH(int instNum, int isHH)
+{
+    if (instNum == 5)       // 하이햇인 경우
+    {
+        if (isHH == 0)  // 오픈
+        {
+            return 9;
+        }
+        else            // 클로즈
+        {
+            return instNum;
+        }
+    }
+    else                // 하이햇이 아니면 그냥 반환
+    {
+        return instNum;
+    }
 }
 
 pair<VectorXd, VectorXd> PathManager::getTargetPosition(VectorXd inst)
@@ -1362,6 +1388,30 @@ int PathManager::getBassState(bool bassHit, bool nextBaseHit)
     return state;
 }
 
+int PathManager::getHHstate(bool HHclosed, bool nextHHclosed)
+{
+    int state = 0;
+
+    if(!HHclosed && !nextHHclosed)
+    {
+        state = 0;
+    }
+    else if (HHclosed && !nextHHclosed)
+    {
+        state = 1;
+    }
+    else if (!HHclosed && nextHHclosed)
+    {
+        state = 2;
+    }
+    else if (HHclosed && nextHHclosed)
+    {
+        state = 3;
+    }
+
+    return state;
+}
+
 void PathManager::makeHitCoefficient()
 {
     int stateR = hitState(0, 1);
@@ -1376,8 +1426,8 @@ void PathManager::makeHitCoefficient()
     elbowTimeR = getElbowTime(hitR_t1, hitR_t2, intensityR);
     elbowTimeL = getElbowTime(hitL_t1, hitL_t2, intensityL);
 
-    wristTimeR = getWristTime(hitR_t1, hitR_t2, intensityR);
-    wristTimeL = getWristTime(hitL_t1, hitL_t2, intensityL);
+    wristTimeR = getWristTime(hitR_t1, hitR_t2, intensityR, stateR);
+    wristTimeL = getWristTime(hitL_t1, hitL_t2, intensityL, stateL);
 
     elbowAngleR = getElbowAngle(hitR_t1, hitR_t2, intensityR);
     elbowAngleL = getElbowAngle(hitL_t1, hitL_t2, intensityL);
@@ -1395,32 +1445,43 @@ void PathManager::makeHitCoefficient()
 
 PathManager::elbowTime PathManager::getElbowTime(float t1, float t2, int intensity)
 {
-    float T = t2 - t1;
     elbowTime elbowTime;
+    float T = t2 - t1; // 전체 타격 시간
 
-    elbowTime.stayTime = std::max(0.5 * (T), T - 0.2);
     elbowTime.liftTime = std::max(0.5 * (T), T - 0.2);
     elbowTime.hitTime = T;
     
     return elbowTime;
 }
 
-PathManager::wristTime PathManager::getWristTime(float t1, float t2, int intensity)
+PathManager::wristTime PathManager::getWristTime(float t1, float t2, int intensity, int state)
 {
-    float T = t2 - t1;
     wristTime wristTime;
+    float T = t2 - t1;  // 전체 타격 시간
 
+    // 타격 후 복귀 시간
     wristTime.releaseTime = std::min(0.2 * (T), 0.1);
 
-    t2 - t1 < 0.15 ? wristTime.stayTime = 0.45 * (T) : wristTime.stayTime = 0.47 * (T) - 0.05;
-
-    if (intensity < 4)
-        wristTime.liftTime = std::max(0.5 * (T), T - 0.25);
-    else if (intensity == 4)
-        wristTime.liftTime = std::max(0.6 * (T), T - 0.2);
+    if (state == 2)
+    {
+        wristTime.liftTime = std::max(0.6 * (T), T - 0.2);      // 최고점에 도달하는 시간 
+        wristTime.stayTime = 0.45 * T;                          // 상승하기 시작하는 시간
+    }
     else
-        wristTime.liftTime = std::max(0.7 * (T), T - 0.15);
-    
+    {
+        // state 1 or 3일 때 (복귀 모션 필요)
+        // state 3일 때 시간이 0.3초 이하이면 전체 타격 시간의 절반을 기준으로 들고 내리는 궤적(stay 없음)
+        if (T <= 0.3)
+        {
+            wristTime.liftTime = 0.5 * (T);
+        }
+        else
+        {
+            wristTime.liftTime = std::max(0.6 * (T), T - 0.2);
+        }
+        wristTime.stayTime = 0.5 * (T);
+    }
+
     wristTime.hitTime = T;
     
     return wristTime;
@@ -1428,41 +1489,60 @@ PathManager::wristTime PathManager::getWristTime(float t1, float t2, int intensi
 
 PathManager::bassTime PathManager::getBassTime(float t1, float t2)
 {
-    float T = t2 - t1;
     bassTime bassTime;
+    float T = t2 - t1;      // 전체 타격 시간
     
-    bassTime.liftTime = std::max(0.6 * (T), T - 0.2);
-    bassTime.stayTime = 0.45 * (T);
+    bassTime.liftTime = std::max(0.6 * (T), T - 0.2);   // 최고점 시간, 전체 타격 시간의 60% , 타격 시간의 최대값은 0.2초
+    bassTime.stayTime = 0.45 * (T);     // 복귀 시간, 전체 타격 시간의 45%
     
     bassTime.hitTime = T;
 
     return bassTime;
 }
 
+PathManager::HHTime PathManager::getHHTime(float t1, float t2)
+{
+    float T = t2 - t1;
+    HHTime HHTime;
+
+    HHTime.liftTime = 0.1 * T;
+    HHTime.settlingTime = 0.9 * T;
+    HHTime.hitTime = T;
+    HHTime.splashTime = std::max(0.5*T, T - 0.1);       // 0.1초에 20도 이동이 안전. 그 이하는 모터 멈출 수 있음.
+
+    return HHTime;
+}
+
 PathManager::elbowAngle PathManager::getElbowAngle(float t1, float t2, int intensity)
 {
-    // float T = (t2 - t1);
-    float T = (t2 - t1) * 100.0 / (float)bpmOfScore;
     elbowAngle elbowAngle;
-    int temp = intensity;
-    // float intensityFactor = 0.4 * intensity + 0.2; // 1 : 약하게   2 : 기본    3 : 강하게
-    // double intensityFactor = 0.0179 * intensity * intensity + 0.1464 * intensity + 0.1286;  // 1 : 30%, 2: 50%, 3: 70%, 4: 100%, 5: 130%, 6: 170%, 7: 200%
-    double intensityFactor = 0.01786 * temp * temp + 0.11071 * temp;  // 1: 0%, 2: 30%, 3: 50%, 4: 70%, 5: 100%, 6: 130%, 7: 170%, 8: 200%  
+    float T = (t2 - t1);        // 전체 타격 시간
+
+    double intensityFactor;  // 1: 0%, 2: 0%, 3: 0%, 4: 90%, 5: 100%, 6: 110%, 7: 120%  
+
+    if (intensity <= 3)
+    {
+        intensityFactor = 0;
+    }
+    else
+    {
+        intensityFactor = 0.1 * intensity + 0.5;  
+    }
 
     if (T < 0.2)
     {
+        // 0.2초보다 짧을 땐 안 들게
         elbowAngle.liftAngle = 0;
     }
     else if (T <= 0.5)
     {
-        elbowAngle.liftAngle = (T) * (10 * M_PI / 180.0) / 0.5;
+        // 0.2초 ~ 0.5초에선 시간에 따라 선형적으로 줄여서 사용
+        elbowAngle.liftAngle = (T) * (15 * M_PI / 180.0) / 0.5;
     }
     else
     {
-        elbowAngle.liftAngle = 10 * M_PI / 180.0;
+        elbowAngle.liftAngle = 15 * M_PI / 180.0;
     }
-
-    // elbowAngle.liftAngle = std::min((T) * (10 * M_PI / 180.0) / 0.5, (10 * M_PI / 180.0));
 
     elbowAngle.liftAngle = elbowAngle.stayAngle + elbowAngle.liftAngle * intensityFactor;
 
@@ -1471,25 +1551,30 @@ PathManager::elbowAngle PathManager::getElbowAngle(float t1, float t2, int inten
 
 PathManager::wristAngle PathManager::getWristAngle(float t1, float t2, int intensity)
 {
-    // float T = (t2 - t1);
-    float T = (t2 - t1) * 100.0 / (float)bpmOfScore;
     wristAngle wristAngle;
-    int temp = intensity;
-    // float intensityFactor = 0.4 * intensity + 0.2; // 1 : 약하게    2 : 기본    3 : 강하게
-    // double intensityFactor = 0.0179 * intensity * intensity + 0.1464 * intensity + 0.1286;  // 1 : 30%, 2: 50%, 3: 70%, 4: 100%, 5: 130%, 6: 170%, 7: 200%
-    double intensityFactor = 0.01786 * temp * temp + 0.11071 * temp;  // 1: 0%, 2: 30%, 3: 50%, 4: 70%, 5: 100%, 6: 130%, 7: 170%, 8: 200%  
-
-    wristAngle.stayAngle = 10 * M_PI / 180.0;
-    // T < 0.5 ? wristAngle.liftAngle = (-100 * ((T) - 0.5) * ((T) - 0.5) + 30) * M_PI / 180.0 : wristAngle.liftAngle = 30  * M_PI / 180.0;
-    T < 0.5 ? wristAngle.liftAngle = (60 * T) * M_PI / 180.0 : wristAngle.liftAngle = 30  * M_PI / 180.0;
-    wristAngle.pressAngle = -1.0 * std::min((T) * (5 * M_PI / 180.0)/ 0.5, (5 * M_PI / 180.0));
-    if (intensity != 1)
+    float T = (t2 - t1);        // 타격 전체 시간
+    double intensityFactor;
+   
+    if (intensity < 5)
     {
-        wristAngle.liftAngle = wristAngle.stayAngle + wristAngle.liftAngle * intensityFactor;
+        intensityFactor = 0.25 * intensity - 0.25;  // 1: 0%, 2: 25%, 3: 50%, 4: 75%
     }
     else
     {
+        intensityFactor = 0.1 * intensity + 0.5;  // 5: 100%, 6: 110%, 7: 120% 
+    }
+
+    // Lift Angle (최고점 각도) 계산, 최대 40도 * 세기
+    T < 0.5 ? wristAngle.liftAngle = (80 * T) * M_PI / 180.0 : wristAngle.liftAngle = 40  * M_PI / 180.0;
+
+    if (intensity == 1)
+    {
+        // intensity 1일 땐 아예 안들도록
         wristAngle.liftAngle = wristAngle.stayAngle;
+    }
+    else
+    {
+        wristAngle.liftAngle = wristAngle.stayAngle + wristAngle.liftAngle * intensityFactor;
     }
     
     return wristAngle;
@@ -1513,26 +1598,6 @@ MatrixXd PathManager::makeElbowCoefficient(int state, elbowTime eT, elbowAngle e
     }
     else if (state == 1)
     {
-        // Release - Stay
-
-        // // Release
-        // A.resize(4, 4);
-        // b.resize(4, 1);
-
-        // A << 1, 0, 0, 0,
-        //     1, eT.stayTime, eT.stayTime * eT.stayTime, eT.stayTime * eT.stayTime * eT.stayTime,
-        //     0, 1, 0, 0,
-        //     0, 1, 2 * eT.stayTime, 3 * eT.stayTime * eT.stayTime;
-
-        // b << 0, eA.stayAngle, 0, 0;
-
-        // A_1 = A.inverse();
-        // sol = A_1 * b;
-
-        // elbowCoefficient.resize(2, 4);
-        // elbowCoefficient << sol(0), sol(1), sol(2), sol(3), // Release
-        //                     eA.stayAngle, 0, 0, 0;          // Stay
-
         // Release
         if (eA.stayAngle == 0)
         {
@@ -1561,13 +1626,11 @@ MatrixXd PathManager::makeElbowCoefficient(int state, elbowTime eT, elbowAngle e
     }
     else if (state == 2)
     {
-        // Lift - Hit
-
         // Lift
         A.resize(4, 4);
         b.resize(4, 1);
 
-        if(eA.stayAngle == eA.liftAngle)
+        if(eA.liftAngle == eA.stayAngle)
         {
             sol.resize(4,1);
             sol << eA.stayAngle, 0, 0, 0;
@@ -1586,10 +1649,10 @@ MatrixXd PathManager::makeElbowCoefficient(int state, elbowTime eT, elbowAngle e
         }
 
         // Hit
-        if (eA.liftAngle == 0)
+        if (eA.liftAngle == eA.stayAngle)
         {
-            sol.resize(4, 1);
-            sol << 0, 0, 0, 0;
+            sol2.resize(4, 1);
+            sol2 << 0, 0, 0, 0;
         }
         else
         {
@@ -1613,10 +1676,8 @@ MatrixXd PathManager::makeElbowCoefficient(int state, elbowTime eT, elbowAngle e
     }
     else if (state == 3)
     {
-        // Lift - Hit
-
         // Lift
-        if (eA.liftAngle == 0)
+        if (eA.liftAngle == eA.stayAngle)
         {
             sol.resize(4, 1);
             sol << 0, 0, 0, 0;
@@ -1682,27 +1743,6 @@ MatrixXd PathManager::makeWristCoefficient(int state, wristTime wT, wristAngle w
     }
     else if (state == 1)
     {
-        // Release - Stay
-
-        // // Release
-        // A.resize(3, 3);
-        // b.resize(3, 1);
-
-        // A << 1, 0, 0,
-        //     1, wT.releaseTime, wT.releaseTime * wT.releaseTime,
-        //     0, 1, 2 * wT.releaseTime;
-
-        // b << wA.pressAngle, wA.stayAngle, 0;
-
-        // A_1 = A.inverse();
-        // sol = A_1 * b;
-
-        // wristCoefficient.resize(4, 4);
-        // wristCoefficient << sol(0), sol(1), sol(2), 0,  // Release
-        //                     wA.stayAngle, 0, 0, 0,      // Stay
-        //                     wA.stayAngle, 0, 0, 0,      // Stay
-        //                     wA.stayAngle, 0, 0, 0;      // Stay
-
         // Release
         if (wA.pressAngle == wA.stayAngle)
         {
@@ -1738,7 +1778,7 @@ MatrixXd PathManager::makeWristCoefficient(int state, wristTime wT, wristAngle w
         A.resize(4, 4);
         b.resize(4, 1);
 
-        // Lift Angle = Stay Angle일 때 -> 아주 작게 칠 때
+        // Lift Angle = Stay Angle일 때(아주 작게 칠 때) -> 드는 궤적 없이 내리기만
         if (wA.stayAngle == wA.liftAngle)
         {
             sol.resize(4, 1);
@@ -1746,10 +1786,10 @@ MatrixXd PathManager::makeWristCoefficient(int state, wristTime wT, wristAngle w
         }
         else
         {
-             A << 1, wT.stayTime, wT.stayTime * wT.stayTime, wT.stayTime * wT.stayTime * wT.stayTime,
-                1, wT.liftTime, wT.liftTime * wT.liftTime, wT.liftTime * wT.liftTime * wT.liftTime,
-                0, 1, 2 * wT.stayTime, 3 * wT.stayTime * wT.stayTime,
-                0, 1, 2 * wT.liftTime, 3 * wT.liftTime * wT.liftTime;
+            A << 1, wT.stayTime, wT.stayTime * wT.stayTime, wT.stayTime * wT.stayTime * wT.stayTime,
+            1, wT.liftTime, wT.liftTime * wT.liftTime, wT.liftTime * wT.liftTime * wT.liftTime,
+            0, 1, 2 * wT.stayTime, 3 * wT.stayTime * wT.stayTime,
+            0, 1, 2 * wT.liftTime, 3 * wT.liftTime * wT.liftTime;
 
             b << wA.stayAngle, wA.liftAngle, 0, 0;
 
@@ -1887,17 +1927,22 @@ double PathManager::makeWristAngle(double t, wristTime wT, MatrixXd coefficientM
 double PathManager::makeBassAngle(double t, bassTime bt, int bassState)
 {
     bassAngle bA;
+    // Xl : lift 궤적 , Xh : hit 궤적
     double X0 = 0.0, Xp = 0.0, Xl = 0.0, Xh = 0.0;
 
-    X0 = bA.stayAngle;
-    Xp = bA.pressAngle;
+    X0 = bA.stayAngle;          // 준비 각도
+    Xp = bA.pressAngle;         // 최저점 각도
 
+    // 타격 시간이 0.2초 이하일 때
     if (bt.hitTime <= 0.2)
     {
         if (bassState == 3)
         {
+            // 짧은 시간에 연속으로 타격하는 경우 덜 들도록, 올라오는 궤적과 내려가는 궤적을 합쳐서 사용 (- 영역이라 가능)
+            // 조정수 박사님 자료 BassAngle 부분 참고
             double temp_liftTime = bt.hitTime / 2;
             Xl = -0.5 * (Xp - X0) * (cos(M_PI * (t / bt.hitTime + 1)) - 1);
+
             if (t < temp_liftTime)
             {
                 Xh = 0;
@@ -1907,13 +1952,17 @@ double PathManager::makeBassAngle(double t, bassTime bt, int bassState)
                 Xh = -0.5 * (Xp - X0) * (cos(M_PI * (t - temp_liftTime) / (bt.hitTime - temp_liftTime)) - 1);
             }
         }
+
+        // 시간이 짧을 땐 전체 시간을 다 써서 궤적 생성
         else if (bassState == 1)
         {
+            // 복귀하는 궤적
             Xl = -0.5 * (Xp - X0) * (cos(M_PI * (t / bt.hitTime + 1)) - 1);
             Xh = 0;
         }
         else if (bassState == 2)
         {
+            // 타격하는 궤적
             Xl = 0;
             Xh = -0.5 * (Xp - X0) * (cos(M_PI * t / bt.hitTime) - 1);
         }
@@ -1923,10 +1972,14 @@ double PathManager::makeBassAngle(double t, bassTime bt, int bassState)
             Xh = 0;
         } 
     }
+
+    // 0.2초 이상일 때 
+    // StayTime 이전 -> 타격 후 들어올림
     else if (t < bt.stayTime)
     {
-        if(bassState == 1 || bassState == 3)
+        if(bassState == 1 || bassState == 3)    
         {
+            // 복귀하는 궤적
             Xl = -0.5 * (Xp - X0) * (cos(M_PI * (t / bt.stayTime + 1)) - 1);
             Xh = 0;
         }
@@ -1936,10 +1989,13 @@ double PathManager::makeBassAngle(double t, bassTime bt, int bassState)
             Xh = 0;
         }
     }
+
+    // LiftTime부터 HitTime까지 -> 타격
     else if (t > bt.liftTime && t <= bt.hitTime)
     {
         if (bassState == 2 || bassState == 3)
         {
+            // 타격하는 궤적
             Xl = 0;
             Xh = -0.5 * (Xp - X0) * (cos(M_PI * (t - bt.liftTime) / (bt.hitTime - bt.liftTime)) - 1);
         }
@@ -1950,7 +2006,164 @@ double PathManager::makeBassAngle(double t, bassTime bt, int bassState)
         }
     }
     
-    return X0 + Xl + Xh;
+    return X0 + Xl + Xh;        // 준비 각도 + 하강 각도 + 상승 각도
+}
+
+double PathManager::makeHHAngle(double t, HHTime ht, int HHstate, int nextHHclosed)
+{
+    HHAngle HA;
+
+    // 각도 수정 원할 시 헤더파일에서 해당 각도 수정하면 됨
+    double X0 = HA.openAngle;       // Open Hihat : -3도
+    double Xp = HA.closedAngle;     // Closed Hihat : -22도 
+
+    double Xl = 0.0;
+
+    if(HHstate == 0)
+    {
+        Xl = X0;
+    }
+    else if(ht.hitTime <= 0.2)       // 한 박의 시간이 0.2초 이하인 경우
+    {
+        if(HHstate == 1)
+        {
+            Xl = makecosineprofile(Xp, X0, 0, ht.hitTime, t);       // 전체 시간동안 궤적 생성
+            /*Xl = makecosineprofile(Xp, X0, 0, 0.8*ht.hitTime, t);     // 타격 이전에 open/closed가 되도록 0.8T
+            if(t >= 0.8*ht.hitTime)
+            {
+                Xl = X0;
+            }*/
+        }
+        else if(nextHHclosed == 2)      // Hihat splash 궤적
+        {
+            if(t < ht.splashTime)
+            {
+                if(HHstate == 2)
+                {
+                    Xl = makecosineprofile(X0, Xp, 0, ht.hitTime, t);
+                }
+                else if(HHstate == 3)
+                {
+                    Xl = makecosineprofile(Xp, Xp - (Xp - X0) * ht.hitTime / 0.2, 0, ht.splashTime, t);     // 20도/0.1초 의 속도를 유지하기 위해서 시간에 따라 이동량 감소시킴.
+                }
+            }
+            else
+            {
+                if(HHstate == 2)
+                {
+                    Xl = makecosineprofile(X0, Xp, 0, ht.hitTime, t);
+                }
+                else if(HHstate == 3)
+                {
+                    Xl = makecosineprofile(Xp - (Xp - X0) * ht.hitTime / 0.2, Xp, ht.splashTime, ht.hitTime, t);
+                }
+            }
+        }
+        else        // open/closed Hihat 궤적
+        {
+            if(HHstate == 2)
+            {
+                Xl = makecosineprofile(X0, Xp, 0, ht.hitTime, t);
+                /*Xl = makecosineprofile(X0, Xp, 0, 0.8*ht.hitTime, t);
+                if(t >= 0.8*ht.hitTime)
+                {
+                    Xl = Xp;
+                }*/
+            }
+            else if(HHstate == 3)
+            {                
+                Xl = Xp;
+            }
+        }
+    }
+    // 한 박의 시간이 0.2초 초과인 경우
+    else if(nextHHclosed == 2)      // Hi-Hat splash 궤적
+    {
+        if(t < ht.splashTime)
+        {
+            if(HHstate == 2)
+            {
+                Xl = X0;
+            }
+            else if(HHstate == 3)
+            {
+                Xl = makecosineprofile(Xp, X0, 0, ht.splashTime, t);
+            }
+        }
+        else if(t >= ht.splashTime)
+        {
+            if(HHstate == 2)
+            {
+                Xl = makecosineprofile(X0, Xp, ht.splashTime, ht.hitTime, t);
+            }
+            else if(HHstate == 3)
+            {
+                Xl = makecosineprofile(X0, Xp, ht.splashTime, ht.hitTime, t);
+            }
+        }
+    }
+    else        // open/closed Hi-Hat 궤적
+    {
+        if(t < ht.liftTime)
+        {
+            if(HHstate == 1)
+            {
+                Xl = Xp;
+            }
+            else if(HHstate == 2)
+            {
+                Xl = X0;
+            }
+            else if(HHstate == 3)
+            {                
+                Xl = Xp;
+            }
+        }
+        else if(t >= ht.liftTime && t < ht.settlingTime)
+        {
+            if(HHstate == 1)
+            {
+                Xl = makecosineprofile(Xp, X0, ht.liftTime, ht.settlingTime, t);
+            }
+            else if(HHstate == 2)
+            {      
+                Xl = makecosineprofile(X0, Xp, ht.liftTime, ht.settlingTime, t);
+            }
+            else if(HHstate == 3)
+            {
+                Xl = Xp;
+            }
+        }
+        else if(t >= ht.settlingTime)
+        {
+            if(HHstate == 1)
+            {
+                Xl = X0;
+            }
+            else if(HHstate == 2)
+            {
+                Xl = Xp;
+            }
+            else if(HHstate == 3)
+            {
+                Xl = Xp;
+            }
+        }
+    }
+
+    return Xl;
+}
+
+double PathManager::makecosineprofile(double qi, double qf, double ti, double tf, double t)
+{
+    // ti <= t <= tf
+    double A, B, w;
+
+    A = (qi - qf) / 2;
+    B = (qi + qf) / 2;
+    w = M_PI / (tf - ti);
+
+    return A * cos (w*(t - ti)) + B;
 }
 
 void PathManager::generateHit(float tHitR, float tHitL, HitAngle &Pt)
@@ -2596,6 +2809,8 @@ MatrixXd PathManager::parseMeasurePC(MatrixXd &measureMatrix, MatrixXd &state)
     VectorXd measureInstrumentR = measureMatrix.col(2);
     VectorXd measureInstrumentL = measureMatrix.col(3);
 
+    VectorXd measureHH = measureMatrix.col(7);
+
     MatrixXd nextState(2, 3);
 
     // parsing data
@@ -2605,9 +2820,9 @@ MatrixXd PathManager::parseMeasurePC(MatrixXd &measureMatrix, MatrixXd &state)
     // std::cout << "\n /// t1 -> t2 : " << line_t1 << " -> " << line_t2 << " = " << line_t2 - line_t1 <<  "\n";
 
     // std::cout << "\n /// R ///";
-    pair<VectorXd, VectorXd> dataR = parseOneArm(measureTime, measureInstrumentR, state.row(0));
+    pair<VectorXd, VectorXd> dataR = parseOneArm(measureTime, measureInstrumentR, measureHH, state.row(0));
     // std::cout << "\n /// L ///";
-    pair<VectorXd, VectorXd> dataL = parseOneArm(measureTime, measureInstrumentL, state.row(1));
+    pair<VectorXd, VectorXd> dataL = parseOneArm(measureTime, measureInstrumentL, measureHH, state.row(1));
 
     // nextState 저장
     nextState.block(0, 0, 1, 3) = dataR.second.transpose();

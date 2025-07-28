@@ -94,7 +94,8 @@ private:
     MaxonCommandParser maxoncmd;
 
     // Sync command
-    std::shared_ptr<MaxonMotor> virtualMaxonMotor;
+    vector<std::shared_ptr<MaxonMotor>> virtualMaxonMotor;
+    // std::shared_ptr<MaxonMotor> virtualMaxonMotor;
 
     // 쓰레드 루프 주기
     std::chrono::_V2::steady_clock::time_point sendLoopPeriod;
@@ -113,7 +114,7 @@ private:
     bool allMotorsUnConected = true;    // 모든 모터 연결 안됨 - 모터 없이 테스트하는 경우
 
     // Initialize
-    int maxonMotorCount = 0;    // 1 이상이면 virtual Maxon Motor를 사용하기 위해
+    int maxonMotorSocketCount = 0;    // 1 이상이면 virtual Maxon Motor를 사용하기 위해
 
     void initializePathManager();
     void initializeMotors();
@@ -130,10 +131,11 @@ private:
 
     // 싱크 연주를 위한 변수들
     bool playMusic = false;
+    std::string syncPath = "/home/shy/DrumRobot/include/sync/sync.txt";      // 싱크 파일 경로
     std::chrono::system_clock::time_point syncTime;
     bool setWaitingTime = false;
     bool runPython = false;
-    int pythonClass = 0;    // 1 : 시간 측정, 0 : 시간 측정 + 마젠타
+    int pythonClass = 0;    // 어떤 파이썬을 실행할지 (1 : 시간 측정, 0 : 마젠타)
 
     // Ideal State
     void displayAvailableCommands(string flagName) const;
@@ -181,7 +183,8 @@ private:
     // void sendTFGProcess();
 
     // python (magenta)
-    void runPythonForMagenta();
+    void runPythonForMagenta();         // 기존 파이썬 코드 실행 후 악보 생성
+    void getMagentaSheet();    // 파이썬 코드 실행 x 악보만 생성
 
     // System
     // void clearBufferforRecord();

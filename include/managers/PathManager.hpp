@@ -132,7 +132,6 @@ private:
     // q1[rad], q2[rad], Vmax[rad/s], acc[rad/s^2], t[s], t2[s]
     VectorXd makeProfile(VectorXd &q1, VectorXd &q2, VectorXd &Vmax, float acc, float t, float t2);
     VectorXd getMotorPos();
-    void getAddStanceCoefficient(VectorXd Q1, VectorXd Q2, double t);
 
     /////////////////////////////////////////////////////////////////////////// Make Trajectory
     double line_t1, line_t2;           // 궤적 생성 시간
@@ -166,7 +165,8 @@ private:
     MatrixXd lineData;
 
     void parseMeasure(MatrixXd &measureMatrix);
-    pair<VectorXd, VectorXd> parseOneArm(VectorXd t, VectorXd inst, VectorXd stateVector);
+    pair<VectorXd, VectorXd> parseOneArm(VectorXd t, VectorXd inst, VectorXd hh, VectorXd stateVector);
+    int checkOpenHH(int instNum, int isHH);
     pair<VectorXd, VectorXd> getTargetPosition(VectorXd inst_vector);
     double timeScaling(double ti, double tf, double t);
     VectorXd makePath(VectorXd Pi, VectorXd Pf, double s);
@@ -215,6 +215,13 @@ private:
         double liftTime;
         double hitTime;
     }bassTime;
+    
+    typedef struct {
+        double settlingTime;
+        double liftTime;
+        double hitTime;
+        double splashTime;
+    }HHTime;
 
     typedef struct {
         // double stayAngle = 5*M_PI/180.0;
@@ -225,7 +232,7 @@ private:
     typedef struct {
         double stayAngle = 10*M_PI/180.0;
         double pressAngle = -5*M_PI/180.0;
-        double liftAngle = 30*M_PI/180.0;
+        double liftAngle = 40*M_PI/180.0;
     }wristAngle;
 
     typedef struct {
@@ -233,9 +240,15 @@ private:
         double pressAngle = -20*M_PI/180.0;
     }bassAngle;
 
+    typedef struct {
+        double openAngle = -3*M_PI/180.0;
+        double closedAngle = -22*M_PI/180.0;
+    }HHAngle;
+
     elbowTime elbowTimeR, elbowTimeL;
     wristTime wristTimeR, wristTimeL;
     bassTime bassTimeR;
+    HHTime HHTimeL;
     
     MatrixXd elbowCoefficientR;
     MatrixXd elbowCoefficientL;
@@ -247,16 +260,20 @@ private:
     int getBassState(bool bassHit, bool nextBaseHit);
     void makeHitCoefficient();
     PathManager::elbowTime getElbowTime(float t1, float t2, int intensity);
-    PathManager::wristTime getWristTime(float t1, float t2, int intensity);
+    PathManager::wristTime getWristTime(float t1, float t2, int intensity, int state);
     PathManager::bassTime getBassTime(float t1, float t2);
     PathManager::elbowAngle getElbowAngle(float t1, float t2, int intensity);
     PathManager::wristAngle getWristAngle(float t1, float t2, int intensity);
     MatrixXd makeElbowCoefficient(int state, elbowTime eT, elbowAngle eA);
     MatrixXd makeWristCoefficient(int state, wristTime wT, wristAngle wA);
+    double makecosineprofile(double qi, double qf, double ti, double tf, double t);
     void generateHit(float tHitR, float tHitL, HitAngle &Pt);
     double makeElbowAngle(double t, elbowTime eT, MatrixXd coefficientMatrix);
     double makeWristAngle(double t, wristTime wT, MatrixXd coefficientMatrix);
     double makeBassAngle(double t, bassTime bt, int bassState);
+    int getHHstate(bool HHclosed, bool nextHHclosed);
+    PathManager::HHTime getHHTime(float t1, float t2);
+    double makeHHAngle(double t, HHTime ht, int HHstate, int nextHHclosed);
 
     /////////////////////////////////////////////////////////////////////////// Waist
     MatrixXd waistCoefficient;

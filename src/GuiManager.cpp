@@ -123,10 +123,6 @@ void GuiManager::guiThread()
         {
             break;
         }
-        case Main::FGPlay:
-        {
-            break;
-        }
         case Main::AddStance:
         {
             break;

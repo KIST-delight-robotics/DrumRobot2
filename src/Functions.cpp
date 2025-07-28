@@ -43,7 +43,7 @@ void Functions::restCanPort()
     //shy-MINIPC-VC66-C2 -> 2반환
     int com_number = getComNumberByHostname();   //com_number = 1 드럼로봇 컴퓨터 com_number = 2 테스트 환경 컴퓨터
 
-    char can1_on[100], can2_on[100], can3_on[100], can1_off[100], can2_off[100], can3_off[100];
+    char can1_on[100], can2_on[100], can3_on[100], can4_on[100], can1_off[100], can2_off[100], can3_off[100], can4_off[100];
 
     // Reset the commands based on com_number
     if (com_number == 1) {
@@ -64,10 +64,12 @@ void Functions::restCanPort()
         snprintf(can1_off, sizeof(can1_off), "sudo uhubctl -l 1-4 -p 1 -a off");
         snprintf(can2_off, sizeof(can2_off), "sudo uhubctl -l 1-4 -p 2 -a off");
         snprintf(can3_off, sizeof(can3_off), "sudo uhubctl -l 1-4 -p 3 -a off");
+        snprintf(can4_off, sizeof(can4_off), "sudo uhubctl -l 1-4 -p 4 -a off");
 
         snprintf(can1_on, sizeof(can1_on), "sudo uhubctl -l 1-4 -p 1 -a on");
         snprintf(can2_on, sizeof(can2_on), "sudo uhubctl -l 1-4 -p 2 -a on");
         snprintf(can3_on, sizeof(can3_on), "sudo uhubctl -l 1-4 -p 3 -a on");
+        snprintf(can4_on, sizeof(can4_on), "sudo uhubctl -l 1-4 -p 4 -a on");
     } else if (com_number == 2) {
         // com_number_2
         snprintf(can1_off, sizeof(can1_off), "sudo uhubctl -l 1-6.1 -p 1 -a off");
@@ -93,18 +95,22 @@ void Functions::restCanPort()
     std::cout << std::endl;
     int ret3 = system(can3_off);
     std::cout << std::endl;
+    int ret4 = system(can4_off);
+    std::cout << std::endl;
 
     sleep(2);
 
-    int ret4 = system(can1_on);
+    int ret5 = system(can1_on);
     std::cout << std::endl;
-    int ret5 = system(can2_on);
+    int ret6 = system(can2_on);
     std::cout << std::endl;
-    int ret6 = system(can3_on);
+    int ret7 = system(can3_on);
+    std::cout << std::endl;
+    int ret8 = system(can4_on);
     std::cout << std::endl;
 
     
-    if (ret1 != 0 || ret2 != 0 || ret3 != 0 || ret4 != 0 || ret5 != 0 || ret6 != 0)
+    if (ret1 != 0 || ret2 != 0 || ret3 != 0 || ret4 != 0 || ret5 != 0 || ret6 != 0 || ret7 != 0 || ret8 != 0)
     {
         fprintf(stderr, "Failed to reset port\n");
     }
@@ -472,7 +478,7 @@ void Functions::handleNoteOn(const std::vector<unsigned char>& data, size_t& pos
 void Functions::analyzeMidiEvent(const std::vector<unsigned char>& data, size_t& pos, unsigned char& runningStatus, double &note_on_time, int &tpqn, const std::string& midiFilePath) {
     if (pos >= data.size()) return;
     unsigned char eventType = data[pos];
-    if (eventType == 0xFF || eventType == 0xB9 || eventType == 0xC9 || eventType == 0x99) {
+   if (eventType == 0xFF || eventType == 0xB9 || eventType == 0xC9 || eventType == 0x99 || eventType == 0x89|| eventType == 0xA9) {
         runningStatus = eventType;
         pos++;
     } else {
@@ -484,10 +490,15 @@ void Functions::analyzeMidiEvent(const std::vector<unsigned char>& data, size_t&
         handleChannel10(data, pos, eventType);
     } else if (eventType == 0x99) {
         handleNoteOn(data, pos, note_on_time, tpqn, midiFilePath);
-    } else {
+    } else if (eventType == 0x89 || eventType == 0xA9) {
+        pos += 2;
+    }
+    else {
+        std::cout << "unknown midiEvent - analyzeMidiEvent\n";
         pos++;
     }
 }
+
 
 void Functions::convertMcToC(const std::string& inputFilename, const std::string& outputFilename) {
     std::ifstream input(inputFilename);
@@ -535,9 +546,13 @@ void Functions::convertMcToC(const std::string& inputFilename, const std::string
             } else if (note == 10) {
                 bassHit = 1;
             } else if (note == 11) {
-                hihatState = 0;
-            } else if (note == 5) {
+                if (inst1 == 0) inst1 = 5;
+                else if (inst2 == 0) inst2 = 5;
                 hihatState = 1;
+            } else if (note == 5) {
+                hihatState = 0;
+                if (inst1 == 0) inst1 = 5;
+                else if (inst2 == 0) inst2 = 5;
             }
         }
         hihat = hihatState;
@@ -562,13 +577,6 @@ struct Coord {
     double x, y, z;
 };
 
-Coord drumXYZ[9] = {
-    {0.0, 0.0, 0.0},
-    {-0.13, 0.52, 0.61}, {0.25, 0.50, 0.62}, {0.21, 0.67, 0.87},
-    {-0.05, 0.69, 0.83}, {-0.28, 0.60, 0.88}, {0.32, 0.71, 1.06},
-    {0.47, 0.52, 0.88}, {-0.06, 0.73, 1.06}
-};
-
 double Functions::dist(const Coord& a, const Coord& b) {
     return std::sqrt(
         (a.x - b.x)*(a.x - b.x) +
@@ -578,7 +586,7 @@ double Functions::dist(const Coord& a, const Coord& b) {
 }
 
 Functions::Hand Functions::getPreferredHandByDistance(int instCurrent, int prevRightNote, int prevLeftNote, double prevRightHit, double prevLeftHit) {
-    if (instCurrent <= 0 || instCurrent >= 9) return RIGHT;
+    // if (instCurrent <= 0 || instCurrent >= 9) return RIGHT;
     Coord curr = drumXYZ[instCurrent];
     Coord right = drumXYZ[prevRightNote];
     Coord left = drumXYZ[prevLeftNote];
@@ -586,15 +594,26 @@ Functions::Hand Functions::getPreferredHandByDistance(int instCurrent, int prevR
     double dMax = 0.754;
     double dRight = Functions::dist(curr, right);
     double dLeft = Functions::dist(curr, left);
-    double real_tRight = prevRightHit * 1.38;
-    double real_tLeft  = prevLeftHit * 1.38;
+    double real_tRight = std::min(prevRightHit, 0.6) * 1.38;
+    double real_tLeft  = std::min(prevLeftHit, 0.6) * 1.38;
     double normRight = std::min(dRight / dMax, 1.0);
     double normLeft = std::min(dLeft / dMax, 1.0);
 
     double rScore = (real_tRight / 0.6) * (1 - normRight);
     double lScore = (real_tLeft  / 0.6) * (1 - normLeft);
 
+    // 디버깅용 프린트문
+    std::cout << "\n[Hand 선택 판단]\n";
+    std::cout << " - instCurrent: " << instCurrent << "\n";
+    std::cout << " - prevRightNote: " << prevRightNote << ", prevLeftNote: " << prevLeftNote << "\n";
+    std::cout << " - 거리: right = " << dRight << ", left = " << dLeft << "\n";
+    std::cout << " - 시간누적: right = " << prevRightHit << ", left = " << prevLeftHit << "\n";
+    std::cout << " - 정규화 거리: right = " << normRight << ", left = " << normLeft << "\n";
+    std::cout << " - 점수: rScore = " << rScore << ", lScore = " << lScore << "\n";
+
+
     if (std::abs(rScore - lScore) < 1e-6) return SAME;
+
     return (lScore <= rScore) ? RIGHT : LEFT;
 }
 
@@ -843,8 +862,16 @@ void Functions::assignHandsToEvents(const std::string& inputFilename, const std:
                 std::cout << "    - 이전 손과 같은 악기 감지\n";
                 if (e.time <= 0.1) {
                     std::cout << "    - 시간차 0.1 이하 → 같은 손 유지\n";
-                    e.rightHand = (inst1 == prevRight) ? inst1 : 0;
-                    e.leftHand = (inst1 == prevLeft) ? inst1 : 0;
+                    if(inst1 == prevRight)
+                    {
+                        e.rightHand = inst1;
+                        e.leftHand = 0;
+                    }
+                    else
+                    {
+                        e.rightHand = 0;
+                        e.leftHand = inst1;
+                    }
                 } else {
                     std::cout << "    - 시간차 큼 → 거리 기반 판단\n";
                     Hand preferred = getPreferredHandByDistance(inst1, prevRightNote, prevLeftNote, prevRightHit, prevLeftHit);
@@ -1003,12 +1030,12 @@ void Functions::save_to_csv(const std::string& outputCsvPath, double &note_on_ti
         case 41: mappedDrumNote = 2; break;
         case 45: mappedDrumNote = 3; break;
         case 47: case 48: case 50: mappedDrumNote = 4; break;
-        case 42: mappedDrumNote = 5; break;
+        case 42: mappedDrumNote = 11; break;
         case 51: mappedDrumNote = 6; break;
         case 49: mappedDrumNote = 8; break;
         case 57: mappedDrumNote = 7; break;
         case 36: mappedDrumNote = 10; break;
-        case 46: mappedDrumNote = 11; break;
+        case 46: mappedDrumNote = 5; break;
         default: mappedDrumNote = 0; break;
     }
     file << note_on_time << "\t " << mappedDrumNote << "\n";
