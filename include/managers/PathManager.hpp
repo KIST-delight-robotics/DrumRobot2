@@ -220,6 +220,7 @@ private:
         double settlingTime;
         double liftTime;
         double hitTime;
+        double splashTime;
     }HHTime;
 
     typedef struct {
@@ -265,6 +266,7 @@ private:
     PathManager::wristAngle getWristAngle(float t1, float t2, int intensity);
     MatrixXd makeElbowCoefficient(int state, elbowTime eT, elbowAngle eA);
     MatrixXd makeWristCoefficient(int state, wristTime wT, wristAngle wA);
+    double makecosineprofile(double qi, double qf, double ti, double tf, double t);
     void generateHit(float tHitR, float tHitL, HitAngle &Pt);
     double makeElbowAngle(double t, elbowTime eT, MatrixXd coefficientMatrix);
     double makeWristAngle(double t, wristTime wT, MatrixXd coefficientMatrix);
