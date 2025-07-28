@@ -1506,9 +1506,10 @@ PathManager::HHTime PathManager::getHHTime(float t1, float t2)
     float T = t2 - t1;
     HHTime HHTime;
 
-    HHTime.liftTime = 0.2 * T;
-    HHTime.settlingTime = 0.8 * T;
+    HHTime.liftTime = 0.1 * T;
+    HHTime.settlingTime = 0.9 * T;
     HHTime.hitTime = T;
+    HHTime.splashTime = std::max(0.5*T, T - 0.1);       // 0.1초에 20도 이동이 안전. 그 이하는 모터 멈출 수 있음.
 
     return HHTime;
 }
@@ -2009,140 +2010,145 @@ double PathManager::makeHHAngle(double t, HHTime ht, int HHstate, int nextHHclos
 
     // 각도 수정 원할 시 헤더파일에서 해당 각도 수정하면 됨
     double X0 = HA.openAngle;       // Open Hihat : -3도
-    double Xp = HA.closedAngle;     // Closed Hihat : -15도 
+    double Xp = HA.closedAngle;     // Closed Hihat : -22도 
 
     double Xl = 0.0;
 
     if(HHstate == 0)
-        {
-            Xl = X0;
-        }
-
-    // 한 박의 시간이 0.2초보다 작으면 전체 시간에 걸쳐 궤적 생성
-    if(ht.hitTime <= 0.2)
     {
-        double temp_liftTime = ht.hitTime / 2;
+        Xl = X0;
+    }
+    else if(ht.hitTime <= 0.2)       // 한 박의 시간이 0.2초 이하인 경우
+    {
         if(HHstate == 1)
         {
-            Xl = - 0.5 * (Xp - X0) * (cos(M_PI * (t / ht.hitTime + 1)) - 1) + X0;
+            Xl = makecosineprofile(Xp, X0, 0, 0.8*ht.hitTime, t);       // 타격 이전에 open/closed가 되도록 0.8T
         }
-        else if(HHstate == 2)
+        else if(nextHHclosed == 2)      // Hihat splash 궤적
         {
-            if(nextHHclosed == 2)       // 악보에서 open/closed HH을 나타내는 열(measureMatrix.col(7)에 2가 들어오면 Hihat splash로 연주함
+            if(t < ht.splashTime)
             {
-                if(t < temp_liftTime)
+                if(HHstate == 2)
                 {
-                    Xl = X0;
+                    Xl = makecosineprofile(X0, Xp, 0, ht.hitTime, t);
                 }
-                else
+                else if(HHstate == 3)
                 {
-                    Xl = - 0.5 * (Xp - X0) * (cos(M_PI * (t - temp_liftTime) / (ht.hitTime - temp_liftTime)) - 1) + X0;
+                    Xl = makecosineprofile(Xp, Xp - (Xp - X0) * ht.hitTime / 0.2, 0, ht.splashTime, t);     // 20도/0.1초 의 속도를 유지하기 위해서 시간에 따라 이동량 감소시킴.
                 }
             }
             else
             {
-                Xl = - 0.5 * (Xp - X0) * (cos(M_PI * (t / ht.hitTime)) - 1) + X0;
-            }
-        }
-        else if(HHstate == 3)
-        {
-            if(nextHHclosed == 2)
-            {   
-                if(t < temp_liftTime)
+                if(HHstate == 2)
                 {
-                    Xl = - 0.5 * (Xp - X0) * (cos(M_PI * (t / temp_liftTime + 1)) - 1) + X0;
+                    Xl = makecosineprofile(X0, Xp, 0, ht.hitTime, t);
                 }
-                else
+                else if(HHstate == 3)
                 {
-                    Xl = - 0.5 * (Xp - X0) * (cos(M_PI * ((t - temp_liftTime) / (ht.hitTime - temp_liftTime))) - 1) + X0;
+                    Xl = makecosineprofile(Xp - (Xp - X0) * ht.hitTime / 0.2, Xp, ht.splashTime, ht.hitTime, t);
                 }
             }
-            else 
-                Xl = Xp;
         }
-    }
-    else if(t < ht.liftTime) // t : 0 ~ lifttime(0.2T) ~ settlingtime(0.8T) ~ hittime(T)
-    {
-        if(HHstate == 1)
+        else        // open/closed Hihat 궤적
         {
-            Xl = Xp;
-        }
-        else if(HHstate == 2)
-        {
-            Xl = X0;
-        }
-        else if(HHstate == 3)
-        {
-            if(nextHHclosed == 2)
+            if(HHstate == 2)
             {
-                Xl = - 0.5 * (Xp - X0) * (cos(M_PI * (t / ht.settlingTime + 1)) - 1) + X0;
+                Xl = makecosineprofile(X0, Xp, 0, 0.8*ht.hitTime, t);
             }
-            else
-            {
+            else if(HHstate == 3)
+            {                
                 Xl = Xp;
-            } 
+            }
         }
     }
-    else if(t >= ht.liftTime && t < ht.settlingTime)
+    // 한 박의 시간이 0.2초 초과인 경우
+    else if(nextHHclosed == 2)      // Hi-Hat splash 궤적
     {
-        if(HHstate == 1)
+        if(t < ht.splashTime)
         {
-            Xl = - 0.5 * (Xp - X0) * (cos(M_PI * ((t - ht.liftTime) / (ht.settlingTime - ht.liftTime) + 1)) - 1) + X0;
-        }
-        else if(HHstate == 2)
-        {      
-            if(nextHHclosed == 2)
+            if(HHstate == 2)
             {
                 Xl = X0;
             }
-            else
+            else if(HHstate == 3)
             {
-                Xl = - 0.5 * (Xp - X0) * (cos(M_PI * (t - ht.liftTime) / (ht.settlingTime - ht.liftTime)) - 1) + X0;
+                Xl = makecosineprofile(Xp, X0, 0, ht.splashTime, t);
             }
         }
-        else if(HHstate == 3)
+        else if(t >= ht.splashTime)
         {
-            if(nextHHclosed == 2)
+            if(HHstate == 2)
             {
-                Xl = - 0.5 * (Xp - X0) * (cos(M_PI * ((t) / (ht.settlingTime) + 1)) - 1) + X0;
+                Xl = makecosineprofile(X0, Xp, ht.splashTime, ht.hitTime, t);
             }
-            else
+            else if(HHstate == 3)
             {
-                Xl = Xp;
+                Xl = makecosineprofile(X0, Xp, ht.splashTime, ht.hitTime, t);
             }
         }
     }
-    else if(t >= ht.settlingTime)
+    else        // open/closed Hi-Hat 궤적
     {
-        if(HHstate == 1)
+        if(t < ht.liftTime)
         {
-            Xl = X0;
-        }
-        else if(HHstate == 2)
-        {
-            if(nextHHclosed == 2)
+            if(HHstate == 1)
             {
-                Xl = - 0.5 * (Xp - X0) * (cos(M_PI * (t - ht.settlingTime) / (ht.hitTime - ht.settlingTime)) - 1) + X0;
+                Xl = Xp;
             }
-            else
+            else if(HHstate == 2)
+            {
+                Xl = X0;
+            }
+            else if(HHstate == 3)
+            {                
+                Xl = Xp;
+            }
+        }
+        else if(t >= ht.liftTime && t < ht.settlingTime)
+        {
+            if(HHstate == 1)
+            {
+                Xl = makecosineprofile(Xp, X0, ht.liftTime, ht.settlingTime, t);
+            }
+            else if(HHstate == 2)
+            {      
+                Xl = makecosineprofile(X0, Xp, ht.liftTime, ht.settlingTime, t);
+            }
+            else if(HHstate == 3)
             {
                 Xl = Xp;
             }
         }
-        else if(HHstate == 3)
+        else if(t >= ht.settlingTime)
         {
-            if(nextHHclosed == 2)
+            if(HHstate == 1)
             {
-                Xl = - 0.5 * (Xp - X0) * (cos(M_PI * (t - ht.settlingTime) / (ht.hitTime - ht.settlingTime)) - 1) + X0;
+                Xl = X0;
             }
-            else
+            else if(HHstate == 2)
+            {
+                Xl = Xp;
+            }
+            else if(HHstate == 3)
             {
                 Xl = Xp;
             }
         }
     }
-    
+
     return Xl;
+}
+
+double PathManager::makecosineprofile(double qi, double qf, double ti, double tf, double t)
+{
+    // ti <= t <= tf
+    double A, B, w;
+
+    A = (qi - qf) / 2;
+    B = (qi + qf) / 2;
+    w = M_PI / (tf - ti);
+
+    return A * cos (w*(t - ti)) + B;
 }
 
 void PathManager::generateHit(float tHitR, float tHitL, HitAngle &Pt)

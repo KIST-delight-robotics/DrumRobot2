@@ -344,7 +344,7 @@ void CanManager::setSocketsTimeout(int sec, int usec)
     }
 }
 
-//NONBLOCK 일때는 써봐짜 의미업승ㅁ
+//NONBLOCK 일때는 써봐짜 의미없음
 int CanManager::setSocketTimeout(int socket, int sec, int usec)
 {
     struct timeval timeout;
