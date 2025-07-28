@@ -2027,7 +2027,12 @@ double PathManager::makeHHAngle(double t, HHTime ht, int HHstate, int nextHHclos
     {
         if(HHstate == 1)
         {
-            Xl = makecosineprofile(Xp, X0, 0, 0.8*ht.hitTime, t);       // 타격 이전에 open/closed가 되도록 0.8T
+            Xl = makecosineprofile(Xp, X0, 0, ht.hitTime, t);       // 전체 시간동안 궤적 생성
+            /*Xl = makecosineprofile(Xp, X0, 0, 0.8*ht.hitTime, t);     // 타격 이전에 open/closed가 되도록 0.8T
+            if(t >= 0.8*ht.hitTime)
+            {
+                Xl = X0;
+            }*/
         }
         else if(nextHHclosed == 2)      // Hihat splash 궤적
         {
@@ -2058,7 +2063,12 @@ double PathManager::makeHHAngle(double t, HHTime ht, int HHstate, int nextHHclos
         {
             if(HHstate == 2)
             {
-                Xl = makecosineprofile(X0, Xp, 0, 0.8*ht.hitTime, t);
+                Xl = makecosineprofile(X0, Xp, 0, ht.hitTime, t);
+                /*Xl = makecosineprofile(X0, Xp, 0, 0.8*ht.hitTime, t);
+                if(t >= 0.8*ht.hitTime)
+                {
+                    Xl = Xp;
+                }*/
             }
             else if(HHstate == 3)
             {                
