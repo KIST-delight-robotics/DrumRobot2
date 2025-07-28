@@ -1145,6 +1145,8 @@ bool DrumRobot::selectPlayMode()
     std::cout << "Enter BPM of Music: ";
     std::cin >> pathManager.bpmOfScore;
 
+    pathManager.bpmOfScore = readBPM(wavPath);
+
     std::cout << "Enter Maxon Control Mode (CSP : 1 / CST : 0): ";
     std::cin >> maxonMotorMode;
     
