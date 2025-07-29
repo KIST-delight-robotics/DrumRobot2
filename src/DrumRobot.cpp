@@ -846,7 +846,7 @@ void DrumRobot::musicMachine()
                 if (pythonClass == 0)
                 {
                     // 마젠타
-                    std::string pythonCmd = "/home/shy/DrumSound/magenta-env/bin/python /home/shy/DrumSound/getMIDITimeMagenta.py";
+                    std::string pythonCmd = "/home/shy/DrumRobot/DrumSound/magenta-env/bin/python /home/shy/DrumRobot/DrumSound/getMIDITimeMagenta.py";
 
                     int ret = std::system(pythonCmd.c_str());
 
@@ -855,7 +855,7 @@ void DrumRobot::musicMachine()
                 else
                 {
                     // 시간만 측정
-                    std::string pythonCmd = "/home/shy/DrumSound/magenta-env/bin/python /home/shy/DrumSound/getMIDITime.py";
+                    std::string pythonCmd = "/home/shy/DrumRobot/DrumSound/magenta-env/bin/python /home/shy/DrumRobot/DrumSound/getMIDITime.py";
 
                     int ret = std::system(pythonCmd.c_str());
                 }
@@ -1042,11 +1042,11 @@ void DrumRobot::runPythonForMagenta()
 {
     filesystem::path midPath;
 
-    filesystem::path outputPath1 = "/home/shy/DrumSound/output1_drum_hits_time.csv"; 
-    filesystem::path outputPath2 = "/home/shy/DrumSound/output2_mc.csv";   
-    filesystem::path outputPath3 = "/home/shy/DrumSound/output3_mc2c.csv";    
-    filesystem::path outputPath4 = "/home/shy/DrumSound/output4_hand_assign.csv";
-    filesystem::path outputPath5 = "/home/shy/DrumSound/output5_final.txt";
+    filesystem::path outputPath1 = "/home/shy/DrumRobot/DrumSound/output1_drum_hits_time.csv"; 
+    filesystem::path outputPath2 = "/home/shy/DrumRobot/DrumSound/output2_mc.csv";   
+    filesystem::path outputPath3 = "/home/shy/DrumRobot/DrumSound/output3_mc2c.csv";    
+    filesystem::path outputPath4 = "/home/shy/DrumRobot/DrumSound/output4_hand_assign.csv";
+    filesystem::path outputPath5 = "/home/shy/DrumRobot/DrumSound/output5_final.txt";
     
     int userInput = 100;
     cout << "\n 1 - 녹음 \n 2 - 악보 생성\n";
@@ -1056,7 +1056,7 @@ void DrumRobot::runPythonForMagenta()
     if (userInput == 1)
     {
         //이부분에 파이썬 파일 실행시키기 
-        std::string pythonCmd = "/home/shy/DrumSound/magenta-env/bin/python /home/shy/DrumSound/getMIDI_input.py";
+        std::string pythonCmd = "/home/shy/DrumRobot/DrumSound/magenta-env/bin/python /home/shy/DrumRobot/DrumSound/getMIDI_input.py";
 
         int ret = std::system(pythonCmd.c_str());
         if (ret != 0) {
@@ -1153,13 +1153,13 @@ void DrumRobot::getMagentaSheet()
 {
     filesystem::path midPath;
 
-    filesystem::path outputPath1 = "/home/shy/DrumSound/output1_drum_hits_time.csv"; 
-    filesystem::path outputPath2 = "/home/shy/DrumSound/output2_mc.csv";   
-    filesystem::path outputPath3 = "/home/shy/DrumSound/output3_mc2c.csv";    
-    filesystem::path outputPath4 = "/home/shy/DrumSound/output4_hand_assign.csv";
-    filesystem::path outputPath5 = "/home/shy/DrumSound/output5_final.txt";
+    filesystem::path outputPath1 = "/home/shy/DrumRobot/DrumSound/output1_drum_hits_time.csv"; 
+    filesystem::path outputPath2 = "/home/shy/DrumRobot/DrumSound/output2_mc.csv";   
+    filesystem::path outputPath3 = "/home/shy/DrumRobot/DrumSound/output3_mc2c.csv";    
+    filesystem::path outputPath4 = "/home/shy/DrumRobot/DrumSound/output4_hand_assign.csv";
+    filesystem::path outputPath5 = "/home/shy/DrumRobot/DrumSound/output5_final.txt";
 
-    midPath = "/home/shy/DrumSound/output.mid";
+    midPath = "/home/shy/DrumRobot/DrumSound/output.mid";
 
     while(!file_found) // ready 상태인지도 확인해주기
     {

@@ -1,1 +1,21 @@
+# Python 가상환경
+venv/
+magenta-env/
+DrumSound/magenta-env/
+DrumSound/magenta_drum/venv/
 
+# 파이썬 캐시 파일
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Jupyter 체크포인트
+.ipynb_checkpoints/
+
+# VSCode 설정 (옵션)
+.vscode/
+
+# OS별 임시 파일
+.DS_Store
+Thumbs.db

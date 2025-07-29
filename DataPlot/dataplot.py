@@ -71,7 +71,7 @@ def plot_pos_by_can_id(receive_df, send_df, can_id, ax):
     """
     CAN ID별 Actual/Desire Position 그래프 그리기 함수
     """
-    if can_id in [4, 7, 8]:
+    if can_id in [4, 7, 8, 11]:
         receive_df = receive_df.copy()
         send_df = send_df.copy()
         receive_df['Pos'] *= -1
@@ -130,7 +130,7 @@ def mode_2_plot(df):
 
 
 def main():
-    file_path = '../../DrumRobot_data/data1.txt'
+    file_path = '../../DrumRobot_data/data4.txt'
     df = load_txt(file_path)
 
     print("Choose mode:")

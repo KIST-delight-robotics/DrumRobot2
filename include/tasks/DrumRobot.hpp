@@ -150,7 +150,7 @@ private:
     // path
     std::string txtBasePath = "/home/shy/DrumRobot/include/codes/";    // 악보 위치
     std::string wavBasePath = "/home/shy/DrumRobot/include/music/";    // 음악 위치
-    std::string magentaPath = "/home/shy/DrumSound/";                  // 마젠타 경로
+    std::string magentaPath = "/home/shy/DrumRobot/DrumSound/";                  // 마젠타 경로
     std::string txtFileName;
     std::string txtPath;        // txt 파일 경로
     std::string wavPath;        // wav 파일 경로
