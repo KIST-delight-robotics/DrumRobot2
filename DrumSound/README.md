@@ -93,7 +93,9 @@ python --version
 출력은 Python 3.7.17이어야 합니다.
 
 ## 4. 필요한 라이브러리 설치
-이제 이 새로운 Python 3.7.17 가상 환경에 필요한 라이브러리들을 설치합니다. requirements.txt 파일이 있다면 편리하게 설치할 수 있습니다. (DrumSound 폴더 내의 requirement.txt)
+이제 이 새로운 Python 3.7.17 가상 환경에 필요한 라이브러리들을 설치합니다. requirements.txt 파일이 있다면 편리하게 설치할 수 있습니다. 
+
+(DrumSound 폴더 내의 requirement.txt)
 
 ```bash
 pip install -r requirements.txt
@@ -111,8 +113,9 @@ sudo apt install libjack-dev
 ```
 
 
-## 5. 파이썬 코드 실행
-작업을 마쳤다면 다음 명령으로 파이썬 코드를 실행할 수 있습니다.
+## 5. Python 코드 실행
+작업을 마쳤다면 다음 명령으로 Python 코드를 실행할 수 있습니다.
+
 (getMIDI_input.py는 다른 원하는 파일 이름으로 변경 가능)
 
 ```bash
