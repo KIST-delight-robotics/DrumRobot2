@@ -16,13 +16,6 @@ libbz2-dev libreadline-dev libsqlite3-dev wget curl llvm \
 libncursesw5-dev xz-utils tk-dev libxml2-dev libxmlsec1-dev libffi-dev liblzma-dev
 ```
 
-Fedora/RHEL/CentOS 기반 시스템:
-
-```bash
-sudo dnf install -y @development zlib-devel bzip2-devel \
-readline-devel sqlite-devel openssl-devel xz-devel libffi-devel tk-devel
-```
-
 ### 1.2. pyenv 설치
 Git 저장소를 클론하여 pyenv를 설치합니다.
 
@@ -31,7 +24,7 @@ git clone https://github.com/pyenv/pyenv.git ~/.pyenv
 ```
 
 ### 1.3. 쉘 환경 설정
-pyenv가 올바르게 작동하도록 쉘(Bash 또는 Zsh) 환경 설정 파일에 경로를 추가합니다.
+pyenv가 올바르게 작동하도록 환경 설정 파일에 경로를 추가합니다.
 
 Bash 쉘 (~/.bashrc):
 
