@@ -76,7 +76,7 @@ for i in range(3, 0, -1):
     print(f"⏳ {i} ...")
     time.sleep(1)
 
-print(f"\n🎙 녹음 시작! ({record_duration}초 동안 진행됩니다...)")
+print(f"\n녹음 시작! ({record_duration}초 동안 진행됩니다...)")
 
 # MIDI 설정
 mid = MidiFile(ticks_per_beat=960)
@@ -100,7 +100,6 @@ ENABLE_QUANTIZATION = False
 quantize_step = 0.05  # 단위: 초 (예: 0.05초 = 50ms)
 
 
-prev_time = time.time()
 with mido.open_input(port_name) as inport:
     flush_during_recording(inport)
 
@@ -182,7 +181,7 @@ generator.initialize()
 # NoteSequence 로딩
 primer_sequence = midi_file_to_sequence_proto(input_file)
 start_gen = primer_sequence.total_time
-end_gen = start_gen + 15.0
+end_gen = start_gen + 15.0      # output 미디 파일 시간
 
 # 생성 설정
 generator_options = generator_pb2.GeneratorOptions()

@@ -327,19 +327,23 @@ void PathManager::avoidCollision(MatrixXd &measureMatrix)
 {
     if (predictCollision(measureMatrix))    // 충돌 예측
     {
-        for (int priority = 0; priority < 5; priority++)    // 수정방법 중 우선순위 높은 것부터 시도
-        {
-            if (modifyMeasure(measureMatrix, priority))     // 주어진 방법으로 회피되면 measureMatrix를 바꾸고 True 반환
-            {
-                std::cout << measureMatrix;
-                std::cout << "\n 충돌 회피 성공 \n";
-                break;
-            }
-        }
+        // for (int priority = 0; priority < 5; priority++)    // 수정방법 중 우선순위 높은 것부터 시도
+        // {
+        //     if (modifyMeasure(measureMatrix, priority))     // 주어진 방법으로 회피되면 measureMatrix를 바꾸고 True 반환
+        //     {
+        //         std::cout << measureMatrix;
+        //         std::cout << "\n 충돌 회피 성공 \n";
+        //         break;
+        //     }
+        // }
+
+        fun.appendToCSV_DATA("CC", 1, 0, 0);
     }
     else
     {
         // std::cout << "\n 충돌 안함 \n";
+
+        fun.appendToCSV_DATA("CC", 0, 0, 0);
     }
 }
 
@@ -1235,7 +1239,7 @@ void PathManager::parseHitData(MatrixXd &measureMatrix)
     {
         if (round(10000 * hitDetectionThreshold) < round(10000 * (t(i) - t(0))))
         {
-            if (i != 1)     // 이인우 : 첫 줄은 무조건 읽도록 (임시) 
+            if (i != 1)     // 첫 줄은 무조건 읽도록
             {
                 break;
             }
@@ -1304,7 +1308,7 @@ void PathManager::parseHitData(MatrixXd &measureMatrix)
     {
         if (round(10000 * hitDetectionThreshold) < round(10000 * (t(i) - t(0))))
         {
-            if (i != 1)     // 이인우 : 첫 줄은 무조건 읽도록 (임시) 
+            if (i != 1)     // 첫 줄은 무조건 읽도록
             {
                 break;
             }
@@ -2732,7 +2736,7 @@ bool PathManager::predictCollision(MatrixXd measureMatrix)
                 hitL = measureIntensityL(i+1)*Tr*15.0*sin(M_PI*j/stepSize) * M_PI / 180.0;
             }
 
-            if (checkTable(PR, PL, hitR, hitL, i))
+            if (checkTable(PR, PL, hitR, hitL))
             {
                 // std::cout << "\n 충돌이 예측됨 \n";
                 // std::cout << "\n R :" << PR.transpose() << ", L :" << PL.transpose() << "\n";
@@ -2841,107 +2845,93 @@ MatrixXd PathManager::parseMeasurePC(MatrixXd &measureMatrix, MatrixXd &state)
     return nextState;
 }
 
-bool PathManager::checkTable(VectorXd PR, VectorXd PL, double hitR, double hitL, int test)
+size_t PathManager::getflattenIndex(const std::vector<size_t>& indices, const std::vector<size_t>& dims)
 {
-    std::ifstream tableFile;
-    std::string tablePath = "/home/shy/DrumRobot/include/table/";    // 테이블 위치
+    size_t flatIndex = 0;
+    size_t multiplier = 1;
 
-    int PR_index[3] = {0};
-    int PL_index[3] = {0};
-    int WR_index = 0, WL_index = 0;
-    double range[2][4] = {{-0.35, 0.50, 0.60, 0.0}, {0.50, 0.75, 1.10, 30.0*M_PI/180.0}};
-    double resolution[4] = {23, 7, 14, 10};
+    for (int i = 0; i < 8; i++)
+    {
+        flatIndex += indices[7-i] * multiplier;
+        multiplier *= dims[7-i];
+    }
+
+    return flatIndex;
+}
+
+std::pair<size_t, size_t> PathManager::getBitIndex(size_t offsetIndex)
+{
+    size_t bitNum = offsetIndex * 2;
+    size_t byteNum = bitNum / 8;
+    size_t bitIndex = bitNum - 8 * byteNum;
+
+    return std::make_pair(byteNum, bitIndex);
+}
+
+bool PathManager::checkTable(VectorXd PR, VectorXd PL, double hitR, double hitL)
+{
+    double rangeMin[8] = {0.0, 0.0, -0.3, 0.3, 0.5, -0.3, 0.3, 0.5};
+    double rangeMax[8] = {50.0*M_PI/180.0, 50.0*M_PI/180.0, 0.5, 0.7, 1.0, 0.5, 0.7, 1.0};
+
+    std::vector<double> target = {hitR, hitL, PR(0), PR(1), PR(2), PL(0), PL(1), PL(2)};
+    
+    std::vector<size_t> dims = {11, 11, 19, 10, 12, 19, 10, 12};    // Rw Lw Rx Ry Rz Lx Ly Lz
+    std::vector<size_t> targetIndex;
 
     // 인덱스 공간으로 변환
-    for (int i = 0; i < 4; i++)
+    for (int i = 0; i < 8; i++)
     {
-        if (i < 3)
+        size_t index = round((dims[i]-1)*(target[i] - rangeMin[i])/(rangeMax[i] - rangeMin[i]));
+
+        if (index > dims[i]-1)
         {
-            PR_index[i] = round(resolution[i]*(PR(i) - range[0][i])/(range[1][i] - range[0][i]));
-            PL_index[i] = round(resolution[i]*(PL(i) - range[0][i])/(range[1][i] - range[0][i]));
+            index = (size_t)(dims[i]-1);
+        }
+        else if (index < 0)
+        {
+            index = 0;
+        }
 
-            if (PR_index[i] > resolution[i])
-            {
-                PR_index[i] = (int)(resolution[i]);
-            }
+        targetIndex.push_back(index);
+    }
 
-            if (PL_index[i] > resolution[i])
-            {
-                PL_index[i] = (int)(resolution[i]);
-            }
+    // 테이블 확인
+    std::string tablePath = "/home/shy/DrumRobot/include/table/TABLE.bin";    // 테이블 위치
+    std::ifstream tableFile(tablePath, std::ifstream::binary);
+    
+    if (tableFile)
+    {
+        std::size_t offsetIndex = getflattenIndex(targetIndex, dims);
 
-            if (PR_index[i] < 0)
-            {
-                PR_index[i] = 0;
-            }
+        std::pair<size_t, size_t> bitIndex = getBitIndex(offsetIndex);
+        
+        tableFile.seekg(bitIndex.first, std::ios::beg);
+        
+        char byte;
+        tableFile.read(&byte, 1);
+        if (!tableFile) {
+            std::cerr << " 바이트 읽기 실패 \n";
+            return false;
+        }
 
-            if (PL_index[i] < 0)
-            {
-                PL_index[i] = 0;
-            }
+        // byte에서 원하는 2비트 추출 (LSB 기준)
+        uint8_t value = (byte >> bitIndex.second) & 0b11;
+
+        if (value == 0b00)
+        {
+            return false;   // 충돌 안함
         }
         else
         {
-            WR_index = round(resolution[i]*(hitR - range[0][i])/(range[1][i] - range[0][i]));
-            WL_index = round(resolution[i]*(hitL - range[0][i])/(range[1][i] - range[0][i]));
-
-            if (WR_index > resolution[i])
-            {
-                WR_index = (int)(resolution[i]);
-            }
-
-            if (WL_index > resolution[i])
-            {
-                WL_index = (int)(resolution[i]);
-            }
+            return true;    // 충돌 위험 or IK 안풀림
         }
-    }
-
-    // std::cout << "\n W index : " << WR_index << ", " << WL_index << "\n";
-    // std::cout << "\n X index : " << PR_index[0] << ", " << PL_index[0] << "\n";
-    // std::cout << "\n Y index : " << PR_index[1] << ", " << PL_index[1] << "\n";
-    // std::cout << "\n Z index : " << PR_index[2] << ", " << PL_index[2] << "\n";
-
-    // 테이블 확인
-    std::string fileName = tablePath + "TABLE_" + std::to_string(WR_index) + "_" + std::to_string(WL_index) +".txt";
-    tableFile.open(fileName); // 파일 열기
-
-    if (tableFile.is_open())
-    {
-        string row;
-        int readingLine = ((resolution[2] + 1) * (resolution[0] + 2) + 1) * PR_index[1] + (resolution[0] + 2) * PR_index[2] + PR_index[0] + 1;    // 읽어야 할 줄 수
-
-        // std::cout << "\n readingLine : " << readingLine << "\n";
-
-        for (int j = 0; j < readingLine; j++)
-        {
-            getline(tableFile, row);
-        }
-        
-        istringstream iss(row);
-        string item;
-
-        for (int j = 0; j < PL_index[2]+1; j++)
-        {
-            getline(iss, item, '\t');
-        }
-
-        item = trimWhitespace(item);
-
-        char hex1 = item.at(2*PL_index[0] + 1);
-        char hex2 = item.at(2*PL_index[0]);
-
-        tableFile.close(); // 파일 닫기
-
-        return hex2TableData(hex1, hex2, PL_index[1]);
     }
     else
     {
-        std::cout << "\n table file open error \n";
-        std::cout << fileName;
+        std::cout << "\n 테이블 열기 실패 \n";
+        std::cout << tablePath;
+        return false;
     }
-
-    return false;
 }
 
 string PathManager::trimWhitespace(const std::string &str)
@@ -3088,23 +3078,23 @@ bool PathManager::modifyMeasure(MatrixXd &measureMatrix, int priority)
 
     while (modificationSuccess)
     {
-        if (method == "Crash")
+        if (method == modificationMethods[0])
         {
             modificationSuccess = modifyCrash(modifedMatrix, nModification);     // 주어진 방법으로 수정하면 True 반환
         }
-        else if (method == "Arm")
+        else if (method == modificationMethods[1])
         {
-            modificationSuccess = modifyArm(modifedMatrix, nModification);     // 주어진 방법으로 수정하면 True 반환
+            modificationSuccess = waitAndMove(modifedMatrix, nModification);     // 주어진 방법으로 수정하면 True 반환   
         }
-        else if (method == "WaitAndMove")
-        {
-            modificationSuccess = waitAndMove(modifedMatrix, nModification);     // 주어진 방법으로 수정하면 True 반환
-        }
-        else if (method == "MoveAndWait")
+        else if (method == modificationMethods[2])
         {
             modificationSuccess = moveAndWait(modifedMatrix, nModification);     // 주어진 방법으로 수정하면 True 반환
         }
-        else if (method == "Delete")
+        else if (method == modificationMethods[3])
+        {
+            modificationSuccess = switchHands(modifedMatrix, nModification);     // 주어진 방법으로 수정하면 True 반환
+        }
+        else if (method == modificationMethods[4])
         {
             modificationSuccess = deleteInst(modifedMatrix, nModification);     // 주어진 방법으로 수정하면 True 반환
         }
@@ -3237,7 +3227,7 @@ bool PathManager::modifyCrash(MatrixXd &measureMatrix, int num)
     return false;
 }
 
-bool PathManager::modifyArm(MatrixXd &measureMatrix, int num)
+bool PathManager::switchHands(MatrixXd &measureMatrix, int num)
 {
     // 주어진 방법으로 수정하면 True 반환
     VectorXd t = measureMatrix.col(8);

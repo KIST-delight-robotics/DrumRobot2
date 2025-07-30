@@ -242,7 +242,7 @@ private:
 
     typedef struct {
         double openAngle = -3*M_PI/180.0;
-        double closedAngle = -11*M_PI/180.0;
+        double closedAngle = -18*M_PI/180.0;
     }HHAngle;
 
     elbowTime elbowTimeR, elbowTimeL;
@@ -309,7 +309,9 @@ private:
     bool predictCollision(MatrixXd measureMatrix);
     int findDetectionRange(MatrixXd measureMatrix);
     MatrixXd parseMeasurePC(MatrixXd &measureMatrix, MatrixXd &state);
-    bool checkTable(VectorXd PR, VectorXd PL, double hitR, double hitL, int test);
+    size_t getflattenIndex(const std::vector<size_t>& indices, const std::vector<size_t>& dims);
+    std::pair<size_t, size_t> getBitIndex(size_t offsetIndex);
+    bool checkTable(VectorXd PR, VectorXd PL, double hitR, double hitL);
     string trimWhitespace(const std::string &str);
     bool hex2TableData(char hex1, char hex2, int index);
 
@@ -318,14 +320,14 @@ private:
         { 0, "Crash"},
         { 1, "WaitAndMove"},
         { 2, "MoveAndWait"},
-        { 3, "Arm"},
+        { 3, "Switch"},
         { 4, "Delete"}
     };
 
     bool modifyMeasure(MatrixXd &measureMatrix, int priority);
     pair<int, int> findModificationRange(VectorXd t, VectorXd instR, VectorXd instL);
     bool modifyCrash(MatrixXd &measureMatrix, int num);
-    bool modifyArm(MatrixXd &measureMatrix, int num);
+    bool switchHands(MatrixXd &measureMatrix, int num);
     bool waitAndMove(MatrixXd &measureMatrix, int num);
     bool moveAndWait(MatrixXd &measureMatrix, int num);
     bool deleteInst(MatrixXd &measureMatrix, int num);
