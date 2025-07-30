@@ -110,7 +110,17 @@ sudo apt install libasound2-dev
 sudo apt install libjack-dev
 ```
 
-## 5. 가상 환경 비활성화
+
+## 5. 파이썬 코드 실행
+작업을 마쳤다면 다음 명령으로 파이썬 코드를 실행할 수 있습니다.
+(getMIDI_input.py는 다른 원하는 파일 이름으로 변경 가능)
+
+```bash
+/home/shy/DrumRobot/DrumSound/magenta-env/bin/python /home/shy/DrumRobot/DrumSound/getMIDI_input.py
+```
+
+
+## 6. 가상 환경 비활성화
 작업을 마쳤다면 다음 명령으로 가상 환경을 비활성화할 수 있습니다.
 
 ```bash
