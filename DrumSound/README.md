@@ -1,5 +1,5 @@
-# Python 3.8.10 가상 환경 설정 가이드
-이 문서는 새 Linux 환경에서 Python 3.8.10 버전의 개발 환경을 설정하는 방법을 안내합니다. pyenv를 사용하여 여러 Python 버전을 관리하고, venv 모듈을 사용하여 프로젝트별 가상 환경을 생성합니다.
+# Python 3.7.17 가상 환경 설정 가이드
+이 문서는 새 Linux 환경에서 Python 3.7.17 버전의 개발 환경을 설정하는 방법을 안내합니다. pyenv를 사용하여 여러 Python 버전을 관리하고, venv 모듈을 사용하여 프로젝트별 가상 환경을 생성합니다.
 
 ## 1. pyenv 설치 및 설정
 pyenv는 여러 Python 버전을 유연하게 설치하고 관리할 수 있도록 해주는 도구입니다.
@@ -42,8 +42,8 @@ echo 'eval "$(pyenv init -)"' >> ~/.bashrc
 source ~/.bashrc # 또는 source ~/.zshrc
 ```
 
-## 2. Python 3.8.10 설치
-pyenv를 사용하여 Python 3.8.10을 설치합니다.
+## 2. Python 3.7.17 설치
+pyenv를 사용하여 Python 3.7.17을 설치합니다.
 
 ```bash
 pyenv install 3.7.17
@@ -51,8 +51,8 @@ pyenv install 3.7.17
 
 이 과정은 Python 소스를 다운로드하고 컴파일하므로 시스템 성능에 따라 몇 분 정도 소요될 수 있습니다.
 
-## 3. Python 3.8.10 가상 환경 생성 및 활성화
-프로젝트 디렉토리로 이동하여 Python 3.8.10을 기반으로 하는 새로운 가상 환경을 생성합니다.
+## 3. Python 3.7.17 가상 환경 생성 및 활성화
+프로젝트 디렉토리로 이동하여 Python 3.7.17을 기반으로 하는 새로운 가상 환경을 생성합니다.
 
 ### 3.1. 프로젝트 디렉토리로 이동
 
@@ -99,7 +99,7 @@ python --version
 pip install -r requirements.txt
 ```
 
-참고: requirements.txt에 포함된 특정 라이브러리가 Python 3.8.10과 호환되지 않는 버전이라면 설치 오류가 발생할 수 있습니다. 이 경우 해당 라이브러리의 버전을 조절하거나 대안을 찾아야 합니다.
+참고: requirements.txt에 포함된 특정 라이브러리가 Python 3.7.17과 호환되지 않는 버전이라면 설치 오류가 발생할 수 있습니다. 이 경우 해당 라이브러리의 버전을 조절하거나 대안을 찾아야 합니다.
 
 
 ALSA or JACK Audio Connenction Kit 관련 오류 발생 시 :
