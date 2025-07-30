@@ -1256,7 +1256,6 @@ bool DrumRobot::selectPlayMode()
     {
         txtPath = magentaPath + txtFileName + ".txt";
         useMagenta = true;
-        cout << "\nuseMagenta--------------------\n";
     }
     else
     {
@@ -1301,7 +1300,6 @@ bool DrumRobot::selectPlayMode()
     else //2
     {
         playMusic = false;
-        cout << "\nplayMusic--------------------\n";
     }
 
     ////////////////////////////////////////////
