@@ -5,6 +5,7 @@ import sys
 import subprocess
 import csv
 import os
+import datetime
 
 # Magenta + Note Sequence 관련 import
 import tensorflow.compat.v1 as tf
@@ -35,6 +36,10 @@ def map_drum_note(note):
     }
     return mapping.get(note, 0)
 
+def set_tempo_in_sequence(sequence, bpm):
+    sequence.tempos.add(qpm=bpm)
+    sequence.tempos[0].time = 0.0
+
 # MIDI 포트 연결
 input_ports = mido.get_input_names()
 if not input_ports:
@@ -45,17 +50,25 @@ port_index = 1  # 사용자가 원하는 포트 인덱스
 port_name = input_ports[port_index]
 print(f"\n✅ MIDI 장치 연결 확인됨: {port_name}")
 
-def flush_midi_input():
-    try:
-        with mido.open_input(port_name) as inport:
-            for _ in inport.iter_pending():
-                pass
-    except Exception as e:
-        print(f"⚠️ MIDI flush 중 에러 발생: {e}")
-flush_midi_input()
+# 녹음 전 미디 입력 Flush
+def flush_during_recording(inport):
+    for _ in range(5):
+        for _ in inport.iter_pending():
+            pass
+        time.sleep(0.01)
+
+# 녹음 전 미디 입력 무시
+def flush_with_live_wait(inport, duration_sec=2.0):
+    flushed = 0
+    start = time.time()
+    while (time.time() - start) < duration_sec:
+        for msg in inport.iter_pending():
+            flushed += 1
+        time.sleep(0.005)
+    print(f"MIDI 이벤트 {flushed}개 무시됨.")
 
 # 녹음 시간 설정 (초)
-record_duration = 10.0
+record_duration = 27.0
 
 # 카운트 다운 추가
 print("\n▶️ 녹음 준비...")
@@ -74,36 +87,71 @@ tempo_us_per_beat = mido.bpm2tempo(tempo_bpm)
 track.append(mido.MetaMessage('set_tempo', tempo=tempo_us_per_beat, time=0))
 
 # 녹음 시작
-start_time = time.time()
+first_note_time_saved = False
+recording_started = False
+start_time = None
+
 final_events = []
 recorded_msgs = []
-quantize_step = 0.05
 ticks_per_beat = 960
-quantize_ticks = int(round(quantize_step * ticks_per_beat))
+
+# ✅ 양자화 설정: True = 켜짐 / False = 꺼짐
+ENABLE_QUANTIZATION = False
+quantize_step = 0.05  # 단위: 초 (예: 0.05초 = 50ms)
+
 
 prev_time = time.time()
 with mido.open_input(port_name) as inport:
+    flush_during_recording(inport)
+
+    print("\n▶️ 첫 MIDI 입력을 기다리는 중...")
+
+    prev_time = time.time()
+
     while True:
         now = time.time()
-        elapsed_record_time = now - start_time
-
-        if elapsed_record_time >= record_duration:
-            print("🛑 녹음 끝!")
-            break
 
         for msg in inport.iter_pending():
             delta = now - prev_time
             prev_time = now
             ticks = int(round(delta * ticks_per_beat))
-            quantized_ticks = max(round(ticks / quantize_ticks) * quantize_ticks, 1)
-            msg.time = quantized_ticks
+
+            if ENABLE_QUANTIZATION:
+                quantize_ticks = int(round(quantize_step * ticks_per_beat))
+                quantized_ticks = max(round(ticks / quantize_ticks) * quantize_ticks, 1)
+                msg.time = quantized_ticks
+            else:
+                msg.time = max(ticks, 1)
 
             if is_saveable_message(msg):
                 if msg.type == 'note_on' and msg.velocity > 0:
-                    elapsed_time = round(now - start_time, 3)
+                    if not first_note_time_saved:
+                        # ⏱ 첫 입력 시각 기록 및 시작
+                        current_time = datetime.datetime.now().strftime("%H:%M:%S.%f")[:-3]
+                        with open("/home/shy/DrumRobot/include/sync/sync.txt", "w") as f:
+                            f.write(current_time)
+                        print(f"\n✅ 첫 입력 감지됨: {current_time}")
+
+                        flush_with_live_wait(inport, duration_sec=2.0)
+
+                        start_time = time.time()
+                        recording_started = True
+                        first_note_time_saved = True
+                        print(f"녹음 시작! ({record_duration}초 동안 진행됩니다...)")
+                        continue
+
+                    elapsed_time = round(time.time() - start_time, 3)
+                    
                     final_events.append((elapsed_time, map_drum_note(msg.note)))
-                recorded_msgs.append(msg)
-                print(f"✅ 저장됨: {msg}")
+
+                if recording_started:
+                    recorded_msgs.append(msg)
+                    print(f"✅ 저장됨: {msg}")
+
+        if recording_started and (time.time() - start_time) >= record_duration:
+            print("녹음 끝")
+            break
+
         time.sleep(0.001)
 
 # 시간 차이 저장
@@ -113,20 +161,20 @@ for i in range(1, len(final_events)):
     time_diffs.append([diff, final_events[i][1]])
 
 # MIDI 저장
-input_file = "input.mid"
+input_file = "/home/shy/DrumRobot/DrumSound/input.mid"
 track.extend(recorded_msgs)
 mid.save(input_file)
-print(f"💾 입력 저장 완료: {input_file}")
+print(f"입력 저장 완료: {input_file}")
 
 # CSV 저장
-with open("drum_hits.csv", "w", newline='') as f:
+with open("/home/shy/DrumRobot/DrumSound/drum_hits.csv", "w", newline='') as f:
     writer = csv.writer(f, delimiter='\t')
     writer.writerows(time_diffs)
-print("📄 드럼 이벤트 CSV 저장 완료: drum_hits.csv")
+print("드럼 이벤트 CSV 저장 완료: drum_hits.csv")
 
 # Magenta 모델 로딩
-print("🤖 Magenta Drums RNN 로딩 중...")
-bundle = sequence_generator_bundle.read_bundle_file('/home/shy/DrumSound/drum_kit_rnn.mag')
+print("Magenta Drums RNN 로딩 중...")
+bundle = sequence_generator_bundle.read_bundle_file('/home/shy/DrumRobot/DrumSound/drum_kit_rnn.mag')
 generator = drums_rnn_sequence_generator.get_generator_map()['drum_kit'](
     checkpoint=None, bundle=bundle)
 generator.initialize()
@@ -134,36 +182,31 @@ generator.initialize()
 # NoteSequence 로딩
 primer_sequence = midi_file_to_sequence_proto(input_file)
 start_gen = primer_sequence.total_time
-end_gen = start_gen + 20.0
+end_gen = start_gen + 15.0
 
 # 생성 설정
 generator_options = generator_pb2.GeneratorOptions()
 section = generator_options.generate_sections.add()
 section.start_time = start_gen
 section.end_time = end_gen
+generator.temperature = 0.3
 generator.steps_per_quarter = 4
 
-# Temperature 별로 반복 생성
-versions = [
-    (0.3, "output_temp_03.mid"),
-    (0.8, "output_temp_08.mid")
-]
+# output.mid BPM 설정
+musicBPM = 100
 
-for temp, filename in versions:
-    print(f"\n🎵 Temperature={temp} 로 생성 중 → 파일명: {filename}")
+# output.mid 저장
+outputFile = "/home/shy/DrumRobot/DrumSound/output.mid"
 
-    generator.temperature = temp
+generated_full = generator.generate(primer_sequence, generator_options)
+generated_only = extract_subsequence(generated_full, start_gen, end_gen)
 
-    generated_full = generator.generate(primer_sequence, generator_options)
-    generated_only = extract_subsequence(generated_full, start_gen, end_gen)
+set_tempo_in_sequence(generated_only, bpm=musicBPM)
 
-    sequence_proto_to_midi_file(generated_only, filename)
-    print(f"✅ 저장 완료: {filename}")
+sequence_proto_to_midi_file(generated_only, outputFile)
+print(f"✅ 저장 완료: {outputFile}")
 
 # 필요시 timidity 재생 함수 (주석 해제 시 사용 가능)
 def play_with_timidity(midi_file):
     print(f"🎧 timidity로 {midi_file} 재생 중...")
     subprocess.run(["timidity", midi_file])
-
-# 예시 → 0.8 버전 재생
-# play_with_timidity("output_temp_08.mid")
