@@ -30,7 +30,7 @@ DrumRobot::DrumRobot(State &stateRef,
 void DrumRobot::initializePathManager()
 {
     pathManager.getDrumPositoin();
-    pathManager.setReadyAngle();
+    pathManager.setAddStanceAngle();
 }
 
 void DrumRobot::initializeMotors()
@@ -603,18 +603,6 @@ void DrumRobot::stateMachine()
                 sendPlayProcess();
                 break;
             }
-            // case Main::FGPlay:
-            // {
-            //     flagObj.setFixationFlag("moving");
-            //     sendFGProcess();
-            //     break;
-            // }
-            // case Main::TFGPlay:
-            // {
-            //     flagObj.setFixationFlag("moving");
-            //     sendTFGProcess();
-            //     break;
-            // }
             case Main::Test:
             {
                 testManager.SendTestProcess();  
@@ -947,7 +935,7 @@ void DrumRobot::processInput(const std::string &input, string flagName)
     }
     else if (input == "p" && flagName == "isReady")
     {
-        initializePlayState();
+        // initializePlayState();       // sendPlayProcess()으로 이동
         state.main = Main::Play;
     }
     else if (input == "m" && flagName == "isReady")
@@ -1496,9 +1484,11 @@ void DrumRobot::processLine()
 
 void DrumRobot::sendPlayProcess()
 {
-    bool useMagenta = false;
+    static int repeatCount = 0; // totalRepeatCount
+    static bool useMagenta = false;
     if (fileIndex == 0)     // 처음 들어올 때 모드 세팅
     {
+        initializePlayState();
         useMagenta = selectPlayMode();
     }
 

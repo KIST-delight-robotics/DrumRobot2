@@ -94,7 +94,7 @@ void PathManager::getDrumPositoin()
     wristAnglesL << 10.0*M_PI/180.0,   10.0*M_PI/180.0,     5.0*M_PI/180.0,     5.0*M_PI/180.0,    10.0*M_PI/180.0,    15.0*M_PI/180.0,    10.0*M_PI/180.0,   10.0*M_PI/180.0,  10.0*M_PI/180.0;
 }
 
-void PathManager::setReadyAngle()
+void PathManager::setAddStanceAngle()
 {
     //////////////////////////////////////// Ready Angle
     readyAngle.resize(12);
@@ -182,9 +182,10 @@ void PathManager::pushAddStancePath(string flagName)
     int n = (int)(T / dt);
     int stayN = (int)(stayTime / dt);
 
-    // finalMotorPosition -> 마지막 명령값에서 이어서 생성
+    // Q1 : finalMotorPosition -> 마지막 명령값에서 이어서 생성
     Q1 = getMotorPos();
 
+    // Q2 : 정해진 위치
     if (flagName == "isHome")
     {
         for (int i = 0; i < 12; i++)
@@ -212,28 +213,28 @@ void PathManager::pushAddStancePath(string flagName)
         return;
     }
 
+    // 사다리꼴 속도 프로파일 생성을 위한 가속도
     const float accMax = 100.0; // rad/s^2
     
+    // 사다리꼴 속도 프로파일 생성을 위한 최고속도
     VectorXd Vmax = VectorXd::Zero(12);
-
     Vmax = calVmax(Q1, Q2, accMax, T);
 
+    // 출력
     for (int k = 0; k < 12; k++)
     {
         std::cout << "Q1[" << k << "] : " << Q1[k] * 180.0 / M_PI << " [deg] -> Q2[" << k << "] : " << Q2[k] * 180.0 / M_PI << " [deg]" << endl;
     }
 
+    // 궤적 생성
     for (int k = 1; k <= n + stayN; ++k)
     {
-        if (k > stayN)
+        if (k > stayN)  // 이동 궤적 생성
         {
-            // 이동
             float t = (k - stayN) * T / n;
 
-            // Make Array
             Qt = makeProfile(Q1, Q2, Vmax, accMax, t, T);
 
-            // Send to Buffer
             for (auto &entry : motors)
             {
                 int can_id = canManager.motorMapping[entry.first];
@@ -264,9 +265,8 @@ void PathManager::pushAddStancePath(string flagName)
                 }
             }
         }
-        else
+        else    // 현재 위치 대기
         {
-            // 현재 위치 유지
             for (auto &entry : motors)
             {
                 int can_id = canManager.motorMapping[entry.first];
