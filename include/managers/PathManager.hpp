@@ -312,8 +312,6 @@ private:
     size_t getflattenIndex(const std::vector<size_t>& indices, const std::vector<size_t>& dims);
     std::pair<size_t, size_t> getBitIndex(size_t offsetIndex);
     bool checkTable(VectorXd PR, VectorXd PL, double hitR, double hitL);
-    string trimWhitespace(const std::string &str);
-    bool hex2TableData(char hex1, char hex2, int index);
 
     /////////////////////////////////////////////////////////////////////////// Avoid Collision
     map<int, std::string> modificationMethods = { ///< 악보 수정 방법 중 우선 순위
