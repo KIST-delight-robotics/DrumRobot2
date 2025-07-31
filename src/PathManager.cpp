@@ -327,23 +327,19 @@ void PathManager::avoidCollision(MatrixXd &measureMatrix)
 {
     if (predictCollision(measureMatrix))    // 충돌 예측
     {
-        // for (int priority = 0; priority < 5; priority++)    // 수정방법 중 우선순위 높은 것부터 시도
-        // {
-        //     if (modifyMeasure(measureMatrix, priority))     // 주어진 방법으로 회피되면 measureMatrix를 바꾸고 True 반환
-        //     {
-        //         std::cout << measureMatrix;
-        //         std::cout << "\n 충돌 회피 성공 \n";
-        //         break;
-        //     }
-        // }
-
-        fun.appendToCSV_DATA("CC", 1, 0, 0);
+        for (int priority = 0; priority < 5; priority++)    // 수정방법 중 우선순위 높은 것부터 시도
+        {
+            if (modifyMeasure(measureMatrix, priority))     // 주어진 방법으로 회피되면 measureMatrix를 바꾸고 True 반환
+            {
+                std::cout << measureMatrix;
+                std::cout << "\n 충돌 회피 성공 \n";
+                break;
+            }
+        }
     }
     else
     {
         // std::cout << "\n 충돌 안함 \n";
-
-        fun.appendToCSV_DATA("CC", 0, 0, 0);
     }
 }
 
@@ -408,12 +404,12 @@ void PathManager::generateTrajectory(MatrixXd &measureMatrix)
 
         trajectoryQueue.push(Pt);
 
-        // 데이터 저장
-        std::string fileName;
-        fileName = "Trajectory_R";
-        fun.appendToCSV_DATA(fileName, Pt.trajectoryR[0], Pt.trajectoryR[1], Pt.trajectoryR[2]);
-        fileName = "Trajectory_L";
-        fun.appendToCSV_DATA(fileName, Pt.trajectoryL[0], Pt.trajectoryL[1], Pt.trajectoryL[2]);
+        // // 데이터 저장
+        // std::string fileName;
+        // fileName = "Trajectory_R";
+        // fun.appendToCSV_DATA(fileName, Pt.trajectoryR[0], Pt.trajectoryR[1], Pt.trajectoryR[2]);
+        // fileName = "Trajectory_L";
+        // fun.appendToCSV_DATA(fileName, Pt.trajectoryL[0], Pt.trajectoryL[1], Pt.trajectoryL[2]);
         // fileName = "S";
         // fun.appendToCSV_DATA(fileName, sR, sL, 0);
         // fileName = "T";
@@ -486,16 +482,16 @@ void PathManager::generateTrajectory(MatrixXd &measureMatrix)
         
         hitAngleQueue.push(Ht);
 
-        // 데이터 저장
-        std::string fileName;
+        // // 데이터 저장
+        // std::string fileName;
         // fileName = "hitAngle";
         // fun.appendToCSV_DATA(fileName, Ht.bass, Ht.wristL, Ht.wristR);
         // fileName = "HtR";
         // fun.appendToCSV_DATA(fileName, tHitR, hitR_t2 - hitR_t1, 0);
         // fileName = "HtL";
         // fun.appendToCSV_DATA(fileName, tHitL, hitL_t2 - hitL_t1, 0);
-        fileName = "HHAngle.csv";
-        fun.appendToCSV_DATA(fileName, Ht.hihat, Ht.bass, 0);
+        // fileName = "HHAngle.csv";
+        // fun.appendToCSV_DATA(fileName, Ht.hihat, Ht.bass, 0);
     }
 
     ///////////////////////////////////////////////////////////// 읽은 줄 삭제
@@ -545,12 +541,12 @@ void PathManager::solveIKandPushCommand()
         // push command buffer
         pushCommandBuffer(q, nextP.Kpp);
 
-        // 데이터 기록
-        for (int i = 0; i < 9; i++)
-        {
-            std::string fileName = "solveIK_q" + to_string(i);
-            fun.appendToCSV_DATA(fileName, i, q(i), 0);
-        }
+        // // 데이터 기록
+        // for (int i = 0; i < 9; i++)
+        // {
+        //     std::string fileName = "solveIK_q" + to_string(i);
+        //     fun.appendToCSV_DATA(fileName, i, q(i), 0);
+        // }
     }
 
     // std::cout << "\n/////////////// Line Data \n";
@@ -2896,7 +2892,7 @@ bool PathManager::checkTable(VectorXd PR, VectorXd PL, double hitR, double hitL)
     }
 
     // 테이블 확인
-    std::string tablePath = "/home/shy/DrumRobot/include/table/TABLE.bin";    // 테이블 위치
+    std::string tablePath = "/home/shy/DrumRobot_table/TABLE.bin";    // 테이블 위치
     std::ifstream tableFile(tablePath, std::ifstream::binary);
     
     if (tableFile)
@@ -2914,15 +2910,23 @@ bool PathManager::checkTable(VectorXd PR, VectorXd PL, double hitR, double hitL)
             return false;
         }
 
+        tableFile.close();
+
         // byte에서 원하는 2비트 추출 (LSB 기준)
         uint8_t value = (byte >> bitIndex.second) & 0b11;
 
         if (value == 0b00)
         {
+            // fun.appendToCSV_DATA("CC1", targetIndex[0], targetIndex[1], targetIndex[2]);
+            // fun.appendToCSV_DATA("CC2", targetIndex[3], targetIndex[4], targetIndex[5]);
+            // fun.appendToCSV_DATA("CC3", targetIndex[6], targetIndex[7], 0);
             return false;   // 충돌 안함
         }
         else
         {
+            // fun.appendToCSV_DATA("CC1", targetIndex[0], targetIndex[1], targetIndex[2]);
+            // fun.appendToCSV_DATA("CC2", targetIndex[3], targetIndex[4], targetIndex[5]);
+            // fun.appendToCSV_DATA("CC3", targetIndex[6], targetIndex[7], 1);
             return true;    // 충돌 위험 or IK 안풀림
         }
     }
@@ -2932,135 +2936,6 @@ bool PathManager::checkTable(VectorXd PR, VectorXd PL, double hitR, double hitL)
         std::cout << tablePath;
         return false;
     }
-}
-
-string PathManager::trimWhitespace(const std::string &str)
-{
-    size_t first = str.find_first_not_of(" \t");
-    if (std::string::npos == first)
-    {
-        return str;
-    }
-    size_t last = str.find_last_not_of(" \t");
-    return str.substr(first, (last - first + 1));
-}
-
-bool PathManager::hex2TableData(char hex1, char hex2, int index)
-{
-    char hex;
-    bool bin[4];
-
-    if (index < 4)
-    {
-        hex = hex1;
-    }
-    else
-    {
-        hex = hex2;
-        index = index - 4;
-    }
-
-    switch(hex)
-    {
-    case '0':
-        bin[0] = false;
-        bin[1] = false;
-        bin[2] = false;
-        bin[3] = false;
-    break;
-    case '1':
-        bin[0] = true;
-        bin[1] = false;
-        bin[2] = false;
-        bin[3] = false;
-    break;
-    case '2':
-        bin[0] = false;
-        bin[1] = true;
-        bin[2] = false;
-        bin[3] = false;
-    break;
-    case '3':
-        bin[0] = true;
-        bin[1] = true;
-        bin[2] = false;
-        bin[3] = false;
-    break;
-    case '4':
-        bin[0] = false;
-        bin[1] = false;
-        bin[2] = true;
-        bin[3] = false;
-    break;
-    case '5':
-        bin[0] = true;
-        bin[1] = false;
-        bin[2] = true;
-        bin[3] = false;
-    break;
-    case '6':
-        bin[0] = false;
-        bin[1] = true;
-        bin[2] = true;
-        bin[3] = false;
-    break;
-    case '7':
-        bin[0] = true;
-        bin[1] = true;
-        bin[2] = true;
-        bin[3] = false;
-    break;
-    case '8':
-        bin[0] = false;
-        bin[1] = false;
-        bin[2] = false;
-        bin[3] = true;
-    break;
-    case '9':
-        bin[0] = true;
-        bin[1] = false;
-        bin[2] = false;
-        bin[3] = true;
-    break;
-    case 'A':
-        bin[0] = false;
-        bin[1] = true;
-        bin[2] = false;
-        bin[3] = true;
-    break;
-    case 'B':
-        bin[0] = true;
-        bin[1] = true;
-        bin[2] = false;
-        bin[3] = true;
-    break;
-    case 'C':
-        bin[0] = false;
-        bin[1] = false;
-        bin[2] = true;
-        bin[3] = true;
-    break;
-    case 'D':
-        bin[0] = true;
-        bin[1] = false;
-        bin[2] = true;
-        bin[3] = true;
-    break;
-    case 'E':
-        bin[0] = false;
-        bin[1] = true;
-        bin[2] = true;
-        bin[3] = true;
-    break;
-    case 'F':
-        bin[0] = true;
-        bin[1] = true;
-        bin[2] = true;
-        bin[3] = true;
-    break;
-    }
-
-    return bin[index];
 }
 
 ////////////////////////////////////////////////////////////////////////////////
