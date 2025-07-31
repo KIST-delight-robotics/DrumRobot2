@@ -67,7 +67,7 @@ public:
     /////////////////////////////////////////////////////////////////////////// Init
 
     void getDrumPositoin();
-    void setReadyAngle();
+    void setAddStanceAngle();
 
     /////////////////////////////////////////////////////////////////////////// AddStance
     void pushAddStancePath(string flagName);
@@ -112,21 +112,11 @@ private:
 
     }PartLength;
 
-    /////////////////////////////////////////////////////////////////////////// Init
-    MatrixXd drumCoordinateR;                               ///< 오른팔의 각 악기별 위치 좌표 벡터.
-    MatrixXd drumCoordinateL;                                ///< 왼팔의 각 악기별 위치 좌표 벡터.
-
-    MatrixXd wristAnglesR;                               ///< 오른팔의 각 악기별 타격 시 손목 각도.
-    MatrixXd wristAnglesL;                                ///< 왼팔의 각 악기별 타격 시 손목 각도.
-
-    // AddStace 에서 사용하는 위치 (자세)
-    VectorXd readyAngle;
+    /////////////////////////////////////////////////////////////////////////// AddStance
+    VectorXd readyAngle;                // AddStace 에서 사용하는 위치 (자세)
     VectorXd homeAngle;
     VectorXd shutdownAngle;
 
-    /////////////////////////////////////////////////////////////////////////// AddStance
-    MatrixXd addStanceCoefficient;
-    
     // q1[rad], q2[rad], acc[rad/s^2], t2[s]
     VectorXd calVmax(VectorXd &q1, VectorXd &q2, float acc, float t2);
     // q1[rad], q2[rad], Vmax[rad/s], acc[rad/s^2], t[s], t2[s]
@@ -134,6 +124,12 @@ private:
     VectorXd getMotorPos();
 
     /////////////////////////////////////////////////////////////////////////// Make Trajectory
+    MatrixXd drumCoordinateR;                               ///< 오른팔의 각 악기별 위치 좌표 벡터.
+    MatrixXd drumCoordinateL;                                ///< 왼팔의 각 악기별 위치 좌표 벡터.
+
+    MatrixXd wristAnglesR;                               ///< 오른팔의 각 악기별 타격 시 손목 각도.
+    MatrixXd wristAnglesL;                                ///< 왼팔의 각 악기별 타격 시 손목 각도.
+
     double line_t1, line_t2;           // 궤적 생성 시간
     
     VectorXd initialInstrument = VectorXd::Zero(18);   // 전체 궤적에서 출발 악기
