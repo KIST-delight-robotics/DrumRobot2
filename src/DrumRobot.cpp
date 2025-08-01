@@ -1006,9 +1006,6 @@ void DrumRobot::idealStateRoutine()
 
 void DrumRobot::sendAddStanceProcess()
 {
-    // clearBufferforRecord();  // 아래 system 함수들
-    // clearMotorsCommandBuffer();  // 이거 왜 하지??? 
-
     string flag = flagObj.getAddStanceFlag();
 
     pathManager.pushAddStancePath(flag);
@@ -1395,7 +1392,6 @@ bool DrumRobot::selectPlayMode_KTH()
             delayTime.push(delayTime_i);
             makeTime.push(makeTime_i);
         }
-
     }
     else
     {

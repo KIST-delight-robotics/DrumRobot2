@@ -2015,7 +2015,7 @@ double PathManager::makeHHAngle(double t, HHTime ht, int HHstate, int nextHHclos
 
     // 각도 수정 원할 시 헤더파일에서 해당 각도 수정하면 됨
     double X0 = HA.openAngle;       // Open Hihat : -3도
-    double Xp = HA.closedAngle;     // Closed Hihat : -22도 
+    double Xp = HA.closedAngle;     // Closed Hihat : -13도 
 
     double Xl = 0.0;
 
