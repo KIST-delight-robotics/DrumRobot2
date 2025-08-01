@@ -138,7 +138,7 @@ private:
     int pythonClass = 0;    // 어떤 파이썬을 실행할지 (1 : 시간 측정, 0 : 마젠타)
 
     //마젠타 반복 생성을 위한 변수들
-    int reapeatNum = 1;
+    int repeatNum = 1;
     int currentIterations = 1;
     queue<int> delayTime;
     int delayTime_i;

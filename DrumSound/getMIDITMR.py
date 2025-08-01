@@ -23,7 +23,7 @@ args = parser.parse_args()
 
 
 rec_seq = args.rec_times
-num_sessions = len(rec_seq) // 2
+num_sessions = len(rec_seq) // 3
 
 
 # MIDI 입력 필터링 함수
@@ -154,7 +154,9 @@ for session_idx in range(num_sessions):
                         if not first_note_time_saved:
                             # ⏱ 첫 입력 시각 기록 및 시작
                             current_time = datetime.datetime.now().strftime("%H:%M:%S.%f")[:-3]
-                            with open(sync_file.replace("sync.txt", f"sync_{session_idx}.txt"), "w") as f:
+                            # with open(sync_file.replace("sync.txt", f"sync_{session_idx}.txt"), "w") as f:
+                            #     f.write(current_time)
+                            with open(sync_file, "w") as f:
                                 f.write(current_time)
                             print(f"\n✅ 첫 입력 감지됨: {current_time}")
 
