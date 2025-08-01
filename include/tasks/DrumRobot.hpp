@@ -138,8 +138,8 @@ private:
     int pythonClass = 0;    // 어떤 파이썬을 실행할지 (1 : 시간 측정, 0 : 마젠타)
 
     //마젠타 반복 생성을 위한 변수들
-
     int reapeatNum = 1;
+    int currentIterations = 1;
     queue<int> delayTime;
     int delayTime_i;
     queue<int> makeTime;
@@ -158,14 +158,14 @@ private:
     // path
     std::string txtBasePath = "/home/shy/DrumRobot/include/codes/";    // 악보 위치
     std::string wavBasePath = "/home/shy/DrumRobot/include/music/";    // 음악 위치
-    std::string magentaPath = "/home/shy/DrumRobot/DrumSound/";                  // 마젠타 경로
+    std::string magentaPath = "/home/shy/DrumRobot/DrumSound/";        // 마젠타 경로
     std::string txtFileName;
-    std::string txtPath;        // txt 파일 경로
+    // std::string txtPath;        // txt 파일 경로
     std::string wavPath;        // wav 파일 경로
     
     // 
-    int fileIndex = 0;
-    std::ifstream inputFile;
+    // int fileIndex = 0;
+    // std::ifstream inputFile;
     MatrixXd measureMatrix;     ///< 궤적을 생성하기 위해 읽은 악보 부분 (마디)
     int lineOfScore = 0;        ///< 현재 악보 읽은 줄.
     int preCreatedLine = 3;     ///< 미리 궤적을 생성할 줄
@@ -176,10 +176,9 @@ private:
     bool FG_start = false;
 
     void initializePlayState();
-    bool selectPlayMode();
+    void setSyncTime(float waitingTime);
+    std::string selectPlayMode();
 
-    // void initializeFGPlayState();
-    // void initializeTFGPlayState();
     int maxonMotorMode = 1; // 1 : CSP // 0 : CST
 
     string trimWhitespace(const std::string &str);
@@ -187,8 +186,6 @@ private:
     bool readMeasure(ifstream& inputFile);  // 한번에 읽을 악보의 크기(measureThreshold)만큼 읽으면 true 반환
     void processLine();
     void sendPlayProcess();
-    // void sendFGProcess();
-    // void sendTFGProcess();
 
     // python (magenta)
     void runPythonForMagenta();         // 기존 파이썬 코드 실행 후 악보 생성
