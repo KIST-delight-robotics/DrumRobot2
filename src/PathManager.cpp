@@ -2011,9 +2011,15 @@ double PathManager::makeBassAngle(double t, bassTime bt, int bassState)
 
 double PathManager::makeHHAngle(double t, HHTime ht, int HHstate, int nextHHclosed)
 {
+    // 1.open/closed, 2.splash 두 개의 하이햇 연주법을 구현함.
+    // o/c 상태에 따라 악기 소리가 다름. 소리나는 도중에 상태가 변해도 소리가 변함. 
+    // 정확한 소리를 내기 위해 타격 이전(settlingTime)에 상태를 바꾸고 타격 이후(liftTime)에도 그 상태를 유지함.
+    // splash는 페달을 밟았다가 떼며 두 심벌이 부딪힘으로 소리내는 방식임.
+    // nextHHclosed == 2 이면 splash 연주법임.
+
     HHAngle HA;
 
-    // 각도 수정 원할 시 헤더파일에서 해당 각도 수정하면 됨
+    // 각도 변경 원할 시 헤더파일에서 해당 각도 수정
     double X0 = HA.openAngle;       // Open Hihat : -3도
     double Xp = HA.closedAngle;     // Closed Hihat : -13도 
 
@@ -2028,7 +2034,7 @@ double PathManager::makeHHAngle(double t, HHTime ht, int HHstate, int nextHHclos
         if(HHstate == 1)
         {
             Xl = makecosineprofile(Xp, X0, 0, ht.hitTime, t);       // 전체 시간동안 궤적 생성
-            /*Xl = makecosineprofile(Xp, X0, 0, 0.8*ht.hitTime, t);     // 타격 이전에 open/closed가 되도록 0.8T
+            /*Xl = makecosineprofile(Xp, X0, 0, 0.9*ht.hitTime, t);     // 타격 이전에 open/closed가 되도록 0.9T
             if(t >= 0.8*ht.hitTime)
             {
                 Xl = X0;
@@ -2064,8 +2070,8 @@ double PathManager::makeHHAngle(double t, HHTime ht, int HHstate, int nextHHclos
             if(HHstate == 2)
             {
                 Xl = makecosineprofile(X0, Xp, 0, ht.hitTime, t);
-                /*Xl = makecosineprofile(X0, Xp, 0, 0.8*ht.hitTime, t);
-                if(t >= 0.8*ht.hitTime)
+                /*Xl = makecosineprofile(X0, Xp, 0, 0.9*ht.hitTime, t);
+                if(t >= 0.9*ht.hitTime)
                 {
                     Xl = Xp;
                 }*/
