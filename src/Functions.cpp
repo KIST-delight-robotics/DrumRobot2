@@ -602,14 +602,14 @@ Functions::Hand Functions::getPreferredHandByDistance(int instCurrent, int prevR
     double rScore = (real_tRight / 0.6) * (1 - normRight);
     double lScore = (real_tLeft  / 0.6) * (1 - normLeft);
 
-    // 디버깅용 프린트문
-    std::cout << "\n[Hand 선택 판단]\n";
-    std::cout << " - instCurrent: " << instCurrent << "\n";
-    std::cout << " - prevRightNote: " << prevRightNote << ", prevLeftNote: " << prevLeftNote << "\n";
-    std::cout << " - 거리: right = " << dRight << ", left = " << dLeft << "\n";
-    std::cout << " - 시간누적: right = " << prevRightHit << ", left = " << prevLeftHit << "\n";
-    std::cout << " - 정규화 거리: right = " << normRight << ", left = " << normLeft << "\n";
-    std::cout << " - 점수: rScore = " << rScore << ", lScore = " << lScore << "\n";
+    // // 디버깅용 프린트문
+    // std::cout << "\n[Hand 선택 판단]\n";
+    // std::cout << " - instCurrent: " << instCurrent << "\n";
+    // std::cout << " - prevRightNote: " << prevRightNote << ", prevLeftNote: " << prevLeftNote << "\n";
+    // std::cout << " - 거리: right = " << dRight << ", left = " << dLeft << "\n";
+    // std::cout << " - 시간누적: right = " << prevRightHit << ", left = " << prevLeftHit << "\n";
+    // std::cout << " - 정규화 거리: right = " << normRight << ", left = " << normLeft << "\n";
+    // std::cout << " - 점수: rScore = " << rScore << ", lScore = " << lScore << "\n";
 
 
     if (std::abs(rScore - lScore) < 1e-6) return SAME;
@@ -640,24 +640,24 @@ std::pair<int, int> Functions::assignHandsByPosition(int inst1, int inst2) {
     int sec1 = getSection(inst1);
     int sec2 = getSection(inst2);
 
-    std::cout << "[섹션 손 분배 판단]\n";
-    std::cout << " - inst1: " << inst1 << " (섹션 " << sec1 << "), inst2: " << inst2 << " (섹션 " << sec2 << ")\n";
+    // std::cout << "[섹션 손 분배 판단]\n";
+    // std::cout << " - inst1: " << inst1 << " (섹션 " << sec1 << "), inst2: " << inst2 << " (섹션 " << sec2 << ")\n";
 
     if (sec1 < sec2) {
-        std::cout << " → 서로 다른 섹션: inst1이 더 왼쪽 → 왼손 = " << inst1 << ", 오른손 = " << inst2 << "\n";
+        // std::cout << " → 서로 다른 섹션: inst1이 더 왼쪽 → 왼손 = " << inst1 << ", 오른손 = " << inst2 << "\n";
         return {inst1, inst2};
     } else if (sec2 < sec1) {
-        std::cout << " → 서로 다른 섹션: inst2가 더 왼쪽 → 왼손 = " << inst2 << ", 오른손 = " << inst1 << "\n";
+        // std::cout << " → 서로 다른 섹션: inst2가 더 왼쪽 → 왼손 = " << inst2 << ", 오른손 = " << inst1 << "\n";
         return {inst2, inst1};
     } else {
         int order1 = getSectionOrder(inst1);
         int order2 = getSectionOrder(inst2);
-        std::cout << " → 같은 섹션 내 비교: order1 = " << order1 << ", order2 = " << order2 << "\n";
+        // std::cout << " → 같은 섹션 내 비교: order1 = " << order1 << ", order2 = " << order2 << "\n";
         if (order1 < order2) {
-            std::cout << "   → inst1이 더 왼쪽 → 왼손 = " << inst1 << ", 오른손 = " << inst2 << "\n";
+            // std::cout << "   → inst1이 더 왼쪽 → 왼손 = " << inst1 << ", 오른손 = " << inst2 << "\n";
             return {inst1, inst2};
         } else {
-            std::cout << "   → inst2가 더 왼쪽 → 왼손 = " << inst2 << ", 오른손 = " << inst1 << "\n";
+            // std::cout << "   → inst2가 더 왼쪽 → 왼손 = " << inst2 << ", 오른손 = " << inst1 << "\n";
             return {inst2, inst1};
         }
     }
@@ -817,13 +817,13 @@ void Functions::assignHandsToEvents(const std::string& inputFilename, const std:
         prevRightHit += e.time;
         prevLeftHit += e.time;
 
-        std::cout << "[Time: " << e.time << "] inst1: " << inst1 << ", inst2: " << inst2
-                  << " | PrevR: " << prevRight << ", PrevL: " << prevLeft
-                  << " | RHit: " << prevRightHit << ", LHit: " << prevLeftHit << "\n";
+        // std::cout << "[Time: " << e.time << "] inst1: " << inst1 << ", inst2: " << inst2
+        //           << " | PrevR: " << prevRight << ", PrevL: " << prevLeft
+        //           << " | RHit: " << prevRightHit << ", LHit: " << prevLeftHit << "\n";
         
         //step 1 크러시가 있는지 확인 크러쉬가 있다면 
         if (inst1 == 8 || inst2 == 8) {
-            std::cout << "→ 크러시 처리 진입\n";
+            // std::cout << "→ 크러시 처리 진입\n";
             if(prevLeft == 2 || prevLeft == 3 || prevLeft == 6) {
                 e.rightHand = 7;
                 e.leftHand = (inst1 == 8) ? inst2 : inst1;
@@ -839,7 +839,7 @@ void Functions::assignHandsToEvents(const std::string& inputFilename, const std:
         }
         // step 2 양손 연주인지 한손인지 구분 
         else if (inst1 != 0 && inst2 != 0) {
-            std::cout << "→ 양손 처리 진입\n";
+            // std::cout << "→ 양손 처리 진입\n";
             // 1번 S와 5번 H-H 을 같이 치는 경우 오른손으로 H-H 왼손으로 S 치도록 설정
             if ((inst1 == 5 && inst2 == 1) || (inst1 == 1 && inst2 == 5)) 
             {
@@ -856,12 +856,12 @@ void Functions::assignHandsToEvents(const std::string& inputFilename, const std:
         }
         // step 3 한손 연주시 처리 
         else if (inst1 != 0) {
-            std::cout << "→ 한손 처리 진입\n";
+            // std::cout << "→ 한손 처리 진입\n";
             // 이전에 쳤던 악기와 같은 악기가 감지된다면 짧은 시간에 타격해야 할 시 같은 손 유지 시간차이가 크다면 거리 기반 판단
             if (inst1 == prevRight || inst1 == prevLeft) {
-                std::cout << "    - 이전 손과 같은 악기 감지\n";
+                // std::cout << "    - 이전 손과 같은 악기 감지\n";
                 if (e.time <= 0.1) {
-                    std::cout << "    - 시간차 0.1 이하 → 같은 손 유지\n";
+                    // std::cout << "    - 시간차 0.1 이하 → 같은 손 유지\n";
                     if(inst1 == prevRight)
                     {
                         e.rightHand = inst1;
@@ -873,37 +873,37 @@ void Functions::assignHandsToEvents(const std::string& inputFilename, const std:
                         e.leftHand = inst1;
                     }
                 } else {
-                    std::cout << "    - 시간차 큼 → 거리 기반 판단\n";
+                    // std::cout << "    - 시간차 큼 → 거리 기반 판단\n";
                     Hand preferred = getPreferredHandByDistance(inst1, prevRightNote, prevLeftNote, prevRightHit, prevLeftHit);
                     if (preferred == RIGHT) {
-                        std::cout << "    → RIGHT 선택\n";
+                        // std::cout << "    → RIGHT 선택\n";
                         e.rightHand = inst1;
                         e.leftHand = 0;
                     } else if (preferred == LEFT) {
-                        std::cout << "    → LEFT 선택\n";
+                        // std::cout << "    → LEFT 선택\n";
                         e.leftHand = inst1;
                         e.rightHand = 0;
                     }    
                     else {
-                        std::cout << "    → 점수 같고 시간 널널 오른손 우선권 선택\n";
+                        // std::cout << "    → 점수 같고 시간 널널 오른손 우선권 선택\n";
                         // 여기는 한손 연주이면서 전에 쳤던 악기를 치는 것이지만 시간과 거리에 대한 점수도 모두 동일함 일단 오른손에 우선권을 주겠다.
                         e.rightHand = inst1;
                         e.leftHand = 0;
                     }
                 }
             } else {
-                std::cout << "    - 이전 손과 다른 악기 → 거리 기반 판단\n";
+                // std::cout << "    - 이전 손과 다른 악기 → 거리 기반 판단\n";
                 Hand preferred = getPreferredHandByDistance(inst1, prevRightNote, prevLeftNote, prevRightHit, prevLeftHit);
                     if (preferred == RIGHT) {
-                        std::cout << "    → RIGHT 선택\n";
+                        // std::cout << "    → RIGHT 선택\n";
                         e.rightHand = inst1;
                     } else if (preferred == LEFT) {
-                        std::cout << "    → LEFT 선택\n";
+                        // std::cout << "    → LEFT 선택\n";
                         e.leftHand = inst1;
                     } 
                     //악기 위치 거리 기반으로 손 분배 이때 전에 친악기를 inst2로 사용해서 구함  
                     else {
-                        std::cout << "    → SAME 판단 → 섹션 기반 분배\n";
+                        // std::cout << "    → SAME 판단 → 섹션 기반 분배\n";
                         
                         int inst2 = (prevRightNote != 0) ? prevRightNote : prevLeftNote;
                         auto [left, right] = assignHandsByPosition(inst1, inst2);
@@ -912,13 +912,13 @@ void Functions::assignHandsToEvents(const std::string& inputFilename, const std:
                         else
                             e.rightHand = (right == inst1) ? inst1 : 0;
                     
-                        std::cout << "      - inst1: " << inst1 << ", inst2: " << inst2
-                                    << " → 왼손 = " << e.leftHand << ", 오른손 = " << e.rightHand << "\n";
+                        // std::cout << "      - inst1: " << inst1 << ", inst2: " << inst2
+                        //             << " → 왼손 = " << e.leftHand << ", 오른손 = " << e.rightHand << "\n";
                     }
             }
         }
 
-        std::cout << "→ 결과: RH = " << e.rightHand << ", LH = " << e.leftHand << "\n\n";
+        // std::cout << "→ 결과: RH = " << e.rightHand << ", LH = " << e.leftHand << "\n\n";
 
         prevRight = e.rightHand;
         prevLeft = e.leftHand;
