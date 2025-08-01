@@ -848,27 +848,29 @@ void DrumRobot::musicMachine()
                         
                         for (int i = 0; i < repeatNum; ++i) {
                             int d = delayTime.front(); delayTime.pop();
+                            int r = recordTime.front(); recordTime.pop();
                             int m = makeTime.front(); makeTime.pop();
-                            
+
                             pythonArgs += std::to_string(d) + " ";
+                            pythonArgs += std::to_string(r) + " ";
                             pythonArgs += std::to_string(m) + " ";
                         }
 
                         std::string pythonCmd = "/home/shy/DrumRobot/DrumSound/magenta-env/bin/python "
-                        "/home/shy/DrumRobot/DrumSound/getMIDITimeMagenta.py " + pythonArgs + " &";
+                        "/home/shy/DrumRobot/DrumSound/getMIDITMR.py " + pythonArgs + " &";
 
                         int ret = std::system(pythonCmd.c_str());  // 비동기 실행 (백그라운드 &)
                         
                         for(int i =0; i< reapeatNum; i++)
                         {
-                            std::string midiPath = "/home/shy/DrumRobot/DrumSound/output" + std::to_string(i) + ".mid";
+                            std::string midiPath = "/home/shy/DrumRobot/DrumSound/output_" + std::to_string(i) + ".mid";
 
                             // 해당 MIDI 파일이 생성될 때까지 대기
                             while (!std::filesystem::exists(midiPath)) {
                                 std::this_thread::sleep_for(std::chrono::milliseconds(100));
                             }
                             
-                            getMagentaSheet();  // 파이썬이 끝나지 않아도 즉시 실행
+                            getMagentaSheet(midiPath);  // 파이썬이 끝나지 않아도 즉시 실행
                         }
 
                     }
@@ -1133,17 +1135,17 @@ void DrumRobot::runPythonForMagenta()
     }
 }
 
-void DrumRobot::getMagentaSheet()
+void DrumRobot::getMagentaSheet(std::string midiPath)
 {
-    filesystem::path midPath;
+    // filesystem::path midPath;
 
     filesystem::path outputPath1 = "/home/shy/DrumRobot/DrumSound/output1_drum_hits_time.csv"; 
     filesystem::path outputPath2 = "/home/shy/DrumRobot/DrumSound/output2_mc.csv";   
     filesystem::path outputPath3 = "/home/shy/DrumRobot/DrumSound/output3_mc2c.csv";    
     filesystem::path outputPath4 = "/home/shy/DrumRobot/DrumSound/output4_hand_assign.csv";
-    filesystem::path outputPath5 = "/home/shy/DrumRobot/DrumSound/output5_final.txt";
+    filesystem::path outputPath5 = "/home/shy/DrumRobot/DrumSound/output5_final0.txt";
 
-    midPath = "/home/shy/DrumRobot/DrumSound/output.mid";
+    // midPath = "/home/shy/DrumRobot/DrumSound/output_0.mid";
 
     while(!file_found) // ready 상태인지도 확인해주기
     {
@@ -1282,8 +1284,10 @@ std::string DrumRobot::selectPlayMode()
         for(int i =0; i< reapeatNum; i++)
         {
             cin >> delayTime_i;
+            cin >> recordTime_i;
             cin >> makeTime_i;
             delayTime.push(delayTime_i);
+            recordTime.push(recordTime_i);
             makeTime.push(makeTime_i);
         }
     }

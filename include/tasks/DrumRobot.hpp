@@ -144,6 +144,8 @@ private:
     int delayTime_i;
     queue<int> makeTime;
     int makeTime_i;
+    queue<int> recordTime;
+    int recordTime_i;
 
     // Ideal State
     void displayAvailableCommands(string flagName) const;
@@ -189,6 +191,6 @@ private:
 
     // python (magenta)
     void runPythonForMagenta();         // 기존 파이썬 코드 실행 후 악보 생성
-    void getMagentaSheet();    // 파이썬 코드 실행 x 악보만 생성
+    void getMagentaSheet(std::string midiPath);    // 파이썬 코드 실행 x 악보만 생성
 
 };

@@ -18,7 +18,7 @@ from magenta.protobuf import generator_pb2
 tf.disable_v2_behavior()
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--rec_times", nargs='+', type=float, required=True, help="[대기1, 녹음1, 대기2, 녹음2, ...] 순서의 시간들 (초 단위)")
+parser.add_argument("--rec_times", nargs='+', type=float, required=True, help="[대기1, 녹음1, 생성1, 대기2, 녹음2, 생성2 ...] 순서의 시간들 (초 단위)")
 args = parser.parse_args()
 
 
