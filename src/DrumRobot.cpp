@@ -1392,7 +1392,6 @@ bool DrumRobot::selectPlayMode_KTH()
             delayTime.push(delayTime_i);
             makeTime.push(makeTime_i);
         }
-
     }
     else
     {
