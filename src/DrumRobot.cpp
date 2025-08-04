@@ -1063,9 +1063,9 @@ void DrumRobot::runPythonForMagenta()
         std::cin >> selected_input;
 
         if (selected_input == "1") {
-            midPath = "/home/shy/DrumSound/output_temp_03.mid";
+            midPath = "/home/shy/DrumRobot/DrumSound/output_temp_03.mid";
         } else if (selected_input == "2") {
-            midPath = "/home/shy/DrumSound/output_temp_08.mid";
+            midPath = "/home/shy/DrumRobot/DrumSound/output_temp_08.mid";
         } else {
             std::cerr << "잘못된 입력입니다. 1 또는 2를 입력하세요.\n";
             return;
