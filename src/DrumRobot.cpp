@@ -1264,6 +1264,7 @@ void DrumRobot::setSyncTime(float waitingTime)
 std::string DrumRobot::selectPlayMode()
 {
     std::string txtPath;
+    std::string txtFileName;
     bool useMagenta = false;
     int input;
 
@@ -1306,9 +1307,9 @@ std::string DrumRobot::selectPlayMode()
     std::cin >> pathManager.bpmOfScore;
 
     std::cout << "Enter Maxon Control Mode (CSP : 1 / CST : 0): ";
-    std::cin >> maxonMotorMode;
+    std::cin >> input;
     
-    if (maxonMotorMode == 0)
+    if (input == 0)
     {
         pathManager.MaxonMode = "CST";
         pathManager.Kp = 60;
