@@ -2601,7 +2601,7 @@ void PathManager::pushCommandBuffer(VectorXd Qi, VectorXd Kpp)
                 newData.is_brake = (diff < 0.01 * M_PI / 180.0) ? 1 : 0;
                 preDiff = diff;
 
-                fun.appendToCSV_DATA("brake input", newData.position, newData.is_brake, diff);
+                // fun.appendToCSV_DATA("brake input", newData.position, newData.is_brake, diff);
             }
             else
             {
