@@ -70,9 +70,9 @@ sync_file = os.path.join(sync_dir, "sync.txt")
 
 for session_idx in range(num_sessions):
 
-    wait_time = rec_seq[session_idx * 2]
-    record_duration = rec_seq[session_idx * 2 + 1]
-
+    wait_time = rec_seq[session_idx * 3]
+    record_duration = rec_seq[session_idx * 3 + 1]
+    generate_duration = rec_seq[session_idx * 3 + 2]  # <- 생성 길이 사용
     
     # 녹음 전 미디 입력 Flush
     def flush_during_recording(inport):
@@ -213,7 +213,7 @@ for session_idx in range(num_sessions):
     # NoteSequence 로딩
     primer_sequence = midi_file_to_sequence_proto(input_file)
     start_gen = primer_sequence.total_time
-    end_gen = start_gen + 15.0
+    end_gen = start_gen + generate_duration
 
     # 생성 설정
     generator_options = generator_pb2.GeneratorOptions()
