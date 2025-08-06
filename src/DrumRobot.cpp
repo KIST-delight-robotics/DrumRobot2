@@ -1039,7 +1039,8 @@ void DrumRobot::runPythonForMagenta()
     filesystem::path outputPath2 = "/home/shy/DrumRobot/DrumSound/output2_mc.csv";   
     filesystem::path outputPath3 = "/home/shy/DrumRobot/DrumSound/output3_mc2c.csv";    
     filesystem::path outputPath4 = "/home/shy/DrumRobot/DrumSound/output4_hand_assign.csv";
-    filesystem::path outputPath5 = "/home/shy/DrumRobot/DrumSound/output5_final.txt";
+    filesystem::path outputPath5 = "/home/shy/DrumRobot/DrumSound/output5_add_groove.txt";
+    filesystem::path outputPath6 = "/home/shy/DrumRobot/DrumSound/output6_final.txt";
     
     int userInput = 100;
     cout << "\n 1 - 녹음 \n 2 - 악보 생성\n";
@@ -1132,7 +1133,8 @@ void DrumRobot::runPythonForMagenta()
             fun.roundDurationsToStep(outputPath1, outputPath2); 
             fun.convertMcToC(outputPath2, outputPath3);
             fun.assignHandsToEvents(outputPath3, outputPath4);
-            fun.convertToMeasureFile(outputPath4, outputPath5);
+            fun.addGroove(bpm, outputPath4, outputPath5);
+            fun.convertToMeasureFile(outputPath5, outputPath6);
 
             file_found = false;
             // if(filesystem::exists(midPath))
@@ -1151,7 +1153,8 @@ void DrumRobot::getMagentaSheet(std::string midPath)
     filesystem::path outputPath2 = "/home/shy/DrumRobot/DrumSound/output2_mc.csv";   
     filesystem::path outputPath3 = "/home/shy/DrumRobot/DrumSound/output3_mc2c.csv";    
     filesystem::path outputPath4 = "/home/shy/DrumRobot/DrumSound/output4_hand_assign.csv";
-    filesystem::path outputPath5 = "/home/shy/DrumRobot/DrumSound/output5_final0.txt";
+    filesystem::path outputPath5 = "/home/shy/DrumRobot/DrumSound/output5_add_groove.txt";
+    filesystem::path outputPath6 = "/home/shy/DrumRobot/DrumSound/output6_final.txt";
 
     // midPath = "/home/shy/DrumRobot/DrumSound/output_0.mid";
 
@@ -1208,7 +1211,8 @@ void DrumRobot::getMagentaSheet(std::string midPath)
         fun.roundDurationsToStep(outputPath1, outputPath2); 
         fun.convertMcToC(outputPath2, outputPath3);
         fun.assignHandsToEvents(outputPath3, outputPath4);
-        fun.convertToMeasureFile(outputPath4, outputPath5);
+        fun.addGroove(bpm, outputPath4, outputPath5);
+        fun.convertToMeasureFile(outputPath5, outputPath6);
 
         file_found = false;
         // if(filesystem::exists(midPath))

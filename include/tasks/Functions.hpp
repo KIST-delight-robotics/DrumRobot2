@@ -76,6 +76,7 @@ public:
     void convertMcToC(const std::string& inputFilename, const std::string& outputFilename);
     pair<int, int> assignHandsByPosition(int inst1, int inst2);
     void assignHandsToEvents(const std::string& inputFilename, const std::string& outputFilename);
+    void addGroove(int bpm, const std::string& inputFilename, const std::string& outputFilename);
     void convertToMeasureFile(const std::string& inputFilename, const std::string& outputFilename);
 
     Hand getPreferredHandByDistance(int instCurrent, int prevRightNote, int prevLeftNote, double prevRightHit, double prevLeftHit);

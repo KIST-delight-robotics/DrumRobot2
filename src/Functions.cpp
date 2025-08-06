@@ -972,6 +972,71 @@ void Functions::assignHandsToEvents(const std::string& inputFilename, const std:
     }
 }
 
+void Functions::addGroove(int bpm, const std::string& inputFilename, const std::string& outputFilename) {
+    std::ifstream inFile(inputFilename);
+    std::ofstream outFile(outputFilename);
+
+    std::vector<std::vector<double>> values;
+    std::vector<double> originalTimes;
+
+        std::string line;
+    // 1. 파일 읽기 및 파싱
+    while (std::getline(inFile, line)) {
+        std::istringstream ss(line);
+        std::vector<double> row;
+        double num;
+        while (ss >> num) {
+            row.push_back(num);
+        }
+        values.push_back(row);
+        originalTimes.push_back(row[0]);  // 시간만 따로 저장
+    }
+
+    // 2. 누적합 기준 계산
+    double threshold = (60.0 / bpm) * 2;
+    double accTime = 0.0;
+
+    // 3. 시간 조정 플래그 처리
+    for (size_t i = 0; i < values.size(); ++i) {
+        accTime += originalTimes[i];  // 항상 원본 기준 누적합 계산
+
+        if (accTime >= threshold) {
+            // 1. 현재 줄 시간값 -0.05
+            values[i][0] -= 0.05;
+
+            // 2. 다음 줄 존재하면 +0.05
+            if (i + 1 < values.size()) {
+                values[i + 1][0] += 0.05;
+            }
+
+            // 누적합 초기화
+            accTime = 0.0;
+        }
+    }
+
+    // 4. 결과 출력
+    for (const auto& row : values) {
+
+        outFile << std::fixed << std::setprecision(3) << row[0];
+    
+
+        outFile.unsetf(std::ios::fixed);
+        outFile << std::setprecision(6);
+    
+        for (size_t i = 1; i < row.size(); ++i) {
+            outFile << "\t" << row[i];
+        }
+        outFile << "\n";
+    }
+
+    
+    inFile.close();
+    outFile.close();
+}
+
+
+
+
 // 박자 단위 분할 및 마디 번호 부여 함수
 void Functions::convertToMeasureFile(const std::string& inputFilename, const std::string& outputFilename) {
     struct DrumEvent {
