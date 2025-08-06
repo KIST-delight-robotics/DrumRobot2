@@ -140,12 +140,12 @@ private:
     //마젠타 반복 생성을 위한 변수들
     int repeatNum = 1;
     int currentIterations = 1;
-    queue<int> delayTime;
-    int delayTime_i;
-    queue<int> makeTime;
-    int makeTime_i;
-    queue<int> recordTime;
-    int recordTime_i;
+    queue<float> delayTime;
+    float delayTime_i;
+    queue<float> makeTime;
+    float makeTime_i;
+    queue<float> recordTime;
+    float recordTime_i;
 
     // Ideal State
     void displayAvailableCommands(string flagName) const;
@@ -161,7 +161,7 @@ private:
     std::string txtBasePath = "/home/shy/DrumRobot/include/codes/";    // 악보 위치
     std::string wavBasePath = "/home/shy/DrumRobot/include/music/";    // 음악 위치
     std::string magentaPath = "/home/shy/DrumRobot/DrumSound/";        // 마젠타 경로
-    std::string txtFileName;
+    // std::string txtFileName;
     // std::string txtPath;        // txt 파일 경로
     std::string wavPath;        // wav 파일 경로
     
@@ -175,13 +175,9 @@ private:
     double measureTotalTime = 0.0;     ///< 악보를 읽는 동안 누적 시간. [s]
     bool endOfScore = false;           ///< 악보의 종료 코드 확인
 
-    bool FG_start = false;
-
     void initializePlayState();
-    void setSyncTime(float waitingTime);
+    void setSyncTime(int waitingTime);
     std::string selectPlayMode();
-
-    int maxonMotorMode = 1; // 1 : CSP // 0 : CST
 
     string trimWhitespace(const std::string &str);
     double readBpm(ifstream& inputFile);

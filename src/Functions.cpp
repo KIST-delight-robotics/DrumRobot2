@@ -182,6 +182,34 @@ void Functions::appendToCSV_time(const std::string& filename) {
     }
 }
 
+void Functions::appendToCSV_time(const std::string& filename, std::chrono::_V2::system_clock::time_point &__t) {
+    auto now = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<float> elapsed = now - start;
+    std::ofstream file;
+    std::string fullPath = basePath + filename + ".txt";  // 기본 경로와 파일 이름을 결합
+
+    std::chrono::duration<float> elapsed2 = __t - start;
+
+    // 파일이 이미 존재하는지 확인
+    bool fileExists = std::ifstream(fullPath).good();
+
+    // 파일을 열 때 새로 덮어쓰기 모드로 열거나, 이미 존재할 경우 append 모드로 열기
+    if (!fileExists) {
+        file.open(fullPath, std::ios::out | std::ios::trunc);  // 처음 실행 시 덮어쓰기 모드로 열기
+    } else {
+        file.open(fullPath, std::ios::app);  // 이미 파일이 존재하면 append 모드로 열기
+    }
+    // 파일이 제대로 열렸는지 확인
+    if (file.is_open()) {
+        // 데이터 추가
+        file << elapsed.count() << "," << elapsed2.count() << "\n";
+        // 파일 닫기
+        file.close();
+    } else {
+        std::cerr << "Unable to open file: " << fullPath << std::endl;
+    }
+}
+
 // 시간과 변수를 CSV 파일에 한 줄씩 저장하는 함수
 void Functions::appendToCSV_DATA(const std::string& filename, float A_DATA, float B_DATA, float C_DATA) {
     auto now = std::chrono::high_resolution_clock::now();

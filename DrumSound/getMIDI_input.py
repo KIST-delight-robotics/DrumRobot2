@@ -24,7 +24,7 @@ def map_drum_note(note):
     return mapping.get(note, 0)
 
 # 입력 MIDI 파일 설정
-input_file = "/home/taehwang/DrumRobot/DrumRobot2/DrumSound/input_f.mid"
+input_file = "/home/shy/DrumRobot/DrumSound/input.mid"
 mid = MidiFile(input_file)
 
 # final_events 및 시간 차이 추출
@@ -58,7 +58,7 @@ print("📄 드럼 이벤트 CSV 저장 완료: drum_hits.csv")
 
 # Magenta 모델 로딩
 print("🤖 Magenta Drums RNN 로딩 중...")
-bundle = sequence_generator_bundle.read_bundle_file('/home/taehwang/DrumRobot/DrumRobot2/DrumSound/drum_kit_rnn.mag')
+bundle = sequence_generator_bundle.read_bundle_file('/home/shy/DrumRobot/DrumSound/drum_kit_rnn.mag')
 generator = drums_rnn_sequence_generator.get_generator_map()['drum_kit'](
     checkpoint=None, bundle=bundle)
 generator.initialize()
@@ -77,8 +77,8 @@ generator.steps_per_quarter = 4
 
 # Temperature 별 생성
 versions = [
-    (0.3, "/home/taehwang/DrumRobot/DrumRobot2/DrumSound/output_temp_03.mid"),
-    (0.8, "/home/taehwang/DrumRobot/DrumRobot2/DrumSound/output_temp_08.mid")
+    (0.3, "/home/shy/DrumRobot/DrumSound/output_temp_03.mid"),
+    (0.8, "/home/shy/DrumRobot/DrumSound/output_temp_08.mid")
 ]
 
 for temp, filename in versions:

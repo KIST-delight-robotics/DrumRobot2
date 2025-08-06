@@ -812,6 +812,8 @@ void DrumRobot::musicMachine()
             }
             else
             {
+                // int sync_test = 0;
+
                 if (setWaitingTime)
                 {
                     setWaitingTime = false;
@@ -820,12 +822,18 @@ void DrumRobot::musicMachine()
 
                 if (waiting)
                 {
+                    // sync_test = 1;
+
                     if (std::chrono::system_clock::now() >= syncTime)
                     {
                         pathManager.startOfPlay = true;
                         waiting = false;
+
+                        // sync_test = 2;
                     }
                 }
+
+                // fun.appendToCSV_DATA("sync_test.txt", sync_test, 0, 0);
             }
 
             // 파이썬
@@ -849,9 +857,9 @@ void DrumRobot::musicMachine()
                             std::string pythonArgs = "--rec_times ";
                             
                             for (int i = 0; i < repeatNum; ++i) {
-                                int d = delayTime.front(); delayTime.pop();
-                                int r = recordTime.front(); recordTime.pop();
-                                int m = makeTime.front(); makeTime.pop();
+                                float d = delayTime.front(); delayTime.pop();
+                                float r = recordTime.front(); recordTime.pop();
+                                float m = makeTime.front(); makeTime.pop();
 
                                 pythonArgs += std::to_string(d) + " ";
                                 pythonArgs += std::to_string(r) + " ";
@@ -1063,9 +1071,9 @@ void DrumRobot::runPythonForMagenta()
         std::cin >> selected_input;
 
         if (selected_input == "1") {
-            midPath = "/home/shy/DrumSound/output_temp_03.mid";
+            midPath = "/home/shy/DrumRobot/DrumSound/output_temp_03.mid";
         } else if (selected_input == "2") {
-            midPath = "/home/shy/DrumSound/output_temp_08.mid";
+            midPath = "/home/shy/DrumRobot/DrumSound/output_temp_08.mid";
         } else {
             std::cerr << "잘못된 입력입니다. 1 또는 2를 입력하세요.\n";
             return;
@@ -1205,6 +1213,11 @@ void DrumRobot::getMagentaSheet(std::string midPath)
         // {
         //     filesystem::remove(midPath);
         // }
+
+        std::remove(outputPath1.c_str());      // 중간 단계 txt 파일 삭제
+        std::remove(outputPath2.c_str());
+        std::remove(outputPath3.c_str());
+        std::remove(outputPath4.c_str());
     }
 }
 
@@ -1226,7 +1239,7 @@ void DrumRobot::initializePlayState()
     pathManager.initializeValue();
 }
 
-void DrumRobot::setSyncTime(float waitingTime)
+void DrumRobot::setSyncTime(int waitingTimeMillisecond)
 {   
     // wait time + sync time 더해서 기다릴수 있도록 세팅 여기서 세팅된 시간이 pathManager 에서 기다리게 된다.   
     // 싱크 타임이 두개 거나 악보 읽는것도 두개거나
@@ -1257,13 +1270,18 @@ void DrumRobot::setSyncTime(float waitingTime)
 
     std::remove(syncPath.c_str());      // syncTime 업데이트 하고 sync.txt 바로 지움
     
-    syncTime = base_time + std::chrono::milliseconds((int)waitingTime);
+    syncTime = base_time + std::chrono::milliseconds(waitingTimeMillisecond);
     setWaitingTime = true;
+
+    // fun.appendToCSV_DATA("sync_test.txt", -1, waitingTime, 0);
+    // fun.appendToCSV_time("sync_test.txt", syncTime);
+    // fun.appendToCSV_time("sync_test.txt", base_time);
 }
 
 std::string DrumRobot::selectPlayMode()
 {
     std::string txtPath;
+    std::string txtFileName;
     bool useMagenta = false;
     int input;
 
@@ -1306,9 +1324,9 @@ std::string DrumRobot::selectPlayMode()
     std::cin >> pathManager.bpmOfScore;
 
     std::cout << "Enter Maxon Control Mode (CSP : 1 / CST : 0): ";
-    std::cin >> maxonMotorMode;
+    std::cin >> input;
     
-    if (maxonMotorMode == 0)
+    if (input == 0)
     {
         pathManager.MaxonMode = "CST";
         pathManager.Kp = 60;
@@ -1395,7 +1413,7 @@ std::string DrumRobot::selectPlayMode()
             }
         }
 
-        setSyncTime(waitingTime);
+        setSyncTime((int)waitingTime);
     }
     else
     {
@@ -1539,8 +1557,8 @@ void DrumRobot::sendPlayProcess()
             std::this_thread::sleep_for(std::chrono::milliseconds(100)); // 100ms 대기
         }
 
-        float waitingTime = 10.0;
-        setSyncTime(waitingTime);
+        float waitingTime = 9.0 * 1000;     // ms
+        setSyncTime((int)waitingTime);
     }
 
     while (!endOfScore)
@@ -1601,6 +1619,9 @@ void DrumRobot::sendPlayProcess()
     else
     {
         flagObj.setAddStanceFlag("isReady"); // Play 반복 시 Ready 으로 이동
+        
+        std::string saveCode = txtPath + std::to_string(currentIterations) + "_save.txt";
+        std::filesystem::rename(txtIndexPath.c_str(), saveCode.c_str());
         std::remove(txtIndexPath.c_str());
     }
     state.main = Main::AddStance;
