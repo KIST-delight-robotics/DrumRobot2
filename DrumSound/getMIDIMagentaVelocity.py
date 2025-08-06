@@ -68,7 +68,7 @@ def flush_with_live_wait(inport, duration_sec=2.0):
     print(f"MIDI 이벤트 {flushed}개 무시됨.")
 
 # 녹음 시간 설정 (초)
-record_duration = 120.0
+record_duration = 2.4
 
 # 카운트 다운 추가
 print("\n▶️ 녹음 준비...")
@@ -138,13 +138,13 @@ with mido.open_input(port_name) as inport:
                         recording_started = True
                         first_note_time_saved = True
                         print(f"녹음 시작! ({record_duration}초 동안 진행됩니다...)")
-                        recorded_velocities.append([0.0, msg.velocity])                        
+                        recorded_velocities.append([0.0, msg.velocity, map_drum_note(msg.note)])                        
                         continue
 
                     elapsed_time = round(time.time() - start_time, 3)
                     
                     final_events.append((elapsed_time, map_drum_note(msg.note)))
-                    recorded_velocities.append([elapsed_time, msg.velocity])
+                    recorded_velocities.append([elapsed_time, msg.velocity, map_drum_note(msg.note)])
 
                 if recording_started:
                     recorded_msgs.append(msg)
@@ -177,9 +177,9 @@ print("드럼 이벤트 CSV 저장 완료: drum_hits.csv")
 # velocity 저장
 output_velocity_file = "/home/shy/DrumRobot/DrumSound/drum1_velocity.csv"
 with open(output_velocity_file, "w", newline='') as f:
-    writer = csv.writer(f, delimiter=',') # 쉼표(,)를 구분자로 사용
-    writer.writerow(["time", "velocity"]) # 헤더 추가: "time" 열 추가
-    writer.writerows(recorded_velocities) # 이제 각 요소가 [시간, velocity] 형태이므로 올바르게 저장됨
+    writer = csv.writer(f, delimiter=',')
+    writer.writerow(["time", "velocity", "note"]) # 헤더 추가: "time", "velocity", "note"
+    writer.writerows(recorded_velocities) # 이제 각 요소가 [시간, velocity] 형태
 print(f"드럼 velocity CSV 저장 완료: {output_velocity_file}")
 
 # Magenta 모델 로딩
@@ -192,7 +192,7 @@ generator.initialize()
 # NoteSequence 로딩
 primer_sequence = midi_file_to_sequence_proto(input_file)
 start_gen = primer_sequence.total_time
-end_gen = start_gen + 15.0      # output 미디 파일 시간
+end_gen = start_gen + 2.4      # output 미디 파일 시간
 
 # 생성 설정
 generator_options = generator_pb2.GeneratorOptions()

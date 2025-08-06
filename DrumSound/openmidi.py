@@ -49,7 +49,7 @@ def view_midi_as_hex(midi_filepath, bytes_per_line=16):
 
 # --- 사용 예시 ---
 # 실제 MIDI 파일 경로로 변경해주세요.
-# midi_file_to_view = "/home/shy/DrumRobot/DrumSound/input.mid"
-midi_file_to_view = "/home/shy/DrumRobot/DrumSound/output.mid" # 다른 파일로 변경 가능
+midi_file_to_view = "/home/shy/DrumRobot/DrumSound/input.mid"
+#midi_file_to_view = "/home/shy/DrumRobot/DrumSound/output.mid" # 다른 파일로 변경 가능
 view_midi_as_hex(midi_file_to_view)
 
