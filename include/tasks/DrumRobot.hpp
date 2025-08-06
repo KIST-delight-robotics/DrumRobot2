@@ -140,12 +140,12 @@ private:
     //마젠타 반복 생성을 위한 변수들
     int repeatNum = 1;
     int currentIterations = 1;
-    queue<int> delayTime;
-    int delayTime_i;
-    queue<int> makeTime;
-    int makeTime_i;
-    queue<int> recordTime;
-    int recordTime_i;
+    queue<float> delayTime;
+    float delayTime_i;
+    queue<float> makeTime;
+    float makeTime_i;
+    queue<float> recordTime;
+    float recordTime_i;
 
     // Ideal State
     void displayAvailableCommands(string flagName) const;
@@ -176,7 +176,7 @@ private:
     bool endOfScore = false;           ///< 악보의 종료 코드 확인
 
     void initializePlayState();
-    void setSyncTime(float waitingTime);
+    void setSyncTime(int waitingTime);
     std::string selectPlayMode();
 
     string trimWhitespace(const std::string &str);

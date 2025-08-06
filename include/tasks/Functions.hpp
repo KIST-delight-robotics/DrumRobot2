@@ -43,6 +43,7 @@ public:
     void appendToCSV_DATA_absTime(const std::string& filename, float A_DATA, float B_DATA, float C_DATA);
     void appendToCSV_CAN(const std::string& filename, can_frame& c_frame);
     void appendToCSV_time(const std::string& filename);
+    void appendToCSV_time(const std::string& filename, std::chrono::_V2::system_clock::time_point &__t);
     void appendToCSV_State(const std::string& filename, string state, string sub_state);
 
     //midi to chord parsing

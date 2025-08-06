@@ -132,6 +132,10 @@ for session_idx in range(num_sessions):
 
         print("\n▶️ 첫 MIDI 입력을 기다리는 중...")
 
+        # current_time = datetime.datetime.now().strftime("%H:%M:%S.%f")[:-3]
+        # with open(sync_file.replace("sync.txt", f"start_{session_idx}.txt"), "w") as f:
+        #     f.write(current_time)
+
         prev_time = time.time()
 
         while True:
@@ -176,6 +180,11 @@ for session_idx in range(num_sessions):
 
             if recording_started and (time.time() - start_time) >= record_duration:
                 print("녹음 끝")
+
+                # current_time = datetime.datetime.now().strftime("%H:%M:%S.%f")[:-3]
+                # with open(sync_file.replace("sync.txt", f"end_{session_idx}.txt"), "w") as f:
+                #     f.write(current_time)
+                
                 break
 
             time.sleep(0.001)
@@ -232,6 +241,10 @@ for session_idx in range(num_sessions):
     set_tempo_in_sequence(generated_only, bpm=musicBPM)
     sequence_proto_to_midi_file(generated_only, outputFile)
     print(f"✅ 저장 완료: {outputFile}")
+
+    # current_time = datetime.datetime.now().strftime("%H:%M:%S.%f")[:-3]
+    # with open(sync_file.replace("sync.txt", f"magenta_{session_idx}.txt"), "w") as f:
+    #     f.write(current_time)
 
 # # 필요시 timidity 재생 함수 (주석 해제 시 사용 가능)
 # def play_with_timidity(midi_file):
