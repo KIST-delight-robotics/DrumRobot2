@@ -369,7 +369,7 @@ size_t Functions::readTime(const std::vector<unsigned char>& data, size_t& pos) 
     return value;
 }
 
-void Functions::handleMetaEvent(const std::vector<unsigned char>& data, size_t& pos) {
+void Functions::handleMetaEvent(const std::vector<unsigned char>& data, size_t& pos, int &bpm) {
     unsigned char metaType = data[pos++];
     int length = static_cast<int>(data[pos++]);
     size_t startPos = pos;
@@ -382,7 +382,7 @@ void Functions::handleMetaEvent(const std::vector<unsigned char>& data, size_t& 
         int tempo = ((data[pos] & 0xFF) << 16) |
                     ((data[pos + 1] & 0xFF) << 8) |
                     (data[pos + 2] & 0xFF);
-        int bpm = 60000000 / tempo;
+        bpm = 60000000 / tempo;
         // std::cout << "  - Tempo Change: " << bpm << " BPM\n";
     } else if (metaType == 0x2F) {
         // std::cout << "  - End of Track reached\n";
@@ -478,7 +478,7 @@ void Functions::roundDurationsToStep(const std::string& inputFilename, const std
 
 }
 
-void Functions::handleNoteOn(const std::vector<unsigned char>& data, size_t& pos, double &note_on_time, int tpqn, const std::string& midiFilePath) {
+void Functions::handleNoteOn(const std::vector<unsigned char>& data, size_t& pos, double &note_on_time, int tpqn,int bpm, const std::string& midiFilePath) {
     if (pos + 2 > data.size()) return;
     unsigned char drumNote = data[pos++];
     unsigned char velocity = data[pos++];
@@ -497,13 +497,13 @@ void Functions::handleNoteOn(const std::vector<unsigned char>& data, size_t& pos
         default: drumName = "Unknown Drum"; break;
     }
     if (velocity > 0) {
-        note_on_time = ((note_on_time * 60000) / (100 * tpqn)) / 1000;
+        note_on_time = ((note_on_time * 60000) / (bpm * tpqn)) / 1000;
         // std::cout << std::fixed << std::setprecision(1) << note_on_time << "s\t" << "Hit Drum: " << drumName << " -> " << (int)drumNote << "\n";
         this->save_to_csv(midiFilePath, note_on_time, drumNote);
     }
 }
 
-void Functions::analyzeMidiEvent(const std::vector<unsigned char>& data, size_t& pos, unsigned char& runningStatus, double &note_on_time, int &tpqn, const std::string& midiFilePath) {
+void Functions::analyzeMidiEvent(const std::vector<unsigned char>& data, size_t& pos, unsigned char& runningStatus, double &note_on_time, int &tpqn,int &bpm, const std::string& midiFilePath) {
     if (pos >= data.size()) return;
     unsigned char eventType = data[pos];
    if (eventType == 0xFF || eventType == 0xB9 || eventType == 0xC9 || eventType == 0x99 || eventType == 0x89|| eventType == 0xA9) {
@@ -513,11 +513,11 @@ void Functions::analyzeMidiEvent(const std::vector<unsigned char>& data, size_t&
         eventType = runningStatus;
     }
     if (eventType == 0xFF) {
-        handleMetaEvent(data, pos);
+        handleMetaEvent(data, pos, bpm);
     } else if (eventType == 0xB9 || eventType == 0xC9) {
         handleChannel10(data, pos, eventType);
     } else if (eventType == 0x99) {
-        handleNoteOn(data, pos, note_on_time, tpqn, midiFilePath);
+        handleNoteOn(data, pos, note_on_time, tpqn, bpm, midiFilePath);
     } else if (eventType == 0x89 || eventType == 0xA9) {
         pos += 2;
     }
