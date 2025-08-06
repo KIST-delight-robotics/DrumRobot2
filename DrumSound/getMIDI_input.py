@@ -25,6 +25,7 @@ def map_drum_note(note):
 
 # 입력 MIDI 파일 설정
 input_file = "/home/shy/DrumRobot/DrumSound/input.mid"
+#input_file = "/home/shy/DrumRobot/DrumSound/Duet_2.mid"
 mid = MidiFile(input_file)
 
 # final_events 및 시간 차이 추출
@@ -66,7 +67,7 @@ generator.initialize()
 # NoteSequence 로딩
 primer_sequence = midi_file_to_sequence_proto(input_file)
 start_gen = primer_sequence.total_time
-end_gen = start_gen + 10.0
+end_gen = start_gen + 9.6
 
 # 생성 옵션 설정
 generator_options = generator_pb2.GeneratorOptions()
@@ -79,6 +80,8 @@ generator.steps_per_quarter = 4
 versions = [
     (0.3, "/home/shy/DrumRobot/DrumSound/output_temp_03.mid"),
     (0.8, "/home/shy/DrumRobot/DrumSound/output_temp_08.mid")
+    #(0.3, "/home/shy/DrumRobot/DrumSound/output03/output_duet2_03_4.mid"),
+    #(0.8, "/home/shy/DrumRobot/DrumSound/output08/output_duet2_08_4.mid")
 ]
 
 for temp, filename in versions:

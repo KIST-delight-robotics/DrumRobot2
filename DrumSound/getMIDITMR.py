@@ -147,7 +147,8 @@ for session_idx in range(num_sessions):
                     quantized_ticks = max(round(ticks / quantize_ticks) * quantize_ticks, 1)
                     msg.time = quantized_ticks
                 else:
-                    msg.time = max(ticks, 1)
+                    msg = msg.copy(time=max(ticks, 1))  # time도 이 시점에 설정
+                    recorded_msgs.append(msg)
 
                 if is_saveable_message(msg):
                     if msg.type == 'note_on' and msg.velocity > 0:
