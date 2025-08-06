@@ -1106,6 +1106,7 @@ void DrumRobot::runPythonForMagenta()
             // if (!fun.readMidiFile(targetPath, midiData)) cout << "mid file error\n";
             pos = 14;
             int tpqn = (midiData[12] << 8) | midiData[13];
+            int bpm;
 
             while (pos + 8 <= midiData.size()) {
                 if (!(midiData[pos] == 'M' && midiData[pos+1] == 'T' && midiData[pos+2] == 'r' && midiData[pos+3] == 'k')) {
@@ -1123,7 +1124,7 @@ void DrumRobot::runPythonForMagenta()
                 while (pos < trackEnd) {
                     size_t delta = fun.readTime(midiData, pos);
                     note_on_time += delta;
-                    fun.analyzeMidiEvent(midiData, pos, runningStatus, note_on_time, tpqn, outputPath1);
+                    fun.analyzeMidiEvent(midiData, pos, runningStatus, note_on_time, tpqn, bpm, outputPath1);
                 }
                 pos = trackEnd;
             }
@@ -1181,6 +1182,7 @@ void DrumRobot::getMagentaSheet(std::string midPath)
         // if (!fun.readMidiFile(targetPath, midiData)) cout << "mid file error\n";
         pos = 14;
         int tpqn = (midiData[12] << 8) | midiData[13];
+        int bpm;
 
         while (pos + 8 <= midiData.size()) {
             if (!(midiData[pos] == 'M' && midiData[pos+1] == 'T' && midiData[pos+2] == 'r' && midiData[pos+3] == 'k')) {
@@ -1198,7 +1200,7 @@ void DrumRobot::getMagentaSheet(std::string midPath)
             while (pos < trackEnd) {
                 size_t delta = fun.readTime(midiData, pos);
                 note_on_time += delta;
-                fun.analyzeMidiEvent(midiData, pos, runningStatus, note_on_time, tpqn, outputPath1);
+                fun.analyzeMidiEvent(midiData, pos, runningStatus, note_on_time, tpqn, bpm, outputPath1);
             }
             pos = trackEnd;
         }

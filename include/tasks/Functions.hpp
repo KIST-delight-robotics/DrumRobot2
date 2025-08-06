@@ -68,10 +68,10 @@ public:
     void filterSmallDurations(const std::string& inputFilename, const std::string& outputFilename);
     void roundDurationsToStep(const std::string& inputFilename, const std::string& outputFilename);
     size_t readTime(const std::vector<unsigned char>& data, size_t& pos);
-    void handleMetaEvent(const std::vector<unsigned char>& data, size_t& pos);
+    void handleMetaEvent(const std::vector<unsigned char>& data, size_t& pos, int &bpm);
     void handleChannel10(const std::vector<unsigned char>& data, size_t& pos, unsigned char eventType);
-    void handleNoteOn(const std::vector<unsigned char>& data, size_t& pos, double& note_on_time, int tpqn, const std::string& midiFilePath);
-    void analyzeMidiEvent(const std::vector<unsigned char>& data, size_t& pos, unsigned char& runningStatus, double& note_on_time, int& tpqn, const std::string& midiFilePath);
+    void handleNoteOn(const std::vector<unsigned char>& data, size_t& pos, double& note_on_time, int tpqn,int bpm, const std::string& midiFilePath);
+    void analyzeMidiEvent(const std::vector<unsigned char>& data, size_t& pos, unsigned char& runningStatus, double& note_on_time, int& tpqn,int &bpm, const std::string& midiFilePath);
     
     void convertMcToC(const std::string& inputFilename, const std::string& outputFilename);
     pair<int, int> assignHandsByPosition(int inst1, int inst2);
