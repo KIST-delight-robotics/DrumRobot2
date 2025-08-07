@@ -180,7 +180,6 @@ private:
     std::string selectPlayMode();
 
     string trimWhitespace(const std::string &str);
-    double readBpm(ifstream& inputFile);
     bool readMeasure(ifstream& inputFile);  // 한번에 읽을 악보의 크기(measureThreshold)만큼 읽으면 true 반환
     void processLine();
     void sendPlayProcess();

@@ -1326,7 +1326,7 @@ std::string DrumRobot::selectPlayMode()
         repeatNum = 1;
     }
 
-    std::cout << "Enter BPM of Music: ";
+    std::cout << "Enter Initial BPM of Music: ";
     std::cin >> pathManager.bpmOfScore;
 
     std::cout << "Enter Maxon Control Mode (CSP : 1 / CST : 0): ";
@@ -1440,27 +1440,6 @@ string DrumRobot::trimWhitespace(const std::string &str)
     return str.substr(first, (last - first + 1));
 }
 
-double DrumRobot::readBpm(ifstream& inputFile)
-{
-    string row;
-    getline(inputFile, row);
-    istringstream iss(row);
-    string item;
-    vector<string> items;
-
-    while (getline(iss, item, '\t'))
-    {
-        item = trimWhitespace(item);
-        cout << item << "\n";
-        items.push_back(item);
-    }
-
-    cout << items[0] << "\n";
-    cout << items[0].substr(4) << "\n";
-
-    return stod(items[0].substr(4));
-}
-
 bool DrumRobot::readMeasure(ifstream& inputFile)
 {
     string row;
@@ -1489,29 +1468,42 @@ bool DrumRobot::readMeasure(ifstream& inputFile)
             items.push_back(item);
         }
 
-        if (stod(items[0]) < 0)     // 종료 코드 확인 (마디 번호가 음수)
+        if (items[0] == "bpm")                          // bpm 변경 코드
+        {
+            // std::cout << "\n bpm : " << pathManager.bpmOfScore;
+            pathManager.bpmOfScore = stod(items[1]);
+            // std::cout << " -> " << pathManager.bpmOfScore << "\n";
+        }
+        else if (items[0] == "end")                     // 종료 코드
         {
             endOfScore = true;
             return false;
         }
-
-        measureMatrix.conservativeResize(measureMatrix.rows() + 1, measureMatrix.cols());
-        for (int i = 0; i < 8; i++)
+        else if (stod(items[0]) < 0)                     // 종료 코드 (마디 번호가 음수)
         {
-            measureMatrix(measureMatrix.rows() - 1, i) = stod(items[i]);
+            endOfScore = true;
+            return false;
         }
-
-        // total time 누적
-        measureTotalTime += measureMatrix(measureMatrix.rows() - 1, 1);
-        measureMatrix(measureMatrix.rows() - 1, 8) = measureTotalTime * 100.0 / pathManager.bpmOfScore;
-
-        // timeSum 누적
-        timeSum += measureMatrix(measureMatrix.rows() - 1, 1);
-
-        // timeSum이 threshold를 넘으면 true 반환
-        if (timeSum > measureThreshold)
+        else
         {
-            return true;
+            measureMatrix.conservativeResize(measureMatrix.rows() + 1, measureMatrix.cols());
+            for (int i = 0; i < 8; i++)
+            {
+                measureMatrix(measureMatrix.rows() - 1, i) = stod(items[i]);
+            }
+
+            // total time 누적
+            measureTotalTime += measureMatrix(measureMatrix.rows() - 1, 1) * 100.0 / pathManager.bpmOfScore;
+            measureMatrix(measureMatrix.rows() - 1, 8) = measureTotalTime;
+
+            // timeSum 누적
+            timeSum += measureMatrix(measureMatrix.rows() - 1, 1);
+
+            // timeSum이 threshold를 넘으면 true 반환
+            if (timeSum > measureThreshold)
+            {
+                return true;
+            }
         }
     }
     return false;
@@ -1627,7 +1619,8 @@ void DrumRobot::sendPlayProcess()
         flagObj.setAddStanceFlag("isReady"); // Play 반복 시 Ready 으로 이동
         
         std::string saveCode = txtPath + std::to_string(currentIterations) + "_save.txt";
-        std::filesystem::rename(txtIndexPath.c_str(), saveCode.c_str());
+
+        std::filesystem::rename(txtIndexPath.c_str(), saveCode.c_str());    // 악보 파일 저장 후 삭제
         std::remove(txtIndexPath.c_str());
     }
     state.main = Main::AddStance;
