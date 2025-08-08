@@ -27,12 +27,6 @@ DrumRobot::DrumRobot(State &stateRef,
 /*                          Initialize DrumRobot                              */
 ////////////////////////////////////////////////////////////////////////////////
 
-void DrumRobot::initializePathManager()
-{
-    pathManager.getDrumPositoin();
-    pathManager.setAddStanceAngle();
-}
-
 void DrumRobot::initializeMotors()
 {
     motors["waist"] = make_shared<TMotor>(0x00, "AK10_9");
@@ -413,7 +407,7 @@ void DrumRobot::initializeDrumRobot()
 {
     std::string input;
 
-    initializePathManager();
+    pathManager.initPathManager();
     initializeMotors();
     initializeCanManager();
     motorSettingCmd(); // Maxon
@@ -1233,16 +1227,13 @@ void DrumRobot::getMagentaSheet(std::string midPath)
 
 void DrumRobot::initializePlayState()
 {
-    // fileIndex = 0;
-
     measureMatrix.resize(1, 9);
     measureMatrix = MatrixXd::Zero(1, 9);
 
     endOfScore = false;
-    lineOfScore = 0;        ///< 현재 악보 읽은 줄.
     measureTotalTime = 0.0;     ///< 악보 총 누적 시간. [s]
 
-    pathManager.initializeValue();
+    pathManager.initPlayStateValue();
 }
 
 void DrumRobot::setSyncTime(int waitingTimeMillisecond)
@@ -1337,7 +1328,6 @@ std::string DrumRobot::selectPlayMode()
         pathManager.MaxonMode = "CST";
         pathManager.Kp = 60;
         pathManager.Kd = 7;
-        pathManager.Kppp = 0.0;
     }
     else
     {
@@ -1509,25 +1499,6 @@ bool DrumRobot::readMeasure(ifstream& inputFile)
     return false;
 }
 
-void DrumRobot::processLine()
-{
-    lineOfScore++;
-    std::cout << "\n//////////////////////////////// Read Measure : " << lineOfScore << "\n";
-    // std::cout << measureMatrix;
-    // std::cout << "\n ////////////// \n";
-
-    if (measureMatrix.rows() > 1)
-    {
-        // pathManager.avoidCollision(measureMatrix);      // 충돌 회피
-        pathManager.generateTrajectory(measureMatrix);  // 궤적 생성
-    }
-
-    if (lineOfScore > preCreatedLine)
-    {
-        pathManager.solveIKandPushCommand();        // IK & 명령 생성
-    }
-}
-
 void DrumRobot::sendPlayProcess()
 {
     std::string txtPath;
@@ -1571,7 +1542,7 @@ void DrumRobot::sendPlayProcess()
         {
             while(readMeasure(inputFile))    // 한마디 분량 미만으로 남을 때까지 궤적/명령 생성
             {
-                processLine();
+                pathManager.processLine(measureMatrix);
             }
 
             inputFile.close(); // 파일 닫기
@@ -1606,7 +1577,7 @@ void DrumRobot::sendPlayProcess()
     // 종료 코드 (endOfScore) 확인됨 : 남은 궤적/명령 만들고 종료
     while (!pathManager.endOfPlayCommand)      // 명령 전부 생성할 때까지
     {
-        processLine();
+        pathManager.processLine(measureMatrix);
     }
 
     std::cout << "Play is Over\n";

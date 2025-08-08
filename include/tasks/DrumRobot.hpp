@@ -116,7 +116,6 @@ private:
     // Initialize
     int maxonMotorSocketCount = 0;    // 1 이상이면 virtual Maxon Motor를 사용하기 위해
 
-    void initializePathManager();
     void initializeMotors();
     void initializeCanManager();
     void motorSettingCmd();
@@ -128,6 +127,25 @@ private:
     // Maxon 모터 초기화 함수
     void maxonMotorEnable();
     void setMaxonMotorMode(std::string targetMode);
+
+    // Ideal State
+    void displayAvailableCommands(string flagName) const;
+    void processInput(const std::string &input, string flagName);
+    void idealStateRoutine();
+
+    // AddStance State
+    void sendAddStanceProcess();
+    
+    // Play State
+    std::string txtBasePath = "/home/shy/DrumRobot/include/codes/";    // 악보 위치
+    std::string wavBasePath = "/home/shy/DrumRobot/include/music/";    // 음악 위치
+    std::string magentaPath = "/home/shy/DrumRobot/DrumSound/";        // 마젠타 경로
+    std::string wavPath;        // wav 파일 경로
+
+    MatrixXd measureMatrix;     ///< 궤적을 생성하기 위해 읽은 악보 부분 (마디)
+    const double measureThreshold = 2.4;     ///< 한번에 읽을 악보의 크기. [s]
+    double measureTotalTime = 0.0;     ///< 악보를 읽는 동안 누적 시간. [s]
+    bool endOfScore = false;           ///< 악보의 종료 코드 확인
 
     // 싱크 연주를 위한 변수들
     bool playMusic = false;
@@ -147,41 +165,11 @@ private:
     queue<float> recordTime;
     float recordTime_i;
 
-    // Ideal State
-    void displayAvailableCommands(string flagName) const;
-    void processInput(const std::string &input, string flagName);
-    void idealStateRoutine();
-
-    // AddStance State
-    void sendAddStanceProcess();
-    
-    // Play State
-
-    // path
-    std::string txtBasePath = "/home/shy/DrumRobot/include/codes/";    // 악보 위치
-    std::string wavBasePath = "/home/shy/DrumRobot/include/music/";    // 음악 위치
-    std::string magentaPath = "/home/shy/DrumRobot/DrumSound/";        // 마젠타 경로
-    // std::string txtFileName;
-    // std::string txtPath;        // txt 파일 경로
-    std::string wavPath;        // wav 파일 경로
-    
-    // 
-    // int fileIndex = 0;
-    // std::ifstream inputFile;
-    MatrixXd measureMatrix;     ///< 궤적을 생성하기 위해 읽은 악보 부분 (마디)
-    int lineOfScore = 0;        ///< 현재 악보 읽은 줄.
-    int preCreatedLine = 3;     ///< 미리 궤적을 생성할 줄
-    double measureThreshold = 2.4;     ///< 한번에 읽을 악보의 크기. [s]
-    double measureTotalTime = 0.0;     ///< 악보를 읽는 동안 누적 시간. [s]
-    bool endOfScore = false;           ///< 악보의 종료 코드 확인
-
     void initializePlayState();
     void setSyncTime(int waitingTime);
     std::string selectPlayMode();
-
     string trimWhitespace(const std::string &str);
     bool readMeasure(ifstream& inputFile);  // 한번에 읽을 악보의 크기(measureThreshold)만큼 읽으면 true 반환
-    void processLine();
     void sendPlayProcess();
 
     // python (magenta)
