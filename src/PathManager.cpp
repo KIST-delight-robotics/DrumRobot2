@@ -151,10 +151,13 @@ void PathManager::initPlayStateValue()
 
     lineOfScore = 0;        ///< 현재 악보 읽은 줄.
 
-    measureState.resize(2, 3);
-    measureState = MatrixXd::Zero(2, 3);
-    measureState(0, 1) = 1.0;
-    measureState(1, 1) = 1.0;
+    measureStateR.resize(3);
+    measureStateR = VectorXd::Zero(3);
+    measureStateR(1) = 1.0; // 시작 위치 SN
+
+    measureStateL.resize(3);
+    measureStateL = VectorXd::Zero(3);
+    measureStateL(1) = 1.0; // 시작 위치 SN
 
     roundSum = 0.0;
     roundSumHit = 0.0;
@@ -585,801 +588,21 @@ void PathManager::solveIKandPushCommand()
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/*                              Detect Collision                              */
-////////////////////////////////////////////////////////////////////////////////
-
-bool PathManager::detectCollision(MatrixXd measureMatrix)
-{
-    VectorXd measureTime = measureMatrix.col(8);
-    VectorXd measureIntensityR = measureMatrix.col(4);
-    VectorXd measureIntensityL = measureMatrix.col(5);
-
-    MatrixXd state = measureState;
-
-    // 충돌 예측을 위한 악보 (뒤쪽 목표위치 없는 부분 짜르기)
-    int endIndex = findDetectionRange(measureMatrix);
-
-    // 충돌 예측
-    bool isColli = false;
-    double stepSize = 5;
-    for (int i = 0; i < endIndex-1; i++)
-    {
-        MatrixXd tmpMatrix = measureMatrix.block(i,0,measureMatrix.rows()-i,measureMatrix.cols());
-
-        // position
-        pair<VectorXd, VectorXd> initialPosition, finalPosition;
-        VectorXd initialPositionR(3);
-        VectorXd initialPositionL(3);
-        VectorXd finalPositionR(3);
-        VectorXd finalPositionL(3);
-        // VectorXd initialWristAngle(2);
-        // VectorXd finalWristAngle(2);
-
-        // parse
-        MatrixXd nextState = parseMeasurePC(tmpMatrix, state);
-        state = nextState;
-
-        // position
-        initialPosition = getTargetPosition(initialInstrumentPC);
-        finalPosition = getTargetPosition(finalInstrumentPC);
-
-        initialPositionR << initialPosition.first(0), initialPosition.first(1), initialPosition.first(2);
-        initialPositionL << initialPosition.first(3), initialPosition.first(4), initialPosition.first(5);
-        finalPositionR << finalPosition.first(0), finalPosition.first(1), finalPosition.first(2);
-        finalPositionL << finalPosition.first(3), finalPosition.first(4), finalPosition.first(5);
-
-        // // 타격 시 손목 각도
-        // initialWristAngle = initialPosition.second;
-        // finalWristAngle = finalPosition.second;
-
-        double dt = (line_t2PC - line_t1PC)/stepSize;
-
-        for (int j = 0; j < stepSize+1; j++)
-        {
-            double tR = dt * j + line_t1PC - initialTimeRPC;
-            double tL = dt * j + line_t1PC - initialTimeLPC;
-
-            double sR = timeScaling(0.0, finalTimeRPC - initialTimeRPC, tR);
-            double sL = timeScaling(0.0, finalTimeLPC - initialTimeLPC, tL);
-            
-            // task space 경로
-            VectorXd PR = makePath(initialPositionR, finalPositionR, sR);
-            VectorXd PL = makePath(initialPositionL, finalPositionL, sL);
-
-            // // IK 풀기 위한 손목 각도
-            // double wristAngleR = tR*(finalWristAngle(0) - initialWristAngle(0))/(finalTimeR - initialTimeR) + initialWristAngle(0);
-            // double wristAngleL = tL*(finalWristAngle(1) - initialWristAngle(1))/(finalTimeL - initialTimeL) + initialWristAngle(1);
-
-            double Tr = 1.0, hitR, hitL;
-            if (measureTime(i+1) - measureTime(i) < 0.5)
-            {
-                Tr = (measureTime(i+1) - measureTime(i))/0.5;
-            }
-            
-            if (measureIntensityR(i+1) == 0)
-            {
-                hitR = 10.0 * M_PI / 180.0;
-            }
-            else
-            {
-                hitR = measureIntensityR(i+1)*Tr*15.0*sin(M_PI*j/stepSize) * M_PI / 180.0;
-            }
-
-            if (measureIntensityL(i+1) == 0)
-            {
-                hitL = 10.0 * M_PI / 180.0;
-            }
-            else
-            {
-                hitL = measureIntensityL(i+1)*Tr*15.0*sin(M_PI*j/stepSize) * M_PI / 180.0;
-            }
-
-            if (checkTable(PR, PL, hitR, hitL))
-            {
-                // std::cout << "\n 충돌이 예측됨 \n";
-                // std::cout << "\n R :" << PR.transpose() << ", L :" << PL.transpose() << "\n";
-                // std::cout << "\n t :" << (measureTime(i+1) - measureTime(i))*j/stepSize + measureTime(i) << "\n";
-
-                // return true;
-                isColli = true;
-            }
-        }
-
-        if (isColli)
-        {
-            return true;
-        }
-    }
-
-    return false;
-}
-
-int PathManager::findDetectionRange(MatrixXd measureMatrix)
-{
-    // 뒤쪽 목표위치 없는 부분 짜르기
-    // endIndex 까지 탐색
-    VectorXd measureTime = measureMatrix.col(8);
-    VectorXd measureInstrumentR = measureMatrix.col(2);
-    VectorXd measureInstrumentL = measureMatrix.col(3);
-
-    // 충돌 예측을 위한 악보 (뒤쪽 목표위치 없는 부분 짜르기)
-    bool endR = false, endL = false;
-    int endIndex = measureTime.rows();
-    double hitDetectionThreshold = 1.2 * 100.0 / bpmOfScore; // 일단 이렇게 하면 1줄만 읽는 일 없음
-
-    for (int i = 0; i < measureTime.rows(); i++)
-    {
-        if (measureInstrumentR(measureTime.rows() - 1 - i) != 0)
-        {
-            endR = true;
-        }
-
-        if (!endR)
-        {
-            if (round(10000 * hitDetectionThreshold) < round(10000 * (measureTime(measureTime.rows() - 1) - measureTime(measureTime.rows() - 1 - i))))
-            {
-                endR = true;
-            }
-        }
-
-        if (measureInstrumentL(measureTime.rows() - 1 - i) != 0)
-        {
-            endL = true;
-        }
-
-        if (!endL)
-        {
-            if (round(10000 * hitDetectionThreshold) < round(10000 * (measureTime(measureTime.rows() - 1) - measureTime(measureTime.rows() - 1 - i))))
-            {
-                endL = true;
-            }
-        }
-
-        if (endR && endL)
-        {
-            endIndex = measureTime.rows() - i;
-            break;
-        }
-    }
-
-    return endIndex;
-}
-
-MatrixXd PathManager::parseMeasurePC(MatrixXd &measureMatrix, MatrixXd &state)
-{
-    VectorXd measureTime = measureMatrix.col(8);
-    VectorXd measureInstrumentR = measureMatrix.col(2);
-    VectorXd measureInstrumentL = measureMatrix.col(3);
-
-    VectorXd measureHH = measureMatrix.col(7);
-
-    MatrixXd nextState(2, 3);
-
-    // parsing data
-    line_t1PC = measureMatrix(0, 8);
-    line_t2PC = measureMatrix(1, 8);
-
-    // std::cout << "\n /// t1 -> t2 : " << line_t1 << " -> " << line_t2 << " = " << line_t2 - line_t1 <<  "\n";
-
-    // std::cout << "\n /// R ///";
-    pair<VectorXd, VectorXd> dataR = parseOneArm(measureTime, measureInstrumentR, measureHH, state.row(0));
-    // std::cout << "\n /// L ///";
-    pair<VectorXd, VectorXd> dataL = parseOneArm(measureTime, measureInstrumentL, measureHH, state.row(1));
-
-    // nextState 저장
-    nextState.block(0, 0, 1, 3) = dataR.second.transpose();
-    nextState.block(1, 0, 1, 3) = dataL.second.transpose();
-
-    // 악기
-    initialInstrumentPC << dataR.first.block(1, 0, 9, 1), dataL.first.block(1, 0, 9, 1);
-    finalInstrumentPC << dataR.first.block(11, 0, 9, 1), dataL.first.block(11, 0, 9, 1);
-    
-    // 궤적 시간
-    initialTimeRPC = dataR.first(0);
-    initialTimeLPC = dataL.first(0);
-    finalTimeRPC = dataR.first(10);
-    finalTimeLPC = dataL.first(10);
-
-    return nextState;
-}
-
-size_t PathManager::getflattenIndex(const std::vector<size_t>& indices, const std::vector<size_t>& dims)
-{
-    size_t flatIndex = 0;
-    size_t multiplier = 1;
-
-    for (int i = 0; i < 8; i++)
-    {
-        flatIndex += indices[7-i] * multiplier;
-        multiplier *= dims[7-i];
-    }
-
-    return flatIndex;
-}
-
-std::pair<size_t, size_t> PathManager::getBitIndex(size_t offsetIndex)
-{
-    size_t bitNum = offsetIndex * 2;
-    size_t byteNum = bitNum / 8;
-    size_t bitIndex = bitNum - 8 * byteNum;
-
-    return std::make_pair(byteNum, bitIndex);
-}
-
-bool PathManager::checkTable(VectorXd PR, VectorXd PL, double hitR, double hitL)
-{
-    double rangeMin[8] = {0.0, 0.0, -0.3, 0.3, 0.5, -0.3, 0.3, 0.5};
-    double rangeMax[8] = {50.0*M_PI/180.0, 50.0*M_PI/180.0, 0.5, 0.7, 1.0, 0.5, 0.7, 1.0};
-
-    std::vector<double> target = {hitR, hitL, PR(0), PR(1), PR(2), PL(0), PL(1), PL(2)};
-    
-    std::vector<size_t> dims = {11, 11, 19, 10, 12, 19, 10, 12};    // Rw Lw Rx Ry Rz Lx Ly Lz
-    std::vector<size_t> targetIndex;
-
-    // 인덱스 공간으로 변환
-    for (int i = 0; i < 8; i++)
-    {
-        size_t index = round((dims[i]-1)*(target[i] - rangeMin[i])/(rangeMax[i] - rangeMin[i]));
-
-        if (index > dims[i]-1)
-        {
-            index = (size_t)(dims[i]-1);
-        }
-        else if (index < 0)
-        {
-            index = 0;
-        }
-
-        targetIndex.push_back(index);
-    }
-
-    // 테이블 확인
-    std::string tablePath = "/home/shy/DrumRobot_table/TABLE.bin";    // 테이블 위치
-    std::ifstream tableFile(tablePath, std::ifstream::binary);
-    
-    if (tableFile)
-    {
-        std::size_t offsetIndex = getflattenIndex(targetIndex, dims);
-
-        std::pair<size_t, size_t> bitIndex = getBitIndex(offsetIndex);
-        
-        tableFile.seekg(bitIndex.first, std::ios::beg);
-        
-        char byte;
-        tableFile.read(&byte, 1);
-        if (!tableFile) {
-            std::cerr << " 바이트 읽기 실패 \n";
-            return false;
-        }
-
-        tableFile.close();
-
-        // byte에서 원하는 2비트 추출 (LSB 기준)
-        uint8_t value = (byte >> bitIndex.second) & 0b11;
-
-        if (value == 0b00)
-        {
-            // fun.appendToCSV_DATA("CC1", targetIndex[0], targetIndex[1], targetIndex[2]);
-            // fun.appendToCSV_DATA("CC2", targetIndex[3], targetIndex[4], targetIndex[5]);
-            // fun.appendToCSV_DATA("CC3", targetIndex[6], targetIndex[7], 0);
-            return false;   // 충돌 안함
-        }
-        else
-        {
-            // fun.appendToCSV_DATA("CC1", targetIndex[0], targetIndex[1], targetIndex[2]);
-            // fun.appendToCSV_DATA("CC2", targetIndex[3], targetIndex[4], targetIndex[5]);
-            // fun.appendToCSV_DATA("CC3", targetIndex[6], targetIndex[7], 1);
-            return true;    // 충돌 위험 or IK 안풀림
-        }
-    }
-    else
-    {
-        std::cout << "\n 테이블 열기 실패 \n";
-        std::cout << tablePath;
-        return false;
-    }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/*                              Avoid Collision                               */
-////////////////////////////////////////////////////////////////////////////////
-
-bool PathManager::modifyMeasure(MatrixXd &measureMatrix, int priority)
-{
-    // 주어진 방법으로 회피되면 measureMatrix를 바꾸고 True 반환
-
-    std::string method = modificationMethods[priority];
-    MatrixXd modifedMatrix = measureMatrix;
-    bool modificationSuccess = true;
-    int nModification = 0;  // 주어진 방법을 사용한 횟수
-
-    while (modificationSuccess)
-    {
-        if (method == modificationMethods[0])
-        {
-            modificationSuccess = modifyCrash(modifedMatrix, nModification);     // 주어진 방법으로 수정하면 True 반환
-        }
-        else if (method == modificationMethods[1])
-        {
-            modificationSuccess = waitAndMove(modifedMatrix, nModification);     // 주어진 방법으로 수정하면 True 반환   
-        }
-        else if (method == modificationMethods[2])
-        {
-            modificationSuccess = moveAndWait(modifedMatrix, nModification);     // 주어진 방법으로 수정하면 True 반환
-        }
-        else if (method == modificationMethods[3])
-        {
-            modificationSuccess = switchHands(modifedMatrix, nModification);     // 주어진 방법으로 수정하면 True 반환
-        }
-        else if (method == modificationMethods[4])
-        {
-            modificationSuccess = deleteInst(modifedMatrix, nModification);     // 주어진 방법으로 수정하면 True 반환
-        }
-        else
-        {
-            modificationSuccess = false;
-        }
-
-        // std::cout << "\n ////////////// modify Measure : " << method << "\n";
-        // std::cout << modifedMatrix;
-        // std::cout << "\n ////////////// \n";
-
-        if (!detectCollision(modifedMatrix))   // 충돌 예측
-        {
-            // std::cout << "\n 성공 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! \n";
-            
-            measureMatrix = modifedMatrix;
-            return true;
-        }
-        else
-        {
-            // std::cout << "\n 실패 ㅜㅜ \n";
-            modifedMatrix = measureMatrix;
-        }
-
-        nModification++;
-    }
-    return false;
-}
-
-pair<int, int> PathManager::findModificationRange(VectorXd t, VectorXd instR, VectorXd instL)
-{
-    // 수정하면 안되는 부분 제외
-    // detectLine 부터 수정 가능
-    double hitDetectionThreshold = 1.2 * 100.0 / bpmOfScore; // 일단 이렇게 하면 1줄만 읽는 일 없음
-
-    int detectLineR = 1;
-    for (int i = 1; i < t.rows(); i++)
-    {
-        if (round(10000 * hitDetectionThreshold) < round(10000 * (t(i) - t(0))))
-        {
-            break;
-        }
-
-        if (instR(i) != 0)
-        {
-            detectLineR = i + 1;
-            break;
-        }
-    }
-
-    int detectLineL = 1;
-    for (int i = 1; i < t.rows(); i++)
-    {
-        if (round(10000 * hitDetectionThreshold) < round(10000 * (t(i) - t(0))))
-        {
-            break;
-        }
-
-        if (instL(i) != 0)
-        {
-            detectLineL = i + 1;
-            break;
-        }
-    }
-
-    return make_pair(detectLineR, detectLineL);
-}
-
-bool PathManager::modifyCrash(MatrixXd &measureMatrix, int num)
-{
-    // 주어진 방법으로 수정하면 True 반환
-    VectorXd t = measureMatrix.col(8);
-    VectorXd instR = measureMatrix.col(2);
-    VectorXd instL = measureMatrix.col(3);
-
-    // 수정하면 안되는 부분 제외
-    pair<int, int> detectLine = findModificationRange(t, instR, instL);
-
-    int detectLineR = detectLine.first;
-    int detectLineL = detectLine.second;
-
-    // Modify Crash
-    int cnt = 0;
-
-    for (int i = detectLineR; i < t.rows(); i++)
-    {
-        if (instR(i) == 7)
-        {
-            if (cnt == num)
-            {
-                measureMatrix(i, 2) = 8;
-                return true;
-            }
-            cnt++;
-        }
-        else if (instR(i) == 8)
-        {
-            if (cnt == num)
-            {
-                measureMatrix(i, 2) = 7;
-                return true;
-            }
-            cnt++;
-        }
-    }
-
-    for (int i = detectLineL; i < t.rows(); i++)
-    {
-        if (instL(i) == 7)
-        {
-            if (cnt == num)
-            {
-                measureMatrix(i, 3) = 8;
-                return true;
-            }
-            cnt++;
-        }
-        else if (instL(i) == 8)
-        {
-            if (cnt == num)
-            {
-                measureMatrix(i, 3) = 7;
-                return true;
-            }
-            cnt++;
-        }
-    }
-
-    return false;
-}
-
-bool PathManager::switchHands(MatrixXd &measureMatrix, int num)
-{
-    // 주어진 방법으로 수정하면 True 반환
-    VectorXd t = measureMatrix.col(8);
-    VectorXd instR = measureMatrix.col(2);
-    VectorXd instL = measureMatrix.col(3);
-
-    // 수정하면 안되는 부분 제외
-    pair<int, int> detectLine = findModificationRange(t, instR, instL);
-
-    // 뒤쪽 목표위치 없는 부분 수정하면 안됨
-    int endIndex = findDetectionRange(measureMatrix);
-
-    int detectLineR = detectLine.first;
-    int detectLineL = detectLine.second;
-
-    // Modify Arm
-    int cnt = 0;
-    int maxDetectLine = 1;
-
-    if (detectLineR > detectLineL)
-    {
-        maxDetectLine = detectLineR;
-    }
-    else
-    {
-        maxDetectLine = detectLineL;
-    }
-
-    for (int i = maxDetectLine; i < t.rows(); i++)
-    {
-        if ((instR(i) != 0) && (instL(i) != 0))
-        {
-            if (cnt == num)
-            {
-                int tmp = measureMatrix(i, 2);
-                measureMatrix(i, 2) = measureMatrix(i, 3);
-                measureMatrix(i, 3) = tmp;
-                
-                tmp = measureMatrix(i, 4);
-                measureMatrix(i, 4) = measureMatrix(i, 5);
-                measureMatrix(i, 5) = tmp;
-                
-                return true;
-            }
-            cnt++;
-        }
-    }
-
-    for (int i = detectLineR; i < endIndex; i++)
-    {
-        if (instR(i) != 0)
-        {
-            if (instL(i) == 0)
-            {
-                if (cnt == num)
-                {
-                    measureMatrix(i, 3) = measureMatrix(i, 2);
-                    measureMatrix(i, 5) = measureMatrix(i, 4);
-
-                    measureMatrix(i, 2) = 0;
-                    measureMatrix(i, 4) = 0;
-                    return true;
-                }
-                cnt++;
-            }
-        }
-    }
-
-    for (int i = detectLineL; i < endIndex; i++)
-    {
-        if (instL(i) != 0)
-        {
-            if (instR(i) == 0)
-            {
-                if (cnt == num)
-                {
-                    measureMatrix(i, 2) = measureMatrix(i, 3);
-                    measureMatrix(i, 4) = measureMatrix(i, 5);
-
-                    measureMatrix(i, 3) = 0;
-                    measureMatrix(i, 5) = 0;
-                    return true;
-                }
-                cnt++;
-            }
-        }
-    }
-
-    return false;
-}
-
-bool PathManager::waitAndMove(MatrixXd &measureMatrix, int num)
-{
-    // 주어진 방법으로 수정하면 True 반환
-    VectorXd t = measureMatrix.col(8);
-    VectorXd instR = measureMatrix.col(2);
-    VectorXd instL = measureMatrix.col(3);
-
-    // 수정하면 안되는 부분 제외
-    pair<int, int> detectLine = findModificationRange(t, instR, instL);
-
-    int detectLineR = detectLine.first;
-    int detectLineL = detectLine.second;
-
-    // Wait and Move
-    int cnt = 0;
-
-    bool isStart = false;
-    int startInst, startIndex;
-    for (int i = detectLineL-1; i < t.rows(); i++)
-    {
-        if (instL(i) != 0)
-        {
-            if (isStart)
-            {
-                if (startInst != instL(i))
-                {
-                    for (int j = 1; j < i-startIndex; j++)
-                    {
-                        if (cnt == num)
-                        {
-                            measureMatrix(startIndex+j, 3) = startInst;
-                            return true;
-                        }
-                        cnt++;
-                    }
-                }
-                
-                startIndex = i;
-                startInst = instL(i);
-            }
-            else
-            {
-                isStart = true;
-                startIndex = i;
-                startInst = instL(i);
-            }
-        }
-    }
-
-    isStart = false;
-    for (int i = detectLineR-1; i < t.rows(); i++)
-    {
-        if (instR(i) != 0)
-        {
-            if (isStart)
-            {
-                if (startInst != instR(i))
-                {
-                    for (int j = 1; j < i-startIndex; j++)
-                    {
-                        if (cnt == num)
-                        {
-                            measureMatrix(startIndex+j, 2) = startInst;
-                            return true;
-                        }
-                        cnt++;
-                    }
-                }
-
-                startIndex = i;
-                startInst = instR(i);
-            }
-            else
-            {
-                isStart = true;
-                startIndex = i;
-                startInst = instR(i);
-            }
-        }
-    }
-
-    return false;
-}
-
-bool PathManager::moveAndWait(MatrixXd &measureMatrix, int num)
-{
-    // 주어진 방법으로 수정하면 True 반환
-    VectorXd t = measureMatrix.col(8);
-    VectorXd instR = measureMatrix.col(2);
-    VectorXd instL = measureMatrix.col(3);
-
-    // 수정하면 안되는 부분 제외
-    pair<int, int> detectLine = findModificationRange(t, instR, instL);
-
-    int detectLineR = detectLine.first;
-    int detectLineL = detectLine.second;
-
-    // Move and Wait
-    int cnt = 0;
-
-    bool isStart = false;
-    int startInst, endInst, startIndex;
-    for (int i = detectLineL-1; i < t.rows(); i++)
-    {
-        if (instL(i) != 0)
-        {
-            if (isStart)
-            {
-                endInst = instL(i);
-                if (endInst != startInst)
-                {
-                    for (int j = 1; j < i-startIndex; j++)
-                    {
-                        if (cnt == num)
-                        {
-                            measureMatrix(i-j, 3) = endInst;
-                            return true;
-                        }
-                        cnt++;
-                    }
-                }
-                
-                startIndex = i;
-                startInst = instL(i);
-            }
-            else
-            {
-                isStart = true;
-                startIndex = i;
-                startInst = instL(i);
-            }
-        }
-    }
-
-    isStart = false;
-    for (int i = detectLineR-1; i < t.rows(); i++)
-    {
-        if (instR(i) != 0)
-        {
-            if (isStart)
-            {
-                endInst = instR(i);
-                if (endInst != startInst)
-                {
-                    for (int j = 1; j < i-startIndex; j++)
-                    {
-                        if (cnt == num)
-                        {
-                            measureMatrix(i-j, 2) = endInst;
-                            return true;
-                        }
-                        cnt++;
-                    }
-                }
-                
-                startIndex = i;
-                startInst = instR(i);
-            }
-            else
-            {
-                isStart = true;
-                startIndex = i;
-                startInst = instR(i);
-            }
-        }
-    }
-
-    return false;
-}
-
-bool PathManager::deleteInst(MatrixXd &measureMatrix, int num)
-{
-    // 주어진 방법으로 수정하면 True 반환
-    VectorXd t = measureMatrix.col(8);
-    VectorXd instR = measureMatrix.col(2);
-    VectorXd instL = measureMatrix.col(3);
-
-    // 수정하면 안되는 부분 제외
-    pair<int, int> detectLine = findModificationRange(t, instR, instL);
-
-    // 뒤쪽 목표위치 없는 부분 수정하면 안됨
-    int endIndex = findDetectionRange(measureMatrix);
-
-    int detectLineR = detectLine.first;
-    int detectLineL = detectLine.second;
-
-    // Move and Wait
-    int cnt = 0;
-
-    for (int i = detectLineR; i < endIndex; i++)
-    {
-        if (instR(i) != 0)
-        {
-            if (cnt == num)
-            {
-                measureMatrix(i, 2) = 0;
-                measureMatrix(i, 4) = 0;
-                return true;
-            }
-            cnt++;
-        }
-    }
-
-    for (int i = detectLineL; i < endIndex; i++)
-    {
-        if (instL(i) != 0)
-        {
-            if (cnt == num)
-            {
-                measureMatrix(i, 3) = 0;
-                measureMatrix(i, 5) = 0;
-                return true;
-            }
-            cnt++;
-        }
-    }
-
-    return false;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /*                       Play : Trajectory (Task Space)                       */
 ////////////////////////////////////////////////////////////////////////////////
 
 int PathManager::genTaskSpaceTrajectory(MatrixXd &measureMatrix)
 {
-    // position
-    pair<VectorXd, VectorXd> initialPosition, finalPosition;
-    VectorXd initialPositionR(3);
-    VectorXd initialPositionL(3);
-    VectorXd finalPositionR(3);
-    VectorXd finalPositionL(3);
-    VectorXd initialWristAngle(2);
-    VectorXd finalWristAngle(2);
-    VectorXd waistParams;
-
     double sR, sL, n;
     double dt = canManager.DTSECOND;
 
     // parse
-    parseMeasure(measureMatrix);
+    parsedData data = parseMeasure(measureMatrix, measureStateR, measureStateL);
+    measureStateR = data.nextStateR;
+    measureStateL = data.nextStateL;
 
     // 한 줄의 데이터 개수 (5ms 단위)
-    n = (line_t2 - line_t1) / dt;
+    n = (data.t2 - data.t1) / dt;
     roundSum += (int)(n * 10000) % 10000;
     if (roundSum >= 10000)
     {
@@ -1388,35 +611,22 @@ int PathManager::genTaskSpaceTrajectory(MatrixXd &measureMatrix)
     }
     n = floor(n);
 
-    // position
-    initialPosition = getTargetPosition(initialInstrument);
-    finalPosition = getTargetPosition(finalInstrument);
-
-    initialPositionR << initialPosition.first(0), initialPosition.first(1), initialPosition.first(2);
-    initialPositionL << initialPosition.first(3), initialPosition.first(4), initialPosition.first(5);
-    finalPositionR << finalPosition.first(0), finalPosition.first(1), finalPosition.first(2);
-    finalPositionL << finalPosition.first(3), finalPosition.first(4), finalPosition.first(5);
-
-    // 타격 시 손목 각도
-    initialWristAngle = initialPosition.second;
-    finalWristAngle = finalPosition.second;
-
     for (int i = 0; i < n; i++)
     {
         Position Pt;
-        double tR = dt * i + line_t1 - initialTimeR;
-        double tL = dt * i + line_t1 - initialTimeL;
+        double tR = dt * i + data.t1 - data.initialTimeR;
+        double tL = dt * i + data.t1 - data.initialTimeL;
 
-        sR = timeScaling(0.0, finalTimeR - initialTimeR, tR);
-        sL = timeScaling(0.0, finalTimeL - initialTimeL, tL);
+        sR = timeScaling(0.0, data.finalTimeR - data.initialTimeR, tR);
+        sL = timeScaling(0.0, data.finalTimeL - data.initialTimeL, tL);
         
         // task space 경로
-        Pt.trajectoryR = makePath(initialPositionR, finalPositionR, sR);
-        Pt.trajectoryL = makePath(initialPositionL, finalPositionL, sL);
+        Pt.trajectoryR = makePath(data.initialPositionR, data.finalPositionR, sR);
+        Pt.trajectoryL = makePath(data.initialPositionL, data.finalPositionL, sL);
 
         // IK 풀기 위한 손목 각도
-        Pt.wristAngleR = sR*(finalWristAngle(0) - initialWristAngle(0)) + initialWristAngle(0);
-        Pt.wristAngleL = sL*(finalWristAngle(1) - initialWristAngle(1)) + initialWristAngle(1);
+        Pt.wristAngleR = sR*(data.finalWristAngleR - data.initialWristAngleR) + data.initialWristAngleR;
+        Pt.wristAngleL = sL*(data.finalWristAngleL - data.initialWristAngleL) + data.initialWristAngleL;
 
         trajectoryQueue.push(Pt);
 
@@ -1432,7 +642,7 @@ int PathManager::genTaskSpaceTrajectory(MatrixXd &measureMatrix)
         if (i == 0)
         {
             // 명령 개수, 허리 범위, 최적화 각도 계산 및 저장
-            waistParams = getWaistParams(Pt.trajectoryR, Pt.trajectoryL);
+            VectorXd waistParams = getWaistParams(Pt.trajectoryR, Pt.trajectoryL);
             storeWaistParams(n, waistParams);
         }
     }
@@ -1440,41 +650,67 @@ int PathManager::genTaskSpaceTrajectory(MatrixXd &measureMatrix)
     return n;
 }
 
-void PathManager::parseMeasure(MatrixXd &measureMatrix)
+PathManager::parsedData PathManager::parseMeasure(MatrixXd &measureMatrix, VectorXd &stateR, VectorXd &stateL)
 {
+    parsedData data;
+
     VectorXd measureTime = measureMatrix.col(8);
     VectorXd measureInstrumentR = measureMatrix.col(2);
     VectorXd measureInstrumentL = measureMatrix.col(3);
+    VectorXd measureHihat = measureMatrix.col(7);
 
-    VectorXd measureHH = measureMatrix.col(7);
+    data.t1 = measureMatrix(0, 8);
+    data.t2 = measureMatrix(1, 8);
 
-    // parsing data
-    line_t1 = measureMatrix(0, 8);
-    line_t2 = measureMatrix(1, 8);
-
-    // std::cout << "\n /// t1 -> t2 : " << line_t1 << " -> " << line_t2 << " : " << line_t2 - line_t1 <<  "\n";
+    // std::cout << "\n /// t1 -> t2 : " << data.t1 << " -> " << data.t2 << " : " << data.t2 - data.t1 <<  "\n";
 
     // std::cout << "\n /// R ///";
-    pair<VectorXd, VectorXd> dataR = parseOneArm(measureTime, measureInstrumentR, measureHH, measureState.row(0));
+    pair<VectorXd, VectorXd> dataR = parseOneArm(measureTime, measureInstrumentR, measureHihat, stateR);
     // std::cout << "\n /// L ///";
-    pair<VectorXd, VectorXd> dataL = parseOneArm(measureTime, measureInstrumentL, measureHH, measureState.row(1));
+    pair<VectorXd, VectorXd> dataL = parseOneArm(measureTime, measureInstrumentL, measureHihat, stateL);
 
-    // measureState 저장
-    measureState.block(0, 0, 1, 3) = dataR.second.transpose();
-    measureState.block(1, 0, 1, 3) = dataL.second.transpose();
+    // state 업데이트
+    data.nextStateR = dataR.second;
+    data.nextStateL = dataL.second;
+
+    // 시간
+    data.initialTimeR = dataR.first(0);
+    data.initialTimeL = dataL.first(0);
+
+    data.finalTimeR = dataR.first(10);
+    data.finalTimeL = dataL.first(10);
 
     // 악기
-    initialInstrument << dataR.first.block(1, 0, 9, 1), dataL.first.block(1, 0, 9, 1);
-    finalInstrument << dataR.first.block(11, 0, 9, 1), dataL.first.block(11, 0, 9, 1);
+    VectorXd initialInstrumentR = dataR.first.block(1, 0, 9, 1);
+    VectorXd initialInstrumentL = dataL.first.block(1, 0, 9, 1);
+
+    VectorXd finalInstrumentR = dataR.first.block(11, 0, 9, 1);
+    VectorXd finalInstrumentL = dataL.first.block(11, 0, 9, 1);
+
+    pair<VectorXd, double> initialTagetR = getTargetPosition(initialInstrumentR, 'R');
+    pair<VectorXd, double> initialTagetL = getTargetPosition(initialInstrumentL, 'L');
+
+    pair<VectorXd, double> finalTagetR = getTargetPosition(finalInstrumentR, 'R');
+    pair<VectorXd, double> finalTagetL = getTargetPosition(finalInstrumentL, 'L');
+
+    // position
+    data.initialPositionR = initialTagetR.first;
+    data.initialPositionL = initialTagetL.first;
+
+    data.finalPositionR = finalTagetR.first;
+    data.finalPositionL = finalTagetL.first;
+
+    // 타격 시 손목 각도
+    data.initialWristAngleR = initialTagetR.second;
+    data.initialWristAngleL = initialTagetL.second;
     
-    // 궤적 시간
-    initialTimeR = dataR.first(0);
-    initialTimeL = dataL.first(0);
-    finalTimeR = dataR.first(10);
-    finalTimeL = dataL.first(10);
+    data.finalWristAngleR = finalTagetR.second;
+    data.finalWristAngleL = finalTagetL.second;
+
+    return data;
 }
 
-pair<VectorXd, VectorXd> PathManager::parseOneArm(VectorXd t, VectorXd inst, VectorXd hh, VectorXd stateVector)
+pair<VectorXd, VectorXd> PathManager::parseOneArm(VectorXd &t, VectorXd &inst, VectorXd &hh, VectorXd &stateVector)
 {
     map<int, int> instrumentMapping = {
         {1, 0}, {2, 1}, {3, 2}, {4, 3}, {5, 4}, {6, 5}, {7, 6}, {8, 7}, {11, 0}, {51, 0}, {61, 0}, {71, 0}, {81, 0}, {91, 0}, {9, 8}};
@@ -1503,7 +739,7 @@ pair<VectorXd, VectorXd> PathManager::parseOneArm(VectorXd t, VectorXd inst, Vec
         {
             detectHit = true;
             detectTime = t(i);
-            detectInst = checkOpenHH(inst(i), hh(i));
+            detectInst = checkOpenHihat(inst(i), hh(i));
 
             break;
         }
@@ -1560,7 +796,7 @@ pair<VectorXd, VectorXd> PathManager::parseOneArm(VectorXd t, VectorXd inst, Vec
         {
             nextState = 3;
 
-            initialInstNum = checkOpenHH(inst(0), hh(0));
+            initialInstNum = checkOpenHihat(inst(0), hh(0));
             finalInstNum = detectInst;
 
             initialT = t(0);
@@ -1571,8 +807,8 @@ pair<VectorXd, VectorXd> PathManager::parseOneArm(VectorXd t, VectorXd inst, Vec
         {
             nextState = 1;
 
-            initialInstNum = checkOpenHH(inst(0), hh(0));
-            finalInstNum = checkOpenHH(inst(0), hh(0));
+            initialInstNum = checkOpenHihat(inst(0), hh(0));
+            finalInstNum = checkOpenHihat(inst(0), hh(0));
 
             initialT = t(0);
             finalT = t(1);
@@ -1594,31 +830,55 @@ pair<VectorXd, VectorXd> PathManager::parseOneArm(VectorXd t, VectorXd inst, Vec
     return std::make_pair(outputVector, nextStateVector);
 }
 
-pair<VectorXd, VectorXd> PathManager::getTargetPosition(VectorXd inst)
+int PathManager::checkOpenHihat(int instNum, int isHH)
 {
-    VectorXd instrumentR = inst.segment(0, 9);
-    VectorXd instrumentL = inst.segment(9, 9);
-
-    if (instrumentR.sum() == 0)
+    if (instNum == 5)       // 하이햇인 경우
     {
-        std::cout << "Right Instrument Vector Error!!\n";
+        if (isHH == 0)  // 오픈
+        {
+            return 9;
+        }
+        else            // 클로즈
+        {
+            return instNum;
+        }
+    }
+    else                // 하이햇이 아니면 그냥 반환
+    {
+        return instNum;
+    }
+}
+
+pair<VectorXd, double> PathManager::getTargetPosition(VectorXd &inst, char RL)
+{
+    double angle = 0.0;
+    VectorXd p(3);
+
+    if (inst.sum() == 0)
+    {
+        std::cout << "Instrument Vector Error!! : " << inst << "\n";
     }
 
-    if (instrumentL.sum() == 0)
+    if (RL == 'R' || RL == 'r')
     {
-        std::cout << "Left Instrument Vector Error!!\n";
+        MatrixXd productP = drumCoordinateR * inst;
+        p = productP.block(0, 0, 3, 1);
+
+        MatrixXd productA = wristAngleOnImpactR * inst;
+        angle = productA(0, 0);
     }
+    else if (RL == 'L' || RL == 'l')
+    {
+        MatrixXd productP = drumCoordinateL * inst;
+        p = productP.block(0, 0, 3, 1);
 
-    VectorXd instrumentVector(18);
-    instrumentVector << instrumentR, instrumentL;
-
-    MatrixXd combined(6, 18);
-    combined << drumCoordinateR, MatrixXd::Zero(3, 9), MatrixXd::Zero(3, 9), drumCoordinateL;
-    MatrixXd p = combined * instrumentVector;
-    
-    combined.resize(2, 18);
-    combined << wristAngleOnImpactR, MatrixXd::Zero(1, 9), MatrixXd::Zero(1, 9), wristAngleOnImpactL;
-    MatrixXd angle = combined * instrumentVector;
+        MatrixXd productA = wristAngleOnImpactL * inst;
+        angle = productA(0, 0);
+    }
+    else
+    {
+        std::cout << "RL Error!! : " << RL << "\n";
+    }
 
     return std::make_pair(p, angle);
 }
@@ -1650,7 +910,7 @@ double PathManager::timeScaling(double ti, double tf, double t)
     return s;
 }
 
-VectorXd PathManager::makePath(VectorXd Pi, VectorXd Pf, double s)
+VectorXd PathManager::makePath(VectorXd &Pi, VectorXd &Pf, double s)
 {
     float degree = 2.0;
 
@@ -1693,7 +953,7 @@ VectorXd PathManager::makePath(VectorXd Pi, VectorXd Pf, double s)
     return Ps;
 }
 
-VectorXd PathManager::getWaistParams(VectorXd pR, VectorXd pL)
+VectorXd PathManager::getWaistParams(VectorXd &pR, VectorXd &pL)
 {
     std::vector<VectorXd> Qarr;
     int j = 0;      // 솔루션 개수
@@ -1759,7 +1019,7 @@ VectorXd PathManager::getWaistParams(VectorXd pR, VectorXd pL)
     return output;
 }
 
-void PathManager::storeWaistParams(int n, VectorXd waistParams)
+void PathManager::storeWaistParams(int n, VectorXd &waistParams)
 {
     waistParameter wP;
     wP.n = n;
@@ -1785,6 +1045,9 @@ void PathManager::genHitTrajectory(MatrixXd &measureMatrix, int n)
     int k = 0;
 
     dividedMatrix = divideMatrix(measureMatrix);
+
+    double line_t1 = measureMatrix(0, 8);
+    double line_t2 = measureMatrix(1, 8);
 
     // Bass 관련 변수
     bool bassHit = measureMatrix(0, 6);
@@ -1842,25 +1105,6 @@ void PathManager::genHitTrajectory(MatrixXd &measureMatrix, int n)
         // fun.appendToCSV_DATA(fileName, tHitL, hitL_t2 - hitL_t1, 0);
         // fileName = "HHAngle.csv";
         // fun.appendToCSV_DATA(fileName, Ht.hihat, Ht.bass, 0);
-    }
-}
-
-int PathManager::checkOpenHH(int instNum, int isHH)
-{
-    if (instNum == 5)       // 하이햇인 경우
-    {
-        if (isHH == 0)  // 오픈
-        {
-            return 9;
-        }
-        else            // 클로즈
-        {
-            return instNum;
-        }
-    }
-    else                // 하이햇이 아니면 그냥 반환
-    {
-        return instNum;
     }
 }
 
@@ -1922,8 +1166,6 @@ void PathManager::parseHitData(MatrixXd &measureMatrix)
     VectorXd hitL = measureMatrix.col(5);
 
     // parsing data
-    line_t1 = measureMatrix(0, 8);
-    line_t2 = measureMatrix(1, 8);
     double hitDetectionThreshold = 0.5;
 
     //////////////////////////////////////// R
@@ -2952,6 +2194,7 @@ std::pair<double, vector<double>> PathManager::getNextQ0(std::vector<waistParame
 {
     VectorXd t_getNextQ0;     // getNextQ0() 함수 안에서 사용할 시간 벡터
     double dt = canManager.DTSECOND;
+    int wPsSize = wPs.size();
     vector<double> m_interpolation = {0.0, 0.0};
     double q0_t2 = 0.0, q0_t3;;
 
@@ -2971,7 +2214,7 @@ std::pair<double, vector<double>> PathManager::getNextQ0(std::vector<waistParame
         {
             t_getNextQ0(i) = 0;
         }
-        else if (wPs.size() >= i-1)
+        else if (wPsSize >= i-1)
         {
             t_getNextQ0(i) = t_getNextQ0(i-1) + wPs[i-2].n*dt;
         }
@@ -2984,7 +2227,7 @@ std::pair<double, vector<double>> PathManager::getNextQ0(std::vector<waistParame
     // t1 -> t2
     for (int i = 0; i < 3; i++)
     {
-        if (wPs.size() > i+1)
+        if (wPsSize > i+1)
         {
             a(i) = (wPs[1].optimized_q0 - q0_t1) / (t_getNextQ0(i+2)-t_getNextQ0(1));
         }
@@ -3006,7 +2249,7 @@ std::pair<double, vector<double>> PathManager::getNextQ0(std::vector<waistParame
     }
 
     // t2 -> t3
-    if (wPs.size() == 2)
+    if (wPsSize == 2)
     {
         q0_t3 = q0_t2;
     }
@@ -3014,7 +2257,7 @@ std::pair<double, vector<double>> PathManager::getNextQ0(std::vector<waistParame
     {
         for (int i = 0; i < 3; i++)
         {
-            if (wPs.size() > i+2)
+            if (wPsSize > i+2)
             {
                 a(i) = (wPs[1].optimized_q0 - q0_t1) / (t_getNextQ0(i+3)-t_getNextQ0(2));
             }
@@ -3129,7 +2372,7 @@ VectorXd PathManager::getJointAngles(double q0)
     return q;
 }
 
-void PathManager::pushCommandBuffer(VectorXd Qi)
+void PathManager::pushCommandBuffer(VectorXd &Qi)
 {
     for (auto &entry : motors)
     {
@@ -3197,10 +2440,719 @@ void PathManager::pushCommandBuffer(VectorXd Qi)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/*                              Detect Collision                              */
+////////////////////////////////////////////////////////////////////////////////
+
+bool PathManager::detectCollision(MatrixXd &measureMatrix)
+{
+    VectorXd measureTime = measureMatrix.col(8);
+    VectorXd measureIntensityR = measureMatrix.col(4);
+    VectorXd measureIntensityL = measureMatrix.col(5);
+
+    VectorXd stateDCR = measureStateR;
+    VectorXd stateDCL = measureStateL;
+
+    // 충돌 예측을 위한 악보 (뒤쪽 목표위치 없는 부분 짜르기)
+    int endIndex = findDetectionRange(measureMatrix);
+
+    // 충돌 예측
+    bool isColli = false;
+    double stepSize = 5;
+    for (int i = 0; i < endIndex-1; i++)
+    {
+        MatrixXd tmpMatrix = measureMatrix.block(i,0,measureMatrix.rows()-i,measureMatrix.cols());
+
+        // parse
+        parsedData data = parseMeasure(tmpMatrix, stateDCR, stateDCL);
+        stateDCR = data.nextStateR;
+        stateDCL = data.nextStateL;
+
+        double dt = (data.t2 - data.t1)/stepSize;
+
+        for (int j = 0; j < stepSize+1; j++)
+        {
+            double tR = dt * j + data.t1 - data.initialTimeR;
+            double tL = dt * j + data.t1 - data.initialTimeL;
+
+            double sR = timeScaling(0.0, data.finalTimeR - data.initialTimeR, tR);
+            double sL = timeScaling(0.0, data.finalTimeL - data.initialTimeL, tL);
+            
+            // task space 경로
+            VectorXd PR = makePath(data.initialPositionR, data.finalPositionR, sR);
+            VectorXd PL = makePath(data.initialPositionL, data.finalPositionL, sL);
+
+            double Tr = 1.0, hitR, hitL;
+            if (measureTime(i+1) - measureTime(i) < 0.5)
+            {
+                Tr = (measureTime(i+1) - measureTime(i))/0.5;
+            }
+            
+            if (measureIntensityR(i+1) == 0)
+            {
+                hitR = 10.0 * M_PI / 180.0;
+            }
+            else
+            {
+                hitR = measureIntensityR(i+1)*Tr*15.0*sin(M_PI*j/stepSize) * M_PI / 180.0;
+            }
+
+            if (measureIntensityL(i+1) == 0)
+            {
+                hitL = 10.0 * M_PI / 180.0;
+            }
+            else
+            {
+                hitL = measureIntensityL(i+1)*Tr*15.0*sin(M_PI*j/stepSize) * M_PI / 180.0;
+            }
+
+            if (checkTable(PR, PL, hitR, hitL))
+            {
+                // std::cout << "\n 충돌이 예측됨 \n";
+                // std::cout << "\n R :" << PR.transpose() << ", L :" << PL.transpose() << "\n";
+                // std::cout << "\n t :" << (measureTime(i+1) - measureTime(i))*j/stepSize + measureTime(i) << "\n";
+
+                // return true;
+                isColli = true;
+            }
+        }
+
+        if (isColli)
+        {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+int PathManager::findDetectionRange(MatrixXd &measureMatrix)
+{
+    // 뒤쪽 목표위치 없는 부분 짜르기
+    // endIndex 까지 탐색
+    VectorXd measureTime = measureMatrix.col(8);
+    VectorXd measureInstrumentR = measureMatrix.col(2);
+    VectorXd measureInstrumentL = measureMatrix.col(3);
+
+    // 충돌 예측을 위한 악보 (뒤쪽 목표위치 없는 부분 짜르기)
+    bool endR = false, endL = false;
+    int endIndex = measureTime.rows();
+    double hitDetectionThreshold = 1.2 * 100.0 / bpmOfScore; // 일단 이렇게 하면 1줄만 읽는 일 없음
+
+    for (int i = 0; i < measureTime.rows(); i++)
+    {
+        if (measureInstrumentR(measureTime.rows() - 1 - i) != 0)
+        {
+            endR = true;
+        }
+
+        if (!endR)
+        {
+            if (round(10000 * hitDetectionThreshold) < round(10000 * (measureTime(measureTime.rows() - 1) - measureTime(measureTime.rows() - 1 - i))))
+            {
+                endR = true;
+            }
+        }
+
+        if (measureInstrumentL(measureTime.rows() - 1 - i) != 0)
+        {
+            endL = true;
+        }
+
+        if (!endL)
+        {
+            if (round(10000 * hitDetectionThreshold) < round(10000 * (measureTime(measureTime.rows() - 1) - measureTime(measureTime.rows() - 1 - i))))
+            {
+                endL = true;
+            }
+        }
+
+        if (endR && endL)
+        {
+            endIndex = measureTime.rows() - i;
+            break;
+        }
+    }
+
+    return endIndex;
+}
+
+bool PathManager::checkTable(VectorXd PR, VectorXd PL, double hitR, double hitL)
+{
+    double rangeMin[8] = {0.0, 0.0, -0.3, 0.3, 0.5, -0.3, 0.3, 0.5};
+    double rangeMax[8] = {50.0*M_PI/180.0, 50.0*M_PI/180.0, 0.5, 0.7, 1.0, 0.5, 0.7, 1.0};
+
+    std::vector<double> target = {hitR, hitL, PR(0), PR(1), PR(2), PL(0), PL(1), PL(2)};
+    
+    std::vector<size_t> dims = {11, 11, 19, 10, 12, 19, 10, 12};    // Rw Lw Rx Ry Rz Lx Ly Lz
+    std::vector<size_t> targetIndex;
+
+    // 인덱스 공간으로 변환
+    for (int i = 0; i < 8; i++)
+    {
+        size_t index = round((dims[i]-1)*(target[i] - rangeMin[i])/(rangeMax[i] - rangeMin[i]));
+
+        if (index > dims[i]-1)
+        {
+            index = (size_t)(dims[i]-1);
+        }
+        else if (index < 0)
+        {
+            index = 0;
+        }
+
+        targetIndex.push_back(index);
+    }
+
+    // 테이블 확인
+    std::ifstream tableFile(tablePath, std::ifstream::binary);
+    
+    if (tableFile)
+    {
+        std::size_t offsetIndex = getFlattenIndex(targetIndex, dims);
+
+        std::pair<size_t, size_t> bitIndex = getBitIndex(offsetIndex);
+        
+        tableFile.seekg(bitIndex.first, std::ios::beg);
+        
+        char byte;
+        tableFile.read(&byte, 1);
+        if (!tableFile) {
+            std::cerr << " 바이트 읽기 실패 \n";
+            return false;
+        }
+
+        tableFile.close();
+
+        // byte에서 원하는 2비트 추출 (LSB 기준)
+        uint8_t value = (byte >> bitIndex.second) & 0b11;
+
+        if (value == 0b00)
+        {
+            // fun.appendToCSV_DATA("CC1", targetIndex[0], targetIndex[1], targetIndex[2]);
+            // fun.appendToCSV_DATA("CC2", targetIndex[3], targetIndex[4], targetIndex[5]);
+            // fun.appendToCSV_DATA("CC3", targetIndex[6], targetIndex[7], 0);
+            return false;   // 충돌 안함
+        }
+        else
+        {
+            // fun.appendToCSV_DATA("CC1", targetIndex[0], targetIndex[1], targetIndex[2]);
+            // fun.appendToCSV_DATA("CC2", targetIndex[3], targetIndex[4], targetIndex[5]);
+            // fun.appendToCSV_DATA("CC3", targetIndex[6], targetIndex[7], 1);
+            return true;    // 충돌 위험 or IK 안풀림
+        }
+    }
+    else
+    {
+        std::cout << "\n 테이블 열기 실패 \n";
+        std::cout << tablePath;
+        return false;
+    }
+}
+
+size_t PathManager::getFlattenIndex(const std::vector<size_t>& indices, const std::vector<size_t>& dims)
+{
+    size_t flatIndex = 0;
+    size_t multiplier = 1;
+
+    for (int i = 0; i < 8; i++)
+    {
+        flatIndex += indices[7-i] * multiplier;
+        multiplier *= dims[7-i];
+    }
+
+    return flatIndex;
+}
+
+std::pair<size_t, size_t> PathManager::getBitIndex(size_t offsetIndex)
+{
+    size_t bitNum = offsetIndex * 2;
+    size_t byteNum = bitNum / 8;
+    size_t bitIndex = bitNum - 8 * byteNum;
+
+    return std::make_pair(byteNum, bitIndex);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/*                              Avoid Collision                               */
+////////////////////////////////////////////////////////////////////////////////
+
+bool PathManager::modifyMeasure(MatrixXd &measureMatrix, int priority)
+{
+    // 주어진 방법으로 회피되면 measureMatrix를 바꾸고 True 반환
+
+    std::string method = modificationMethods[priority];
+    MatrixXd modifedMatrix = measureMatrix;
+    bool modificationSuccess = true;
+    int nModification = 0;  // 주어진 방법을 사용한 횟수
+
+    while (modificationSuccess)
+    {
+        if (method == modificationMethods[0])
+        {
+            modificationSuccess = modifyCrash(modifedMatrix, nModification);     // 주어진 방법으로 수정하면 True 반환
+        }
+        else if (method == modificationMethods[1])
+        {
+            modificationSuccess = waitAndMove(modifedMatrix, nModification);     // 주어진 방법으로 수정하면 True 반환   
+        }
+        else if (method == modificationMethods[2])
+        {
+            modificationSuccess = moveAndWait(modifedMatrix, nModification);     // 주어진 방법으로 수정하면 True 반환
+        }
+        else if (method == modificationMethods[3])
+        {
+            modificationSuccess = switchHands(modifedMatrix, nModification);     // 주어진 방법으로 수정하면 True 반환
+        }
+        else if (method == modificationMethods[4])
+        {
+            modificationSuccess = deleteInst(modifedMatrix, nModification);     // 주어진 방법으로 수정하면 True 반환
+        }
+        else
+        {
+            modificationSuccess = false;
+        }
+
+        // std::cout << "\n ////////////// modify Measure : " << method << "\n";
+        // std::cout << modifedMatrix;
+        // std::cout << "\n ////////////// \n";
+
+        if (!detectCollision(modifedMatrix))   // 충돌 예측
+        {
+            // std::cout << "\n 성공 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! \n";
+            
+            measureMatrix = modifedMatrix;
+            return true;
+        }
+        else
+        {
+            // std::cout << "\n 실패 ㅜㅜ \n";
+            modifedMatrix = measureMatrix;
+        }
+
+        nModification++;
+    }
+    return false;
+}
+
+pair<int, int> PathManager::findModificationRange(VectorXd t, VectorXd instR, VectorXd instL)
+{
+    // 수정하면 안되는 부분 제외
+    // detectLine 부터 수정 가능
+    double hitDetectionThreshold = 1.2 * 100.0 / bpmOfScore; // 일단 이렇게 하면 1줄만 읽는 일 없음
+
+    int detectLineR = 1;
+    for (int i = 1; i < t.rows(); i++)
+    {
+        if (round(10000 * hitDetectionThreshold) < round(10000 * (t(i) - t(0))))
+        {
+            break;
+        }
+
+        if (instR(i) != 0)
+        {
+            detectLineR = i + 1;
+            break;
+        }
+    }
+
+    int detectLineL = 1;
+    for (int i = 1; i < t.rows(); i++)
+    {
+        if (round(10000 * hitDetectionThreshold) < round(10000 * (t(i) - t(0))))
+        {
+            break;
+        }
+
+        if (instL(i) != 0)
+        {
+            detectLineL = i + 1;
+            break;
+        }
+    }
+
+    return make_pair(detectLineR, detectLineL);
+}
+
+bool PathManager::modifyCrash(MatrixXd &measureMatrix, int num)
+{
+    // 주어진 방법으로 수정하면 True 반환
+    VectorXd t = measureMatrix.col(8);
+    VectorXd instR = measureMatrix.col(2);
+    VectorXd instL = measureMatrix.col(3);
+
+    // 수정하면 안되는 부분 제외
+    pair<int, int> detectLine = findModificationRange(t, instR, instL);
+
+    int detectLineR = detectLine.first;
+    int detectLineL = detectLine.second;
+
+    // Modify Crash
+    int cnt = 0;
+
+    for (int i = detectLineR; i < t.rows(); i++)
+    {
+        if (instR(i) == 7)
+        {
+            if (cnt == num)
+            {
+                measureMatrix(i, 2) = 8;
+                return true;
+            }
+            cnt++;
+        }
+        else if (instR(i) == 8)
+        {
+            if (cnt == num)
+            {
+                measureMatrix(i, 2) = 7;
+                return true;
+            }
+            cnt++;
+        }
+    }
+
+    for (int i = detectLineL; i < t.rows(); i++)
+    {
+        if (instL(i) == 7)
+        {
+            if (cnt == num)
+            {
+                measureMatrix(i, 3) = 8;
+                return true;
+            }
+            cnt++;
+        }
+        else if (instL(i) == 8)
+        {
+            if (cnt == num)
+            {
+                measureMatrix(i, 3) = 7;
+                return true;
+            }
+            cnt++;
+        }
+    }
+
+    return false;
+}
+
+bool PathManager::switchHands(MatrixXd &measureMatrix, int num)
+{
+    // 주어진 방법으로 수정하면 True 반환
+    VectorXd t = measureMatrix.col(8);
+    VectorXd instR = measureMatrix.col(2);
+    VectorXd instL = measureMatrix.col(3);
+
+    // 수정하면 안되는 부분 제외
+    pair<int, int> detectLine = findModificationRange(t, instR, instL);
+
+    // 뒤쪽 목표위치 없는 부분 수정하면 안됨
+    int endIndex = findDetectionRange(measureMatrix);
+
+    int detectLineR = detectLine.first;
+    int detectLineL = detectLine.second;
+
+    // Modify Arm
+    int cnt = 0;
+    int maxDetectLine = 1;
+
+    if (detectLineR > detectLineL)
+    {
+        maxDetectLine = detectLineR;
+    }
+    else
+    {
+        maxDetectLine = detectLineL;
+    }
+
+    for (int i = maxDetectLine; i < t.rows(); i++)
+    {
+        if ((instR(i) != 0) && (instL(i) != 0))
+        {
+            if (cnt == num)
+            {
+                int tmp = measureMatrix(i, 2);
+                measureMatrix(i, 2) = measureMatrix(i, 3);
+                measureMatrix(i, 3) = tmp;
+                
+                tmp = measureMatrix(i, 4);
+                measureMatrix(i, 4) = measureMatrix(i, 5);
+                measureMatrix(i, 5) = tmp;
+                
+                return true;
+            }
+            cnt++;
+        }
+    }
+
+    for (int i = detectLineR; i < endIndex; i++)
+    {
+        if (instR(i) != 0)
+        {
+            if (instL(i) == 0)
+            {
+                if (cnt == num)
+                {
+                    measureMatrix(i, 3) = measureMatrix(i, 2);
+                    measureMatrix(i, 5) = measureMatrix(i, 4);
+
+                    measureMatrix(i, 2) = 0;
+                    measureMatrix(i, 4) = 0;
+                    return true;
+                }
+                cnt++;
+            }
+        }
+    }
+
+    for (int i = detectLineL; i < endIndex; i++)
+    {
+        if (instL(i) != 0)
+        {
+            if (instR(i) == 0)
+            {
+                if (cnt == num)
+                {
+                    measureMatrix(i, 2) = measureMatrix(i, 3);
+                    measureMatrix(i, 4) = measureMatrix(i, 5);
+
+                    measureMatrix(i, 3) = 0;
+                    measureMatrix(i, 5) = 0;
+                    return true;
+                }
+                cnt++;
+            }
+        }
+    }
+
+    return false;
+}
+
+bool PathManager::waitAndMove(MatrixXd &measureMatrix, int num)
+{
+    // 주어진 방법으로 수정하면 True 반환
+    VectorXd t = measureMatrix.col(8);
+    VectorXd instR = measureMatrix.col(2);
+    VectorXd instL = measureMatrix.col(3);
+
+    // 수정하면 안되는 부분 제외
+    pair<int, int> detectLine = findModificationRange(t, instR, instL);
+
+    int detectLineR = detectLine.first;
+    int detectLineL = detectLine.second;
+
+    // Wait and Move
+    int cnt = 0;
+
+    bool isStart = false;
+    int startInst, startIndex;
+    for (int i = detectLineL-1; i < t.rows(); i++)
+    {
+        if (instL(i) != 0)
+        {
+            if (isStart)
+            {
+                if (startInst != instL(i))
+                {
+                    for (int j = 1; j < i-startIndex; j++)
+                    {
+                        if (cnt == num)
+                        {
+                            measureMatrix(startIndex+j, 3) = startInst;
+                            return true;
+                        }
+                        cnt++;
+                    }
+                }
+                
+                startIndex = i;
+                startInst = instL(i);
+            }
+            else
+            {
+                isStart = true;
+                startIndex = i;
+                startInst = instL(i);
+            }
+        }
+    }
+
+    isStart = false;
+    for (int i = detectLineR-1; i < t.rows(); i++)
+    {
+        if (instR(i) != 0)
+        {
+            if (isStart)
+            {
+                if (startInst != instR(i))
+                {
+                    for (int j = 1; j < i-startIndex; j++)
+                    {
+                        if (cnt == num)
+                        {
+                            measureMatrix(startIndex+j, 2) = startInst;
+                            return true;
+                        }
+                        cnt++;
+                    }
+                }
+
+                startIndex = i;
+                startInst = instR(i);
+            }
+            else
+            {
+                isStart = true;
+                startIndex = i;
+                startInst = instR(i);
+            }
+        }
+    }
+
+    return false;
+}
+
+bool PathManager::moveAndWait(MatrixXd &measureMatrix, int num)
+{
+    // 주어진 방법으로 수정하면 True 반환
+    VectorXd t = measureMatrix.col(8);
+    VectorXd instR = measureMatrix.col(2);
+    VectorXd instL = measureMatrix.col(3);
+
+    // 수정하면 안되는 부분 제외
+    pair<int, int> detectLine = findModificationRange(t, instR, instL);
+
+    int detectLineR = detectLine.first;
+    int detectLineL = detectLine.second;
+
+    // Move and Wait
+    int cnt = 0;
+
+    bool isStart = false;
+    int startInst, endInst, startIndex;
+    for (int i = detectLineL-1; i < t.rows(); i++)
+    {
+        if (instL(i) != 0)
+        {
+            if (isStart)
+            {
+                endInst = instL(i);
+                if (endInst != startInst)
+                {
+                    for (int j = 1; j < i-startIndex; j++)
+                    {
+                        if (cnt == num)
+                        {
+                            measureMatrix(i-j, 3) = endInst;
+                            return true;
+                        }
+                        cnt++;
+                    }
+                }
+                
+                startIndex = i;
+                startInst = instL(i);
+            }
+            else
+            {
+                isStart = true;
+                startIndex = i;
+                startInst = instL(i);
+            }
+        }
+    }
+
+    isStart = false;
+    for (int i = detectLineR-1; i < t.rows(); i++)
+    {
+        if (instR(i) != 0)
+        {
+            if (isStart)
+            {
+                endInst = instR(i);
+                if (endInst != startInst)
+                {
+                    for (int j = 1; j < i-startIndex; j++)
+                    {
+                        if (cnt == num)
+                        {
+                            measureMatrix(i-j, 2) = endInst;
+                            return true;
+                        }
+                        cnt++;
+                    }
+                }
+                
+                startIndex = i;
+                startInst = instR(i);
+            }
+            else
+            {
+                isStart = true;
+                startIndex = i;
+                startInst = instR(i);
+            }
+        }
+    }
+
+    return false;
+}
+
+bool PathManager::deleteInst(MatrixXd &measureMatrix, int num)
+{
+    // 주어진 방법으로 수정하면 True 반환
+    VectorXd t = measureMatrix.col(8);
+    VectorXd instR = measureMatrix.col(2);
+    VectorXd instL = measureMatrix.col(3);
+
+    // 수정하면 안되는 부분 제외
+    pair<int, int> detectLine = findModificationRange(t, instR, instL);
+
+    // 뒤쪽 목표위치 없는 부분 수정하면 안됨
+    int endIndex = findDetectionRange(measureMatrix);
+
+    int detectLineR = detectLine.first;
+    int detectLineL = detectLine.second;
+
+    // Move and Wait
+    int cnt = 0;
+
+    for (int i = detectLineR; i < endIndex; i++)
+    {
+        if (instR(i) != 0)
+        {
+            if (cnt == num)
+            {
+                measureMatrix(i, 2) = 0;
+                measureMatrix(i, 4) = 0;
+                return true;
+            }
+            cnt++;
+        }
+    }
+
+    for (int i = detectLineL; i < endIndex; i++)
+    {
+        if (instL(i) != 0)
+        {
+            if (cnt == num)
+            {
+                measureMatrix(i, 3) = 0;
+                measureMatrix(i, 5) = 0;
+                return true;
+            }
+            cnt++;
+        }
+    }
+
+    return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /*                                   IK                                       */
 ////////////////////////////////////////////////////////////////////////////////
 
-VectorXd PathManager::solveGeometricIK(VectorXd pR, VectorXd pL, double theta0, double theta7, double theta8, bool printError)
+VectorXd PathManager::solveGeometricIK(VectorXd &pR, VectorXd &pL, double theta0, double theta7, double theta8, bool printError)
 {
     VectorXd output;
     PartLength partLength;

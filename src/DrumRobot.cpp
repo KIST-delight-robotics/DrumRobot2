@@ -225,7 +225,8 @@ void DrumRobot::motorSettingCmd()
             else
             {
                 bool otherSocket = true;
-                for(int i = 0; i < virtualMaxonMotor.size(); i++)
+                int n = virtualMaxonMotor.size();
+                for(int i = 0; i < n; i++)
                 {
                     if (virtualMaxonMotor[i]->socket == maxonMotor->socket)
                     {
@@ -701,7 +702,8 @@ void DrumRobot::sendLoopForThread()
             }
         }
 
-        for(int i = 0; i < virtualMaxonMotor.size(); i++)
+        int n = virtualMaxonMotor.size();
+        for(int i = 0; i < n; i++)
         {
             maxoncmd.getSync(&virtualMaxonMotor[i]->sendFrame);
 
@@ -710,17 +712,7 @@ void DrumRobot::sendLoopForThread()
                 isWriteError = true;
             };
         }
-        // if (maxonMotorCount)
-        // {   
-        //     maxoncmd.getSync(&virtualMaxonMotor->sendFrame);
-
-        //     if (!canManager.sendMotorFrame(virtualMaxonMotor))
-        //     {
-        //         isWriteError = true;
-        //     };
-        // }
         
-
         if (isWriteError)
         {
             state.main = Main::Error;
@@ -841,6 +833,10 @@ void DrumRobot::musicMachine()
                         std::string pythonCmd = "/home/shy/DrumRobot/DrumSound/magenta-env/bin/python /home/shy/DrumRobot/DrumSound/getMIDITimeMagenta.py";
 
                         int ret = std::system(pythonCmd.c_str());
+                        if (ret != 0)
+                        {
+                            std::cerr << "Python script failed to execute with code " << ret << std::endl;
+                        }
     
                         getMagentaSheet("/home/shy/DrumRobot/DrumSound/output.mid");
                     }
@@ -864,6 +860,10 @@ void DrumRobot::musicMachine()
                             "/home/shy/DrumRobot/DrumSound/getMIDITMR.py " + pythonArgs + " &";
 
                             int ret = std::system(pythonCmd.c_str());  // 비동기 실행 (백그라운드 &)
+                            if (ret != 0)
+                            {
+                                std::cerr << "Python script failed to execute with code " << ret << std::endl;
+                            }
                         }
                         
                         std::string midiPath = "/home/shy/DrumRobot/DrumSound/output_" + std::to_string(currentIterations - 1) + ".mid";
@@ -882,6 +882,10 @@ void DrumRobot::musicMachine()
                     std::string pythonCmd = "/home/shy/DrumRobot/DrumSound/magenta-env/bin/python /home/shy/DrumRobot/DrumSound/getMIDITime.py";
 
                     int ret = std::system(pythonCmd.c_str());
+                    if (ret != 0)
+                    {
+                        std::cerr << "Python script failed to execute with code " << ret << std::endl;
+                    }
                     
                 }
                 runPython = false;

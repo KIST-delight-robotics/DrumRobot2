@@ -102,6 +102,24 @@ private:
 
     }PartLength;
 
+    // measureMatrix 파싱한 데이터
+    typedef struct {
+        double t1, t2;    // 궤적 생성 시간
+
+        double initialTimeR, finalTimeR;       // 전체 궤적에서 출발 시간, 도착 시간
+        double initialTimeL, finalTimeL;
+
+        VectorXd initialPositionR, finalPositionR;  // 전체 궤적에서 출발 위치
+        VectorXd initialPositionL, finalPositionL;  // 전체 궤적에서 도착 위치
+
+        double initialWristAngleR, finalWristAngleR;    // 손목 각도 출발 위치
+        double initialWristAngleL, finalWristAngleL;    // 손목 각도 도착 위치
+
+        VectorXd nextStateR;
+        VectorXd nextStateL;
+
+    }parsedData;
+
     // task space 궤적 저장할 구조체
     typedef struct {
         VectorXd trajectoryR; ///< 오른팔 스틱 끝 좌표 (x, y, z)
@@ -110,6 +128,14 @@ private:
         double wristAngleR;  ///> IK를 풀기 위한 오른 손목 각도
         double wristAngleL;  ///> IK를 풀기 위한 왼 손목 각도
     }Position;
+
+    // 허리 파라미터 저장할 구조체
+    typedef struct {
+        int n;                  // 명령 개수
+        double min_q0;          // 최소
+        double max_q0;          // 최대
+        double optimized_q0;    // 최적화
+    }waistParameter;
 
     // 타격 궤적 저장할 구조체
     typedef struct {
@@ -120,14 +146,6 @@ private:
         double bass;    ///> 오른발 관절에 더해줄 각도
         double hihat;   ///> 왼발 관절에 더해줄 각도
     }HitAngle;
-
-    // 허리 파라미터 저장할 구조체
-    typedef struct {
-        int n;                  // 명령 개수
-        double min_q0;          // 최소
-        double max_q0;          // 최대
-        double optimized_q0;    // 최적화
-    }waistParameter;
 
     typedef struct {
         double stayTime;
@@ -208,68 +226,24 @@ private:
     void genTrajectory(MatrixXd &measureMatrix);
     void solveIKandPushCommand();
 
-    //////////////////////////////////// Detect Collision
-    double line_t1PC, line_t2PC;           // 궤적 생성 시간
-    
-    VectorXd initialInstrumentPC = VectorXd::Zero(18);   // 전체 궤적에서 출발 악기
-    VectorXd finalInstrumentPC = VectorXd::Zero(18);   // 전체 궤적에서 도착 악기
-
-    double initialTimeRPC, finalTimeRPC;       // 전체 궤적에서 출발 시간, 도착 시간
-    double initialTimeLPC, finalTimeLPC;
-
-    bool detectCollision(MatrixXd measureMatrix);
-    int findDetectionRange(MatrixXd measureMatrix);
-    MatrixXd parseMeasurePC(MatrixXd &measureMatrix, MatrixXd &state);
-    size_t getflattenIndex(const std::vector<size_t>& indices, const std::vector<size_t>& dims);
-    std::pair<size_t, size_t> getBitIndex(size_t offsetIndex);
-    bool checkTable(VectorXd PR, VectorXd PL, double hitR, double hitL);
-
-    //////////////////////////////////// Avoid Collision
-    map<int, std::string> modificationMethods = { ///< 악보 수정 방법 중 우선 순위
-        { 0, "Crash"},
-        { 1, "WaitAndMove"},
-        { 2, "MoveAndWait"},
-        { 3, "Switch"},
-        { 4, "Delete"}
-    };
-
-    bool modifyMeasure(MatrixXd &measureMatrix, int priority);
-    pair<int, int> findModificationRange(VectorXd t, VectorXd instR, VectorXd instL);
-    bool modifyCrash(MatrixXd &measureMatrix, int num);
-    bool switchHands(MatrixXd &measureMatrix, int num);
-    bool waitAndMove(MatrixXd &measureMatrix, int num);
-    bool moveAndWait(MatrixXd &measureMatrix, int num);
-    bool deleteInst(MatrixXd &measureMatrix, int num);
-
     //////////////////////////////////// Task Space Trajectory
-    double line_t1, line_t2;    // 궤적 생성 시간
     double n;
     double roundSum = 0.0;    ///< 5ms 스텝 단위에서 누적되는 오차 보상
 
-    VectorXd initialInstrument = VectorXd::Zero(18);   // 전체 궤적에서 출발 악기
-    VectorXd finalInstrument = VectorXd::Zero(18);   // 전체 궤적에서 도착 악기
-
-    double initialTimeR, finalTimeR;       // 전체 궤적에서 출발 시간, 도착 시간
-    double initialTimeL, finalTimeL;
-
-    MatrixXd measureState = MatrixXd::Zero(2, 3); // [이전 시간, 이전 악기, 상태] // state
-                                                                                // 0 : 0 <- 0
-                                                                                // 1 : 0 <- 1
-                                                                                // 2 : 1 <- 0
-                                                                                // 3 : 1 <- 1
+    VectorXd measureStateR, measureStateL;  // [이전 시간, 이전 악기, 상태] 0 : 0 <- 0 / 1 : 0 <- 1 / 2 : 1 <- 0 / 3 : 1 <- 1
 
     queue<Position> trajectoryQueue;
     queue<waistParameter> waistParameterQueue;
 
     int genTaskSpaceTrajectory(MatrixXd &measureMatrix);
-    void parseMeasure(MatrixXd &measureMatrix);
-    pair<VectorXd, VectorXd> parseOneArm(VectorXd t, VectorXd inst, VectorXd hh, VectorXd stateVector);
-    int checkOpenHH(int instNum, int isHH);
-    pair<VectorXd, VectorXd> getTargetPosition(VectorXd inst_vector);
+    PathManager::parsedData parseMeasure(MatrixXd &measureMatrix, VectorXd &stateR, VectorXd &stateL);
+    pair<VectorXd, VectorXd> parseOneArm(VectorXd &t, VectorXd &inst, VectorXd &hh, VectorXd &stateVector);
+    int checkOpenHihat(int instNum, int isHH);
+    pair<VectorXd, double> getTargetPosition(VectorXd &inst, char RL);
     double timeScaling(double ti, double tf, double t);
-    VectorXd makePath(VectorXd Pi, VectorXd Pf, double s);
-    VectorXd getWaistParams(VectorXd pR, VectorXd pL);
-    void storeWaistParams(int n, VectorXd minmax);
+    VectorXd makePath(VectorXd &Pi, VectorXd &Pf, double s);
+    VectorXd getWaistParams(VectorXd &pR, VectorXd &pL);
+    void storeWaistParams(int n, VectorXd &waistParams);
 
     //////////////////////////////////// Hitting Trajectory
     VectorXd prevLine = VectorXd::Zero(9);  // 악보 나눌 때 시작 악보 기록
@@ -327,10 +301,36 @@ private:
     MatrixXd makeWaistCoefficient(std::vector<waistParameter> &wPs);
     double getWaistAngle(MatrixXd &waistCoefficient, int index);
     VectorXd getJointAngles(double q0);
-    void pushCommandBuffer(VectorXd Qi);
+    void pushCommandBuffer(VectorXd &Qi);
+
+    //////////////////////////////////// Detect Collision
+    std::string tablePath = "/home/shy/DrumRobot_table/TABLE.bin";    // 테이블 위치
+
+    bool detectCollision(MatrixXd &measureMatrix);
+    int findDetectionRange(MatrixXd &measureMatrix);
+    bool checkTable(VectorXd PR, VectorXd PL, double hitR, double hitL);
+    size_t getFlattenIndex(const std::vector<size_t>& indices, const std::vector<size_t>& dims);
+    std::pair<size_t, size_t> getBitIndex(size_t offsetIndex);
+
+    //////////////////////////////////// Avoid Collision
+    map<int, std::string> modificationMethods = { ///< 악보 수정 방법 중 우선 순위
+        { 0, "Crash"},
+        { 1, "WaitAndMove"},
+        { 2, "MoveAndWait"},
+        { 3, "Switch"},
+        { 4, "Delete"}
+    };
+
+    bool modifyMeasure(MatrixXd &measureMatrix, int priority);
+    pair<int, int> findModificationRange(VectorXd t, VectorXd instR, VectorXd instL);
+    bool modifyCrash(MatrixXd &measureMatrix, int num);
+    bool switchHands(MatrixXd &measureMatrix, int num);
+    bool waitAndMove(MatrixXd &measureMatrix, int num);
+    bool moveAndWait(MatrixXd &measureMatrix, int num);
+    bool deleteInst(MatrixXd &measureMatrix, int num);
 
     //////////////////////////////////// IK
-    VectorXd solveGeometricIK(VectorXd pR, VectorXd pL, double theta0, double theta7, double theta8, bool printError);
+    VectorXd solveGeometricIK(VectorXd &pR, VectorXd &pL, double theta0, double theta7, double theta8, bool printError);
     double getLength(double theta);
     double getTheta(double l1, double theta);
 };
