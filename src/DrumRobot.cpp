@@ -1026,206 +1026,6 @@ void DrumRobot::sendAddStanceProcess()
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/*                           Python (Magenta)                                 */
-////////////////////////////////////////////////////////////////////////////////
-
-void DrumRobot::runPythonForMagenta()
-{
-    filesystem::path midPath;
-
-    filesystem::path outputPath1 = "/home/shy/DrumRobot/DrumSound/output1_drum_hits_time.csv"; 
-    filesystem::path outputPath2 = "/home/shy/DrumRobot/DrumSound/output2_mc.csv";   
-    filesystem::path outputPath3 = "/home/shy/DrumRobot/DrumSound/output3_mc2c.csv";    
-    filesystem::path outputPath4 = "/home/shy/DrumRobot/DrumSound/output4_hand_assign.csv";
-    filesystem::path outputPath5 = "/home/shy/DrumRobot/DrumSound/output5_add_groove.txt";
-    filesystem::path outputPath6 = "/home/shy/DrumRobot/DrumSound/output6_final.txt";
-    
-    int userInput = 100;
-    cout << "\n 1 - 녹음 \n 2 - 악보 생성\n";
-    cout << "Enter Command: ";
-    cin >> userInput;
-
-    if (userInput == 1)
-    {
-        //이부분에 파이썬 파일 실행시키기 
-        std::string pythonCmd = "/home/shy/DrumRobot/DrumSound/magenta-env/bin/python /home/shy/DrumRobot/DrumSound/getMIDI_input.py";
-
-        int ret = std::system(pythonCmd.c_str());
-        if (ret != 0) {
-            std::cerr << "Python 스크립트 실행 실패!\n";
-            return;
-        }
-
-        // mid 파일 들어올 때까지 대기
-        //filesystem::path midPath = "/home/shy/DrumSound/output.mid";        // 파일 경로 + 이름
-    }
-    else if (userInput == 2)
-    {
-        // 2. 사용자에게 사용할 파일 선택
-        std::string selected_input;
-        std::cout << "\n원하는 리듬 스타일을 선택하세요:\n";
-        std::cout << "1 - 안정적인 리듬 (temperature 0.3)\n";
-        std::cout << "2 - 창의적인 리듬 (temperature 0.8)\n";
-        std::cout << "입력: ";
-        std::cin >> selected_input;
-
-        if (selected_input == "1") {
-            midPath = "/home/shy/DrumRobot/DrumSound/output_temp_03.mid";
-        } else if (selected_input == "2") {
-            midPath = "/home/shy/DrumRobot/DrumSound/output_temp_08.mid";
-        } else {
-            std::cerr << "잘못된 입력입니다. 1 또는 2를 입력하세요.\n";
-            return;
-        }
-
-        while(!file_found) // ready 상태인지도 확인해주기
-        {
-            if (filesystem::exists(midPath) && flagObj.getAddStanceFlag() == "isReady")
-            {
-                file_found = true;          // 악보 끝나면 악보 지우고 false로
-                break;
-            } 
-            std::this_thread::sleep_for(std::chrono::milliseconds(500)); // 0.5초마다 체크
-        }
-
-        // mid 파일 받아서 악보 생성하기
-        if(file_found)
-        {
-            size_t pos;
-            unsigned char runningStatus;
-            // int initial_setting_flag = 0;
-            double note_on_time = 0;
-
-            std::vector<unsigned char> midiData;
-
-            if (filesystem::exists(midPath) && flagObj.getAddStanceFlag() == "isReady")
-            {
-                if (!fun.readMidiFile(midPath, midiData)) cout << "mid file error\n";
-            } 
-            // if (!fun.readMidiFile(targetPath, midiData)) cout << "mid file error\n";
-            pos = 14;
-            int tpqn = (midiData[12] << 8) | midiData[13];
-            int bpm;
-
-            while (pos + 8 <= midiData.size()) {
-                if (!(midiData[pos] == 'M' && midiData[pos+1] == 'T' && midiData[pos+2] == 'r' && midiData[pos+3] == 'k')) {
-                    // std::cerr << "MTrk expected at pos " << pos << "\n";
-                    break;
-                }
-                size_t trackLength = (midiData[pos+4] << 24) |
-                                (midiData[pos+5] << 16) |
-                                (midiData[pos+6] << 8) |
-                                midiData[pos+7];
-                pos += 8;
-                size_t trackEnd = pos + trackLength;
-
-                note_on_time = 0;
-                while (pos < trackEnd) {
-                    size_t delta = fun.readTime(midiData, pos);
-                    note_on_time += delta;
-                    fun.analyzeMidiEvent(midiData, pos, runningStatus, note_on_time, tpqn, bpm, outputPath1);
-                }
-                pos = trackEnd;
-            }
-
-            fun.roundDurationsToStep(outputPath1, outputPath2); 
-            fun.convertMcToC(outputPath2, outputPath3);
-            fun.assignHandsToEvents(outputPath3, outputPath4);
-            fun.addGroove(bpm, outputPath4, outputPath5);
-            fun.convertToMeasureFile(outputPath5, outputPath6);
-
-            file_found = false;
-            // if(filesystem::exists(midPath))
-            // {
-            //     filesystem::remove(midPath);
-            // }
-        }
-    }
-}
-
-void DrumRobot::getMagentaSheet(std::string midPath)
-{
-    // filesystem::path midPath;
-
-    filesystem::path outputPath1 = "/home/shy/DrumRobot/DrumSound/output1_drum_hits_time.csv"; 
-    filesystem::path outputPath2 = "/home/shy/DrumRobot/DrumSound/output2_mc.csv";   
-    filesystem::path outputPath3 = "/home/shy/DrumRobot/DrumSound/output3_mc2c.csv";    
-    filesystem::path outputPath4 = "/home/shy/DrumRobot/DrumSound/output4_hand_assign.csv";
-    filesystem::path outputPath5 = "/home/shy/DrumRobot/DrumSound/output5_add_groove.txt";
-    filesystem::path outputPath6 = "/home/shy/DrumRobot/DrumSound/output6_final.txt";
-
-    // midPath = "/home/shy/DrumRobot/DrumSound/output_0.mid";
-
-    while(!file_found) // ready 상태인지도 확인해주기
-    {
-        if (filesystem::exists(midPath) && flagObj.getAddStanceFlag() == "isReady")
-        {
-            file_found = true;          // 악보 끝나면 악보 지우고 false로
-            break;
-        } 
-        std::this_thread::sleep_for(std::chrono::milliseconds(500)); // 0.5초마다 체크
-    }
-
-    // mid 파일 받아서 악보 생성하기
-    if(file_found)
-    {
-        size_t pos;
-        unsigned char runningStatus;
-        // int initial_setting_flag = 0;
-        double note_on_time = 0;
-
-        std::vector<unsigned char> midiData;
-
-        if (filesystem::exists(midPath) && flagObj.getAddStanceFlag() == "isReady")
-        {
-            if (!fun.readMidiFile(midPath, midiData)) cout << "mid file error\n";
-        } 
-        // if (!fun.readMidiFile(targetPath, midiData)) cout << "mid file error\n";
-        pos = 14;
-        int tpqn = (midiData[12] << 8) | midiData[13];
-        int bpm;
-
-        while (pos + 8 <= midiData.size()) {
-            if (!(midiData[pos] == 'M' && midiData[pos+1] == 'T' && midiData[pos+2] == 'r' && midiData[pos+3] == 'k')) {
-                // std::cerr << "MTrk expected at pos " << pos << "\n";
-                break;
-            }
-            size_t trackLength = (midiData[pos+4] << 24) |
-                            (midiData[pos+5] << 16) |
-                            (midiData[pos+6] << 8) |
-                            midiData[pos+7];
-            pos += 8;
-            size_t trackEnd = pos + trackLength;
-
-            note_on_time = 0;
-            while (pos < trackEnd) {
-                size_t delta = fun.readTime(midiData, pos);
-                note_on_time += delta;
-                fun.analyzeMidiEvent(midiData, pos, runningStatus, note_on_time, tpqn, bpm, outputPath1);
-            }
-            pos = trackEnd;
-        }
-
-        fun.roundDurationsToStep(outputPath1, outputPath2); 
-        fun.convertMcToC(outputPath2, outputPath3);
-        fun.assignHandsToEvents(outputPath3, outputPath4);
-        fun.addGroove(bpm, outputPath4, outputPath5);
-        fun.convertToMeasureFile(outputPath5, outputPath6);
-
-        file_found = false;
-        // if(filesystem::exists(midPath))
-        // {
-        //     filesystem::remove(midPath);
-        // }
-
-        std::remove(outputPath1.c_str());      // 중간 단계 txt 파일 삭제
-        std::remove(outputPath2.c_str());
-        std::remove(outputPath3.c_str());
-        std::remove(outputPath4.c_str());
-    }
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /*                              Play State                                    */
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1599,6 +1399,206 @@ void DrumRobot::sendPlayProcess()
         std::remove(txtIndexPath.c_str());
     }
     state.main = Main::AddStance;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/*                           Python (Magenta)                                 */
+////////////////////////////////////////////////////////////////////////////////
+
+void DrumRobot::runPythonForMagenta()
+{
+    filesystem::path midPath;
+
+    filesystem::path outputPath1 = "/home/shy/DrumRobot/DrumSound/output1_drum_hits_time.csv"; 
+    filesystem::path outputPath2 = "/home/shy/DrumRobot/DrumSound/output2_mc.csv";   
+    filesystem::path outputPath3 = "/home/shy/DrumRobot/DrumSound/output3_mc2c.csv";    
+    filesystem::path outputPath4 = "/home/shy/DrumRobot/DrumSound/output4_hand_assign.csv";
+    filesystem::path outputPath5 = "/home/shy/DrumRobot/DrumSound/output5_add_groove.txt";
+    filesystem::path outputPath6 = "/home/shy/DrumRobot/DrumSound/output6_final.txt";
+    
+    int userInput = 100;
+    cout << "\n 1 - 녹음 \n 2 - 악보 생성\n";
+    cout << "Enter Command: ";
+    cin >> userInput;
+
+    if (userInput == 1)
+    {
+        //이부분에 파이썬 파일 실행시키기 
+        std::string pythonCmd = "/home/shy/DrumRobot/DrumSound/magenta-env/bin/python /home/shy/DrumRobot/DrumSound/getMIDI_input.py";
+
+        int ret = std::system(pythonCmd.c_str());
+        if (ret != 0) {
+            std::cerr << "Python 스크립트 실행 실패!\n";
+            return;
+        }
+
+        // mid 파일 들어올 때까지 대기
+        //filesystem::path midPath = "/home/shy/DrumSound/output.mid";        // 파일 경로 + 이름
+    }
+    else if (userInput == 2)
+    {
+        // 2. 사용자에게 사용할 파일 선택
+        std::string selected_input;
+        std::cout << "\n원하는 리듬 스타일을 선택하세요:\n";
+        std::cout << "1 - 안정적인 리듬 (temperature 0.3)\n";
+        std::cout << "2 - 창의적인 리듬 (temperature 0.8)\n";
+        std::cout << "입력: ";
+        std::cin >> selected_input;
+
+        if (selected_input == "1") {
+            midPath = "/home/shy/DrumRobot/DrumSound/output_temp_03.mid";
+        } else if (selected_input == "2") {
+            midPath = "/home/shy/DrumRobot/DrumSound/output_temp_08.mid";
+        } else {
+            std::cerr << "잘못된 입력입니다. 1 또는 2를 입력하세요.\n";
+            return;
+        }
+
+        while(!file_found) // ready 상태인지도 확인해주기
+        {
+            if (filesystem::exists(midPath) && flagObj.getAddStanceFlag() == "isReady")
+            {
+                file_found = true;          // 악보 끝나면 악보 지우고 false로
+                break;
+            } 
+            std::this_thread::sleep_for(std::chrono::milliseconds(500)); // 0.5초마다 체크
+        }
+
+        // mid 파일 받아서 악보 생성하기
+        if(file_found)
+        {
+            size_t pos;
+            unsigned char runningStatus;
+            // int initial_setting_flag = 0;
+            double note_on_time = 0;
+
+            std::vector<unsigned char> midiData;
+
+            if (filesystem::exists(midPath) && flagObj.getAddStanceFlag() == "isReady")
+            {
+                if (!fun.readMidiFile(midPath, midiData)) cout << "mid file error\n";
+            } 
+            // if (!fun.readMidiFile(targetPath, midiData)) cout << "mid file error\n";
+            pos = 14;
+            int tpqn = (midiData[12] << 8) | midiData[13];
+            int bpm;
+
+            while (pos + 8 <= midiData.size()) {
+                if (!(midiData[pos] == 'M' && midiData[pos+1] == 'T' && midiData[pos+2] == 'r' && midiData[pos+3] == 'k')) {
+                    // std::cerr << "MTrk expected at pos " << pos << "\n";
+                    break;
+                }
+                size_t trackLength = (midiData[pos+4] << 24) |
+                                (midiData[pos+5] << 16) |
+                                (midiData[pos+6] << 8) |
+                                midiData[pos+7];
+                pos += 8;
+                size_t trackEnd = pos + trackLength;
+
+                note_on_time = 0;
+                while (pos < trackEnd) {
+                    size_t delta = fun.readTime(midiData, pos);
+                    note_on_time += delta;
+                    fun.analyzeMidiEvent(midiData, pos, runningStatus, note_on_time, tpqn, bpm, outputPath1);
+                }
+                pos = trackEnd;
+            }
+
+            fun.roundDurationsToStep(outputPath1, outputPath2); 
+            fun.convertMcToC(outputPath2, outputPath3);
+            fun.assignHandsToEvents(outputPath3, outputPath4);
+            fun.addGroove(bpm, outputPath4, outputPath5);
+            fun.convertToMeasureFile(outputPath5, outputPath6);
+
+            file_found = false;
+            // if(filesystem::exists(midPath))
+            // {
+            //     filesystem::remove(midPath);
+            // }
+        }
+    }
+}
+
+void DrumRobot::getMagentaSheet(std::string midPath)
+{
+    // filesystem::path midPath;
+
+    filesystem::path outputPath1 = "/home/shy/DrumRobot/DrumSound/output1_drum_hits_time.csv"; 
+    filesystem::path outputPath2 = "/home/shy/DrumRobot/DrumSound/output2_mc.csv";   
+    filesystem::path outputPath3 = "/home/shy/DrumRobot/DrumSound/output3_mc2c.csv";    
+    filesystem::path outputPath4 = "/home/shy/DrumRobot/DrumSound/output4_hand_assign.csv";
+    filesystem::path outputPath5 = "/home/shy/DrumRobot/DrumSound/output5_add_groove.txt";
+    filesystem::path outputPath6 = "/home/shy/DrumRobot/DrumSound/output6_final.txt";
+
+    // midPath = "/home/shy/DrumRobot/DrumSound/output_0.mid";
+
+    while(!file_found) // ready 상태인지도 확인해주기
+    {
+        if (filesystem::exists(midPath) && flagObj.getAddStanceFlag() == "isReady")
+        {
+            file_found = true;          // 악보 끝나면 악보 지우고 false로
+            break;
+        } 
+        std::this_thread::sleep_for(std::chrono::milliseconds(500)); // 0.5초마다 체크
+    }
+
+    // mid 파일 받아서 악보 생성하기
+    if(file_found)
+    {
+        size_t pos;
+        unsigned char runningStatus;
+        // int initial_setting_flag = 0;
+        double note_on_time = 0;
+
+        std::vector<unsigned char> midiData;
+
+        if (filesystem::exists(midPath) && flagObj.getAddStanceFlag() == "isReady")
+        {
+            if (!fun.readMidiFile(midPath, midiData)) cout << "mid file error\n";
+        } 
+        // if (!fun.readMidiFile(targetPath, midiData)) cout << "mid file error\n";
+        pos = 14;
+        int tpqn = (midiData[12] << 8) | midiData[13];
+        int bpm;
+
+        while (pos + 8 <= midiData.size()) {
+            if (!(midiData[pos] == 'M' && midiData[pos+1] == 'T' && midiData[pos+2] == 'r' && midiData[pos+3] == 'k')) {
+                // std::cerr << "MTrk expected at pos " << pos << "\n";
+                break;
+            }
+            size_t trackLength = (midiData[pos+4] << 24) |
+                            (midiData[pos+5] << 16) |
+                            (midiData[pos+6] << 8) |
+                            midiData[pos+7];
+            pos += 8;
+            size_t trackEnd = pos + trackLength;
+
+            note_on_time = 0;
+            while (pos < trackEnd) {
+                size_t delta = fun.readTime(midiData, pos);
+                note_on_time += delta;
+                fun.analyzeMidiEvent(midiData, pos, runningStatus, note_on_time, tpqn, bpm, outputPath1);
+            }
+            pos = trackEnd;
+        }
+
+        fun.roundDurationsToStep(outputPath1, outputPath2); 
+        fun.convertMcToC(outputPath2, outputPath3);
+        fun.assignHandsToEvents(outputPath3, outputPath4);
+        fun.addGroove(bpm, outputPath4, outputPath5);
+        fun.convertToMeasureFile(outputPath5, outputPath6);
+
+        file_found = false;
+        // if(filesystem::exists(midPath))
+        // {
+        //     filesystem::remove(midPath);
+        // }
+
+        std::remove(outputPath1.c_str());      // 중간 단계 txt 파일 삭제
+        std::remove(outputPath2.c_str());
+        std::remove(outputPath3.c_str());
+        std::remove(outputPath4.c_str());
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////

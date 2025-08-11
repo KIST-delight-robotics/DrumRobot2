@@ -71,10 +71,13 @@ public:
               USBIO &usbioRef,
               Functions &funRef);
 
+    // thread
     void stateMachine();
     void sendLoopForThread();
     void recvLoopForThread();
     void musicMachine();
+
+    // init
     void initializeDrumRobot();
 
     bool file_found = false;    // mid 파일 들어왔는지 확인
@@ -113,7 +116,7 @@ private:
     FlagClass flagObj;
     bool allMotorsUnConected = true;    // 모든 모터 연결 안됨 - 모터 없이 테스트하는 경우
 
-    // Initialize
+    //////////////////////////////////////////////////////////////// Initialize
     int maxonMotorSocketCount = 0;    // 1 이상이면 virtual Maxon Motor를 사용하기 위해
 
     void initializeMotors();
@@ -121,31 +124,31 @@ private:
     void motorSettingCmd();
     bool initializePos(const std::string &input);
 
-    // Exit
+    //////////////////////////////////////////////////////////////// Exit
     void deactivateControlTask();
 
-    // Maxon 모터 초기화 함수
+    //////////////////////////////////////////////////////////////// Maxon 모터 초기화 함수
     void maxonMotorEnable();
     void setMaxonMotorMode(std::string targetMode);
 
-    // Ideal State
+    //////////////////////////////////////////////////////////////// Ideal State
     void displayAvailableCommands(string flagName) const;
     void processInput(const std::string &input, string flagName);
     void idealStateRoutine();
 
-    // AddStance State
+    //////////////////////////////////////////////////////////////// AddStance State
     void sendAddStanceProcess();
     
-    // Play State
-    std::string txtBasePath = "/home/shy/DrumRobot/include/codes/";    // 악보 위치
-    std::string wavBasePath = "/home/shy/DrumRobot/include/music/";    // 음악 위치
-    std::string magentaPath = "/home/shy/DrumRobot/DrumSound/";        // 마젠타 경로
-    std::string wavPath;        // wav 파일 경로
-
+    //////////////////////////////////////////////////////////////// Play State
     MatrixXd measureMatrix;     ///< 궤적을 생성하기 위해 읽은 악보 부분 (마디)
     const double measureThreshold = 2.4;     ///< 한번에 읽을 악보의 크기. [s]
     double measureTotalTime = 0.0;     ///< 악보를 읽는 동안 누적 시간. [s]
     bool endOfScore = false;           ///< 악보의 종료 코드 확인
+
+    std::string txtBasePath = "/home/shy/DrumRobot/include/codes/";    // 악보 위치
+    std::string wavBasePath = "/home/shy/DrumRobot/include/music/";    // 음악 위치
+    std::string magentaPath = "/home/shy/DrumRobot/DrumSound/";        // 마젠타 경로
+    std::string wavPath;        // wav 파일 경로
 
     // 싱크 연주를 위한 변수들
     bool playMusic = false;
@@ -155,7 +158,7 @@ private:
     bool runPython = false;
     int pythonClass = 0;    // 어떤 파이썬을 실행할지 (1 : 시간 측정, 0 : 마젠타)
 
-    //마젠타 반복 생성을 위한 변수들
+    // 마젠타 반복 생성을 위한 변수들
     int repeatNum = 1;
     int currentIterations = 1;
     queue<float> delayTime;
@@ -172,7 +175,8 @@ private:
     bool readMeasure(ifstream& inputFile);  // 한번에 읽을 악보의 크기(measureThreshold)만큼 읽으면 true 반환
     void sendPlayProcess();
 
-    // python (magenta)
+    //////////////////////////////////////////////////////////////// python (magenta)
+
     void runPythonForMagenta();         // 기존 파이썬 코드 실행 후 악보 생성
     void getMagentaSheet(std::string midiPath);    // 파이썬 코드 실행 x 악보만 생성
 
