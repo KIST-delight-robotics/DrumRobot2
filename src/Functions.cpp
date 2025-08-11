@@ -140,11 +140,11 @@ void Functions::openCSVFile()
                 std::shared_ptr<GenericMotor> motor = motor_pair.second;
                 if (std::shared_ptr<TMotor> tMotor = std::dynamic_pointer_cast<TMotor>(motor_pair.second))
                 {
-                    appendToCSV_DATA(file_name, (float)motor->nodeId, tMotor->initialJointAngle, INIT_SIGN);
+                    appendToCSV(file_name, false, (float)motor->nodeId, tMotor->initialJointAngle, INIT_SIGN);
                 }
                 else if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motor_pair.second))
                 {
-                    appendToCSV_DATA(file_name, (float)motor->nodeId, maxonMotor->initialJointAngle, INIT_SIGN);
+                    appendToCSV(file_name, false, (float)motor->nodeId, maxonMotor->initialJointAngle, INIT_SIGN);
                 }
             }
 
@@ -155,92 +155,8 @@ void Functions::openCSVFile()
     std::cerr << "Unable to open file" << std::endl;
 }
 
-// 시간를 CSV 파일에 한 줄씩 저장하는 함수
-void Functions::appendToCSV_time(const std::string& filename) {
-    auto now = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<float> elapsed = now - start;
-    std::ofstream file;
-    std::string fullPath = basePath + filename + ".txt";  // 기본 경로와 파일 이름을 결합
-
-    // 파일이 이미 존재하는지 확인
-    bool fileExists = std::ifstream(fullPath).good();
-
-    // 파일을 열 때 새로 덮어쓰기 모드로 열거나, 이미 존재할 경우 append 모드로 열기
-    if (!fileExists) {
-        file.open(fullPath, std::ios::out | std::ios::trunc);  // 처음 실행 시 덮어쓰기 모드로 열기
-    } else {
-        file.open(fullPath, std::ios::app);  // 이미 파일이 존재하면 append 모드로 열기
-    }
-    // 파일이 제대로 열렸는지 확인
-    if (file.is_open()) {
-        // 데이터 추가
-        file << elapsed.count() << "\n";
-        // 파일 닫기
-        file.close();
-    } else {
-        std::cerr << "Unable to open file: " << fullPath << std::endl;
-    }
-}
-
-void Functions::appendToCSV_time(const std::string& filename, std::chrono::_V2::system_clock::time_point &__t) {
-    auto now = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<float> elapsed = now - start;
-    std::ofstream file;
-    std::string fullPath = basePath + filename + ".txt";  // 기본 경로와 파일 이름을 결합
-
-    std::chrono::duration<float> elapsed2 = __t - start;
-
-    // 파일이 이미 존재하는지 확인
-    bool fileExists = std::ifstream(fullPath).good();
-
-    // 파일을 열 때 새로 덮어쓰기 모드로 열거나, 이미 존재할 경우 append 모드로 열기
-    if (!fileExists) {
-        file.open(fullPath, std::ios::out | std::ios::trunc);  // 처음 실행 시 덮어쓰기 모드로 열기
-    } else {
-        file.open(fullPath, std::ios::app);  // 이미 파일이 존재하면 append 모드로 열기
-    }
-    // 파일이 제대로 열렸는지 확인
-    if (file.is_open()) {
-        // 데이터 추가
-        file << elapsed.count() << "," << elapsed2.count() << "\n";
-        // 파일 닫기
-        file.close();
-    } else {
-        std::cerr << "Unable to open file: " << fullPath << std::endl;
-    }
-}
-
-// 시간과 변수를 CSV 파일에 한 줄씩 저장하는 함수
-void Functions::appendToCSV_DATA(const std::string& filename, float A_DATA, float B_DATA, float C_DATA) {
-    auto now = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<float> elapsed = now - start;
-    std::ofstream file;
-    std::string fullPath = basePath + filename + ".txt";  // 기본 경로와 파일 이름을 결합
-
-    // 파일이 이미 존재하는지 확인
-    bool fileExists = std::ifstream(fullPath).good();
-
-    // 파일을 열 때 새로 덮어쓰기 모드로 열거나, 이미 존재할 경우 append 모드로 열기
-    if (!fileExists) {
-        file.open(fullPath, std::ios::out | std::ios::trunc);  // 처음 실행 시 덮어쓰기 모드로 열기
-    } else {
-        file.open(fullPath, std::ios::app);  // 이미 파일이 존재하면 append 모드로 열기
-    }
-    // 파일이 제대로 열렸는지 확인
-
-    if (file.is_open()) {
-        // 데이터 추가
-        file << elapsed.count() << "," << A_DATA << "," << B_DATA << "," << C_DATA << "\n";  // 시간과 float 변수들을 CSV 형식으로 한 줄에 기록
-       
-        // 파일 닫기
-        file.close();
-    } else {
-        std::cerr << "Unable to open file: " << fullPath << std::endl;
-    }
-}
-
-// 절대시간과 변수를 CSV 파일에 한 줄씩 저장하는 함수
-void Functions::appendToCSV_DATA_absTime(const std::string& filename, float A_DATA, float B_DATA, float C_DATA) {
+std::ostringstream Functions::getAbsTime()
+{
     auto now = std::chrono::system_clock::now();
     std::time_t now_c = std::chrono::system_clock::to_time_t(now);
     auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()) % 1000;
@@ -249,46 +165,41 @@ void Functions::appendToCSV_DATA_absTime(const std::string& filename, float A_DA
     timestamp << std::put_time(std::localtime(&now_c), "%H:%M:%S");
     timestamp << "." << std::setfill('0') << std::setw(3) << millis.count();  // .밀리초 붙이기
 
-    std::ofstream file;
-    std::string fullPath = basePath + filename + ".txt";
-
-    bool fileExists = std::ifstream(fullPath).good();
-    if (!fileExists) {
-        file.open(fullPath, std::ios::out | std::ios::trunc);
-    } else {
-        file.open(fullPath, std::ios::app);
-    }
-
-    if (file.is_open()) {
-        file << timestamp.str() << "," << A_DATA << "," << B_DATA << "," << C_DATA << "\n";
-        file.close();
-    } else {
-        std::cerr << "Unable to open file: " << fullPath << std::endl;
-    }
+    return timestamp;
 }
 
-// 시간과 state(string)를 CSV 파일에 한 줄씩 저장하는 함수
-void Functions::appendToCSV_State(const std::string& filename, string state, string sub_state) {
-    auto now = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<float> elapsed = now - start;
+void Functions::appendToCSV(const std::string& filename, bool useAbsTime) {
+    std::ostringstream timestamp;
+    std::chrono::duration<float> elapsed;
     std::ofstream file;
-    std::string fullPath = basePath + filename + ".txt";  // 기본 경로와 파일 이름을 결합
+    std::string fullPath = basePath + filename + ".txt";    // 기본 경로와 파일 이름을 결합
 
-    // 파일이 이미 존재하는지 확인
-    bool fileExists = std::ifstream(fullPath).good();
+    if (useAbsTime) {
+        timestamp = getAbsTime();
+    }
+    else {
+        auto now = std::chrono::high_resolution_clock::now();
+        elapsed = now - start;
+    }
 
     // 파일을 열 때 새로 덮어쓰기 모드로 열거나, 이미 존재할 경우 append 모드로 열기
+    bool fileExists = std::ifstream(fullPath).good();
     if (!fileExists) {
-        file.open(fullPath, std::ios::out | std::ios::trunc);  // 처음 실행 시 덮어쓰기 모드로 열기
+        file.open(fullPath, std::ios::out | std::ios::trunc);   // 처음 실행 시 덮어쓰기 모드로 열기
     } else {
-        file.open(fullPath, std::ios::app);  // 이미 파일이 존재하면 append 모드로 열기
+        file.open(fullPath, std::ios::app); // 이미 파일이 존재하면 append 모드로 열기
     }
-    // 파일이 제대로 열렸는지 확인
 
+    // 파일이 제대로 열렸는지 확인
     if (file.is_open()) {
         // 데이터 추가
-        file << elapsed.count() << "," << state << ',' << sub_state << "\n";  // 시간과 state 변수들을 CSV 형식으로 한 줄에 기록
-       
+        if (useAbsTime) {
+            file << timestamp.str();
+        }
+        else {
+            file << elapsed.count();
+        }
+        file << "\n";
         // 파일 닫기
         file.close();
     } else {
@@ -296,34 +207,244 @@ void Functions::appendToCSV_State(const std::string& filename, string state, str
     }
 }
 
-// 시간과 CAN Frame을 CSV 파일에 한 줄씩 저장하는 함수
-void Functions::appendToCSV_CAN(const std::string& filename, can_frame& c_frame) {
-    auto now = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<float> elapsed = now - start;
+void Functions::appendToCSV(const std::string& filename, bool useAbsTime, float A_DATA) {
+    std::ostringstream timestamp;
+    std::chrono::duration<float> elapsed;
     std::ofstream file;
-    std::string fullPath = basePath + filename + ".txt";  // 기본 경로와 파일 이름을 결합
+    std::string fullPath = basePath + filename + ".txt";    // 기본 경로와 파일 이름을 결합
 
-    // 파일이 이미 존재하는지 확인
-    bool fileExists = std::ifstream(fullPath).good();
+    if (useAbsTime) {
+        timestamp = getAbsTime();
+    }
+    else {
+        auto now = std::chrono::high_resolution_clock::now();
+        elapsed = now - start;
+    }
 
     // 파일을 열 때 새로 덮어쓰기 모드로 열거나, 이미 존재할 경우 append 모드로 열기
+    bool fileExists = std::ifstream(fullPath).good();
     if (!fileExists) {
-        file.open(fullPath, std::ios::out | std::ios::trunc);  // 처음 실행 시 덮어쓰기 모드로 열기
+        file.open(fullPath, std::ios::out | std::ios::trunc);   // 처음 실행 시 덮어쓰기 모드로 열기
     } else {
-        file.open(fullPath, std::ios::app);  // 이미 파일이 존재하면 append 모드로 열기
+        file.open(fullPath, std::ios::app); // 이미 파일이 존재하면 append 모드로 열기
     }
-    // 파일이 제대로 열렸는지 확인
 
+    // 파일이 제대로 열렸는지 확인
     if (file.is_open()) {
         // 데이터 추가
-        file << elapsed.count(); // 시간과 float 변수들을 CSV 형식으로 한 줄에 기록
-       
-       // can_frame의 data 배열을 CSV 형식으로 저장
+        if (useAbsTime) {
+            file << timestamp.str();
+        }
+        else {
+            file << elapsed.count();
+        }
+        file << "," << A_DATA << "\n";
+        // 파일 닫기
+        file.close();
+    } else {
+        std::cerr << "Unable to open file: " << fullPath << std::endl;
+    }
+}
+
+void Functions::appendToCSV(const std::string& filename, bool useAbsTime, float A_DATA, float B_DATA) {
+    std::ostringstream timestamp;
+    std::chrono::duration<float> elapsed;
+    std::ofstream file;
+    std::string fullPath = basePath + filename + ".txt";    // 기본 경로와 파일 이름을 결합
+
+    if (useAbsTime) {
+        timestamp = getAbsTime();
+    }
+    else {
+        auto now = std::chrono::high_resolution_clock::now();
+        elapsed = now - start;
+    }
+
+    // 파일을 열 때 새로 덮어쓰기 모드로 열거나, 이미 존재할 경우 append 모드로 열기
+    bool fileExists = std::ifstream(fullPath).good();
+    if (!fileExists) {
+        file.open(fullPath, std::ios::out | std::ios::trunc);   // 처음 실행 시 덮어쓰기 모드로 열기
+    } else {
+        file.open(fullPath, std::ios::app); // 이미 파일이 존재하면 append 모드로 열기
+    }
+
+    // 파일이 제대로 열렸는지 확인
+    if (file.is_open()) {
+        // 데이터 추가
+        if (useAbsTime) {
+            file << timestamp.str();
+        }
+        else {
+            file << elapsed.count();
+        }
+        file << "," << A_DATA << "," << B_DATA << "\n";
+        // 파일 닫기
+        file.close();
+    } else {
+        std::cerr << "Unable to open file: " << fullPath << std::endl;
+    }
+}
+
+void Functions::appendToCSV(const std::string& filename, bool useAbsTime, float A_DATA, float B_DATA, float C_DATA) {
+    std::ostringstream timestamp;
+    std::chrono::duration<float> elapsed;
+    std::ofstream file;
+    std::string fullPath = basePath + filename + ".txt";    // 기본 경로와 파일 이름을 결합
+
+    if (useAbsTime) {
+        timestamp = getAbsTime();
+    }
+    else {
+        auto now = std::chrono::high_resolution_clock::now();
+        elapsed = now - start;
+    }
+
+    // 파일을 열 때 새로 덮어쓰기 모드로 열거나, 이미 존재할 경우 append 모드로 열기
+    bool fileExists = std::ifstream(fullPath).good();
+    if (!fileExists) {
+        file.open(fullPath, std::ios::out | std::ios::trunc);   // 처음 실행 시 덮어쓰기 모드로 열기
+    } else {
+        file.open(fullPath, std::ios::app); // 이미 파일이 존재하면 append 모드로 열기
+    }
+
+    // 파일이 제대로 열렸는지 확인
+    if (file.is_open()) {
+        // 데이터 추가
+        if (useAbsTime) {
+            file << timestamp.str();
+        }
+        else {
+            file << elapsed.count();
+        }
+        file << "," << A_DATA << "," << B_DATA << "," << C_DATA << "\n";
+        // 파일 닫기
+        file.close();
+    } else {
+        std::cerr << "Unable to open file: " << fullPath << std::endl;
+    }
+}
+
+void Functions::appendToCSV(const std::string& filename, bool useAbsTime, can_frame& c_frame) {
+    std::ostringstream timestamp;
+    std::chrono::duration<float> elapsed;
+    std::ofstream file;
+    std::string fullPath = basePath + filename + ".txt";    // 기본 경로와 파일 이름을 결합
+
+    if (useAbsTime) {
+        timestamp = getAbsTime();
+    }
+    else {
+        auto now = std::chrono::high_resolution_clock::now();
+        elapsed = now - start;
+    }
+
+    // 파일을 열 때 새로 덮어쓰기 모드로 열거나, 이미 존재할 경우 append 모드로 열기
+    bool fileExists = std::ifstream(fullPath).good();
+    if (!fileExists) {
+        file.open(fullPath, std::ios::out | std::ios::trunc);   // 처음 실행 시 덮어쓰기 모드로 열기
+    } else {
+        file.open(fullPath, std::ios::app); // 이미 파일이 존재하면 append 모드로 열기
+    }
+
+    // 파일이 제대로 열렸는지 확인
+    if (file.is_open()) {
+        // 데이터 추가
+        if (useAbsTime) {
+            file << timestamp.str();
+        }
+        else {
+            file << elapsed.count();
+        }
+        // can_frame의 data 배열을 CSV 형식으로 저장
         for (int i = 0; i < 8; ++i) {
             file << "," << static_cast<int>(c_frame.data[i]);
         }
         file << "\n";
+        // 파일 닫기
+        file.close();
+    } else {
+        std::cerr << "Unable to open file: " << fullPath << std::endl;
+    }
+}
 
+void Functions::appendToCSV(const std::string& filename, bool useAbsTime, std::chrono::_V2::system_clock::time_point &__t) {
+    std::ostringstream timestamp;
+    std::chrono::duration<float> elapsed;
+    std::ofstream file;
+    std::string fullPath = basePath + filename + ".txt";    // 기본 경로와 파일 이름을 결합
+
+    std::chrono::duration<float> elapsed2 = __t - start;
+
+    if (useAbsTime) {
+        timestamp = getAbsTime();
+    }
+    else {
+        auto now = std::chrono::high_resolution_clock::now();
+        elapsed = now - start;
+    }
+
+    // 파일을 열 때 새로 덮어쓰기 모드로 열거나, 이미 존재할 경우 append 모드로 열기
+    bool fileExists = std::ifstream(fullPath).good();
+    if (!fileExists) {
+        file.open(fullPath, std::ios::out | std::ios::trunc);   // 처음 실행 시 덮어쓰기 모드로 열기
+    } else {
+        file.open(fullPath, std::ios::app); // 이미 파일이 존재하면 append 모드로 열기
+    }
+
+    // 파일이 제대로 열렸는지 확인
+    if (file.is_open()) {
+        // 데이터 추가
+        if (useAbsTime) {
+            file << timestamp.str();
+        }
+        else {
+            file << elapsed.count();
+        }
+        file << "," << elapsed2.count() << "\n";
+        // 파일 닫기
+        file.close();
+    } else {
+        std::cerr << "Unable to open file: " << fullPath << std::endl;
+    }
+}
+
+void Functions::appendToCSV(const std::string& filename, bool useAbsTime, std::vector<double> &__v) {
+    std::ostringstream timestamp;
+    std::chrono::duration<float> elapsed;
+    std::ofstream file;
+    std::string fullPath = basePath + filename + ".txt";    // 기본 경로와 파일 이름을 결합
+
+    if (useAbsTime) {
+        timestamp = getAbsTime();
+    }
+    else {
+        auto now = std::chrono::high_resolution_clock::now();
+        elapsed = now - start;
+    }
+
+    // 파일을 열 때 새로 덮어쓰기 모드로 열거나, 이미 존재할 경우 append 모드로 열기
+    bool fileExists = std::ifstream(fullPath).good();
+    if (!fileExists) {
+        file.open(fullPath, std::ios::out | std::ios::trunc);   // 처음 실행 시 덮어쓰기 모드로 열기
+    } else {
+        file.open(fullPath, std::ios::app); // 이미 파일이 존재하면 append 모드로 열기
+    }
+
+    // 파일이 제대로 열렸는지 확인
+    if (file.is_open()) {
+        // 데이터 추가
+        if (useAbsTime) {
+            file << timestamp.str();
+        }
+        else {
+            file << elapsed.count();
+        }
+        // vector의 data 배열을 CSV 형식으로 저장
+        int n = __v.size();
+        for (int i = 0; i < n; i++) {
+            file << "," << __v[i];
+        }
+        file << "\n";
         // 파일 닫기
         file.close();
     } else {

@@ -819,7 +819,7 @@ void DrumRobot::musicMachine()
                     }
                 }
 
-                // fun.appendToCSV_DATA("sync_test.txt", sync_test, 0, 0);
+                // fun.appendToCSV("sync_test.txt", false, sync_test, 0, 0);
             }
 
             // 파이썬
@@ -1274,9 +1274,9 @@ void DrumRobot::setSyncTime(int waitingTimeMillisecond)
     syncTime = base_time + std::chrono::milliseconds(waitingTimeMillisecond);
     setWaitingTime = true;
 
-    // fun.appendToCSV_DATA("sync_test.txt", -1, waitingTime, 0);
-    // fun.appendToCSV_time("sync_test.txt", syncTime);
-    // fun.appendToCSV_time("sync_test.txt", base_time);
+    // fun.appendToCSV("sync_test.txt", false, -1, waitingTime);
+    // fun.appendToCSV("sync_test.txt", false, syncTime);
+    // fun.appendToCSV("sync_test.txt", false, base_time);
 }
 
 std::string DrumRobot::selectPlayMode()

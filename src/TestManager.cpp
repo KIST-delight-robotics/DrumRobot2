@@ -252,7 +252,7 @@ void TestManager::SendTestProcess()
 
                             if (i == 11)
                             {
-                                fun.appendToCSV_DATA("test", Qi[i], 0, 0);
+                                fun.appendToCSV("test", false, Qi[i]);
                             }
                         }
                         // Send to Buffer
