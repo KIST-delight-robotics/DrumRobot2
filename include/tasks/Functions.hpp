@@ -1,5 +1,6 @@
 #pragma once
 
+#include <bits/stdc++.h>
 #include <iostream>
 #include <unistd.h>
 #include <string.h>
@@ -10,6 +11,7 @@
 #include <memory>
 #include <iomanip>
 #include <sstream>
+#include <algorithm>
 
 #include "Motor.hpp"
 

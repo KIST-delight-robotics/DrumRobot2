@@ -838,7 +838,7 @@ void DrumRobot::runPythonInThread()
                         std::cerr << "Python script failed to execute with code " << ret << std::endl;
                     }
 
-                    getMagentaSheet("/home/shy/DrumRobot/DrumSound/output.mid");
+                    getMagentaSheet("/home/shy/DrumRobot/DrumSound/output.mid", 0);
                 }
                 else
                 {
@@ -857,7 +857,7 @@ void DrumRobot::runPythonInThread()
                         }
 
                         std::string pythonCmd = "/home/shy/DrumRobot/DrumSound/magenta-env/bin/python "
-                        "/home/shy/DrumRobot/DrumSound/getMIDITMR.py " + pythonArgs + " &";
+                        "/home/shy/DrumRobot/DrumSound/getMIDI_rec_Mag.py " + pythonArgs + " &";
 
                         int ret = std::system(pythonCmd.c_str());  // 비동기 실행 (백그라운드 &)
                         if (ret != 0)
@@ -1545,8 +1545,9 @@ void DrumRobot::getMagentaSheet(std::string midPath, int recordingIndex)
     filesystem::path outputPath2 = "/home/shy/DrumRobot/DrumSound/output2_mc.csv";   
     filesystem::path outputPath3 = "/home/shy/DrumRobot/DrumSound/output3_mc2c.csv";    
     filesystem::path outputPath4 = "/home/shy/DrumRobot/DrumSound/output4_hand_assign.csv";
-    filesystem::path outputPath5 = "/home/shy/DrumRobot/DrumSound/output5_add_groove.txt";
-    filesystem::path outputPath6 = "/home/shy/DrumRobot/DrumSound/output6_final.txt";
+    // filesystem::path outputPath5 = "/home/shy/DrumRobot/DrumSound/output5_add_groove.txt";
+    // filesystem::path outputPath6 = "/home/shy/DrumRobot/DrumSound/output6_final.txt";
+    filesystem::path outputPath5 = "/home/shy/DrumRobot/DrumSound/output5_final" + std::to_string(recordingIndex) + ".txt";
 
     // midPath = "/home/shy/DrumRobot/DrumSound/output_0.mid";
 
@@ -1601,28 +1602,30 @@ void DrumRobot::getMagentaSheet(std::string midPath, int recordingIndex)
         }
 
         //이거 세기 반영 시키는 변수 안하면 원본 그대로 
-        bool mapTo357 = true
-        vector<Seg> segs;
+        bool mapTo357 = true;
+        // vector<Seg> segs;
 
         fun.roundDurationsToStep(outputPath1, outputPath2); 
         fun.convertMcToC(outputPath2, outputPath3);
         fun.assignHandsToEvents(outputPath3, outputPath4);
 
-        //velocityFile 세기 파일 outputFile 우리가 쓸 아웃풋 파일
-        fun.analyzeVelocityWithLowPassFilter(velocityFile, outputFile, bpm);
+        // //velocityFile 세기 파일 outputFile 우리가 쓸 아웃풋 파일
+        // fun.analyzeVelocityWithLowPassFilter(velocityFile, outputFile, bpm);
 
-        //위에서 만든 아웃풋 파일 넣어주기 그럼 segs 에 필터씌운 정보 저장댐
-        fun.loadSegments(outputFile, segs);
-
-
-        //수정전 악보 scoreIn 최종 출력 파일 scoreOut
-        fun.applyIntensityToScore(segs, scoreIn, scoreOut, mapTo357);
-
-        //그루브 추가 
-        fun.addGroove(bpm, outputPath4, outputPath5);
+        // //위에서 만든 아웃풋 파일 넣어주기 그럼 segs 에 필터씌운 정보 저장댐
+        // fun.loadSegments(outputFile, segs);
 
 
-        fun.convertToMeasureFile(outputPath5, outputPath6);
+        // //수정전 악보 scoreIn 최종 출력 파일 scoreOut
+        // fun.applyIntensityToScore(segs, scoreIn, scoreOut, mapTo357);
+
+        // //그루브 추가 
+        // fun.addGroove(bpm, outputPath4, outputPath5);
+
+
+        // fun.convertToMeasureFile(outputPath5, outputPath6);
+
+        fun.convertToMeasureFile(outputPath4, outputPath5);
 
         file_found = false;
         // if(filesystem::exists(midPath))
