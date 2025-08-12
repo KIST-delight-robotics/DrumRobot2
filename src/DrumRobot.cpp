@@ -1074,7 +1074,7 @@ void DrumRobot::setSyncTime(int waitingTimeMillisecond)
     syncTime = base_time + std::chrono::milliseconds(waitingTimeMillisecond);
     setWaitingTime = true;
 
-    // fun.appendToCSV("sync_test.txt", false, -1, waitingTime);
+    // fun.appendToCSV("sync_test.txt", false, -1, inputWaitMs);
     // fun.appendToCSV("sync_test.txt", false, syncTime);
     // fun.appendToCSV("sync_test.txt", false, base_time);
 }
@@ -1100,7 +1100,7 @@ std::string DrumRobot::selectPlayMode()
         //반복횟수에 따라 딜레이시간 , 만들시간 정의해주기 
         std::cout << "반복 횟수 : ";
         cin >> repeatNum;
-        for(int i =0; i< repeatNum; i++)
+        for(int i = 0; i < repeatNum; i++)
         {
             std::cout << i + 1 << "번째 delay time : ";
             cin >> delayTime_i;
@@ -1173,47 +1173,63 @@ std::string DrumRobot::selectPlayMode()
 
     if (input == 1)
     {
-        float waitingTime = 1;
+        float inputWaitMs = 0.0;
         std::cout << "Enter Waiting Time: ";
-        std::cin >> waitingTime;
-        waitingTime *= 1000;
+        std::cin >> inputWaitMs;
+        inputWaitMs *= 1000;
 
-        syncTime = std::chrono::system_clock::now() + std::chrono::milliseconds((int)waitingTime);
+        syncTime = std::chrono::system_clock::now() + std::chrono::milliseconds((int)inputWaitMs);
         setWaitingTime = true;
     }
     else if (input == 2)
     {
-        // 여기에서 repeatNum이 1일때와 2이상일때 구분해서 실행되어야한다.
-
-        float waitingTime = 1;
-        std::cout << "Enter Waiting Time: ";
-        std::cin >> waitingTime;
-        waitingTime *= 1000;
+        float inputWaitMs = 0.0;
 
         if (useMagenta)
         {
             //여기에서 musicMachine 마젠타 돌아간다
+            if (repeatNum == 1)
+            {
+                std::cout << "Enter Waiting Time: ";
+                std::cin >> inputWaitMs;
+                inputWaitMs *= 1000;
+            }
+            else
+            {
+                for (int i = 0; i < repeatNum; i++)
+                {
+                    std::cout << i + 1 << "번째 wait time : ";
+                    cin >> waitTime_i;
+                    waitTime.push(waitTime_i);
+                }
+                inputWaitMs = waitTime.front() * 1000;
+                waitTime.pop();
+            }
 
             pythonClass = 0;
             runPython = true;
 
             std::string txtIndexPath = txtPath + "0.txt";
             while (!std::filesystem::exists(txtIndexPath)) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(100)); // 100ms 대기
+                std::this_thread::sleep_for(std::chrono::milliseconds(100)); // 100ms 대기
             }
         }
         else
         {
-            //그저 시간채크 하는 코드 
+            //그저 시간채크 하는 코드
+            std::cout << "Enter Waiting Time: ";
+            std::cin >> inputWaitMs;
+            inputWaitMs *= 1000;
+            
             pythonClass = 1;
             runPython = true;
 
             while (!std::filesystem::exists(syncPath)) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(100)); // 100ms 대기
+                std::this_thread::sleep_for(std::chrono::milliseconds(100)); // 100ms 대기
             }
         }
 
-        setSyncTime((int)waitingTime);
+        setSyncTime((int)inputWaitMs);
     }
     else
     {
@@ -1330,8 +1346,9 @@ void DrumRobot::sendPlayProcess()
             std::this_thread::sleep_for(std::chrono::milliseconds(100)); // 100ms 대기
         }
 
-        float waitingTime = 9.0 * 1000;     // ms
-        setSyncTime((int)waitingTime);
+        float inputWaitMs = waitTime.front() * 1000;
+        waitTime.pop();
+        setSyncTime((int)inputWaitMs);
     }
 
     while (!endOfScore)
