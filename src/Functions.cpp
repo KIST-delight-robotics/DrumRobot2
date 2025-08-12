@@ -1132,6 +1132,8 @@ void Functions::assignHandsToEvents(const std::string& inputFilename, const std:
     }
 }
 
+
+// 그루브 관련 처리
 void Functions::addGroove(int bpm, const std::string& inputFilename, const std::string& outputFilename) {
     std::ifstream inFile(inputFilename);
     std::ofstream outFile(outputFilename);
@@ -1194,8 +1196,274 @@ void Functions::addGroove(int bpm, const std::string& inputFilename, const std::
     outFile.close();
 }
 
+//세기 관련 처리
+
+//악보에 적용시키는거
+bool Functions::loadSegments(const string& intensityFile, vector<Seg>& segs) {
+    ifstream fin(intensityFile);
+    if (!fin) return false;
+
+    string line;
+    bool headerDone = false;
+
+    while (getline(fin, line)) {
+        // 1) 라인 트림
+        auto trim = [](const string& s) -> string {
+            auto issp = [](unsigned char c){ return std::isspace(c); };
+            auto b = find_if_not(s.begin(), s.end(), issp);
+            auto e = find_if_not(s.rbegin(), s.rend(), issp).base();
+            return (b >= e) ? string() : string(b, e);
+        };
+        line = trim(line);
+        if (line.empty()) continue;
+
+        // 2) 콤마→공백 치환 + 공백 파싱 (토큰화)
+        vector<string> toks;
+        {
+            string tmp = line;
+            for (char& c : tmp) if (c == ',') c = ' ';
+            istringstream iss(tmp);
+            string tok;
+            while (iss >> tok) toks.push_back(trim(tok)); // 토큰도 트림
+        }
+        if (toks.size() < 4) continue;
+
+        // 3) BOM 제거(첫 토큰에만 필요 시)
+        if (!toks[0].empty()
+            && (unsigned char)toks[0][0] == 0xEF
+            && toks[0].size() >= 3
+            && (unsigned char)toks[0][1] == 0xBB
+            && (unsigned char)toks[0][2] == 0xBF) {
+            toks[0].erase(0, 3);
+        }
+
+        // 4) 헤더 스킵: 앞 두 칼럼이 숫자가 아니면 헤더로 간주
+        auto looksNumber = [](const string& s) {
+            if (s.empty()) return false;
+            char* endp = nullptr;
+            (void)strtod(s.c_str(), &endp);
+            return endp != s.c_str(); // 앞에서 숫자를 하나라도 읽었는지
+        };
+        if (!headerDone && (!looksNumber(toks[0]) || !looksNumber(toks[1]))) {
+            headerDone = true;
+            continue;
+        }
+
+        // 5) 파싱 + 반올림(세기 0~3 가정)
+        Seg s{};
+        s.start      = stod(toks[0]);
+        s.end        = stod(toks[1]);
+        s.drum_avg   = (int)lround(stod(toks[2]));
+        s.cymbal_avg = (int)lround(stod(toks[3]));
+        segs.push_back(s);
+        headerDone = true;
+    }
+    fin.close();
+
+    // 6) 구간 정렬
+    sort(segs.begin(), segs.end(), [](const Seg& a, const Seg& b){
+        if (a.start == b.start) return a.end < b.end;
+        return a.start < b.start;
+    });
+
+    return true;
+}
 
 
+bool Functions::applyIntensityToScore(const vector<Seg>& segs,
+    const string& scoreIn,
+    const string& scoreOut,
+    bool mapTo357 = true)
+{
+    ifstream sin(scoreIn);
+    if (!sin) return false;
+    ofstream sout(scoreOut);
+    if (!sout) return false;
+
+    // ---- 로컬 유틸(전부 이 함수 안에) ----
+        auto trim = [](const string& s) -> string {
+        auto issp = [](unsigned char c){ return std::isspace(c); };
+        auto b = find_if_not(s.begin(), s.end(), issp);
+        auto e = find_if_not(s.rbegin(), s.rend(), issp).base();
+        return (b >= e) ? string() : string(b, e);
+    };
+    size_t cursor = 0; // 전진 포인터
+    auto findSeg = [&](double t) -> const Seg* {
+    while (cursor < segs.size()) {
+        const Seg& s = segs[cursor];
+        if (t < s.start) {
+            if (cursor == 0) return nullptr;
+            const Seg& p = segs[cursor - 1];
+            if (t >= p.start && t < p.end) return &p;
+            return nullptr;
+        }
+        if (t >= s.start && t < s.end) return &s;
+        ++cursor;
+    }
+        if (!segs.empty()) {
+            const Seg& last = segs.back();
+            if (t >= last.start && t < last.end) return &last;
+        }
+        return nullptr;
+    };
+    auto mapIntensity = [&](int base) -> int {
+        if (!mapTo357) return base;            // 원시 세기 사용 옵션
+        if (base <= 1) return 3;               // 0/1 -> 3
+        if (base == 2) return 5;               // 2     -> 5
+        return 7;                               // 3+    -> 7
+    };
+    // --------------------------------------
+
+    double accumTime = 0.0;
+    string line;
+
+    while (getline(sin, line)) {
+        string raw = trim(line);
+        if (raw.empty()) { sout << "\n"; continue; }
+
+        // 콤마 → 공백 치환 + 공백/탭 파싱
+        vector<string> toks;
+        {
+            string tmp = raw;
+            for (char& c : tmp) if (c == ',') c = ' ';
+            istringstream iss(tmp);
+            string tok;
+            while (iss >> tok) toks.push_back(tok);
+        }
+
+        // 최소 5컬럼(time R_inst L_inst R_vel L_vel) 아니면 원본 그대로 출력
+        if (toks.size() < 5) { sout << raw << "\n"; continue; }
+
+        // time은 Δt로 가정(절대시간이면 아래 한 줄을 accumTime = dt; 로 변경)
+        double dt;
+        try { dt = stod(toks[0]); }
+        catch(...) { sout << raw << "\n"; continue; }
+        accumTime += dt; // ← 절대시간이면: accumTime = dt;
+
+        // 필드 파싱
+        int R_inst, L_inst, R_vel, L_vel;
+        try {
+        R_inst = stoi(toks[1]);
+        L_inst = stoi(toks[2]);
+        R_vel  = stoi(toks[3]);
+        L_vel  = stoi(toks[4]);
+        } catch(...) { sout << raw << "\n"; continue; }
+
+        // 구간 찾고 세기 적용
+        if (!segs.empty()) {
+            if (const Seg* seg = findSeg(accumTime)) {
+                auto pick = [&](int inst, int oldv) -> int {
+                    if (inst == 0) return oldv; // 무음은 유지
+                    int base = (inst>=1 && inst<=4) ? seg->drum_avg
+                        : (inst>=5 && inst<=8) ? seg->cymbal_avg : 0;
+                    return mapIntensity(base);
+                };
+                R_vel = pick(R_inst, R_vel);
+                L_vel = pick(L_inst, L_vel);
+            }
+        }
+
+        // 갱신 후 탭 구분으로 출력(추가 컬럼 보존)
+        toks[3] = to_string(R_vel);
+        toks[4] = to_string(L_vel);
+        for (size_t i = 0; i < toks.size(); ++i) {
+            if (i) sout << "\t";
+            sout << toks[i];
+        }
+        sout << "\n";
+    }
+    return true;
+}
+
+//세기 처리해서 파싱하는거 
+void Functions::analyzeVelocityWithLowPassFilter(const std::string& velocityFile,
+    const std::string& outputFile,
+    double bpm)
+{
+    double windowSize = (60/bpm)*4;
+
+    std::ifstream in(velocityFile);
+    if (!in.is_open()) {
+        std::cerr << "velocityFile 열기 실패: " << velocityFile << "\n";
+        return;
+    }
+
+    std::vector<VelocityEntry> rawData;
+    double t;
+    int inst, vel;
+    double maxTime = 0.0;
+
+    // CSV 파일 읽기
+    std::string line;
+    while (std::getline(in, line)) {
+        if (line.empty()) continue;
+
+        // 콤마 → 공백 변환 (콤마/공백 혼합 지원)
+        for (char &c : line) {
+            if (c == ',') c = ' ';
+        }
+
+        std::stringstream ss(line);
+        if (!(ss >> t >> inst >> vel)) continue; // 읽기 실패 시 건너뜀
+
+
+        if (t == -1) break; // 종료 신호
+
+
+        rawData.push_back({t, inst, vel});
+        if (t > maxTime) maxTime = t;
+    }
+
+    int numWindows = static_cast<int>(std::ceil((maxTime + 0.001) / windowSize));
+
+    std::vector<double> avgVelocityDrum(numWindows, 0.0);  // 1~4
+    std::vector<int> countDrum(numWindows, 0);
+
+    std::vector<double> avgVelocityCym(numWindows, 0.0);   // 5~8
+    std::vector<int> countCym(numWindows, 0);
+
+    // 시간 구간별 누적
+    for (const auto& entry : rawData) {
+        int bin = static_cast<int>(entry.time / windowSize);
+        if (bin >= numWindows) continue;
+
+        if (entry.instrument >= 1 && entry.instrument <= 4) {
+            avgVelocityDrum[bin] += entry.velocity;
+            countDrum[bin]++;
+        }
+        else if (entry.instrument >= 5 && entry.instrument <= 8) {
+            avgVelocityCym[bin] += entry.velocity;
+            countCym[bin]++;
+        }
+    }
+
+    for (int i = 0; i < numWindows; ++i) {
+        if (countDrum[i] > 0) {
+            avgVelocityDrum[i] = static_cast<int>(std::round((avgVelocityDrum[i] / countDrum[i]) / 40.0));
+        }
+        if (countCym[i] > 0) {
+            avgVelocityCym[i] = static_cast<int>(std::round((avgVelocityCym[i] / countCym[i]) / 40.0));
+        }
+    }
+
+    // 결과 저장
+    std::ofstream out(outputFile);
+    if (!out.is_open()) {
+        std::cerr << "outputFile 열기 실패: " << outputFile << "\n";
+        return;
+    }
+
+    out << "start_time\tend_time\tdrum_avg\tcymbal_avg\n";
+    for (int i = 0; i < numWindows; ++i) {
+        double startT = i * windowSize;
+        double endT = (i + 1) * windowSize;
+        out << std::fixed << std::setprecision(3)
+        << startT << "\t" << endT << "\t"
+        << avgVelocityDrum[i] << "\t" << avgVelocityCym[i] << "\n";
+    }
+
+    std::cout << "[완료] 드럼/심벌 평균 벨로시티 저장 완료: " << outputFile << "\n";
+}
 
 // 박자 단위 분할 및 마디 번호 부여 함수
 void Functions::convertToMeasureFile(const std::string& inputFilename, const std::string& outputFilename) {

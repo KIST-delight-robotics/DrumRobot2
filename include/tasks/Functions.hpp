@@ -85,9 +85,16 @@ public:
     Hand getPreferredHandByDistance(int instCurrent, int prevRightNote, int prevLeftNote, double prevRightHit, double prevLeftHit);
     void save_to_csv(const std::string& outputCsvPath, double& note_on_time, int drumNote);
 
+    struct Seg {
+        double start, end;
+        int drum_avg;    // 0~3
+        int cymbal_avg;  // 0~3
+    };
 
-
-
+    bool loadSegments(const string& intensityFile, vector<Seg>& segs); 
+    bool applyIntensityToScore(const vector<Seg>& segs, const string& scoreIn, const string& scoreOut, bool mapTo357 = true);
+    void analyzeVelocityWithLowPassFilter(const std::string& velocityFile, const std::string& outputFile, double windowSize = 1.0);
+    
 private:
     std::map<std::string, std::shared_ptr<GenericMotor>> &motors;   // data 기록하기 위해 필요
 };
