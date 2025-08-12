@@ -140,9 +140,12 @@ private:
     // 타격 파라미터
     typedef struct {
         
-        double initialTimeR, finalTimeR;    // 타격 궤적에서 출발 시간, 도착 시간
-        double initialTimeL, finalTimeL;
+        double initialTimeR = 0, finalTimeR;    // 타격 궤적에서 출발 시간, 도착 시간
+        double initialTimeL = 0, finalTimeL;
 
+        VectorXd nextStateR;            // 이전 시간, 이전 State, intensity
+        VectorXd nextStateL;
+        
     }HitData;
 
     // 타격 궤적
@@ -208,11 +211,11 @@ private:
     }HihatAngle;
 
     /////////////////////////////////////////////////////////////////////////// Init
-    MatrixXd drumCoordinateR;                               ///< 오른팔의 각 악기별 위치 좌표 벡터.
-    MatrixXd drumCoordinateL;                                ///< 왼팔의 각 악기별 위치 좌표 벡터.
+    MatrixXd drumCoordinateR;               ///< 오른팔의 각 악기별 위치 좌표 벡터.
+    MatrixXd drumCoordinateL;               ///< 왼팔의 각 악기별 위치 좌표 벡터.
 
-    MatrixXd wristAngleOnImpactR;                               ///< 오른팔의 각 악기별 타격 시 손목 각도.
-    MatrixXd wristAngleOnImpactL;                                ///< 왼팔의 각 악기별 타격 시 손목 각도.
+    MatrixXd wristAngleOnImpactR;           ///< 오른팔의 각 악기별 타격 시 손목 각도.
+    MatrixXd wristAngleOnImpactL;           ///< 왼팔의 각 악기별 타격 시 손목 각도.
 
     void setDrumCoordinate();
     void setWristAngleOnImpact();
@@ -220,27 +223,25 @@ private:
     void setReadyAngle();
 
     /////////////////////////////////////////////////////////////////////////// AddStance
-    VectorXd readyAngle;                // AddStace 에서 사용하는 위치 (자세)
+    VectorXd readyAngle;                    ///< AddStace 에서 사용하는 위치 (자세)
     VectorXd homeAngle;
     VectorXd shutdownAngle;
 
-    // q1[rad], q2[rad], acc[rad/s^2], t2[s]
-    VectorXd calVmax(VectorXd &q1, VectorXd &q2, float acc, float t2);
-    // q1[rad], q2[rad], Vmax[rad/s], acc[rad/s^2], t[s], t2[s]
-    VectorXd makeProfile(VectorXd &q1, VectorXd &q2, VectorXd &Vmax, float acc, float t, float t2);
+    VectorXd calVmax(VectorXd &q1, VectorXd &q2, float acc, float t2);  // q1[rad], q2[rad], acc[rad/s^2], t2[s]
+    VectorXd makeProfile(VectorXd &q1, VectorXd &q2, VectorXd &Vmax, float acc, float t, float t2); // q1[rad], q2[rad], Vmax[rad/s], acc[rad/s^2], t[s], t2[s]
     VectorXd getFinalMotorPosition();
 
     /////////////////////////////////////////////////////////////////////////// Play
-    int lineOfScore = 0;            ///< 현재 악보 읽은 줄.
-    const int preCreatedLine = 3;   ///< 미리 궤적을 생성할 줄
+    int lineOfScore = 0;                    ///< 현재 악보 읽은 줄.
+    const int preCreatedLine = 3;           ///< 미리 궤적을 생성할 줄
 
     void avoidCollision(MatrixXd &measureMatrix);
     void genTrajectory(MatrixXd &measureMatrix);
     void solveIKandPushCommand();
 
     //////////////////////////////////// Task Space Trajectory
-    double roundSum = 0.0;    ///< 5ms 스텝 단위에서 누적되는 오차 보상
-    VectorXd measureStateR, measureStateL;  // [이전 시간, 이전 악기, 상태] 0 : 0 <- 0 / 1 : 0 <- 1 / 2 : 1 <- 0 / 3 : 1 <- 1
+    double roundSum = 0.0;                  ///< 5ms 스텝 단위에서 누적되는 오차 보상
+    VectorXd measureStateR, measureStateL;  ///< [이전 시간, 이전 악기, 상태] 0 : 0 <- 0 / 1 : 0 <- 1 / 2 : 1 <- 0 / 3 : 1 <- 1
     queue<TaskSpaceTrajectory> TaskSpaceQueue;
     queue<WaistParameter> waistParameterQueue;
 
@@ -256,8 +257,8 @@ private:
     void storeWaistParams(int n, VectorXd &waistParams);
 
     //////////////////////////////////// Hit Trajectory
-    VectorXd prevLine = VectorXd::Zero(9);  // 악보 나눌 때 시작 악보 기록
-    VectorXd hitStateR, hitStateL;              // [이전 시간, 이전 State, intensity]
+    VectorXd prevLine = VectorXd::Zero(9);  ///< 악보 나눌 때 시작 악보 기록
+    VectorXd hitStateR, hitStateL;          ///< [이전 시간, 이전 State, intensity]
     ElbowTime elbowTimeR, elbowTimeL;
     WristTime wristTimeR, wristTimeL;
     MatrixXd elbowCoefficientR;
@@ -268,17 +269,17 @@ private:
 
     void genHitTrajectory(MatrixXd &measureMatrix, int n);
     MatrixXd divideMatrix(MatrixXd &measureMatrix);
-    PathManager::HitData getHitData(MatrixXd &measureMatrix);
+    PathManager::HitData getHitData(MatrixXd &measureMatrix, VectorXd &stateR, VectorXd &stateL);
     VectorXd parseHitData(VectorXd &t, VectorXd &hit, double preT, double preStatem, double hitDetectionThreshold);
-    void makeHitCoefficient(HitData hitaData);
+    void makeHitCoefficient(HitData hitData, VectorXd &stateR, VectorXd &stateL);
     PathManager::ElbowTime getElbowTime(double t1, double t2, int intensity);
     PathManager::WristTime getWristTime(double t1, double t2, int intensity, int state);
     PathManager::ElbowAngle getElbowAngle(double t1, double t2, int intensity);
     PathManager::WristAngle getWristAngle(double t1, double t2, int intensity);
     MatrixXd makeElbowCoefficient(int state, ElbowTime eT, ElbowAngle eA);
     MatrixXd makeWristCoefficient(int state, WristTime wT, WristAngle wA);
-    double makeElbowPath(double t, ElbowTime eT, MatrixXd coefficientMatrix);
-    double makeWristPath(double t, WristTime wT, MatrixXd coefficientMatrix);
+    double getElbowAngle(double t, ElbowTime eT, MatrixXd &coefficientMatrix);
+    double getWristAngle(double t, WristTime wT, MatrixXd &coefficientMatrix);
 
     //////////////////////////////////// Pedal Trajectory
     queue<PedalTrajectory> pedalQueue;
@@ -288,19 +289,19 @@ private:
     PathManager::BassTime getBassTime(float t1, float t2);
     int getHihatState(bool hihatClosed, bool nextHihatClosed);
     PathManager::HihatTime getHihatTime(float t1, float t2);
-    double makeBassPath(double t, BassTime bt, int bassState);
-    double makeHihatPath(double t, HihatTime ht, int hihatState, int nextHihatClosed);
+    double getBassAngle(double t, BassTime bt, int bassState);
+    double getHihatAngle(double t, HihatTime ht, int hihatState, int nextHihatClosed);
     double makeCosineProfile(double qi, double qf, double ti, double tf, double t);
 
     //////////////////////////////////// Solve IK & Push Command Buffer
-    double waistAngleT1;               // 시작 위치 저장
-    double waistAngleT0, waistTimeT0 = -1;      // 이전 위치, 이전 시간 저장
-    float prevWaistPos = 0.0;   // 브레이크 판단에 사용될 허리 전 값
-    float preDiff = 0.0;        // 브레이크 판단(필터)에 사용될 전 허리 차이값
+    double waistAngleT1;                    ///< 허리 시작 위치
+    double waistAngleT0, waistTimeT0 = -1;  ///< 허리 이전 위치, 이전 시간
+    float prevWaistPos = 0.0;   ///< 브레이크 판단에 사용될 허리 전 값
+    float preDiff = 0.0;        ///< 브레이크 판단(필터)에 사용될 전 허리 차이값
 
     std::vector<PathManager::WaistParameter> waistParamsQueueToVector();
     MatrixXd makeWaistCoefficient(std::vector<WaistParameter> &waistParams);
-    std::pair<double, vector<double>> getNextQ0(std::vector<WaistParameter> &waistParams);
+    std::pair<double, vector<double>> getWaistAngleT2(std::vector<WaistParameter> &waistParams);
     vector<double> cubicInterpolation(const vector<double>& q, const vector<double>& t);
     double getWaistAngle(MatrixXd &waistCoefficient, int index);
     VectorXd getJointAngles(double q0);
