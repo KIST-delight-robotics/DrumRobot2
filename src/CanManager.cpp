@@ -505,7 +505,7 @@ void CanManager::setMaxonCANFrame(std::shared_ptr<MaxonMotor> maxonMotor, const 
         maxoncmd.setPositionCANFrame(*maxonMotor, &maxonMotor->sendFrame, mData.position);
 
         // std::cout << "Maxon Motor : " << maxonMotor->myName << "\t" << mData.position << "\n";
-        fun.appendToCSV_DATA(fun.file_name, (float)maxonMotor->nodeId + SEND_SIGN, mData.position, mData.position - maxonMotor->motorPosition);
+        fun.appendToCSV(fun.file_name, false, (float)maxonMotor->nodeId + SEND_SIGN, mData.position, mData.position - maxonMotor->motorPosition);
     }
     else if (mData.mode == maxonMotor->CST)
     {
@@ -525,9 +525,9 @@ void CanManager::setMaxonCANFrame(std::shared_ptr<MaxonMotor> maxonMotor, const 
         float targetTorquemNm = calTorque(maxonMotor, mData);
         int targetTorque = maxoncmd.setTorqueCANFrame(*maxonMotor, &maxonMotor->sendFrame, targetTorquemNm);
 
-        fun.appendToCSV_DATA(fun.file_name, (float)maxonMotor->nodeId + SEND_SIGN, mData.position, targetTorque);
-        fun.appendToCSV_DATA_absTime("wristTime", (float)maxonMotor->nodeId, mData.position, 0);
-        // fun.appendToCSV_DATA("torque input", (float)maxonMotor->nodeId, targetTorquemNm, targetTorque);
+        fun.appendToCSV(fun.file_name, false, (float)maxonMotor->nodeId + SEND_SIGN, mData.position, targetTorque);
+        fun.appendToCSV("wristTime", true, (float)maxonMotor->nodeId, mData.position);
+        // fun.appendToCSV("torque input", false, (float)maxonMotor->nodeId, targetTorquemNm, targetTorque);
     }
     else if (mData.mode == maxonMotor->CSV)
     {
@@ -593,7 +593,7 @@ void CanManager::setTMotorCANFrame(std::shared_ptr<TMotor> tMotor, const TMotorD
     {
         tservocmd.setPositionCANFrame(*tMotor, &tMotor->sendFrame, tData.position);
 
-        fun.appendToCSV_DATA(fun.file_name, (float)tMotor->nodeId + SEND_SIGN, tData.position, tData.position - tMotor->motorPosition);
+        fun.appendToCSV(fun.file_name, false, (float)tMotor->nodeId + SEND_SIGN, tData.position, tData.position - tMotor->motorPosition);
     }
     else if (tData.mode == tMotor->Idle)
     {
@@ -760,7 +760,7 @@ bool CanManager::sendMotorFrame(std::shared_ptr<GenericMotor> motor)
         }
     }
     
-    fun.appendToCSV_DATA("send", motor->nodeId, motor->socket, 0);
+    fun.appendToCSV("send", false, motor->nodeId, motor->socket);
     
     return true;
 }
@@ -905,7 +905,7 @@ bool CanManager::distributeFramesToMotors(bool setlimit)
                     // std::cout << tMotor->jointAngle << std::endl;
                     tMotor->recieveBuffer.push(frame);
 
-                    fun.appendToCSV_DATA(fun.file_name, (float)tMotor->nodeId, tMotor->motorPosition, tMotor->motorCurrent);
+                    fun.appendToCSV(fun.file_name, false, (float)tMotor->nodeId, tMotor->motorPosition, tMotor->motorCurrent);
                     
                     if (setlimit)
                     {
@@ -932,7 +932,7 @@ bool CanManager::distributeFramesToMotors(bool setlimit)
                 //         float pos_radians = pos_degrees * (M_PI / 180.0f);  
                 //         maxonMotor->motorPosition = pos_radians;
 
-                //         fun.appendToCSV_DATA("q8손목", (float)maxonMotor->nodeId, maxonMotor->motorPosition, 0);
+                //         fun.appendToCSV("q8손목", false, (float)maxonMotor->nodeId, maxonMotor->motorPosition);
                 //         currentPosition = maxonMotor->motorPosition; // 현재 위치 값 해당 변수에 덮어쓰기
                 //     }
                 // }
@@ -955,7 +955,7 @@ bool CanManager::distributeFramesToMotors(bool setlimit)
                     maxonMotor->jointAngle = maxonMotor->motorPositionToJointAngle(std::get<1>(parsedData));
                     maxonMotor->recieveBuffer.push(frame);
                     
-                    fun.appendToCSV_DATA(fun.file_name, (float)maxonMotor->nodeId, maxonMotor->motorPosition, maxonMotor->motorTorque);
+                    fun.appendToCSV(fun.file_name, false, (float)maxonMotor->nodeId, maxonMotor->motorPosition, maxonMotor->motorTorque);
 
                     if (setlimit)
                     {
@@ -1026,7 +1026,7 @@ bool CanManager::distributeFramesToMotors(bool setlimit)
 // {
 //     if(dct_fun(maxonMotor) && isHitL && maxonMotor->hitting == false)
 //     {
-//         fun.appendToCSV_DATA("hittingDetectL", 1, 0, 0);
+//         fun.appendToCSV("hittingDetectL", false, 1);
         
 //         maxonMotor->hitting = true;
 //         if (isHitL) isHitL = false;
@@ -1035,6 +1035,6 @@ bool CanManager::distributeFramesToMotors(bool setlimit)
 //     }
 //     else
 //     {
-//         fun.appendToCSV_DATA("hittingDetectL", 0, 0, 0);
+//         fun.appendToCSV("hittingDetectL", false, 0);
 //     }
 // }

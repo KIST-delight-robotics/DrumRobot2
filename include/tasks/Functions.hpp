@@ -39,12 +39,15 @@ public:
     const std::string basePath = "../../DrumRobot_data/";  // 기본 경로
     std::string file_name = "data";
     void openCSVFile();
-    void appendToCSV_DATA(const std::string& filename, float A_DATA, float B_DATA, float C_DATA);
-    void appendToCSV_DATA_absTime(const std::string& filename, float A_DATA, float B_DATA, float C_DATA);
-    void appendToCSV_CAN(const std::string& filename, can_frame& c_frame);
-    void appendToCSV_time(const std::string& filename);
-    void appendToCSV_time(const std::string& filename, std::chrono::_V2::system_clock::time_point &__t);
-    void appendToCSV_State(const std::string& filename, string state, string sub_state);
+    std::ostringstream getAbsTime();
+    void appendToCSV(const std::string& filename, bool useAbsTime);
+    void appendToCSV(const std::string& filename, bool useAbsTime, float A_DATA);
+    void appendToCSV(const std::string& filename, bool useAbsTime, float A_DATA, float B_DATA);
+    void appendToCSV(const std::string& filename, bool useAbsTime, float A_DATA, float B_DATA, float C_DATA);
+    void appendToCSV(const std::string& filename, bool useAbsTime, float A_DATA, float B_DATA, float C_DATA, float D_DATA);
+    void appendToCSV(const std::string& filename, bool useAbsTime, can_frame& c_frame);
+    void appendToCSV(const std::string& filename, bool useAbsTime, std::chrono::_V2::system_clock::time_point &__t);
+    void appendToCSV(const std::string& filename, bool useAbsTime, std::vector<double> &__v);
 
     //midi to chord parsing
 
@@ -76,6 +79,7 @@ public:
     void convertMcToC(const std::string& inputFilename, const std::string& outputFilename);
     pair<int, int> assignHandsByPosition(int inst1, int inst2);
     void assignHandsToEvents(const std::string& inputFilename, const std::string& outputFilename);
+    void addGroove(int bpm, const std::string& inputFilename, const std::string& outputFilename);
     void convertToMeasureFile(const std::string& inputFilename, const std::string& outputFilename);
 
     Hand getPreferredHandByDistance(int instCurrent, int prevRightNote, int prevLeftNote, double prevRightHit, double prevLeftHit);

@@ -89,7 +89,6 @@ private:
     void getMotorPos(float c_MotorAngle[]);
     vector<float> makeProfile(float Q1[], float Q2[], vector<float> &Vmax, float acc, float t, float t2);
     vector<float> cal_Vmax(float q1[], float q2[],  float acc, float t2);
-    vector<float> ikfun_final(float pR[], float pL[]);
     void FK(float arr[]);
     void getArr(float arr[]);
 
@@ -105,30 +104,6 @@ private:
     // setXYZ
     float R_xyz[3] = {0.0};
     float L_xyz[3] = {0.0};
-
-    // TestMaxon
-    string curMode;
-    int hitMode = 1;
-    bool isReached = false;
-    float torque = 0;
-    double dt = 0.005; // 0.001로 세팅하면 천천히, TimeCheck를 1ms단위마다 돌게 해야함.
-    tuple <double, int, int, int> params;
-    double hit_time;
-    int repeat;
-    int hitstate;
-    int intensity;
-    float Kp_normal, Kd_normal;
-    float Kp_hit, Kd_hit;
-    double pre_err;
-    int index;
-    double hit_duration;
-    double release_duration;
-
-    float makeWristAngle(float t1, float t2, float t, int state, int intensity, shared_ptr<MaxonMotor> maxonMotor);
-    float makeWristAngle_CST(float t1, float t2, float t, int state, int intensity, bool &hitting, float hittingPos);
-    float makeWristAngle_TC(float t1, float t2, float t, int state, int intensity, shared_ptr<MaxonMotor> maxonMotor);
-    tuple <double, int, int, int> MaxonHitLoop();
-    float getDesiredTorque(float desiredPosition, shared_ptr<MaxonMotor> maxonMotor);
     
     VectorXd IKFixedWaist(VectorXd pR, VectorXd pL, double theta0);
     VectorXd calWaistAngle(VectorXd pR, VectorXd pL);

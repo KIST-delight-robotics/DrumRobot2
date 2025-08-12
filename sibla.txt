@@ -231,7 +231,7 @@
         
                                 newData.position = q[motorMapping[entry.first]];
                                 maxonMotor->commandBuffer.push(newData);
-                                //fun.appendToCSV_DATA("wristAngleData", (float)maxonMotor->nodeId , newData.position, 0);
+                                //fun._DATA("wristAngleData", (float)maxonMotor->nodeId , newData.position, 0);
                             }
                         }
                         if (i >= n)

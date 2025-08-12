@@ -111,7 +111,8 @@
         "cholmodsupport": "cpp",
         "pastixsupport": "cpp",
         "*.main": "cpp",
-        "threadpool": "cpp"
+        "threadpool": "cpp",
+        "polynomials": "cpp"
     },
     "makefile.launchConfigurations": [
         {
