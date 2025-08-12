@@ -92,6 +92,11 @@ public:
         int drum_avg;    // 0~3
         int cymbal_avg;  // 0~3
     };
+    struct VelocityEntry {
+        double time;
+        int instrument;
+        int velocity;
+    };
 
     bool loadSegments(const string& intensityFile, vector<Seg>& segs); 
     bool applyIntensityToScore(const vector<Seg>& segs, const string& scoreIn, const string& scoreOut, bool mapTo357 = true);
