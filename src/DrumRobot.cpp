@@ -1600,29 +1600,29 @@ void DrumRobot::getMagentaSheet(std::string midPath, int recordingIndex)
             pos = trackEnd;
         }
 
-        // //이거 세기 반영 시키는 변수 안하면 원본 그대로 
-        // bool mapTo357 = true;
-        // vector<Seg> segs;
+        //이거 세기 반영 시키는 변수 안하면 원본 그대로 
+        bool mapTo357 = true;
+        vector<Seg> segs;
 
-        // fun.roundDurationsToStep(outputPath1, outputPath2); 
-        // fun.convertMcToC(outputPath2, outputPath3);
-        // fun.assignHandsToEvents(outputPath3, outputPath4);
+        fun.roundDurationsToStep(outputPath1, outputPath2); 
+        fun.convertMcToC(outputPath2, outputPath3);
+        fun.assignHandsToEvents(outputPath3, outputPath4);
 
-        // //velocityFile 세기 파일 outputFile 우리가 쓸 아웃풋 파일
-        // fun.analyzeVelocityWithLowPassFilter(velocityFile, outputFile, bpm);
+        //velocityFile 세기 파일 outputFile 우리가 쓸 아웃풋 파일
+        fun.analyzeVelocityWithLowPassFilter(velocityFile, outputFile, bpm);
 
-        // //위에서 만든 아웃풋 파일 넣어주기 그럼 segs 에 필터씌운 정보 저장댐
-        // fun.loadSegments(outputFile, segs);
+        //위에서 만든 아웃풋 파일 넣어주기 그럼 segs 에 필터씌운 정보 저장댐
+        fun.loadSegments(outputFile, segs);
 
 
-        // //수정전 악보 scoreIn 최종 출력 파일 scoreOut
-        // fun.applyIntensityToScore(segs, scoreIn, scoreOut, mapTo357);
+        //수정전 악보 scoreIn 최종 출력 파일 scoreOut
+        fun.applyIntensityToScore(segs, scoreIn, scoreOut, mapTo357);
 
-        // //그루브 추가 
-        // fun.addGroove(bpm, outputPath4, outputPath5);
+        //그루브 추가 
+        fun.addGroove(bpm, outputPath4, outputPath5);
 
-        // // 
-        // fun.convertToMeasureFile(outputPath5, outputPath6);
+        // 
+        fun.convertToMeasureFile(outputPath5, outputPath6);
 
         file_found = false;
         // if(filesystem::exists(midPath))
