@@ -872,7 +872,7 @@ void DrumRobot::musicMachine()
                             int ret = std::system(pythonCmd.c_str());  // 비동기 실행 (백그라운드 &)
                         }
                         
-                        std::string midiPath = "/home/shy/DrumRobot/DrumSound/output_" + std::to_string(currentIterations - 1) + ".mid";
+                        std::string midiPath = "/home/shy/DrumRobot/DrumSound/output_" + std::to_string(currentIterations - 1) + ".mid";        //ouuput_0.mid --> output_00.mid
 
                         // 해당 MIDI 파일이 생성될 때까지 대기
                         while (!std::filesystem::exists(midiPath)) {
