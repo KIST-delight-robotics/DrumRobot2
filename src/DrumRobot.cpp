@@ -865,15 +865,18 @@ void DrumRobot::runPythonInThread()
                             std::cerr << "Python script failed to execute with code " << ret << std::endl;
                         }
                     }
-                    
-                    std::string midiPath = "/home/shy/DrumRobot/DrumSound/output_" + std::to_string(currentIterations - 1) + ".mid";
 
-                    // 해당 MIDI 파일이 생성될 때까지 대기
-                    while (!std::filesystem::exists(midiPath)) {
-                        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+                    for (int i = 0; i < 2; i++)
+                    {
+                        std::string midiPath = "/home/shy/DrumRobot/DrumSound/output_" + std::to_string(currentIterations - 1) + std::to_string(i) + ".mid";
+
+                        // 해당 MIDI 파일이 생성될 때까지 대기
+                        while (!std::filesystem::exists(midiPath)) {
+                            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+                        }
+                        
+                        getMagentaSheet(midiPath, i);  // 파이썬이 끝나지 않아도 즉시 실행
                     }
-                    
-                    getMagentaSheet(midiPath);  // 파이썬이 끝나지 않아도 즉시 실행
                 }
             }
             else
@@ -1534,7 +1537,7 @@ void DrumRobot::runPythonForMagenta()
     }
 }
 
-void DrumRobot::getMagentaSheet(std::string midPath)
+void DrumRobot::getMagentaSheet(std::string midPath, int recordingIndex)
 {
     // filesystem::path midPath;
 
