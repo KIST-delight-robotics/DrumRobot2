@@ -76,6 +76,7 @@ public:
     void sendLoopForThread();
     void recvLoopForThread();
     void musicMachine();
+    void runPythonInThread();
 
     // init
     void initializeDrumRobot();

@@ -59,15 +59,16 @@ int main(int argc, char *argv[])
     std::thread sendThread(&DrumRobot::sendLoopForThread, &drumRobot);
     std::thread receiveThread(&DrumRobot::recvLoopForThread, &drumRobot);
     std::thread musicThread(&DrumRobot::musicMachine, &drumRobot);
+    std::thread pythonThread(&DrumRobot::runPythonInThread, &drumRobot);
     //std::thread guiThread(&GuiManager::guiThread, &guiManager);
     
     // Threads Priority Settings
-    if (!setThreadPriority(sendThread, 4))
+    if (!setThreadPriority(sendThread, 5))
     {
         std::cerr << "Error setting priority for sendCanFrame" << std::endl;
         return -1;
     }
-    if (!setThreadPriority(receiveThread, 2))
+    if (!setThreadPriority(receiveThread, 4))
     {
         std::cerr << "Error setting priority for receiveCanFrame" << std::endl;
         return -1;
@@ -77,12 +78,17 @@ int main(int argc, char *argv[])
         std::cerr << "Error setting priority for stateMachine" << std::endl;
         return -1;
     }
-    if (!setThreadPriority(musicThread, 1))
+    if (!setThreadPriority(musicThread, 2))
     {
         std::cerr << "Error setting priority for watchThread" << std::endl;
         return -1;
     }
-    //if (!setThreadPriority(guiThread, 4))
+    if (!setThreadPriority(pythonThread, 1))
+    {
+        std::cerr << "Error setting priority for watchThread" << std::endl;
+        return -1;
+    }
+    //if (!setThreadPriority(guiThread, 1))
     //{
     //    std::cerr << "Error setting priority for stateMachine" << std::endl;
     //    return -1;
@@ -93,5 +99,6 @@ int main(int argc, char *argv[])
     sendThread.join();
     receiveThread.join();
     musicThread.join();
+    pythonThread.join();
     //guiThread.join();
 }
