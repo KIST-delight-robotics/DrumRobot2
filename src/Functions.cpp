@@ -1461,7 +1461,7 @@ void Functions::analyzeVelocityWithLowPassFilter(const std::string& velocityFile
 }
 
 // 박자 단위 분할 및 마디 번호 부여 함수
-void Functions::convertToMeasureFile(const std::string& inputFilename, const std::string& outputFilename) {
+void Functions::convertToMeasureFile(const std::string& inputFilename, const std::string& outputFilename, bool endFlag) {
     struct DrumEvent {
         double time;
         int rightInstrument;
@@ -1529,8 +1529,11 @@ void Functions::convertToMeasureFile(const std::string& inputFilename, const std
                << ev.hihatOpen << "\n";
     }
 
-    output << measureNum+1 << "\t 0.600\t 0\t 0\t 0\t 0\t 0\t 0\n";
-    output << "-1" << "\t 0.600\t 1\t 1\t 1\t 1\t 1\t 1\n";
+    if (endFlag)
+    {
+        output << measureNum+1 << "\t 0.600\t 0\t 0\t 0\t 0\t 0\t 0\n";
+        output << "-1" << "\t 0.600\t 1\t 1\t 1\t 1\t 1\t 1\n";
+    }
 }
 
 
@@ -1560,7 +1563,7 @@ void Functions::save_to_csv(const std::string& outputCsvPath, double &note_on_ti
 }
 
 // 폴더 내부 파일 지우는 함수
-void clear_directory(const fs::path& dir_path) 
+void Functions::clear_directory(const std::filesystem::path& dir_path) 
 {
     namespace fs = std::filesystem;
 

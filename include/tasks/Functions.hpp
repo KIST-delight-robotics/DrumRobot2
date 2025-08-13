@@ -82,7 +82,7 @@ public:
     pair<int, int> assignHandsByPosition(int inst1, int inst2);
     void assignHandsToEvents(const std::string& inputFilename, const std::string& outputFilename);
     void addGroove(int bpm, const std::string& inputFilename, const std::string& outputFilename);
-    void convertToMeasureFile(const std::string& inputFilename, const std::string& outputFilename);
+    void convertToMeasureFile(const std::string& inputFilename, const std::string& outputFilename, bool endFlag);
 
     Hand getPreferredHandByDistance(int instCurrent, int prevRightNote, int prevLeftNote, double prevRightHit, double prevLeftHit);
     void save_to_csv(const std::string& outputCsvPath, double& note_on_time, int drumNote);
@@ -101,6 +101,8 @@ public:
     bool loadSegments(const string& intensityFile, vector<Functions::Seg>& segs); 
     bool applyIntensityToScore(const vector<Functions::Seg>& segs, const string& scoreIn, const string& scoreOut, bool mapTo357);
     void analyzeVelocityWithLowPassFilter(const std::string& velocityFile, const std::string& outputFile, double bpm);
+
+    void clear_directory(const std::filesystem::path& dir_path);
     
 private:
     std::map<std::string, std::shared_ptr<GenericMotor>> &motors;   // data 기록하기 위해 필요

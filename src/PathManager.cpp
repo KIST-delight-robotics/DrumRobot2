@@ -2272,10 +2272,10 @@ std::pair<double, vector<double>> PathManager::getWaistAngleT2(std::vector<Waist
             }
         }
 
-        // 허리 범위 확인
         avg_a = a.sum()/3.0;
         waistAngleT3 = avg_a*(timeVector(3)-timeVector(2)) + waistAngleT2;
 
+        // 허리 범위 확인
         q0Min = waistParams[2].min_q0;
         q0Max = waistParams[2].max_q0;
         if (waistAngleT3 <= q0Min || waistAngleT3 >= q0Max)

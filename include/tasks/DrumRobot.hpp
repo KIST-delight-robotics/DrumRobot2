@@ -181,6 +181,6 @@ private:
     //////////////////////////////////////////////////////////////// python (magenta)
 
     void runPythonForMagenta();         // 기존 파이썬 코드 실행 후 악보 생성
-    void getMagentaSheet(std::string midiPath, int recordingIndex);    // 파이썬 코드 실행 x 악보만 생성
+    void getMagentaSheet(std::string midPath, std::string veloPath ,int recordingIndex);    // 파이썬 코드 실행 x 악보만 생성
 
 };
