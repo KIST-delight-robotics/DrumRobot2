@@ -1614,7 +1614,7 @@ void DrumRobot::getMagentaSheet(std::string midPath, int recordingIndex)
 
         //이거 세기 반영 시키는 변수 안하면 원본 그대로 
         bool mapTo357 = true;
-        vector<Seg> segs;
+        vector<Functions::Seg> segs;
 
         fun.roundDurationsToStep(outputPath1, outputPath2); 
         fun.convertMcToC(outputPath2, outputPath3);
