@@ -838,7 +838,7 @@ void DrumRobot::runPythonInThread()
                         std::cerr << "Python script failed to execute with code " << ret << std::endl;
                     }
 
-                    getMagentaSheet("/home/shy/DrumRobot/DrumSound/output.mid", 0);
+                    getMagentaSheet("/home/shy/DrumRobot/DrumSound/output.mid", "null", 0);
                 }
                 else
                 {
@@ -868,7 +868,7 @@ void DrumRobot::runPythonInThread()
                         for (int j = 0; j < 2; j++)
                         {
                             std::string midiPath = "/home/shy/DrumRobot/DrumSound/record_output/output_" + std::to_string(i) + std::to_string(j) + ".mid";
-                            std::string veloPath = "/home/shy/DrumRobot/DrumSound/record_velocity/drum_events_" + std::to_string(i) + std::to_string(j) + ".mid";
+                            std::string veloPath = "/home/shy/DrumRobot/DrumSound/record_velocity/drum_events_" + std::to_string(i) + std::to_string(j) + ".csv";
 
                             // 해당 MIDI 파일이 생성될 때까지 대기
                             while (!std::filesystem::exists(midiPath)) {
@@ -884,9 +884,9 @@ void DrumRobot::runPythonInThread()
                     std::string inputdir = "/home/shy/DrumRobot/DrumSound/record_input";
                     std::string outputdir = "/home/shy/DrumRobot/DrumSound/record_output";
 
-                    clear_directory(velodir);
-                    clear_directory(inputdir);
-                    clear_directory(outputdir);
+                    fun.clear_directory(velodir);
+                    fun.clear_directory(inputdir);
+                    fun.clear_directory(outputdir);
                 }
             }
             else
@@ -1100,10 +1100,10 @@ std::string DrumRobot::selectPlayMode()
     ////////////////////////////////////////////
     // 악보, bpm, 연주모드 입력받기
 
-    std::cout << "\nEnter Music Code Name (Magenta : output5_final): ";
+    std::cout << "\nEnter Music Code Name (Magenta : output7_final): ";
     std::cin >> txtFileName;
 
-    if (txtFileName == "output5_final") // 마젠타 사용 시 최종 출력 파일 이름
+    if (txtFileName == "output7_final") // 마젠타 사용 시 최종 출력 파일 이름
     {
         // txtPath = magentaPath + txtFileName + ".txt";
         txtPath = magentaPath + txtFileName;
@@ -1349,7 +1349,7 @@ void DrumRobot::sendPlayProcess()
     else
     {
         currentIterations++;
-        txtPath = magentaPath + "output5_final";
+        txtPath = magentaPath + "output7_final";
 
         txtIndexPath = txtPath + std::to_string(fileIndex) + ".txt";
         while (!std::filesystem::exists(txtIndexPath)) {
@@ -1540,7 +1540,7 @@ void DrumRobot::runPythonForMagenta()
             fun.convertMcToC(outputPath2, outputPath3);
             fun.assignHandsToEvents(outputPath3, outputPath4);
             fun.addGroove(bpm, outputPath4, outputPath5);
-            fun.convertToMeasureFile(outputPath5, outputPath6);
+            fun.convertToMeasureFile(outputPath5, outputPath6, true);
 
             file_found = false;
             // if(filesystem::exists(midPath))
@@ -1563,12 +1563,11 @@ void DrumRobot::getMagentaSheet(std::string midPath, std::string veloPath ,int r
     filesystem::path outputPath5 = "/home/shy/DrumRobot/DrumSound/output5_vel.txt";
     filesystem::path outputPath6 = "/home/shy/DrumRobot/DrumSound/output6_add_groove.txt";
 
-    filesystem::path outputPath7 = "/home/shy/DrumRobot/DrumSound/output7_final.txt";
-
+    filesystem::path outputPath7 = "/home/shy/DrumRobot/DrumSound/output7_final" + std::to_string(recordingIndex) + ".txt";
 
     //루프돌때마다 이름 바꿔줘야함
-    filesystem::path velocityFile = veloPath //"/home/shy/DrumRobot/DrumSound/record_velocity/drum_events_00.txt";
-    filesystem::path outputVel = "/home/shy/DrumRobot/DrumSound/vel_output.txt";
+    filesystem::path velocityFile = veloPath; //"/home/shy/DrumRobot/DrumSound/record_velocity/drum_events_00.txt";
+    std::string outputVel = "/home/shy/DrumRobot/DrumSound/vel_output.txt";
 
     // midPath = "/home/shy/DrumRobot/DrumSound/output_0.mid";
 
@@ -1630,35 +1629,59 @@ void DrumRobot::getMagentaSheet(std::string midPath, std::string veloPath ,int r
         fun.convertMcToC(outputPath2, outputPath3);
         fun.assignHandsToEvents(outputPath3, outputPath4);
 
-        //velocityFile 세기 파일 outputFile 우리가 쓸 아웃풋 파일
-        fun.analyzeVelocityWithLowPassFilter(velocityFile, outputVel, bpm);
+        if (veloPath != "null")
+        {
+            //velocityFile 세기 파일 outputFile 우리가 쓸 아웃풋 파일
+            fun.analyzeVelocityWithLowPassFilter(velocityFile, outputVel, bpm);
 
-        //위에서 만든 아웃풋 파일 넣어주기 그럼 segs 에 필터씌운 정보 저장댐
-        fun.loadSegments(outputVel, segs);
+            //위에서 만든 아웃풋 파일 넣어주기 그럼 segs 에 필터씌운 정보 저장댐
+            fun.loadSegments(outputVel, segs);
 
-        //수정전 악보 scoreIn 최종 출력 파일 scoreOut
-        fun.applyIntensityToScore(segs, outputPath4, outputPath5, mapTo357);
+            //수정전 악보 scoreIn 최종 출력 파일 scoreOut
+            fun.applyIntensityToScore(segs, outputPath4, outputPath5, mapTo357);
 
-        //그루브 추가 
-        fun.addGroove(bpm, outputPath5, outputPath6);
+            //그루브 추가 
+            fun.addGroove(bpm, outputPath5, outputPath6);
 
-        fun.convertToMeasureFile(outputPath6, outputPath7);
+            bool endFlag = false;
+            if (recordingIndex == 1)    // 녹음 2번해야 끝
+            {
+                endFlag = true;
+            }
+            
+            fun.convertToMeasureFile(outputPath6, outputPath7, endFlag);
 
-        file_found = false;
-        // if(filesystem::exists(midPath))
-        // {
-        //     filesystem::remove(midPath);
-        // }
+            file_found = false;
+            // if(filesystem::exists(midPath))
+            // {
+            //     filesystem::remove(midPath);
+            // }
 
-        std::remove(outputPath1.c_str());      // 중간 단계 txt 파일 삭제
-        std::remove(outputPath2.c_str());
-        std::remove(outputPath3.c_str());
-        std::remove(outputPath4.c_str());
+            std::remove(outputPath1.c_str());      // 중간 단계 txt 파일 삭제
+            std::remove(outputPath2.c_str());
+            std::remove(outputPath3.c_str());
+            std::remove(outputPath4.c_str());
 
-        std::remove(outputPath5.c_str());
-        std::remove(outputPath6.c_str());
-        std::remove(outputVel.c_str());
-        
+            std::remove(outputPath5.c_str());
+            std::remove(outputPath6.c_str());
+            std::remove(outputVel.c_str());
+        }
+        else
+        {
+            bool endFlag = true;
+            fun.convertToMeasureFile(outputPath4, outputPath7, endFlag);
+
+            file_found = false;
+            // if(filesystem::exists(midPath))
+            // {
+            //     filesystem::remove(midPath);
+            // }
+
+            std::remove(outputPath1.c_str());      // 중간 단계 txt 파일 삭제
+            std::remove(outputPath2.c_str());
+            std::remove(outputPath3.c_str());
+            std::remove(outputPath4.c_str());
+        }
     }
 }
 
