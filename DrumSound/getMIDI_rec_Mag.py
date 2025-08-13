@@ -58,7 +58,9 @@ def set_tempo_in_sequence(sequence, bpm):
 
 # 경로 설정 - 현재 스크립트 기준 base 디렉토리
 base_dir = os.path.dirname(os.path.abspath(__file__))
-#sync_dir = os.path.join(base_dir, "..", "include", "sync")
+velo_dir = os.path.join(base_dir, "record_velocity")
+input_dir = os.path.join(base_dir, "record_input")
+output_dir = os.path.join(base_dir, "record_output")
 sync_dir = os.path.abspath(os.path.join(base_dir, "..", "include", "sync"))
 os.makedirs(sync_dir, exist_ok=True)
 sync_file = os.path.join(sync_dir, "sync.txt")
@@ -76,8 +78,8 @@ def generate_with_magenta(session_idx, rec_number, generate_duration):
     generator.initialize()
 
     # 입출력 파일 경로
-    input_path  = os.path.join(base_dir, f"input_{session_idx}{rec_number-1}.mid")
-    output_path = os.path.join(base_dir, f"output_{session_idx}{rec_number-1}.mid")
+    input_path  = os.path.join(input_dir, f"input_{session_idx}{rec_number-1}.mid")
+    output_path = os.path.join(output_dir, f"output_{session_idx}{rec_number-1}.mid")
 
     # NoteSequence 로딩
     primer_sequence = midi_file_to_sequence_proto(input_path)
@@ -206,7 +208,7 @@ def record_session(inport, session_idx, rec_duration, rec_number):
     # C++에서 파일의 끝을 알기 위한 마커 추가
     events.append([-1, 0, 0])
     
-    csv_out = os.path.join(base_dir, f"drum_events_{session_idx}{rec_number-1}.csv")
+    csv_out = os.path.join(velo_dir, f"drum_events_{session_idx}{rec_number-1}.csv")
     with open(csv_out, "w", newline='') as f:
         csv.writer(f, delimiter='\t').writerows(events)
     print(f"💾 CSV 저장: {csv_out} 💾")
@@ -235,7 +237,7 @@ def record_session(inport, session_idx, rec_duration, rec_number):
             ticks = mido.second2tick(delta_time, ticks_per_beat, tempo_us_per_beat)
             track.append(msg.copy(time=max(0, int(round(ticks)))))
 
-    midi_out = os.path.join(base_dir, f"input_{session_idx}{rec_number-1}.mid")
+    midi_out = os.path.join(input_dir, f"input_{session_idx}{rec_number-1}.mid")
     mid.save(midi_out)
     print(f"💾 MIDI 저장: {midi_out}")
 
