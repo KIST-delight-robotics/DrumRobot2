@@ -867,16 +867,26 @@ void DrumRobot::runPythonInThread()
                     {
                         for (int j = 0; j < 2; j++)
                         {
-                            std::string midiPath = "/home/shy/DrumRobot/DrumSound/output_" + std::to_string(i) + std::to_string(j) + ".mid";
+                            std::string midiPath = "/home/shy/DrumRobot/DrumSound/record_output/output_" + std::to_string(i) + std::to_string(j) + ".mid";
+                            std::string veloPath = "/home/shy/DrumRobot/DrumSound/record_velocity/drum_events_" + std::to_string(i) + std::to_string(j) + ".mid";
 
                             // 해당 MIDI 파일이 생성될 때까지 대기
                             while (!std::filesystem::exists(midiPath)) {
                                 std::this_thread::sleep_for(std::chrono::milliseconds(100));
                             }
                             
-                            getMagentaSheet(midiPath, j);  // 파이썬이 끝나지 않아도 즉시 실행
+                            getMagentaSheet(midiPath, veloPath, j);  // 파이썬이 끝나지 않아도 즉시 실행
                         }
                     }
+
+                    // getMIDI_rec_Mag.py의 출력이 담긴 폴더 주소. getMagnetaSheet 후에 파일 지우기 위함.
+                    std::string velodir = "/home/shy/DrumRobot/DrumSound/record_velocity";
+                    std::string inputdir = "/home/shy/DrumRobot/DrumSound/record_input";
+                    std::string outputdir = "/home/shy/DrumRobot/DrumSound/record_output";
+
+                    clear_directory(velodir);
+                    clear_directory(inputdir);
+                    clear_directory(outputdir);
                 }
             }
             else
@@ -1541,7 +1551,7 @@ void DrumRobot::runPythonForMagenta()
     }
 }
 
-void DrumRobot::getMagentaSheet(std::string midPath, int recordingIndex)
+void DrumRobot::getMagentaSheet(std::string midPath, std::string veloPath ,int recordingIndex)
 {
     // filesystem::path midPath;
 
@@ -1557,7 +1567,7 @@ void DrumRobot::getMagentaSheet(std::string midPath, int recordingIndex)
 
 
     //루프돌때마다 이름 바꿔줘야함
-    filesystem::path velocityFile = "/home/shy/DrumRobot/DrumSound/record_velocity/drum_events_00.txt";
+    filesystem::path velocityFile = veloPath //"/home/shy/DrumRobot/DrumSound/record_velocity/drum_events_00.txt";
     filesystem::path outputVel = "/home/shy/DrumRobot/DrumSound/vel_output.txt";
 
     // midPath = "/home/shy/DrumRobot/DrumSound/output_0.mid";
@@ -1626,13 +1636,11 @@ void DrumRobot::getMagentaSheet(std::string midPath, int recordingIndex)
         //위에서 만든 아웃풋 파일 넣어주기 그럼 segs 에 필터씌운 정보 저장댐
         fun.loadSegments(outputVel, segs);
 
-
         //수정전 악보 scoreIn 최종 출력 파일 scoreOut
         fun.applyIntensityToScore(segs, outputPath4, outputPath5, mapTo357);
 
         //그루브 추가 
         fun.addGroove(bpm, outputPath5, outputPath6);
-
 
         fun.convertToMeasureFile(outputPath6, outputPath7);
 
@@ -1646,6 +1654,11 @@ void DrumRobot::getMagentaSheet(std::string midPath, int recordingIndex)
         std::remove(outputPath2.c_str());
         std::remove(outputPath3.c_str());
         std::remove(outputPath4.c_str());
+
+        std::remove(outputPath5.c_str());
+        std::remove(outputPath6.c_str());
+        std::remove(outputVel.c_str());
+        
     }
 }
 

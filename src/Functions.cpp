@@ -1373,9 +1373,7 @@ bool Functions::applyIntensityToScore(const vector<Functions::Seg>& segs, const 
 }
 
 //세기 처리해서 파싱하는거 
-void Functions::analyzeVelocityWithLowPassFilter(const std::string& velocityFile,
-    const std::string& outputFile,
-    double bpm)
+void Functions::analyzeVelocityWithLowPassFilter(const std::string& velocityFile, const std::string& outputFile, double bpm)
 {
     double windowSize = (60/bpm)*4;
 
@@ -1559,4 +1557,25 @@ void Functions::save_to_csv(const std::string& outputCsvPath, double &note_on_ti
     file << note_on_time << "\t " << mappedDrumNote << "\n";
     file.close();
     note_on_time = 0;
+}
+
+// 폴더 내부 파일 지우는 함수
+void clear_directory(const fs::path& dir_path) 
+{
+    namespace fs = std::filesystem;
+
+    // 1. 해당 경로가 존재하는지, 그리고 디렉토리가 맞는지 확인합니다.
+    if (!fs::exists(dir_path) || !fs::is_directory(dir_path)) {
+        std::cerr << "오류: '" << dir_path << "' 경로가 존재하지 않거나 디렉토리가 아닙니다." << std::endl;
+        return;
+    }
+
+    // 2. 디렉토리 내부를 순회하면서 각 항목을 삭제합니다.
+    for (const auto& entry : fs::directory_iterator(dir_path)) {
+        try {
+            fs::remove(entry.path());
+        } catch (const fs::filesystem_error& e) {
+            std::cerr << "오류: " << entry.path() << " 삭제 실패. " << e.what() << std::endl;
+        }
+    }
 }
