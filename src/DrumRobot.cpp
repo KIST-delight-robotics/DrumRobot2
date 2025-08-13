@@ -1551,7 +1551,7 @@ void DrumRobot::runPythonForMagenta()
     }
 }
 
-void DrumRobot::getMagentaSheet(std::string midPath, std::string veloPath ,int recordingIndex)
+void DrumRobot::getMagentaSheet(std::string midPath, std::string veloPath, int recordingIndex)
 {
     // filesystem::path midPath;
 
