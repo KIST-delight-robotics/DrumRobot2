@@ -1549,6 +1549,7 @@ void DrumRobot::getMagentaSheet(std::string midPath, int recordingIndex)
     filesystem::path outputPath4 = "/home/shy/DrumRobot/DrumSound/output4_hand_assign.csv";
     filesystem::path outputPath5 = "/home/shy/DrumRobot/DrumSound/output5_add_groove.txt";
     filesystem::path outputPath6 = "/home/shy/DrumRobot/DrumSound/output6_final.txt";
+    // filesystem::path outputPath5 = "/home/shy/DrumRobot/DrumSound/output5_final" + std::to_string(recordingIndex) + ".txt";
 
     while(!file_found) // ready 상태인지도 확인해주기
     {
@@ -1602,7 +1603,7 @@ void DrumRobot::getMagentaSheet(std::string midPath, int recordingIndex)
 
         //이거 세기 반영 시키는 변수 안하면 원본 그대로 
         bool mapTo357 = true;
-        vector<Seg> segs;
+        vector<Functions::Seg> segs;
 
         fun.roundDurationsToStep(outputPath1, outputPath2); 
         fun.convertMcToC(outputPath2, outputPath3);
@@ -1621,8 +1622,9 @@ void DrumRobot::getMagentaSheet(std::string midPath, int recordingIndex)
         //그루브 추가 
         fun.addGroove(bpm, outputPath4, outputPath5);
 
-        // 
         fun.convertToMeasureFile(outputPath5, outputPath6);
+
+        // fun.convertToMeasureFile(outputPath4, outputPath5);
 
         file_found = false;
         // if(filesystem::exists(midPath))
