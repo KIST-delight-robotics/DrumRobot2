@@ -1,5 +1,6 @@
 #pragma once
 
+#include <bits/stdc++.h>
 #include <iostream>
 #include <unistd.h>
 #include <string.h>
@@ -10,6 +11,7 @@
 #include <memory>
 #include <iomanip>
 #include <sstream>
+#include <algorithm>
 
 #include "Motor.hpp"
 
@@ -96,9 +98,9 @@ public:
         int velocity;
     };
 
-    bool loadSegments(const string& intensityFile, vector<Seg>& segs); 
-    bool applyIntensityToScore(const vector<Seg>& segs, const string& scoreIn, const string& scoreOut, bool mapTo357 = true);
-    void analyzeVelocityWithLowPassFilter(const std::string& velocityFile, const std::string& outputFile, double windowSize = 1.0);
+    bool loadSegments(const string& intensityFile, vector<Functions::Seg>& segs); 
+    bool applyIntensityToScore(const vector<Functions::Seg>& segs, const string& scoreIn, const string& scoreOut, bool mapTo357);
+    void analyzeVelocityWithLowPassFilter(const std::string& velocityFile, const std::string& outputFile, double bpm);
     
 private:
     std::map<std::string, std::shared_ptr<GenericMotor>> &motors;   // data 기록하기 위해 필요
