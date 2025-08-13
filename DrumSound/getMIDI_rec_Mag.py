@@ -58,9 +58,16 @@ def set_tempo_in_sequence(sequence, bpm):
 
 # 경로 설정 - 현재 스크립트 기준 base 디렉토리
 base_dir = os.path.dirname(os.path.abspath(__file__))
+
 velo_dir = os.path.join(base_dir, "record_velocity")
+os.makedirs(velo_dir, exist_ok=True)
+
 input_dir = os.path.join(base_dir, "record_input")
+os.makedirs(input_dir, exist_ok=True)
+
 output_dir = os.path.join(base_dir, "record_output")
+os.makedirs(output_dir, exist_ok=True)
+
 sync_dir = os.path.abspath(os.path.join(base_dir, "..", "include", "sync"))
 os.makedirs(sync_dir, exist_ok=True)
 sync_file = os.path.join(sync_dir, "sync.txt")
