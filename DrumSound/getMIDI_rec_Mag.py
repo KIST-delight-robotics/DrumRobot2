@@ -64,7 +64,7 @@ os.makedirs(sync_dir, exist_ok=True)
 sync_file = os.path.join(sync_dir, "sync.txt")
 
 def generate_with_magenta(session_idx, rec_number, generate_duration):
-    print(f"🔄 [Magenta] Session {session_idx}-{rec_number-1} 생성 시작 (분량 : {generate_duration}s)")
+    print(f"🔄 [Magenta] Session {session_idx}-{rec_number-1} 생성 시작 (분량 : {generate_duration}s) 🔄")
     #c_t = datetime.datetime.now().strftime("%H:%M:%S.%f")[:-3] #마젠타 사용 시간 첫 로딩 시 0.23초 이후 사용시 0.18초
     #print(f"   ⭐⭐⭐마젠타 시작 시간 : {c_t}⭐⭐⭐   ")
 
@@ -98,7 +98,7 @@ def generate_with_magenta(session_idx, rec_number, generate_duration):
     generated_only = extract_subsequence(generated_full, start_gen, end_gen)
     set_tempo_in_sequence(generated_only, bpm=musicBPM)
     sequence_proto_to_midi_file(generated_only, output_path)
-    print(f"✅ [Magenta] Session {session_idx}-{rec_number-1} 완료: {output_path}")
+    print(f"⭐ [Magenta] Session {session_idx}-{rec_number-1} 완료: {output_path} ⭐")
     
     #c_t = datetime.datetime.now().strftime("%H:%M:%S.%f")[:-3]
     #print(f"   ⭐⭐⭐마젠타 종료 시간 : {c_t}⭐⭐⭐   ")
@@ -143,18 +143,19 @@ def record_session(inport, session_idx, rec_duration, rec_number):
     if is_first_recording:
         print("   (시작 신호가 될 첫 타격을 기다리는 중...)")
 
-    ts = function_start_time if not is_first_recording and rec_number == 1 else None
+    # < 2번 세션에서 타격 없이도 sync 생성>
+    # ts = function_start_time if not is_first_recording and rec_number == 1 else None
 
-    if ts is not None:
-        formatted_time = datetime.datetime.fromtimestamp(ts).strftime("%H:%M:%S.%f")[:-3]
-        with open(sync_file, "w") as f: f.write(formatted_time)
-        print(f"▶️ sync.txt 생성 ({formatted_time})")
+    # if ts is not None:
+    #     formatted_time = datetime.datetime.fromtimestamp(ts).strftime("%H:%M:%S.%f")[:-3]
+    #     with open(sync_file, "w") as f: f.write(formatted_time)
+    #     print(f"▶️ sync.txt 생성 ({formatted_time})")
 
     # --- 녹음 루프 ---
     while True:
         # 4. 녹음 종료 조건
         if recording_end_time is not None and time.time() >= recording_end_time:
-            print(f"🛑 Session {session_idx}-{rec_number-1} 녹음 종료")
+            print(f"🛑 Session {session_idx}-{rec_number-1} 녹음 종료 🛑")
             break
         
         # 첫 타격 대기 타임아웃 (60초)
@@ -166,13 +167,14 @@ def record_session(inport, session_idx, rec_duration, rec_number):
             now = time.time()
             if is_saveable_message(msg) and msg.type == 'note_on' and msg.velocity > 0:
                 # 5. 프로그램 전체의 첫 sync 타격(시작 신호)을 처리하는 로직
-                if not is_drum1_start_note_detected:       
+                if not is_drum1_start_note_detected:
                     ts = datetime.datetime.now().strftime("%H:%M:%S.%f")[:-3]
                     with open(sync_file, "w") as f: f.write(ts)
-                    print(f"▶️ 첫 노트 감지 및 sync.txt 생성 ({ts}). 2초 후 녹음을 시작합니다.")            
+                    print(f"▶️ 첫 노트 감지 및 sync.txt 생성 ({ts}).")
                     is_drum1_start_note_detected = True
-
+                    
                     if not is_twosec_waiting:
+                        print(f"2초 후 녹음을 시작합니다.")
                         flush_for_nsec(inport, duration_sec=2.0)
                         is_twosec_waiting = True
                     
@@ -182,7 +184,8 @@ def record_session(inport, session_idx, rec_duration, rec_number):
                     recording_end_time = recording_start_time + rec_duration
                     
                     # 시작 신호 노트는 저장하지 않고 건너뜁니다.
-                    continue
+                    if session_idx == 0:
+                        continue
 
                 # --- 저장 로직 ---
                 # 모든 녹음은 각자의 recording_start_time을 기준으로 경과 시간을 계산합니다.
@@ -195,7 +198,10 @@ def record_session(inport, session_idx, rec_duration, rec_number):
                 print(f"✅ 저장됨: {msg.copy(time=elapsed)}")
                 
         time.sleep(0.001)
-    
+
+    if rec_number == 2:
+        is_drum1_start_note_detected = False
+
     # --- 파일 저장 (루프 밖) ---
     # C++에서 파일의 끝을 알기 위한 마커 추가
     events.append([-1, 0, 0])
@@ -203,7 +209,7 @@ def record_session(inport, session_idx, rec_duration, rec_number):
     csv_out = os.path.join(base_dir, f"drum_events_{session_idx}{rec_number-1}.csv")
     with open(csv_out, "w", newline='') as f:
         csv.writer(f, delimiter='\t').writerows(events)
-    print(f"💾 CSV 저장: {csv_out}")
+    print(f"💾 CSV 저장: {csv_out} 💾")
 
     mid = MidiFile(ticks_per_beat=ticks_per_beat)
     track = MidiTrack(); mid.tracks.append(track)
@@ -264,7 +270,7 @@ with mido.open_input(port_name) as inport:
             for i in (3, 2, 1):
                 print(f"{i}...")
                 time.sleep(1)
-            print("---------- 첫 타격을 기다립니다 ----------")
+            print("------------- 첫 타격을 기다립니다 -------------")
 
         half_rec = total_record / 2.0
 
@@ -286,11 +292,11 @@ with mido.open_input(port_name) as inport:
         t1.join()
         t2.join()
 
-        print(f"✅✅ Session {session_idx} 모든 작업 완료\n")
+        print("=" *20 + f"Session {session_idx} 모든 작업 완료" + "=" * 20 + "\n")
 
         # ✅ 세션 간 고정 대기: 다음 세션 시작 전 9.6초 휴지
         if session_idx < num_sessions - 1:
             print(f"⏸ 다음 세션까지 {delay_time}s 대기합니다...")
             flush_for_nsec(inport, delay_time)
 
-print("\n🎉 모든 세션이 완료되었습니다!")
+print("\n🎉 모든 세션이 완료되었습니다! 🎉")
