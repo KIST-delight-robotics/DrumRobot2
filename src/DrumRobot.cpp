@@ -1543,13 +1543,24 @@ void DrumRobot::runPythonForMagenta()
 
 void DrumRobot::getMagentaSheet(std::string midPath, int recordingIndex)
 {
+    // filesystem::path midPath;
+
     filesystem::path outputPath1 = "/home/shy/DrumRobot/DrumSound/output1_drum_hits_time.csv"; 
     filesystem::path outputPath2 = "/home/shy/DrumRobot/DrumSound/output2_mc.csv";   
     filesystem::path outputPath3 = "/home/shy/DrumRobot/DrumSound/output3_mc2c.csv";    
     filesystem::path outputPath4 = "/home/shy/DrumRobot/DrumSound/output4_hand_assign.csv";
-    filesystem::path outputPath5 = "/home/shy/DrumRobot/DrumSound/output5_add_groove.txt";
-    filesystem::path outputPath6 = "/home/shy/DrumRobot/DrumSound/output6_final.txt";
-    // filesystem::path outputPath5 = "/home/shy/DrumRobot/DrumSound/output5_final" + std::to_string(recordingIndex) + ".txt";
+
+    filesystem::path outputPath5 = "/home/shy/DrumRobot/DrumSound/output5_vel.txt";
+    filesystem::path outputPath6 = "/home/shy/DrumRobot/DrumSound/output6_add_groove.txt";
+
+    filesystem::path outputPath7 = "/home/shy/DrumRobot/DrumSound/output7_final.txt";
+
+
+    //루프돌때마다 이름 바꿔줘야함
+    filesystem::path velocityFile = "/home/shy/DrumRobot/DrumSound/record_velocity/drum_events_00.txt";
+    filesystem::path outputVel = "/home/shy/DrumRobot/DrumSound/vel_output.txt";
+
+    // midPath = "/home/shy/DrumRobot/DrumSound/output_0.mid";
 
     while(!file_found) // ready 상태인지도 확인해주기
     {
@@ -1603,28 +1614,27 @@ void DrumRobot::getMagentaSheet(std::string midPath, int recordingIndex)
 
         //이거 세기 반영 시키는 변수 안하면 원본 그대로 
         bool mapTo357 = true;
-        vector<Functions::Seg> segs;
+        vector<Seg> segs;
 
         fun.roundDurationsToStep(outputPath1, outputPath2); 
         fun.convertMcToC(outputPath2, outputPath3);
         fun.assignHandsToEvents(outputPath3, outputPath4);
 
         //velocityFile 세기 파일 outputFile 우리가 쓸 아웃풋 파일
-        fun.analyzeVelocityWithLowPassFilter(velocityFile, outputFile, bpm);
+        fun.analyzeVelocityWithLowPassFilter(velocityFile, outputVel, bpm);
 
         //위에서 만든 아웃풋 파일 넣어주기 그럼 segs 에 필터씌운 정보 저장댐
-        fun.loadSegments(outputFile, segs);
+        fun.loadSegments(outputVel, segs);
 
 
         //수정전 악보 scoreIn 최종 출력 파일 scoreOut
-        fun.applyIntensityToScore(segs, scoreIn, scoreOut, mapTo357);
+        fun.applyIntensityToScore(segs, outputPath4, outputPath5, mapTo357);
 
         //그루브 추가 
-        fun.addGroove(bpm, outputPath4, outputPath5);
+        fun.addGroove(bpm, outputPath5, outputPath6);
 
-        fun.convertToMeasureFile(outputPath5, outputPath6);
 
-        // fun.convertToMeasureFile(outputPath4, outputPath5);
+        fun.convertToMeasureFile(outputPath6, outputPath7);
 
         file_found = false;
         // if(filesystem::exists(midPath))
