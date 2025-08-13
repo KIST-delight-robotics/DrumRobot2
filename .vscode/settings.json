@@ -112,7 +112,9 @@
         "pastixsupport": "cpp",
         "*.main": "cpp",
         "threadpool": "cpp",
-        "polynomials": "cpp"
+        "polynomials": "cpp",
+        "geometry": "cpp",
+        "levenbergmarquardt": "cpp"
     },
     "makefile.launchConfigurations": [
         {

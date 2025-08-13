@@ -1199,7 +1199,7 @@ void Functions::addGroove(int bpm, const std::string& inputFilename, const std::
 //세기 관련 처리
 
 //악보에 적용시키는거
-bool Functions::loadSegments(const string& intensityFile, vector<Seg>& segs) {
+bool Functions::loadSegments(const string& intensityFile, vector<Functions::Seg>& segs) {
     ifstream fin(intensityFile);
     if (!fin) return false;
 
@@ -1270,10 +1270,7 @@ bool Functions::loadSegments(const string& intensityFile, vector<Seg>& segs) {
 }
 
 
-bool Functions::applyIntensityToScore(const vector<Seg>& segs,
-    const string& scoreIn,
-    const string& scoreOut,
-    bool mapTo357 = true)
+bool Functions::applyIntensityToScore(const vector<Functions::Seg>& segs, const string& scoreIn, const string& scoreOut, bool mapTo357)
 {
     ifstream sin(scoreIn);
     if (!sin) return false;
@@ -1388,7 +1385,7 @@ void Functions::analyzeVelocityWithLowPassFilter(const std::string& velocityFile
         return;
     }
 
-    std::vector<VelocityEntry> rawData;
+    std::vector<Functions::VelocityEntry> rawData;
     double t;
     int inst, vel;
     double maxTime = 0.0;

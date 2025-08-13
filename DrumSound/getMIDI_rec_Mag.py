@@ -56,9 +56,10 @@ def set_tempo_in_sequence(sequence, bpm):
     t = sequence.tempos.add(qpm=bpm)
     t.time = 0.0
 
-# 경로 설정
+# 경로 설정 - 현재 스크립트 기준 base 디렉토리
 base_dir = os.path.dirname(os.path.abspath(__file__))
-sync_dir = os.path.join(base_dir, "..", "include", "sync")
+#sync_dir = os.path.join(base_dir, "..", "include", "sync")
+sync_dir = os.path.abspath(os.path.join(base_dir, "..", "include", "sync"))
 os.makedirs(sync_dir, exist_ok=True)
 sync_file = os.path.join(sync_dir, "sync.txt")
 
