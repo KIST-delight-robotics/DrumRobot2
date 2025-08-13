@@ -31,9 +31,6 @@ if len(rec_seq) % 3 != 0:
 
 num_sessions = len(rec_seq) // 3
 
-# 세션 간 고정 대기 시간(초)
-SESSION_GAP = 9.6
-
 # --- 유틸 함수들 ---
 def is_saveable_message(msg):
     return (
@@ -144,7 +141,14 @@ def record_session(inport, session_idx, rec_duration, rec_number):
     print(f"🎙️ Session {session_idx}-{rec_number-1} 녹음 시작 (길이 {rec_duration}s)...")
     if is_first_recording:
         print("   (시작 신호가 될 첫 타격을 기다리는 중...)")
-    
+
+    ts = function_start_time if not is_first_recording and rec_number == 1 else None
+
+    if ts is not None:
+        formatted_time = datetime.datetime.fromtimestamp(ts).strftime("%H:%M:%S.%f")[:-3]
+        with open(sync_file, "w") as f: f.write(formatted_time)
+        print(f"▶️ sync.txt 생성 ({formatted_time})")
+
     # --- 녹음 루프 ---
     while True:
         # 4. 녹음 종료 조건
@@ -161,12 +165,12 @@ def record_session(inport, session_idx, rec_duration, rec_number):
             now = time.time()
             if is_saveable_message(msg) and msg.type == 'note_on' and msg.velocity > 0:
                 # 5. 프로그램 전체의 첫 sync 타격(시작 신호)을 처리하는 로직
-                if not is_drum1_start_note_detected:
+                if not is_drum1_start_note_detected:       
                     ts = datetime.datetime.now().strftime("%H:%M:%S.%f")[:-3]
                     with open(sync_file, "w") as f: f.write(ts)
-                    print(f"▶️ 첫 노트 감지 ({ts}). 2초 후 녹음을 시작합니다.")
-                    
+                    print(f"▶️ 첫 노트 감지 및 sync.txt 생성 ({ts}). 2초 후 녹음을 시작합니다.")            
                     is_drum1_start_note_detected = True
+
                     if not is_twosec_waiting:
                         flush_for_nsec(inport, duration_sec=2.0)
                         is_twosec_waiting = True
@@ -285,7 +289,7 @@ with mido.open_input(port_name) as inport:
 
         # ✅ 세션 간 고정 대기: 다음 세션 시작 전 9.6초 휴지
         if session_idx < num_sessions - 1:
-            print(f"⏸ 다음 세션까지 {SESSION_GAP}s 대기합니다...")
-            flush_for_nsec(inport, 9.6)
+            print(f"⏸ 다음 세션까지 {delay_time}s 대기합니다...")
+            flush_for_nsec(inport, delay_time)
 
 print("\n🎉 모든 세션이 완료되었습니다!")
