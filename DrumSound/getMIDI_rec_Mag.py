@@ -135,15 +135,13 @@ def record_session(inport, session_idx, rec_duration, rec_number):
 
     # 2. 녹음이 실제로 끝나는 절대 시간을 저장할 변수를 초기화합니다.
     # 첫 녹음이 아니라면, 함수 시작 시간에 녹음 길이를 더해 종료 시간을 미리 계산합니다.
-    #recording_end_time = None
     # if not is_first_recording:
-    #   recording_end_time = recording_start_time + rec_duration
+        # recording_end_time = recording_start_time + rec_duration
     recording_end_time = None
 
     # 3. 경과 시간(elapsed) 계산의 기준이 될 시간을 설정합니다.
     # 첫 녹음이 아니라면 함수 시작 시간으로, 첫 녹음이라면 None으로 시작합니다.
-    #recording_start_time = function_start_time #if not is_first_recording else None
-    recording_start_time = None
+    recording_start_time = function_start_time if not is_first_recording else None
 
     recorded_msgs = []      # MIDI용
     events = []             # velocity제작용
@@ -169,7 +167,7 @@ def record_session(inport, session_idx, rec_duration, rec_number):
 
         for msg in inport.iter_pending():
             if is_saveable_message(msg) and msg.type == 'note_on' and msg.velocity > 0:
-                if not record_start:
+                if not record_start and is_first_recording:
                     recording_start_time = time.time()
                     record_start = True
 
@@ -186,7 +184,6 @@ def record_session(inport, session_idx, rec_duration, rec_number):
                     #     is_twosec_waiting = True
                     
                     # 6. 2초 대기 후, 실제 녹음 시작 시간과 종료 시간을 설정합니다.
-                    #recording_start_time = time.time()
                     print(f"녹음 시작")
 
                 recording_end_time = recording_start_time + rec_duration
@@ -260,8 +257,8 @@ port_index = 1 if len(input_ports) > 1 else 0
 port_name  = input_ports[port_index]
 print(f"✅ MIDI 장치: {port_name}")
 
-is_twosec_waiting = False  # 최초 1회만 2초 무시
-is_sync_made = False  # 첫 타격은 한번만 확인
+# is_twosec_waiting = False
+is_sync_made = False
 
 with mido.open_input(port_name) as inport:
     for session_idx in range(num_sessions):
@@ -305,7 +302,7 @@ with mido.open_input(port_name) as inport:
 
         print("=" *20 + f"Session {session_idx} 모든 작업 완료" + "=" * 20 + "\n")
 
-        # ✅ 세션 간 고정 대기: 다음 세션 시작 전 9.6초 휴지
+        # ✅ 세션 간 대기
         if session_idx < num_sessions - 1:
             print(f"⏸ 다음 세션까지 {delay_time}s 대기합니다...")
             flush_for_nsec(inport, delay_time)
