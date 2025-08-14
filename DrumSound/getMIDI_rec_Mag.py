@@ -125,25 +125,28 @@ def flush_for_nsec(inport, duration_sec):
 
 # --- 녹음 함수 ---
 def record_session(inport, session_idx, rec_duration, rec_number):
-    global is_drum1_start_note_detected
-    global is_twosec_waiting
+    global is_sync_made
+    #global is_twosec_waiting       # 나중에 동시 합주할 때 필요함
 
-    # 1. 함수 시작 시간과 첫 녹음 여부를 확인합니다.
+    # 1. 함수 시작 시간(무한 루프 탈출에 사용)과 첫 녹음 여부와 녹음 시작 여부(elapsed time을 녹음 시작 시간으로부터 계산함)를 확인합니다.
     function_start_time = time.time()
-    is_first_recording = not is_drum1_start_note_detected
+    is_first_recording = not is_sync_made
+    record_start = False
 
     # 2. 녹음이 실제로 끝나는 절대 시간을 저장할 변수를 초기화합니다.
     # 첫 녹음이 아니라면, 함수 시작 시간에 녹음 길이를 더해 종료 시간을 미리 계산합니다.
+    #recording_end_time = None
+    # if not is_first_recording:
+    #   recording_end_time = recording_start_time + rec_duration
     recording_end_time = None
-    if not is_first_recording:
-        recording_end_time = function_start_time + rec_duration
 
     # 3. 경과 시간(elapsed) 계산의 기준이 될 시간을 설정합니다.
     # 첫 녹음이 아니라면 함수 시작 시간으로, 첫 녹음이라면 None으로 시작합니다.
-    recording_start_time = function_start_time if not is_first_recording else None
-    
-    recorded_msgs = []
-    events = []
+    #recording_start_time = function_start_time #if not is_first_recording else None
+    recording_start_time = None
+
+    recorded_msgs = []      # MIDI용
+    events = []             # velocity제작용
 
     ticks_per_beat = 960
     tempo_us_per_beat = mido.bpm2tempo(100)
@@ -152,14 +155,6 @@ def record_session(inport, session_idx, rec_duration, rec_number):
     if is_first_recording:
         print("   (시작 신호가 될 첫 타격을 기다리는 중...)")
 
-    # < 2번 세션에서 타격 없이도 sync 생성>
-    # ts = function_start_time if not is_first_recording and rec_number == 1 else None
-
-    # if ts is not None:
-    #     formatted_time = datetime.datetime.fromtimestamp(ts).strftime("%H:%M:%S.%f")[:-3]
-    #     with open(sync_file, "w") as f: f.write(formatted_time)
-    #     print(f"▶️ sync.txt 생성 ({formatted_time})")
-
     # --- 녹음 루프 ---
     while True:
         # 4. 녹음 종료 조건
@@ -167,34 +162,39 @@ def record_session(inport, session_idx, rec_duration, rec_number):
             print(f"🛑 Session {session_idx}-{rec_number-1} 녹음 종료 🛑")
             break
         
-        # 첫 타격 대기 타임아웃 (60초)
-        if is_first_recording and recording_start_time is None and (time.time() - function_start_time > 60):
+        # 첫 타격 대기 타임아웃 (3분)
+        if (time.time() - function_start_time > 180):
             print("⌛️ 첫 타격 대기 시간 초과.")
             return # 함수를 종료하여 무한 루프 방지
 
         for msg in inport.iter_pending():
-            now = time.time()
             if is_saveable_message(msg) and msg.type == 'note_on' and msg.velocity > 0:
+                if not record_start:
+                    recording_start_time = time.time()
+                    record_start = True
+
                 # 5. 프로그램 전체의 첫 sync 타격(시작 신호)을 처리하는 로직
-                if not is_drum1_start_note_detected:
+                if not is_sync_made:
                     ts = datetime.datetime.now().strftime("%H:%M:%S.%f")[:-3]
                     with open(sync_file, "w") as f: f.write(ts)
                     print(f"▶️ 첫 노트 감지 및 sync.txt 생성 ({ts}).")
-                    is_drum1_start_note_detected = True
+                    is_sync_made = True
                     
-                    if not is_twosec_waiting:
-                        print(f"2초 후 녹음을 시작합니다.")
-                        flush_for_nsec(inport, duration_sec=2.0)
-                        is_twosec_waiting = True
+                    # if not is_twosec_waiting:         # 이것도 동시 합주 진행 시 필요함
+                    #     print(f"2초 후 녹음을 시작합니다.")
+                    #     flush_for_nsec(inport, duration_sec=2.0)
+                    #     is_twosec_waiting = True
                     
                     # 6. 2초 대기 후, 실제 녹음 시작 시간과 종료 시간을 설정합니다.
-                    recording_start_time = time.time()
+                    #recording_start_time = time.time()
                     print(f"녹음 시작")
-                    recording_end_time = recording_start_time + rec_duration
+
+                recording_end_time = recording_start_time + rec_duration
                     
-                    # 시작 신호 노트는 저장하지 않고 건너뜁니다.
-                    if session_idx == 0:
-                        continue
+                    # # 시작 신호 노트는 저장하지 않고 건너뜁니다.
+                    # if session_idx == 0:
+                    #     continue
+                now = time.time()
 
                 # --- 저장 로직 ---
                 # 모든 녹음은 각자의 recording_start_time을 기준으로 경과 시간을 계산합니다.
@@ -205,11 +205,12 @@ def record_session(inport, session_idx, rec_duration, rec_number):
                 # MIDI 파일 저장을 위해 절대 시간(elapsed)을 time 속성에 기록
                 recorded_msgs.append(msg.copy(time=elapsed))
                 print(f"✅ 저장됨: {msg.copy(time=elapsed)}")
-                
-        time.sleep(0.001)
 
+        time.sleep(0.001)
+    
+    # 매 세션 두 번째 녹음까지 끝나면 sync.txt 새로 생성
     if rec_number == 2:
-        is_drum1_start_note_detected = False
+        is_sync_made = False
 
     # --- 파일 저장 (루프 밖) ---
     # C++에서 파일의 끝을 알기 위한 마커 추가
@@ -260,7 +261,7 @@ port_name  = input_ports[port_index]
 print(f"✅ MIDI 장치: {port_name}")
 
 is_twosec_waiting = False  # 최초 1회만 2초 무시
-is_drum1_start_note_detected = False  # 첫 타격은 한번만 확인
+is_sync_made = False  # 첫 타격은 한번만 확인
 
 with mido.open_input(port_name) as inport:
     for session_idx in range(num_sessions):
@@ -282,19 +283,20 @@ with mido.open_input(port_name) as inport:
             print("------------- 첫 타격을 기다립니다 -------------")
 
         half_rec = total_record / 2.0
+        half_make = make_time / 2.0
 
         # 1) 첫 번째 녹음
         record_session(inport, session_idx, half_rec, rec_number=1)
 
         # 2) Magenta 1st (Thread) — 두 번째 녹음 중 병행 가능
-        t1 = threading.Thread(target=generate_with_magenta, args=(session_idx, 1, make_time))
+        t1 = threading.Thread(target=generate_with_magenta, args=(session_idx, 1, half_make))
         t1.start()
 
         # 3) 두 번째 녹음 (첫 녹음 직후 즉시 시작)
         record_session(inport, session_idx, half_rec, rec_number=2)
 
         # 4) Magenta 2nd (Thread) — TF 안전을 위해 내부 락으로 직렬화됨
-        t2 = threading.Thread(target=generate_with_magenta, args=(session_idx, 2, make_time))
+        t2 = threading.Thread(target=generate_with_magenta, args=(session_idx, 2, half_make))
         t2.start()
 
         # 5) 두 생성 스레드 완료 대기
