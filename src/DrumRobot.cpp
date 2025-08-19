@@ -1100,7 +1100,7 @@ std::string DrumRobot::selectPlayMode()
     ////////////////////////////////////////////
     // 악보, bpm, 연주모드 입력받기
 
-    std::cout << "\nEnter Music Code Name (Magenta : output7_final): ";
+    std::cout << "\nEnter Music Code Name (Magenta : output7_final, Return to Ideal State : 0): ";
     std::cin >> txtFileName;
 
     if (txtFileName == "output7_final") // 마젠타 사용 시 최종 출력 파일 이름
@@ -1122,7 +1122,25 @@ std::string DrumRobot::selectPlayMode()
             delayTime.push(delayTime_i);
             recordTime.push(recordTime_i);
             makeTime.push(makeTime_i);
+
+            if ((recordTime_i == 0) || (makeTime_i == 0))
+            {
+                for (int j = 0; j < i + 1; j++)
+                {
+                    delayTime.pop();
+                    recordTime.pop();
+                    makeTime.pop();
+                }
+
+                std::string inputErr = "null"; // 잘못 입력한 경우 : Ideal 로 이동
+                return inputErr;
+            }
         }
+    }
+    else if (txtFileName == "0")
+    {
+        std::string inputErr = "null"; // 잘못 입력한 경우 : Ideal 로 이동
+        return inputErr;
     }
     else
     {
@@ -1204,6 +1222,12 @@ std::string DrumRobot::selectPlayMode()
                 std::cout << "Enter Waiting Time: ";
                 std::cin >> inputWaitMs;
                 inputWaitMs *= 1000;
+
+                if (inputWaitMs == 0.0)
+                {
+                    std::string inputErr = "null"; // 잘못 입력한 경우 : Ideal 로 이동
+                    return inputErr;
+                }
             }
             else
             {
@@ -1212,6 +1236,24 @@ std::string DrumRobot::selectPlayMode()
                     std::cout << i + 1 << "번째 wait time : ";
                     cin >> waitTime_i;
                     waitTime.push(waitTime_i);
+
+                    if (waitTime_i == 0)
+                    {
+                        for (int j = 0; j < i + 1; j++)
+                        {
+                            waitTime.pop();
+                        }
+
+                        for (int j = 0; j < repeatNum; j++)
+                        {
+                            delayTime.pop();
+                            recordTime.pop();
+                            makeTime.pop();
+                        }
+
+                        std::string inputErr = "null"; // 잘못 입력한 경우 : Ideal 로 이동
+                        return inputErr;
+                    }
                 }
                 inputWaitMs = waitTime.front() * 1000;
                 waitTime.pop();
@@ -1244,7 +1286,8 @@ std::string DrumRobot::selectPlayMode()
     }
     else
     {
-        txtPath = magentaPath + "null"; // 존재하지 않는 악보
+        std::string inputErr = "null"; // 잘못 입력한 경우 : Ideal 로 이동
+        return inputErr;
     }
 
     return txtPath;
@@ -1353,10 +1396,18 @@ void DrumRobot::sendPlayProcess()
     initializePlayState();
 
     // 모드 세팅
-    if (repeatNum == currentIterations)
+    if (repeatNum == currentIterations) // == 1
     {
         currentIterations = 1;
         txtPath = selectPlayMode();
+
+        if (txtPath == "null")  // 잘못 입력한 경우 : Ideal 로 이동
+        {
+            repeatNum = 1;
+            flagObj.setFixationFlag("fixed");
+            state.main = Main::Ideal;
+            return;
+        }
     }
     else
     {
@@ -1440,6 +1491,8 @@ void DrumRobot::sendPlayProcess()
     if (repeatNum == currentIterations)
     {
         flagObj.setAddStanceFlag("isHome"); // 연주 종료 후 Home 으로 이동
+        repeatNum = 1;
+        currentIterations = 1;
     }
     else
     {
