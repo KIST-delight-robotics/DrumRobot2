@@ -1125,7 +1125,7 @@ std::string DrumRobot::selectPlayMode()
 
             if ((recordTime_i == 0) || (makeTime_i == 0))
             {
-                for (int j = 0; j < i + 1; j++)
+                for (int j = 0; j < i + 1; j++) // 큐 삭제
                 {
                     delayTime.pop();
                     recordTime.pop();
@@ -1239,12 +1239,12 @@ std::string DrumRobot::selectPlayMode()
 
                     if (waitTime_i == 0)
                     {
-                        for (int j = 0; j < i + 1; j++)
+                        for (int j = 0; j < i + 1; j++)  // 큐 삭제
                         {
                             waitTime.pop();
                         }
 
-                        for (int j = 0; j < repeatNum; j++)
+                        for (int j = 0; j < repeatNum; j++)  // 큐 삭제
                         {
                             delayTime.pop();
                             recordTime.pop();
