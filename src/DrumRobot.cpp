@@ -1327,6 +1327,18 @@ bool DrumRobot::readMeasure(ifstream& inputFile)
             }
         }
     }
+
+    // // 루프가 끝난 후, 실패 원인 분석
+    // if (inputFile.eof()) {
+    //     std::cout << "getline()이 파일 끝(EOF)에 도달하여 종료되었습니다." << std::endl;
+    // }
+    // else if (inputFile.fail()) {
+    //     std::cout << "getline()이 논리적 오류로 실패했습니다." << std::endl;
+    // }
+    // else if (inputFile.bad()) {
+    //     std::cout << "getline()이 심각한 I/O 오류로 실패했습니다." << std::endl;
+    // }
+    // std::cout << measureMatrix;
     return false;
 }
 
@@ -1335,7 +1347,7 @@ void DrumRobot::sendPlayProcess()
     std::string txtPath;
     std::string txtIndexPath;
     int fileIndex = 0;
-    std::ifstream inputFile;
+    // std::ifstream inputFile;
 
     // 초기화
     initializePlayState();
@@ -1363,21 +1375,33 @@ void DrumRobot::sendPlayProcess()
 
     while (!endOfScore)
     {
+        std::ifstream inputFile;
         txtIndexPath = txtPath + std::to_string(fileIndex) + ".txt";
         inputFile.open(txtIndexPath); // 파일 열기
 
-        inputFile.seekg(0, ios::beg); // 안전하게 파일 맨 처음으로 이동
-        inputFile.clear();            // 상태 비트 초기화
+        // inputFile.seekg(0, ios::beg); // 안전하게 파일 맨 처음으로 이동
+        // inputFile.clear();            // 상태 비트 초기화
 
         if (inputFile.is_open())     //////////////////////////////////////// 파일 열기 성공
         {
-            while(readMeasure(inputFile))    // 한마디 분량 미만으로 남을 때까지 궤적/명령 생성
+            if (inputFile.peek() == std::ifstream::traits_type::eof())
             {
-                pathManager.processLine(measureMatrix);
+                std::cout << "\n 파일 비어 있음 \n";
+                inputFile.clear();          // 상태 비트 초기화
+                usleep(100);                // 대기 : 다음 악보 작성 중 
             }
+            else
+            {
+                while(readMeasure(inputFile))    // 한마디 분량 미만으로 남을 때까지 궤적/명령 생성
+                {
+                    pathManager.processLine(measureMatrix);
+                }
 
-            inputFile.close(); // 파일 닫기
-            fileIndex++;    // 다음 파일 열 준비
+                inputFile.close(); // 파일 닫기
+                fileIndex++;    // 다음 파일 열 준비
+
+                std::cout << "\n fileIndex : " << fileIndex << "\n";
+            }
         }
         else     //////////////////////////////////////////////////////////// 파일 열기 실패
         {
@@ -1400,6 +1424,7 @@ void DrumRobot::sendPlayProcess()
             }
             else                                    ////////// 3. 다음 악보 생성될 때까지 대기
             {
+                inputFile.clear();            // 상태 비트 초기화
                 usleep(100);
             }
         }
