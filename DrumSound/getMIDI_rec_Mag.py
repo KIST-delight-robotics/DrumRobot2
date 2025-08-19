@@ -161,7 +161,7 @@ def record_session(inport, session_idx, rec_duration, rec_number):
             break
         
         # 첫 타격 대기 타임아웃 (3분)
-        if (time.time() - function_start_time > 180):
+        if (time.time() - function_start_time > 90):
             print("⌛️ 첫 타격 대기 시간 초과.")
             return # 함수를 종료하여 무한 루프 방지
 
@@ -184,7 +184,7 @@ def record_session(inport, session_idx, rec_duration, rec_number):
                     #     is_twosec_waiting = True
                     
                     # 6. 2초 대기 후, 실제 녹음 시작 시간과 종료 시간을 설정합니다.
-                    #recording_start_time = time.time()
+                    recording_start_time = time.time()
                     print(f"녹음 시작")
 
                 recording_end_time = recording_start_time + rec_duration
