@@ -272,7 +272,7 @@ def record_session(inport, session_idx, rec_duration, rec_number):
                 mapped_note = map_drum_note(getattr(msg, 'note', 0))
                 events.append([elapsed, mapped_note, getattr(msg, 'velocity', 0)])
                 recorded_msgs.append(msg.copy(time=elapsed))
-                # print(f"✅ 저장됨: {msg.copy(time=elapsed)}") # 로그가 너무 많아 주석 처리
+                print(f"✅ 저장됨: {msg.copy(time=elapsed)}")
 
         time.sleep(0.001)
     
@@ -292,7 +292,7 @@ def record_session(inport, session_idx, rec_duration, rec_number):
             'debounce_threshold': 0.04,  # 40ms. 잔타격 무시 시간
             'cluster_threshold': 0.02,   # 20ms. 동시타격 그룹화 시간
             'bpm': BPM,
-            'subdivisions': 4,           # 16분음표 단위로 양자화
+            'subdivisions': 2,           # 16분음표 단위로 양자화
         }
         
         # 2. 파이프라인 실행
