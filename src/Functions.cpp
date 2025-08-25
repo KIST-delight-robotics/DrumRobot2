@@ -1009,22 +1009,71 @@ void Functions::assignHandsToEvents(const std::string& inputFilename, const std:
         //           << " | PrevR: " << prevRight << ", PrevL: " << prevLeft
         //           << " | RHit: " << prevRightHit << ", LHit: " << prevLeftHit << "\n";
         
-        //step 1 크러시가 있는지 확인 크러쉬가 있다면 
-        if (inst1 == 8 || inst2 == 8) {
-            // std::cout << "→ 크러시 처리 진입\n";
-            if(prevLeft == 2 || prevLeft == 3 || prevLeft == 6) {
-                e.rightHand = 7;
-                e.leftHand = (inst1 == 8) ? inst2 : inst1;
-            } else {
-                if (inst1 == 2 || inst1 == 3 || inst1 == 6 || inst2 == 2 || inst2 == 3 || inst2 == 6) {
-                    e.rightHand = 7;
-                    e.leftHand = (inst1 == 8) ? inst2 : inst1;
-                } else {
-                    e.rightHand = 8;
-                    e.leftHand = (inst1 == 8) ? inst2 : inst1;
+        // //step 1 크러시가 있는지 확인 크러쉬가 있다면 
+        // if (inst1 == 8 || inst2 == 8) {
+        //     // std::cout << "→ 크러시 처리 진입\n";
+        //     if(prevLeft == 2 || prevLeft == 3 || prevLeft == 6) {
+        //         e.rightHand = 7;
+        //         e.leftHand = (inst1 == 8) ? inst2 : inst1;
+        //     } else {
+        //         if (inst1 == 2 || inst1 == 3 || inst1 == 6 || inst2 == 2 || inst2 == 3 || inst2 == 6) {
+        //             e.rightHand = 7;
+        //             e.leftHand = (inst1 == 8) ? inst2 : inst1;
+        //         } else {
+        //             e.rightHand = 8;
+        //             e.leftHand = (inst1 == 8) ? inst2 : inst1;
+        //         }
+        //     }
+        // }
+        //step 1-1 크러시를 무조건 왼쪽 크러시만 사용하도록 변경 ( (양손으로 치는 경우를 제외하고)
+        if(inst1 == 7 || inst1 == 8 || inst2 == 7 || inst2 == 8)
+        {
+            std::cout << "→ 크러시 처리 진입 1-1\n";
+            //양손연주라면
+            if (inst1 != 0 && inst2 != 0)
+                {
+                    // 두 손 모두 크래시를 치는 경우 → 규칙적으로 inst1=7(오른 크래시), inst2=8(왼 크래시)로 고정
+                    bool bothCrash = ((inst1 == 7 || inst1 == 8) && (inst2 == 7 || inst2 == 8));
+                    if (bothCrash) {
+                        e.rightHand = 7; 
+                        e.leftHand  = 8;
+                    }
+                    else {
+                        // 두 손이 동시에 치지만 "둘 다 크래시가 아님" → 기존 위치 기반 손 배분 사용
+                        auto [left, right] = assignHandsByPosition(inst1, inst2);
+                        e.leftHand  = left;
+                        e.rightHand = right;
+                    }
                 }
-            }
+                //한손 연주 라면
+                else
+                {
+                    // 마지막으로 왼손으로 친게 3,2,7,6 중에 하나면 왼손으로 크러시 치고 아니면 오른손으로 치기
+                    if (prevLeftNote == 3 || prevLeftNote == 2 || prevLeftNote == 7 || prevLeftNote == 6) {
+                        e.leftHand  = 8;
+                        e.rightHand = 0;
+                    } else {
+                        e.rightHand = 8;
+                        e.leftHand  = 0;
+                    }
+                    // //이건 전에 친 악기 섹션 비고 하는거 위에 방법을 쓰던 밑에 섹션비교방법을쓰던 하나만쓰기
+                    // auto [left, right] = assignHandsByPosition(prevRightNote, prevLeftNote);
+                    // // leftInstOfPair가 prevLeftNote라면 '왼손 위치가 더 왼쪽'이라는 뜻
+                    // bool chooseLeft = (left == prevLeftNote);
+
+
+                    // // 실제 출력 반영: 어느 슬롯이 비어있든 상관없이 8을 선택 손에 할당
+                    // if (chooseLeft) {
+                    //     e.leftHand  = 8;
+                    //     e.rightHand = 0;
+                    // } else {
+                    //     e.rightHand = 8;
+                    //     e.leftHand  = 0;
+                    // }
+                }
         }
+
+
         // step 2 양손 연주인지 한손인지 구분 
         else if (inst1 != 0 && inst2 != 0) {
             // std::cout << "→ 양손 처리 진입\n";
