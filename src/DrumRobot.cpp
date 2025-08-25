@@ -589,12 +589,16 @@ void DrumRobot::stateMachine()
             case Main::AddStance:
             {
                 flagObj.setFixationFlag("moving");
+                std::string fileName = "debug fixed";
+                fun.appendToCSV(fileName, false, 1, 0, 1);
                 sendAddStanceProcess();
                 break;
             }
             case Main::Play:
             {
                 flagObj.setFixationFlag("moving");
+                std::string fileName = "debug fixed";
+                fun.appendToCSV(fileName, false, 2, 0, 1);
                 sendPlayProcess();
                 break;
             }
@@ -665,6 +669,8 @@ void DrumRobot::sendLoopForThread()
         if (allMotorsStagnant && !wasFixed)
         {
             flagObj.setFixationFlag("fixed");
+            std::string fileName = "debug fixed";
+            fun.appendToCSV(fileName, false, -1, 1, 1);
             wasFixed = true;
         }
         else if (newData) // 새로운 데이터가 들어오면 wasFixed 해제
@@ -732,6 +738,7 @@ void DrumRobot::sendLoopForThread()
 
 void DrumRobot::recvLoopForThread()
 {
+    static int cnt = 0;
     canManager.clearReadBuffers();
 
     while (state.main != Main::Shutdown)
@@ -746,6 +753,36 @@ void DrumRobot::recvLoopForThread()
             state.main = Main::Error;
         }
 
+        cnt++;
+        if (cnt > 10)
+        {
+            switch (state.main.load())
+            {
+                case Main::Ideal:
+                {
+                    std::string fileName = "debug fixed";
+                    int debug = flagObj.getFixationFlag()?1:0;
+                    fun.appendToCSV(fileName, false, 0, debug);
+                    break;
+                }
+                case Main::AddStance:
+                {
+                    std::string fileName = "debug fixed";
+                    int debug햣  = flagObj.getFixationFlag()?1:0;
+                    fun.appendToCSV(fileName, false, 1, debug);
+                    break;
+                }
+                case Main::Play:
+                {
+                    std::string fileName = "debug fixed";
+                    int debug = flagObj.getFixationFlag()?1:0;
+                    fun.appendToCSV(fileName, false, 2, debug);
+                    break;
+                }
+            }
+            cnt = 0;
+        }
+        
         std::this_thread::sleep_until(recvLoopPeriod);
     }
 }
@@ -1700,7 +1737,7 @@ void DrumRobot::getMagentaSheet(std::string midPath, std::string veloPath, int r
         }
 
         //이거 세기 반영 시키는 변수 안하면 원본 그대로 
-        bool mapTo357 = true;
+        bool mapTo357 = false;
         vector<Functions::Seg> segs;
 
         fun.roundDurationsToStep(outputPath1, outputPath2); 
