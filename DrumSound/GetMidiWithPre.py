@@ -7,6 +7,7 @@ import csv
 import os
 import argparse
 import datetime
+from collections import defaultdict # [추가] 디바운싱에 사용
 
 import tensorflow.compat.v1 as tf
 from magenta.models.drums_rnn import drums_rnn_sequence_generator
@@ -19,6 +20,101 @@ from magenta.music.sequences_lib import extract_subsequence
 from magenta.protobuf import generator_pb2
 
 tf.disable_v2_behavior()
+
+# --- [추가] CSV 저장 유틸리티 함수 ---
+def save_step_to_csv(data, filepath, step_type):
+    """전처리 단계별 결과를 CSV 파일로 저장합니다."""
+    try:
+        with open(filepath, 'w', newline='') as f:
+            writer = csv.writer(f)
+            # 단계별로 헤더와 데이터 형식을 다르게 저장
+            if step_type == 'cluster':
+                writer.writerow(['cluster_id', 'original_time', 'note', 'velocity'])
+                for i, cluster in enumerate(data):
+                    for msg in cluster:
+                        writer.writerow([i, msg.time, msg.note, msg.velocity])
+            else: # 'debouce' 또는 'quantize'
+                writer.writerow(['time', 'note', 'velocity'])
+                for msg in data:
+                    writer.writerow([msg.time, msg.note, msg.velocity])
+        print(f"    > CSV 저장 완료: {os.path.basename(filepath)}")
+    except Exception as e:
+        print(f"    > CSV 저장 실패: {e}")
+
+# --- MIDI 전처리 파이프라인 함수들 ---
+
+def apply_debouncing(messages, threshold, filepath):
+    """1단계: 디바운싱 필터. 악기별로 잔타격을 제거합니다."""
+    print(f"  [파이프라인 1/3] 디바운싱 시작 (임계값: {threshold*1000:.0f}ms)...")
+    filtered_notes = []
+    last_hit_times = defaultdict(float)
+    for msg in messages:
+        note_id = msg.note
+        if msg.time - last_hit_times[note_id] > threshold:
+            filtered_notes.append(msg)
+            last_hit_times[note_id] = msg.time
+    print(f"    > 원본 {len(messages)}개 노트 -> 필터링 후 {len(filtered_notes)}개")
+    save_step_to_csv(filtered_notes, filepath, 'debouce') # [추가]
+    return filtered_notes
+
+def apply_clustering(messages, threshold, filepath):
+    """2단계: 노트 클러스터링. 동시 타격 노트를 그룹화합니다."""
+    print(f"  [파이프라인 2/3] 클러스터링 시작 (임계값: {threshold*1000:.0f}ms)...")
+    clusters = []
+    if messages:
+        current_cluster = [messages[0]]
+        clusters.append(current_cluster)
+        for i in range(1, len(messages)):
+            prev_msg_time = messages[i-1].time
+            current_msg_time = messages[i].time
+            if current_msg_time - prev_msg_time < threshold:
+                current_cluster.append(messages[i])
+            else:
+                current_cluster = [messages[i]]
+                clusters.append(current_cluster)
+    print(f"    > {len(messages)}개 노트 -> {len(clusters)}개 클러스터로 그룹화")
+    save_step_to_csv(clusters, filepath, 'cluster') # [추가]
+    return clusters
+
+def apply_grid_quantization(clusters, bpm, subdivisions_per_beat, filepath):
+    """3단계: 그리드 기반 양자화. 클러스터를 그리드에 맞춥니다."""
+    print(f"  [파이프라인 3/3] 그리드 양자화 시작 (BPM: {bpm}, 단위: 1/{subdivisions_per_beat*4})...")
+    quantized_messages = []
+    seconds_per_beat = 60.0 / bpm
+    quantize_step_duration = seconds_per_beat / subdivisions_per_beat
+    for cluster in clusters:
+        if not cluster: continue
+        average_time = sum(msg.time for msg in cluster) / len(cluster)
+        quantized_steps = round(average_time / quantize_step_duration)
+        quantized_time = quantized_steps * quantize_step_duration
+        for msg in cluster:
+            quantized_messages.append(msg.copy(time=quantized_time))
+    print(f"    > {len(clusters)}개 클러스터 -> 양자화 완료")
+    save_step_to_csv(quantized_messages, filepath, 'quantize') # [추가]
+    return quantized_messages
+
+def preprocess_midi_pipeline(messages, params, base_filepath): # [수정] base_filepath 파라미터 추가
+    """전체 전처리 파이프라인을 순서대로 실행하고 각 단계 결과를 CSV로 저장합니다."""
+    print("🚀 MIDI 전처리 파이프라인 시작...")
+    
+    # 각 단계별 파일 경로 생성
+    path_step1 = f"{base_filepath}_step1_debounced.csv"
+    path_step2 = f"{base_filepath}_step2_clustered.csv"
+    path_step3 = f"{base_filepath}_step3_quantized.csv"
+    
+    # 파이프라인 1: 디바운싱
+    debounced_msgs = apply_debouncing(messages, params['debounce_threshold'], path_step1)
+    
+    # 파이프라인 2: 클러스터링
+    clusters = apply_clustering(debounced_msgs, params['cluster_threshold'], path_step2)
+    
+    # 파이프라인 3: 그리드 양자화
+    final_msgs = apply_grid_quantization(clusters, params['bpm'], params['subdivisions'], path_step3)
+    
+    print("✅ MIDI 전처리 파이프라인 완료!")
+    return final_msgs
+
+# -----------------------------------------------------------------
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--rec_times", nargs='+', type=float, required=True, help="[대기1, 녹음1, 생성1, 대기2, 녹음2, 생성2 ...] 순서의 시간들 (초 단위)")
@@ -58,6 +154,9 @@ def set_tempo_in_sequence(sequence, bpm):
 
 # 경로 설정 - 현재 스크립트 기준 base 디렉토리
 base_dir = os.path.dirname(os.path.abspath(__file__))
+
+preprocess_dir = os.path.join(base_dir, "record_preprocess_steps")
+os.makedirs(preprocess_dir, exist_ok=True)
 
 velo_dir = os.path.join(base_dir, "record_velocity")
 os.makedirs(velo_dir, exist_ok=True)
@@ -128,127 +227,114 @@ def flush_for_nsec(inport, duration_sec):
 # --- 녹음 함수 ---
 def record_session(inport, session_idx, rec_duration, rec_number):
     global is_sync_made
-    #global is_twosec_waiting       # 나중에 동시 합주할 때 필요함
-
-    # 1. 함수 시작 시간(무한 루프 탈출에 사용)과 첫 녹음 여부와 녹음 시작 여부(elapsed time을 녹음 시작 시간으로부터 계산함)를 확인합니다.
+    # ... (기존 녹음 루프 시작 부분 코드와 동일) ...
     function_start_time = time.time()
     is_first_recording = not is_sync_made
     record_start = False
-
-    # 2. 녹음이 실제로 끝나는 절대 시간을 저장할 변수를 초기화합니다.
-    # 첫 녹음이 아니라면, 함수 시작 시간에 녹음 길이를 더해 종료 시간을 미리 계산합니다.
-    # if not is_first_recording:
-        # recording_end_time = recording_start_time + rec_duration
     recording_end_time = None
-
-    # 3. 경과 시간(elapsed) 계산의 기준이 될 시간을 설정합니다.
-    # 첫 녹음이 아니라면 함수 시작 시간으로, 첫 녹음이라면 None으로 시작합니다.
     recording_start_time = function_start_time if not is_first_recording else None
-
-    recorded_msgs = []      # MIDI용
-    events = []             # velocity제작용
-
-    ticks_per_beat = 960
-    tempo_us_per_beat = mido.bpm2tempo(100)
+    recorded_msgs = []
+    events = []
+    
+    BPM = 100
+    TICKS_PER_BEAT = 960
+    tempo_us_per_beat = mido.bpm2tempo(BPM)
     
     print(f"🎙️ Session {session_idx}-{rec_number-1} 녹음 시작 (길이 {rec_duration}s)...")
     if is_first_recording:
         print("   (시작 신호가 될 첫 타격을 기다리는 중...)")
 
-    # --- 녹음 루프 ---
     while True:
-        # 4. 녹음 종료 조건
         if recording_end_time is not None and time.time() >= recording_end_time:
             print(f"🛑 Session {session_idx}-{rec_number-1} 녹음 종료 🛑")
             break
         
-        # 첫 타격 대기 타임아웃 (3분)
         if (time.time() - function_start_time > 90):
             print("⌛️ 첫 타격 대기 시간 초과.")
-            return # 함수를 종료하여 무한 루프 방지
+            return
 
         for msg in inport.iter_pending():
             if is_saveable_message(msg) and msg.type == 'note_on' and msg.velocity > 0:
                 if not record_start and is_first_recording:
                     recording_start_time = time.time()
                     record_start = True
-
-                # 5. 프로그램 전체의 첫 sync 타격(시작 신호)을 처리하는 로직
                 if not is_sync_made:
                     ts = datetime.datetime.now().strftime("%H:%M:%S.%f")[:-3]
                     with open(sync_file, "w") as f: f.write(ts)
                     print(f"▶️ 첫 노트 감지 및 sync.txt 생성 ({ts}).")
                     is_sync_made = True
-                    
-                    # if not is_twosec_waiting:         # 이것도 동시 합주 진행 시 필요함
-                    #     print(f"2초 후 녹음을 시작합니다.")
-                    #     flush_for_nsec(inport, duration_sec=2.0)
-                    #     is_twosec_waiting = True
-                    
-                    # 6. 2초 대기 후, 실제 녹음 시작 시간과 종료 시간을 설정합니다.
                     recording_start_time = time.time()
                     print(f"녹음 시작")
 
                 recording_end_time = recording_start_time + rec_duration
-                    
-                    # # 시작 신호 노트는 저장하지 않고 건너뜁니다.
-                    # if session_idx == 0:
-                    #     continue
                 now = time.time()
-
-                # --- 저장 로직 ---
-                # 모든 녹음은 각자의 recording_start_time을 기준으로 경과 시간을 계산합니다.
                 elapsed = round(now - recording_start_time, 4)
-                
                 mapped_note = map_drum_note(getattr(msg, 'note', 0))
                 events.append([elapsed, mapped_note, getattr(msg, 'velocity', 0)])
-                # MIDI 파일 저장을 위해 절대 시간(elapsed)을 time 속성에 기록
                 recorded_msgs.append(msg.copy(time=elapsed))
-                print(f"✅ 저장됨: {msg.copy(time=elapsed)}")
+                # print(f"✅ 저장됨: {msg.copy(time=elapsed)}") # 로그가 너무 많아 주석 처리
 
         time.sleep(0.001)
     
-    # 매 세션 두 번째 녹음까지 끝나면 sync.txt 새로 생성
     if rec_number == 2:
         is_sync_made = False
 
-    # --- 파일 저장 (루프 밖) ---
-    # C++에서 파일의 끝을 알기 위한 마커 추가
     events.append([-1, 0, 0])
-    
     csv_out = os.path.join(velo_dir, f"drum_events_{session_idx}{rec_number-1}.csv")
     with open(csv_out, "w", newline='') as f:
         csv.writer(f, delimiter='\t').writerows(events)
     print(f"💾 CSV 저장: {csv_out} 💾")
 
-    mid = MidiFile(ticks_per_beat=ticks_per_beat)
+    # --- [수정] MIDI 전처리 파이프라인 호출 ---
+    if recorded_msgs:
+        # 1. 파이프라인 파라미터 설정 (여기서 값 조절 가능)
+        pipeline_params = {
+            'debounce_threshold': 0.04,  # 40ms. 잔타격 무시 시간
+            'cluster_threshold': 0.02,   # 20ms. 동시타격 그룹화 시간
+            'bpm': BPM,
+            'subdivisions': 4,           # 16분음표 단위로 양자화
+        }
+        
+        # 2. 파이프라인 실행
+        # [추가] 각 단계별 CSV 파일 저장을 위한 기본 파일 경로 생성
+        base_filename = f"preprocess_{session_idx}{rec_number-1}"
+        base_filepath = os.path.join(preprocess_dir, base_filename)
+
+        # [수정] 파이프라인 실행 시 파일 경로 전달
+        processed_msgs = preprocess_midi_pipeline(recorded_msgs, pipeline_params, base_filepath)
+    else:
+        processed_msgs = []
+    # ---------------------------------------------
+    
+    mid = MidiFile(ticks_per_beat=TICKS_PER_BEAT)
     track = MidiTrack(); mid.tracks.append(track)
     track.append(MetaMessage('set_tempo', tempo=tempo_us_per_beat, time=0))
     
-    # delta_time(전 음표와의 간격) 구하는 코드
     last_event_abs_time = 0
-    if recorded_msgs:
-        # 시간순으로 정렬하여 MIDI 델타 타임 계산 오류 방지
-        recorded_msgs.sort(key=lambda x: x.time)
-        first_msg_time = recorded_msgs[0].time
+    # [수정] 원본(recorded_msgs) 대신 전처리된(processed_msgs) 메시지 사용
+    if processed_msgs:
+        processed_msgs.sort(key=lambda x: x.time)
         
-        # 첫 메시지의 델타 타임은 녹음 시작부터의 시간
-        delta_ticks = mido.second2tick(first_msg_time, ticks_per_beat, tempo_us_per_beat)
-        track.append(recorded_msgs[0].copy(time=max(0, int(round(delta_ticks)))))
+        # 중복된 시간의 노트가 있을 경우, note 번호가 낮은 순으로 정렬 (선택적)
+        # 이는 MIDI 파일 표준에서 권장하는 방식은 아니나, 일관성을 위해 추가 가능
+        # processed_msgs.sort(key=lambda x: (x.time, x.note))
+
+        first_msg_time = processed_msgs[0].time
+        delta_ticks = mido.second2tick(first_msg_time, TICKS_PER_BEAT, tempo_us_per_beat)
+        track.append(processed_msgs[0].copy(time=max(0, int(round(delta_ticks)))))
         last_event_abs_time = first_msg_time
         
-        # 나머지 메시지들의 델타 타임 계산
-        for i in range(1, len(recorded_msgs)):
-            msg = recorded_msgs[i]
+        for i in range(1, len(processed_msgs)):
+            msg = processed_msgs[i]
             delta_time = msg.time - last_event_abs_time
             last_event_abs_time = msg.time
-            ticks = mido.second2tick(delta_time, ticks_per_beat, tempo_us_per_beat)
+            ticks = mido.second2tick(delta_time, TICKS_PER_BEAT, tempo_us_per_beat)
             track.append(msg.copy(time=max(0, int(round(ticks)))))
 
     midi_out = os.path.join(input_dir, f"input_{session_idx}{rec_number-1}.mid")
     input_save = os.path.join("/home/shy/DrumRobot/DrumSound/midi_save_for_duet/midi_input", f"input__{session_idx}{rec_number-1}.mid")
     mid.save(midi_out)
-    mid.save(input_save)        # midi input 보관용 저장
+    mid.save(input_save)
     print(f"💾 MIDI 저장: {midi_out}")
 
 # --- 메인 루프 ---
@@ -257,13 +343,13 @@ if not input_ports:
     print("❌ MIDI 입력 장치 미발견")
     sys.exit(1)
 
-# 기본은 index 1을 시도하되, 없으면 0으로 폴백
 port_index = 1 if len(input_ports) > 1 else 0
 port_name  = input_ports[port_index]
 print(f"✅ MIDI 장치: {port_name}")
 
-# is_twosec_waiting = False
 is_sync_made = False
+
+num_sessions = len(rec_seq) // 3
 
 with mido.open_input(port_name) as inport:
     for session_idx in range(num_sessions):
@@ -276,14 +362,12 @@ with mido.open_input(port_name) as inport:
         print(f"   (Delay: {delay_time}s, Record(total): {total_record}s, Generate: {make_time}s)")
         print("-" * 50)
 
-        # 첫 세션 첫 녹음 전 카운트다운
         if session_idx == 0:
             print("\n⏳ 3초 카운트다운")
             for i in (3, 2, 1):
                 print(f"{i}...")
                 wait_start_time = time.time()
                 while time.time() - wait_start_time < 1.0:
-                    # 버퍼에 쌓인 메시지를 읽어서 버립니다.
                     inport.poll()
                     time.sleep(0.01)
 
@@ -294,27 +378,17 @@ with mido.open_input(port_name) as inport:
         half_rec = total_record / 2.0
         half_make = make_time / 2.0
 
-        # 1) 첫 번째 녹음
         record_session(inport, session_idx, half_rec, rec_number=1)
-
-        # 2) Magenta 1st (Thread) — 두 번째 녹음 중 병행 가능
         t1 = threading.Thread(target=generate_with_magenta, args=(session_idx, 1, half_make))
         t1.start()
-
-        # 3) 두 번째 녹음 (첫 녹음 직후 즉시 시작)
         record_session(inport, session_idx, half_rec, rec_number=2)
-
-        # 4) Magenta 2nd (Thread) — TF 안전을 위해 내부 락으로 직렬화됨
         t2 = threading.Thread(target=generate_with_magenta, args=(session_idx, 2, half_make))
         t2.start()
-
-        # 5) 두 생성 스레드 완료 대기
         t1.join()
         t2.join()
 
         print("=" *20 + f"Session {session_idx} 모든 작업 완료" + "=" * 20 + "\n")
 
-        # ✅ 세션 간 대기
         if session_idx < num_sessions - 1:
             print(f"⏸ 다음 세션까지 {delay_time}s 대기합니다...")
             flush_for_nsec(inport, delay_time)

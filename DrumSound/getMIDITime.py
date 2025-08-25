@@ -39,6 +39,8 @@ for i in [3, 2, 1]:
 
 print("녹음 시작... 첫 입력 대기 중")
 
+msgs = [] 
+
 # 첫 note_on 감지 및 시간 저장
 first_note_time_saved = False
 with mido.open_input(port_name) as inport:

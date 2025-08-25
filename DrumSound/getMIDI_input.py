@@ -24,8 +24,8 @@ def map_drum_note(note):
     return mapping.get(note, 0)
 
 # 입력 MIDI 파일 설정
-input_file = "/home/shy/DrumRobot/DrumSound/input.mid"
-#input_file = "/home/shy/DrumRobot/DrumSound/Duet_2.mid"
+# input_file = "/home/shy/DrumRobot/DrumSound/input.mid"
+input_file = "/home/shy/DrumRobot/DrumSound/test_final.mid"
 mid = MidiFile(input_file)
 
 # final_events 및 시간 차이 추출
@@ -74,21 +74,44 @@ generator_options = generator_pb2.GeneratorOptions()
 section = generator_options.generate_sections.add()
 section.start_time = start_gen
 section.end_time = end_gen
-generator.steps_per_quarter = 4
+# generator.steps_per_quarter = 4
 
-# Temperature 별 생성
-versions = [
-    (0.3, "/home/shy/DrumRobot/DrumSound/output_temp_03.mid"),
-    (0.8, "/home/shy/DrumRobot/DrumSound/output_temp_08.mid")
-    #(0.3, "/home/shy/DrumRobot/DrumSound/output03/output_duet2_03_4.mid"),
-    #(0.8, "/home/shy/DrumRobot/DrumSound/output08/output_duet2_08_4.mid")
+# # Temperature 별 생성
+# versions = [
+#     (0.3, "/home/shy/DrumRobot/DrumSound/output_temp_03.mid"),
+#     (0.8, "/home/shy/DrumRobot/DrumSound/output_temp_08.mid")
+#     #(0.3, "/home/shy/DrumRobot/DrumSound/output03/output_duet2_03_4.mid"),
+#     #(0.8, "/home/shy/DrumRobot/DrumSound/output08/output_duet2_08_4.mid")
+# ]
+
+# for temp, filename in versions:
+#     print(f"\n🎵 Temperature={temp} 로 생성 중 → 파일명: {filename}")
+#     generator.temperature = temp
+#     generated_full = generator.generate(primer_sequence, generator_options)
+#     generated_only = extract_subsequence(generated_full, start_gen, end_gen)
+#     sequence_proto_to_midi_file(generated_only, filename)
+#     print(f"✅ 저장 완료: {filename}")
+
+configurations = [
+    (1, 0.3, "/home/shy/DrumRobot/DrumSound/mgt_output/7_sq1_temp03.mid"),
+    (1, 0.8, "/home/shy/DrumRobot/DrumSound/mgt_output/7_sq1_temp08.mid"),
+    (4, 0.3, "/home/shy/DrumRobot/DrumSound/mgt_output/7_sq4_temp03.mid"),
+    (4, 0.8, "/home/shy/DrumRobot/DrumSound/mgt_output/7_sq4_temp08.mid")
 ]
 
-for temp, filename in versions:
-    print(f"\n🎵 Temperature={temp} 로 생성 중 → 파일명: {filename}")
+# 설정값 리스트를 순회하며 MIDI 파일을 생성합니다.
+for spq, temp, filename in configurations:
+    print(f"\n🎵 steps_per_quarter={spq}, Temperature={temp} 로 생성 중 → 파일명: {filename}")
+    
+    # 현재 설정값으로 생성기 파라미터를 업데이트합니다.
+    generator.steps_per_quarter = spq
     generator.temperature = temp
+    
+    # 시퀀스 생성
     generated_full = generator.generate(primer_sequence, generator_options)
     generated_only = extract_subsequence(generated_full, start_gen, end_gen)
+    
+    # MIDI 파일로 저장
     sequence_proto_to_midi_file(generated_only, filename)
     print(f"✅ 저장 완료: {filename}")
 
