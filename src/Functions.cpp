@@ -1025,7 +1025,7 @@ void Functions::assignHandsToEvents(const std::string& inputFilename, const std:
         //         }
         //     }
         // }
-        //step 1-1 크러시를 무조건 왼쪽 크러시만 사용하도록 변경 ( (양손으로 치는 경우를 제외하고)
+        //step 1-1 크러시를 주로 왼쪽 크러시만 사용하도록 변경 ( (양손으로 치는 경우를 제외하고)
         if(inst1 == 7 || inst1 == 8 || inst2 == 7 || inst2 == 8)
         {
             std::cout << "→ 크러시 처리 진입 1-1\n";
@@ -1048,13 +1048,24 @@ void Functions::assignHandsToEvents(const std::string& inputFilename, const std:
                 //한손 연주 라면
                 else
                 {
-                    // 마지막으로 왼손으로 친게 3,2,7,6 중에 하나면 왼손으로 크러시 치고 아니면 오른손으로 치기
+                    // 마지막으로 왼손으로 친게 3,2,7,6 중에 하나면 오른손으로 오른쪽 크러시 치기
                     if (prevLeftNote == 3 || prevLeftNote == 2 || prevLeftNote == 7 || prevLeftNote == 6) {
-                        e.leftHand  = 8;
-                        e.rightHand = 0;
-                    } else {
-                        e.rightHand = 8;
                         e.leftHand  = 0;
+                        e.rightHand = 7;
+                    } 
+                    //아니라면 왼쪽 크러시를 사용할 예정
+                    else {
+                        if (prevRightNote == 3 || prevRightNote == 2 || prevRightNote == 7 || prevRightNote == 6)
+                        {
+                            e.rightHand = 0;
+                            e.leftHand  = 8;
+                        }
+                        else
+                        {
+                            e.rightHand = 8;
+                            e.leftHand  = 0;
+                        }
+
                     }
                     // //이건 전에 친 악기 섹션 비고 하는거 위에 방법을 쓰던 밑에 섹션비교방법을쓰던 하나만쓰기
                     // auto [left, right] = assignHandsByPosition(prevRightNote, prevLeftNote);
