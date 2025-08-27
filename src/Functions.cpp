@@ -1025,7 +1025,7 @@ void Functions::assignHandsToEvents(const std::string& inputFilename, const std:
         //         }
         //     }
         // }
-        //step 1-1 크러시를 주로 왼쪽 크러시만 사용하도록 변경 ( (양손으로 치는 경우를 제외하고)
+        //step 1-1 크러시를 주로 왼쪽 크러시만 사용하도록 변경 (양손으로 치는 경우를 제외하고)
         if(inst1 == 7 || inst1 == 8 || inst2 == 7 || inst2 == 8)
         {
             std::cout << "→ 크러시 처리 진입 1-1\n";
@@ -1088,7 +1088,7 @@ void Functions::assignHandsToEvents(const std::string& inputFilename, const std:
         // step 2 양손 연주인지 한손인지 구분 
         else if (inst1 != 0 && inst2 != 0) {
             // std::cout << "→ 양손 처리 진입\n";
-            // 1번 S와 5번 H-H 을 같이 치는 경우 오른손으로 H-H 왼손으로 S 치도록 설정
+            // S와 H 을 같이 치는 경우 오른손으로 H 왼손으로 S 치도록 설정
             if ((inst1 == 5 && inst2 == 1) || (inst1 == 1 && inst2 == 5)) 
             {
                 e.leftHand = (inst1 == 5) ? inst2 : inst1;
