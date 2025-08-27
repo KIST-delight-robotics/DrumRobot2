@@ -588,15 +588,11 @@ void DrumRobot::stateMachine()
             }
             case Main::AddStance:
             {
-                std::string fileName = "debug fixed";
-                fun.appendToCSV(fileName, false, 1, 0, 1);
                 sendAddStanceProcess();
                 break;
             }
             case Main::Play:
             {
-                std::string fileName = "debug fixed";
-                fun.appendToCSV(fileName, false, 2, 0, 1);
                 sendPlayProcess();
                 break;
             }
@@ -648,24 +644,30 @@ void DrumRobot::sendLoopForThread()
             state.main = Main::Error;
             break;
         }
-        // fixeFlags를 확인해서 1개라도 false면 무빙, 엘스 fixed
-        bool isMoving = false;
-        for (const auto &fixFlag : fixFlags)
-        {
-            if (!fixFlag.second)
-            {
-                isMoving = true;
-                break;
-            }
-        }
 
-        if (isMoving)
+        if (cycleCounter == 0) // 5ms마다 실행
         {
-            flagObj.setFixationFlag("moving");
-        }
-        else
-        {
-            flagObj.setFixationFlag("fixed");
+            // fixeFlags를 확인해서 1개라도 false면 무빙, 엘스 fixed
+            bool isMoving = false;
+            for (const auto &fixFlag : fixFlags)
+            {
+                if (!fixFlag.second)
+                {
+                    isMoving = true;
+                    break;
+                }
+            }
+
+            if (isMoving)
+            {
+                flagObj.setFixationFlag("moving");
+                fun.appendToCSV("debug fixed", false, 0);
+            }
+            else
+            {
+                flagObj.setFixationFlag("fixed");
+                fun.appendToCSV("debug fixed", false, 1);
+            }
         }
 
         //////////////////////////////////////////////////////////////////////////
@@ -728,7 +730,6 @@ void DrumRobot::sendLoopForThread()
 
 void DrumRobot::recvLoopForThread()
 {
-    static int cnt = 0;
     canManager.clearReadBuffers();
 
     while (state.main != Main::Shutdown)
@@ -741,36 +742,6 @@ void DrumRobot::recvLoopForThread()
         if (!isSafe)
         {
             state.main = Main::Error;
-        }
-
-        cnt++;
-        if (cnt > 10)
-        {
-            switch (state.main.load())
-            {
-                case Main::Ideal:
-                {
-                    std::string fileName = "debug fixed";
-                    int debug = flagObj.getFixationFlag()?1:0;
-                    fun.appendToCSV(fileName, false, 0, debug);
-                    break;
-                }
-                case Main::AddStance:
-                {
-                    std::string fileName = "debug fixed";
-                    int debug햣  = flagObj.getFixationFlag()?1:0;
-                    fun.appendToCSV(fileName, false, 1, debug);
-                    break;
-                }
-                case Main::Play:
-                {
-                    std::string fileName = "debug fixed";
-                    int debug = flagObj.getFixationFlag()?1:0;
-                    fun.appendToCSV(fileName, false, 2, debug);
-                    break;
-                }
-            }
-            cnt = 0;
         }
         
         std::this_thread::sleep_until(recvLoopPeriod);
@@ -1061,6 +1032,12 @@ void DrumRobot::sendAddStanceProcess()
     pathManager.pushAddStancePath(flag);
 
     state.main = Main::Ideal;
+
+    // send thread에서 읽기 전까지 대기
+    while (flagObj.getFixationFlag())
+    {
+       usleep(100); 
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1472,6 +1449,15 @@ void DrumRobot::sendPlayProcess()
                 while(readMeasure(inputFile))    // 한마디 분량 미만으로 남을 때까지 궤적/명령 생성
                 {
                     pathManager.processLine(measureMatrix);
+                }
+                
+                if (fileIndex == 1)
+                {
+                    // send thread에서 읽기 전까지 대기
+                    while (flagObj.getFixationFlag())
+                    {
+                        usleep(100); 
+                    }
                 }
 
                 inputFile.close(); // 파일 닫기
