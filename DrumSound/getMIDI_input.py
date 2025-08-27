@@ -25,7 +25,7 @@ def map_drum_note(note):
 
 # 입력 MIDI 파일 설정
 # input_file = "/home/shy/DrumRobot/DrumSound/input.mid"
-input_file = "/home/shy/DrumRobot/DrumSound/test_final.mid"
+input_file = "/home/shy/DrumRobot/DrumSound/record_midi_by_people/7input_00_raw.mid"
 mid = MidiFile(input_file)
 
 # final_events 및 시간 차이 추출
@@ -93,10 +93,10 @@ section.end_time = end_gen
 #     print(f"✅ 저장 완료: {filename}")
 
 configurations = [
-    (1, 0.3, "/home/shy/DrumRobot/DrumSound/mgt_output/7_sq1_temp03.mid"),
-    (1, 0.8, "/home/shy/DrumRobot/DrumSound/mgt_output/7_sq1_temp08.mid"),
-    (4, 0.3, "/home/shy/DrumRobot/DrumSound/mgt_output/7_sq4_temp03.mid"),
-    (4, 0.8, "/home/shy/DrumRobot/DrumSound/mgt_output/7_sq4_temp08.mid")
+    (1, 0.8, "/home/shy/DrumRobot/DrumSound/mgt_output/7_sq1_temp08_raw.mid"),
+    (1, 0.3, "/home/shy/DrumRobot/DrumSound/mgt_output/7_sq1_temp03_raw.mid"),
+    (4, 0.3, "/home/shy/DrumRobot/DrumSound/mgt_output/7_sq4_temp03_raw.mid"),
+    (4, 0.8, "/home/shy/DrumRobot/DrumSound/mgt_output/7_sq4_temp08_raw.mid")
 ]
 
 # 설정값 리스트를 순회하며 MIDI 파일을 생성합니다.

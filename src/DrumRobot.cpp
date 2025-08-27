@@ -590,7 +590,7 @@ void DrumRobot::stateMachine()
             {
                 flagObj.setFixationFlag("moving");
                 std::string fileName = "debug fixed";
-                fun.appendToCSV(fileName, false, 1, 0, 1);
+                fun.appendToCSV(fileName, false, 2, 2, 2);
                 sendAddStanceProcess();
                 break;
             }
@@ -598,7 +598,7 @@ void DrumRobot::stateMachine()
             {
                 flagObj.setFixationFlag("moving");
                 std::string fileName = "debug fixed";
-                fun.appendToCSV(fileName, false, 2, 0, 1);
+                fun.appendToCSV(fileName, false, 2, 2, 2);
                 sendPlayProcess();
                 break;
             }
@@ -670,13 +670,19 @@ void DrumRobot::sendLoopForThread()
         {
             flagObj.setFixationFlag("fixed");
             std::string fileName = "debug fixed";
-            fun.appendToCSV(fileName, false, -1, 1, 1);
+            fun.appendToCSV(fileName, false, -1, -1, -1);
             wasFixed = true;
         }
         else if (newData) // 새로운 데이터가 들어오면 wasFixed 해제
         {
             wasFixed = false;
         }
+
+        int fixed_d = flagObj.getFixationFlag()?1:0;
+        int newData_d = newData?1:0;
+        int wasFixed_d = wasFixed?1:0;
+        std::string fileName = "debug fixed";
+        fun.appendToCSV(fileName, false, fixed_d, newData_d, wasFixed_d);
 
         //////////////////////////////////////////////////////////////////////////
         ///////////////////////////////////보내기///////////////////////////////////
@@ -738,7 +744,6 @@ void DrumRobot::sendLoopForThread()
 
 void DrumRobot::recvLoopForThread()
 {
-    static int cnt = 0;
     canManager.clearReadBuffers();
 
     while (state.main != Main::Shutdown)
@@ -751,36 +756,6 @@ void DrumRobot::recvLoopForThread()
         if (!isSafe)
         {
             state.main = Main::Error;
-        }
-
-        cnt++;
-        if (cnt > 10)
-        {
-            switch (state.main.load())
-            {
-                case Main::Ideal:
-                {
-                    std::string fileName = "debug fixed";
-                    int debug = flagObj.getFixationFlag()?1:0;
-                    fun.appendToCSV(fileName, false, 0, debug);
-                    break;
-                }
-                case Main::AddStance:
-                {
-                    std::string fileName = "debug fixed";
-                    int debug햣  = flagObj.getFixationFlag()?1:0;
-                    fun.appendToCSV(fileName, false, 1, debug);
-                    break;
-                }
-                case Main::Play:
-                {
-                    std::string fileName = "debug fixed";
-                    int debug = flagObj.getFixationFlag()?1:0;
-                    fun.appendToCSV(fileName, false, 2, debug);
-                    break;
-                }
-            }
-            cnt = 0;
         }
         
         std::this_thread::sleep_until(recvLoopPeriod);
@@ -892,7 +867,8 @@ void DrumRobot::runPythonInThread()
                     }
 
                     std::string pythonCmd = "/home/shy/DrumRobot/DrumSound/magenta-env/bin/python "
-                    "/home/shy/DrumRobot/DrumSound/getMIDI_rec_Mag.py " + pythonArgs + " &";
+                    // "/home/shy/DrumRobot/DrumSound/getMIDI_rec_Mag.py " + pythonArgs + " &";
+                    "/home/shy/DrumRobot/DrumSound/GetMidi.py " + pythonArgs + " &";
 
                     int ret = std::system(pythonCmd.c_str());  // 비동기 실행 (백그라운드 &)
                     if (ret != 0)
@@ -1593,7 +1569,8 @@ void DrumRobot::runPythonForMagenta()
         std::cin >> selected_input;
 
         if (selected_input == "1") {
-            midPath = "/home/shy/DrumRobot/DrumSound/output_temp_03.mid";
+            // midPath = "/home/shy/DrumRobot/DrumSound/output_temp_03.mid";
+            midPath = "/home/shy/DrumRobot/DrumSound/output__01.mid";
         } else if (selected_input == "2") {
             midPath = "/home/shy/DrumRobot/DrumSound/output_temp_08.mid";
         } else {
@@ -1654,8 +1631,8 @@ void DrumRobot::runPythonForMagenta()
             fun.roundDurationsToStep(outputPath1, outputPath2); 
             fun.convertMcToC(outputPath2, outputPath3);
             fun.assignHandsToEvents(outputPath3, outputPath4);
-            fun.addGroove(bpm, outputPath4, outputPath5);
-            fun.convertToMeasureFile(outputPath5, outputPath6, true);
+            // fun.addGroove(bpm, outputPath4, outputPath5);
+            fun.convertToMeasureFile(outputPath4, outputPath6, true);
 
             file_found = false;
             // if(filesystem::exists(midPath))
@@ -1746,17 +1723,19 @@ void DrumRobot::getMagentaSheet(std::string midPath, std::string veloPath, int r
 
         if (veloPath != "null")
         {
-            //velocityFile 세기 파일 outputFile 우리가 쓸 아웃풋 파일
-            fun.analyzeVelocityWithLowPassFilter(velocityFile, outputVel, bpm);
+            // //velocityFile 세기 파일 outputFile 우리가 쓸 아웃풋 파일
+            // fun.analyzeVelocityWithLowPassFilter(velocityFile, outputVel, bpm);
 
-            //위에서 만든 아웃풋 파일 넣어주기 그럼 segs 에 필터씌운 정보 저장댐
-            fun.loadSegments(outputVel, segs);
+            // //위에서 만든 아웃풋 파일 넣어주기 그럼 segs 에 필터씌운 정보 저장댐
+            // fun.loadSegments(outputVel, segs);
 
-            //수정전 악보 scoreIn 최종 출력 파일 scoreOut
-            fun.applyIntensityToScore(segs, outputPath4, outputPath5, mapTo357);
+            // //수정전 악보 scoreIn 최종 출력 파일 scoreOut
+            // fun.applyIntensityToScore(segs, outputPath4, outputPath5, mapTo357);
 
-            //그루브 추가 
-            fun.addGroove(bpm, outputPath5, outputPath6);
+            // //그루브 추가 
+            // fun.addGroove(bpm, outputPath5, outputPath6);
+            // 그루브랑 세기 관련 악보 돌리려면 밑에 한줄 주석처리하고 돌리기
+            outputPath6 = outputPath4;
 
             bool endFlag = false;
             if (recordingIndex == 1)    // 녹음 2번해야 끝
