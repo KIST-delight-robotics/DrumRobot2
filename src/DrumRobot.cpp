@@ -1451,9 +1451,9 @@ void DrumRobot::sendPlayProcess()
                     pathManager.processLine(measureMatrix);
                 }
                 
-                if (fileIndex == 1)
+                // send thread에서 읽기 전까지 대기
+                if (fileIndex == 0)
                 {
-                    // send thread에서 읽기 전까지 대기
                     while (flagObj.getFixationFlag())
                     {
                         usleep(100); 
