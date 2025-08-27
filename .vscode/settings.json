@@ -114,7 +114,8 @@
         "threadpool": "cpp",
         "polynomials": "cpp",
         "geometry": "cpp",
-        "levenbergmarquardt": "cpp"
+        "levenbergmarquardt": "cpp",
+        "hash_set": "cpp"
     },
     "makefile.launchConfigurations": [
         {

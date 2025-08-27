@@ -588,17 +588,11 @@ void DrumRobot::stateMachine()
             }
             case Main::AddStance:
             {
-                flagObj.setFixationFlag("moving");
-                std::string fileName = "debug fixed";
-                fun.appendToCSV(fileName, false, 2, 2, 2);
                 sendAddStanceProcess();
                 break;
             }
             case Main::Play:
             {
-                flagObj.setFixationFlag("moving");
-                std::string fileName = "debug fixed";
-                fun.appendToCSV(fileName, false, 2, 2, 2);
                 sendPlayProcess();
                 break;
             }
@@ -637,7 +631,6 @@ void DrumRobot::sendLoopForThread()
 {
     sleep(2);   // read thead에서 clear / initial pos Path 생성 할 때까지 기다림
 
-    bool wasFixed = false; // 이전 `fixed` 상태 추적
     int cycleCounter = 0; // 주기 조절을 위한 변수 (Tmotor : 5ms, Maxon : 1ms)
     sendLoopPeriod = std::chrono::steady_clock::now();
     while (state.main != Main::Shutdown)
@@ -652,30 +645,29 @@ void DrumRobot::sendLoopForThread()
             break;
         }
 
-        static std::map<std::string, bool> prevFixFlags;
-        bool newData = false; // 버퍼 크기가 증가했는지 여부 추적
-
-        //  모든 모터가 고정 상태인지 체크
-        bool allMotorsStagnant = !fixFlags.empty();
-        for (const auto& flag : fixFlags)
+        if (cycleCounter == 0) // 5ms마다 실행
         {
-            if (!prevFixFlags[flag.first] && flag.second) // 이전 값이 false였다가 true가 된 경우
+            // fixeFlags를 확인해서 1개라도 false면 무빙, 엘스 fixed
+            bool isMoving = false;
+            for (const auto &fixFlag : fixFlags)
             {
-                newData = true; // 버퍼가 다시 증가했음을 표시
+                if (!fixFlag.second)
+                {
+                    isMoving = true;
+                    break;
+                }
             }
-            prevFixFlags[flag.first] = flag.second; // 현재 상태를 prevFixFlags에 저장
-        }
 
-        if (allMotorsStagnant && !wasFixed)
-        {
-            flagObj.setFixationFlag("fixed");
-            std::string fileName = "debug fixed";
-            fun.appendToCSV(fileName, false, -1, -1, -1);
-            wasFixed = true;
-        }
-        else if (newData) // 새로운 데이터가 들어오면 wasFixed 해제
-        {
-            wasFixed = false;
+            if (isMoving)
+            {
+                flagObj.setFixationFlag("moving");
+                fun.appendToCSV("debug fixed", false, 0);
+            }
+            else
+            {
+                flagObj.setFixationFlag("fixed");
+                fun.appendToCSV("debug fixed", false, 1);
+            }
         }
 
         int fixed_d = flagObj.getFixationFlag()?1:0;
@@ -1047,6 +1039,12 @@ void DrumRobot::sendAddStanceProcess()
     pathManager.pushAddStancePath(flag);
 
     state.main = Main::Ideal;
+
+    // send thread에서 읽기 전까지 대기
+    while (flagObj.getFixationFlag())
+    {
+       usleep(100); 
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1417,7 +1415,6 @@ void DrumRobot::sendPlayProcess()
         if (txtPath == "null")  // 잘못 입력한 경우 : Ideal 로 이동
         {
             repeatNum = 1;
-            flagObj.setFixationFlag("fixed");
             state.main = Main::Ideal;
             return;
         }
@@ -1460,6 +1457,15 @@ void DrumRobot::sendPlayProcess()
                 {
                     pathManager.processLine(measureMatrix);
                 }
+                
+                // send thread에서 읽기 전까지 대기
+                if (fileIndex == 0)
+                {
+                    while (flagObj.getFixationFlag())
+                    {
+                        usleep(100); 
+                    }
+                }
 
                 inputFile.close(); // 파일 닫기
                 fileIndex++;    // 다음 파일 열 준비
@@ -1472,7 +1478,6 @@ void DrumRobot::sendPlayProcess()
             if (fileIndex == 0)                     ////////// 1. Play 시작도 못한 경우 (악보 입력 오타 등) -> Ideal 로 이동
             {
                 std::cout << "not find " << txtIndexPath << "\n";
-                flagObj.setFixationFlag("fixed");
 
                 repeatNum = 1;
                 currentIterations = 1;
