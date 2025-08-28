@@ -66,8 +66,8 @@ public:
     bool endOfPlayCommand = false;
     bool startOfPlay = false;
     //
-    double bpmOfScore = 0;      ///< 악보의 BPM 정보.
-    string MaxonMode = "CSP";
+    double bpmOfScore = 60;      ///< 악보의 BPM 정보.
+    string MaxonMode = "CST";
     int Kp, Kd;
 
     void initPathManager();

@@ -670,12 +670,6 @@ void DrumRobot::sendLoopForThread()
             }
         }
 
-        int fixed_d = flagObj.getFixationFlag()?1:0;
-        int newData_d = newData?1:0;
-        int wasFixed_d = wasFixed?1:0;
-        std::string fileName = "debug fixed";
-        fun.appendToCSV(fileName, false, fixed_d, newData_d, wasFixed_d);
-
         //////////////////////////////////////////////////////////////////////////
         ///////////////////////////////////보내기///////////////////////////////////
         //////////////////////////////////////////////////////////////////////////
@@ -1041,7 +1035,7 @@ void DrumRobot::sendAddStanceProcess()
     state.main = Main::Ideal;
 
     // send thread에서 읽기 전까지 대기
-    while (flagObj.getFixationFlag())
+    while ((!allMotorsUnConected) && flagObj.getFixationFlag())
     {
        usleep(100); 
     }
@@ -1099,6 +1093,258 @@ void DrumRobot::setSyncTime(int waitingTimeMillisecond)
     // fun.appendToCSV("sync_test.txt", false, -1, inputWaitMs);
     // fun.appendToCSV("sync_test.txt", false, syncTime);
     // fun.appendToCSV("sync_test.txt", false, base_time);
+}
+
+void DrumRobot::displayPlayCommands(bool useMagenta, bool useDrumPad, float inputWaitMs, std::string txtFileName)
+{
+    int ret = system("clear");
+    if (ret == -1) std::cout << "system clear error" << endl;
+
+    // magenta or code name
+    if(useMagenta)
+    {
+        std::cout << "magenta : On \n";
+        std::cout << "trigger : Play When The Drum Pad is Struck. \n";
+        std::cout << "args :\n";
+        
+        if (repeatNum == delayTime.size())
+        {
+            std::cout << "\t- Repeat Num :" << repeatNum << "\n";
+            for (int i = 0; i < repeatNum; i++)
+            {
+                float a, b, c, d;
+                a = delayTime.front(); b = recordTime.front(); c = makeTime.front(); d = waitTime.front();
+                delayTime.pop(); recordTime.pop(); makeTime.pop(); waitTime.pop();
+                delayTime.push(a); recordTime.push(b); makeTime.push(c); waitTime.push(d);
+
+                std::cout << "\t- " << i + 1 << "번째 Delay/Record/Make/Wait Time - (" << a << "/" << b << "/" << c << "/" << d << ") (s)\n";
+            }
+        }
+        else
+        {
+            std::cout << "\t- Arguments Required\n";
+        }
+    }
+    else
+    {
+        std::cout << "magenta : Off \n";
+        std::cout << "code : " << txtFileName << "\n";
+
+        if (useDrumPad)
+        {
+            std::cout << "trigger : Play When The Drum Pad is Struck (" << inputWaitMs/1000.0 << "s)\n";
+        }
+        else
+        {
+            std::cout << "trigger : Play After a Set Time Delay (" << inputWaitMs/1000.0 << "s)\n";
+        }
+    }
+
+    // bpm
+    std::cout << "bpm : " << pathManager.bpmOfScore << "\n";
+    
+    // maxon motor mode
+    if (pathManager.MaxonMode == "CST")
+        std::cout << "mode : Maxon Motor Mode CST \n";
+    else
+        std::cout << "mode : Maxon Motor Mode CSP \n";
+    
+    // music
+    if (playMusic)
+    {
+        std::cout << "music : Drumming With Music \n";
+        std::cout << "\t- path :" << wavPath << "\n";
+    }
+    else
+    {
+        std::cout << "music : Just Drumming \n";
+    }
+    
+    std::cout << "\nEnter Commad (magenta, ";
+    if (useMagenta)
+        std::cout << "args, ";
+    else
+        std::cout << "code, trigger, ";
+    std::cout << "bpm, mode, music, run, exit): ";
+}
+
+void DrumRobot::setPythonArgs()
+{
+    std::cout << "\n반복 횟수 : ";
+    cin >> repeatNum;
+
+    // 큐 초기화 (모든 요소 삭제)
+    while (!delayTime.empty()) {
+        delayTime.pop();  // 큐에서 항목을 하나씩 제거
+    }
+    while (!recordTime.empty()) {
+        recordTime.pop();
+    }
+    while (!makeTime.empty()) {
+        makeTime.pop();
+    }
+    while (!waitTime.empty()) {
+        waitTime.pop();
+    }
+
+    // 반복횟수에 따라 딜레이, 녹음, 생성 시간 입력
+    for(int i = 0; i < repeatNum; i++)
+    {
+        std::cout << "\n";
+        std::cout << i + 1 << "번째 delay time : ";
+        cin >> delayTime_i;
+        std::cout << i + 1 << "번째 record time : ";
+        cin >> recordTime_i;
+        std::cout << i + 1 << "번째 make time : ";
+        cin >> makeTime_i;
+        std::cout << i + 1 << "번째 wait time : ";
+        cin >> waitTime_i;
+        delayTime.push(delayTime_i);
+        recordTime.push(recordTime_i);
+        makeTime.push(makeTime_i);
+        waitTime.push(waitTime_i);
+    }
+}
+
+std::string DrumRobot::selectPlayMode_IW()
+{
+    std::string userInput;
+    int cnt = 0;    // 입력 횟수 (일정 횟수 초과되면 오류)
+    const int maxAttempts = 999;    // 최대 시도 횟수
+
+    std::string errCode = "null"; // Ideal 로 이동
+
+    bool useMagenta = false;
+    bool useDrumPad = false;
+    int maxonMode = 1;
+    int triggerMode = 1;
+    float inputWaitMs = 3000.0; // 3s
+    std::string txtFileName = "null";
+    std::string txtPath = "null";
+    std::string wavFileName = "null";
+
+    while(cnt < maxAttempts)
+    {
+        displayPlayCommands(useMagenta, useDrumPad, inputWaitMs, txtFileName);
+        std::cin >> userInput;
+
+        if (userInput == "magenta")
+        {
+            if (useMagenta)
+                useMagenta = false;
+            else
+                useMagenta = true;
+        }
+        else if (userInput == "args" && useMagenta)
+        {
+            txtPath = magentaPath;    // 마젠타 사용 시 최종 출력 파일 이름
+            
+            setPythonArgs();
+        }
+        else if (userInput == "code" && (!useMagenta))
+        {
+            std::cout << "\nEnter Music Code Name: ";
+            std::cin >> txtFileName;
+
+            txtPath = txtBasePath + txtFileName;
+            repeatNum = 1;
+        }
+        else if (userInput == "trigger" && (!useMagenta))
+        {
+            std::cout << "\nEnter Trigger Mode (Play After a Set Time Delay : 1 / Play When The Drum Pad is Struck : 0): ";
+            std::cin >> triggerMode;
+            std::cout << "Enter Waiting Time: ";
+            std::cin >> inputWaitMs;
+            inputWaitMs *= 1000;
+
+            if (triggerMode == 1)
+                useDrumPad = false;
+            else if (triggerMode == 0)
+                useDrumPad = true;
+        }
+        else if (userInput == "bpm")
+        {
+            std::cout << "\nEnter Initial BPM of Music: ";
+            std::cin >> pathManager.bpmOfScore;
+        }
+        else if (userInput == "mode")
+        {
+            std::cout << "\nEnter Maxon Control Mode (CSP : 1 / CST : 0): ";
+            std::cin >> maxonMode;
+
+            if (maxonMode == 0)
+            {
+                pathManager.MaxonMode = "CST";
+                pathManager.Kp = 60;
+                pathManager.Kd = 7;
+            }
+            else if (maxonMode == 1)
+            {
+                pathManager.MaxonMode = "CSP";
+            }
+        }
+        else if (userInput == "music")
+        {
+            if (playMusic)
+            {
+                playMusic = false;
+            }
+            else
+            {
+                std::cout << "\nEnter Music Name: ";
+                std::cin >> wavFileName;
+                wavPath = wavBasePath + wavFileName + ".wav";
+                playMusic = true;
+            }
+        }
+        else if (userInput == "run")
+        {
+            if (useMagenta)
+            {
+                pythonClass = 0;
+                runPython = true;
+
+                std::string txtIndexPath = txtPath + "0.txt";
+                while (!std::filesystem::exists(txtIndexPath)) {
+                    std::this_thread::sleep_for(std::chrono::milliseconds(100)); // 100ms 대기
+                }
+
+                setSyncTime((int)inputWaitMs);
+            }
+            else if (useDrumPad)
+            {
+                pythonClass = 1;
+                runPython = true;
+
+                while (!std::filesystem::exists(syncPath)) {
+                    std::this_thread::sleep_for(std::chrono::milliseconds(100)); // 100ms 대기
+                }
+
+                setSyncTime((int)inputWaitMs);
+            }
+            else
+            {
+                syncTime = std::chrono::system_clock::now() + std::chrono::milliseconds((int)inputWaitMs);
+                setWaitingTime = true;
+            }
+            
+            return txtPath;
+        }
+        else if (userInput == "exit")
+        {
+            return errCode;
+        }
+        else
+        {
+            std::cout << "\nInvalid Command\n";
+            sleep(1);
+        }
+    }
+
+    std::cout << "\n입력을 시도한 횟수가 " << maxAttempts << " 이상입니다\n";
+    sleep(1);
+
+    return errCode;
 }
 
 std::string DrumRobot::selectPlayMode()
@@ -1410,7 +1656,7 @@ void DrumRobot::sendPlayProcess()
     if (repeatNum == currentIterations) // == 1
     {
         currentIterations = 1;
-        txtPath = selectPlayMode();
+        txtPath = selectPlayMode_IW();
 
         if (txtPath == "null")  // 잘못 입력한 경우 : Ideal 로 이동
         {
@@ -1422,7 +1668,7 @@ void DrumRobot::sendPlayProcess()
     else
     {
         currentIterations++;
-        txtPath = magentaPath + "output7_final";
+        txtPath = magentaPath;
 
         txtIndexPath = txtPath + std::to_string(fileIndex) + ".txt";
         while (!std::filesystem::exists(txtIndexPath)) {
@@ -1461,7 +1707,7 @@ void DrumRobot::sendPlayProcess()
                 // send thread에서 읽기 전까지 대기
                 if (fileIndex == 0)
                 {
-                    while (flagObj.getFixationFlag())
+                    while ((!allMotorsUnConected) && flagObj.getFixationFlag())
                     {
                         usleep(100); 
                     }

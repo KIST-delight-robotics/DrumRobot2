@@ -146,9 +146,9 @@ private:
     double measureTotalTime = 0.0;     ///< 악보를 읽는 동안 누적 시간. [s]
     bool endOfScore = false;           ///< 악보의 종료 코드 확인
 
-    std::string txtBasePath = "/home/shy/DrumRobot/include/codes/";    // 악보 위치
-    std::string wavBasePath = "/home/shy/DrumRobot/include/music/";    // 음악 위치
-    std::string magentaPath = "/home/shy/DrumRobot/DrumSound/";        // 마젠타 경로
+    std::string txtBasePath = "/home/shy/DrumRobot/include/codes/";    // 악보 파일 경로
+    std::string wavBasePath = "/home/shy/DrumRobot/include/music/";    // 음악 파일 경로
+    std::string magentaPath = "/home/shy/DrumRobot/DrumSound/output7_final";        // 마젠타 생성 악보 경로
     std::string wavPath;        // wav 파일 경로
 
     // 싱크 연주를 위한 변수들
@@ -173,6 +173,9 @@ private:
 
     void initializePlayState();
     void setSyncTime(int waitingTime);
+    void displayPlayCommands(bool useMagenta, bool useDrumPad, float inputWaitMs, std::string txtFileName);
+    void setPythonArgs();
+    std::string selectPlayMode_IW();
     std::string selectPlayMode();
     string trimWhitespace(const std::string &str);
     bool readMeasure(ifstream& inputFile);  // 한번에 읽을 악보의 크기(measureThreshold)만큼 읽으면 true 반환
