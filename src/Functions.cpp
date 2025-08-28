@@ -1599,8 +1599,11 @@ void Functions::convertToMeasureFile(const std::string& inputFilename, const std
 
     output << std::fixed << std::setprecision(3);
 
-    //선두 더미 라인
-    output << 1 << "\t " << 0.600 << "\t 0\t 0\t 0\t 0\t 0\t 0\n";
+    if (!endFlag)
+    {
+        //선두 더미 라인
+        output << 1 << "\t " << 0.600 << "\t 0\t 0\t 0\t 0\t 0\t 0\n";
+    }
 
     int measureNum = 1;
     double acc = 0.0;

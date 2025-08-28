@@ -181,17 +181,10 @@ sync_dir = os.path.abspath(os.path.join(base_dir, "..", "include", "sync"))
 os.makedirs(sync_dir, exist_ok=True)
 sync_file = os.path.join(sync_dir, "sync.txt")
 
-def generate_with_magenta(session_idx, rec_number, generate_duration):
+def generate_with_magenta(session_idx, rec_number, generate_duration, generator):
     print(f"🔄 [Magenta] Session {session_idx}-{rec_number-1} 생성 시작 (분량 : {generate_duration}s) 🔄")
     #c_t = datetime.datetime.now().strftime("%H:%M:%S.%f")[:-3] #마젠타 사용 시간 첫 로딩 시 0.23초 이후 사용시 0.18초
     #print(f"   ⭐⭐⭐마젠타 시작 시간 : {c_t}⭐⭐⭐   ")
-
-    # Magenta 모델 로딩
-    bundle_file = os.path.join(base_dir, "drum_kit_rnn.mag")
-    bundle = sequence_generator_bundle.read_bundle_file(bundle_file)
-    generator = drums_rnn_sequence_generator.get_generator_map()['drum_kit'](
-        checkpoint=None, bundle=bundle)
-    generator.initialize()
 
     # 입출력 파일 경로
     input_path  = os.path.join(input_dir, f"input_{session_idx}{rec_number-1}.mid")
@@ -211,14 +204,52 @@ def generate_with_magenta(session_idx, rec_number, generate_duration):
     generator.temperature = 0.8
     generator.steps_per_quarter = 4
 
-    # output.mid 저장
-    musicBPM = 100
-    generated_full = generator.generate(primer_sequence, generator_options)
-    generated_only = extract_subsequence(generated_full, start_gen, end_gen)
-    set_tempo_in_sequence(generated_only, bpm=musicBPM)
-    sequence_proto_to_midi_file(generated_only, output_path)
-    sequence_proto_to_midi_file(generated_only, os.path.join(output_save))      # midi output 보관용 저장
-    print(f"⭐ [Magenta] Session {session_idx}-{rec_number-1} 완료: {output_path} ⭐")
+      # ⭐⭐⭐ [핵심 수정] 성공할 때까지 재시도하는 루프 ⭐⭐⭐
+    generation_successful = False
+    max_retries = 5  # 최대 5번까지 재시도
+    retry_count = 0
+
+    while not generation_successful and retry_count < max_retries:
+        if retry_count > 0:
+            # 재시도 전 약간의 딜레이를 주어 안정성 확보
+            time.sleep(0.5)
+            print(f"    > 재시도 ({retry_count}/{max_retries})...")
+
+        # 음악 생성 실행
+        generated_full = generator.generate(primer_sequence, generator_options)
+
+        # 생성 성공 여부 확인
+        if generated_full.total_time > start_gen:
+            generation_successful = True # 성공 플래그를 True로 바꿔 루프 탈출
+            # print(f"⭐    > 성공: {generated_full.total_time - start_gen:.2f}초의 새로운 음악이 생성되었습니다. ⭐")
+            
+            # 후처리 및 파일 저장
+            safe_end_gen = min(end_gen, generated_full.total_time)
+            generated_only = extract_subsequence(generated_full, start_gen, safe_end_gen)
+            musicBPM = 100
+            set_tempo_in_sequence(generated_only, bpm=musicBPM)
+            sequence_proto_to_midi_file(generated_only, output_path)
+            sequence_proto_to_midi_file(generated_only, output_save)
+            print(f"⭐ [Magenta] Session {session_idx}-{rec_number-1} 완료: {output_path} ⭐")
+        else:
+            # 생성 실패 시 재시도 횟수 증가
+            retry_count += 1
+    
+    # 루프가 끝난 후에도 실패했다면 최종 경고 메시지 출력
+    if not generation_successful:
+        print(f"⚠️ [최종 실패] Session {session_idx}-{rec_number-1}: {max_retries}번 시도 후에도 음악 생성에 실패했습니다.")
+
+    # # output.mid 저장
+    # musicBPM = 100
+    # generated_full = generator.generate(primer_sequence, generator_options)
+
+    # safe_end_gen = min(end_gen, generated_full.total_time)
+
+    # generated_only = extract_subsequence(generated_full, start_gen, safe_end_gen)
+    # set_tempo_in_sequence(generated_only, bpm=musicBPM)
+    # sequence_proto_to_midi_file(generated_only, output_path)
+    # sequence_proto_to_midi_file(generated_only, os.path.join(output_save))      # midi output 보관용 저장
+    # print(f"⭐ [Magenta] Session {session_idx}-{rec_number-1} 완료: {output_path} ⭐")
     
     #c_t = datetime.datetime.now().strftime("%H:%M:%S.%f")[:-3]
     #print(f"   ⭐⭐⭐마젠타 종료 시간 : {c_t}⭐⭐⭐   ")
@@ -232,17 +263,28 @@ def flush_for_nsec(inport, duration_sec):
             flushed += 1
         time.sleep(0.001)
 # ⏳ 3초 카운트다운
-    print(f"(버퍼 플러시: MIDI 이벤트 {flushed}개 무시)")
+    if flushed:
+        print(f"(버퍼 플러시: MIDI 이벤트 {flushed}개 무시)")
 
 # --- 녹음 함수 ---
 def record_session(inport, session_idx, rec_duration, rec_number):
     global is_sync_made
-    # ... (기존 녹음 루프 시작 부분 코드와 동일) ...
+    #global is_twosec_waiting       # 나중에 동시 합주할 때 필요함
+
+    # 1. 함수 시작 시간(무한 루프 탈출에 사용)과 첫 녹음 여부와 녹음 시작 여부(elapsed time을 녹음 시작 시간으로부터 계산함)를 확인합니다.
     function_start_time = time.time()
     is_first_recording = not is_sync_made
     record_start = False
-    recording_end_time = None
-    recording_start_time = function_start_time if not is_first_recording else None
+
+    # 첫 녹음이 아닐 경우, 시작과 동시에 타이머를 설정합니다.
+    if not is_first_recording:
+        recording_start_time = function_start_time
+        recording_end_time = recording_start_time + rec_duration
+    else:
+        # 맨 처음 녹음일 경우, 첫 타격을 기다립니다.
+        recording_start_time = None
+        recording_end_time = None
+
     recorded_msgs = []
     events = []
     
@@ -254,20 +296,25 @@ def record_session(inport, session_idx, rec_duration, rec_number):
     if is_first_recording:
         print("   (시작 신호가 될 첫 타격을 기다리는 중...)")
 
+    # --- 녹음 루프 ---
     while True:
+        # 4. 녹음 종료 조건
         if recording_end_time is not None and time.time() >= recording_end_time:
             print(f"🛑 Session {session_idx}-{rec_number-1} 녹음 종료 🛑")
             break
         
+        # 첫 타격 대기 타임아웃 (3분)
         if (time.time() - function_start_time > 90):
             print("⌛️ 첫 타격 대기 시간 초과.")
-            return
+            return # 함수를 종료하여 무한 루프 방지
 
         for msg in inport.iter_pending():
             if is_saveable_message(msg) and msg.type == 'note_on' and msg.velocity > 0:
                 if not record_start and is_first_recording:
                     recording_start_time = time.time()
                     record_start = True
+
+                # 5. 프로그램 전체의 첫 sync 타격(시작 신호)을 처리하는 로직
                 if not is_sync_made:
                     ts = datetime.datetime.now().strftime("%H:%M:%S.%f")[:-3]
                     with open(sync_file, "w") as f: f.write(ts)
@@ -278,18 +325,27 @@ def record_session(inport, session_idx, rec_duration, rec_number):
 
                 recording_end_time = recording_start_time + rec_duration
                 now = time.time()
+
+                # --- 저장 로직 ---
+                # 모든 녹음은 각자의 recording_start_time을 기준으로 경과 시간을 계산합니다.
                 elapsed = round(now - recording_start_time, 4)
+                
                 mapped_note = map_drum_note(getattr(msg, 'note', 0))
                 events.append([elapsed, mapped_note, getattr(msg, 'velocity', 0)])
+                # MIDI 파일 저장을 위해 절대 시간(elapsed)을 time 속성에 기록
                 recorded_msgs.append(msg.copy(time=elapsed))
                 print(f"✅ 저장됨: {msg.copy(time=elapsed)}")
-        
-        time.sleep(0.001)
 
+        time.sleep(0.001)
+    
+    # 매 세션 두 번째 녹음까지 끝나면 sync.txt 새로 생성
     if rec_number == 2:
         is_sync_made = False
 
+    # --- 파일 저장 (루프 밖) ---
+    # C++에서 파일의 끝을 알기 위한 마커 추가
     events.append([-1, 0, 0])
+    
     csv_out = os.path.join(velo_dir, f"drum_events_{session_idx}{rec_number-1}.csv")
     with open(csv_out, "w", newline='') as f:
         csv.writer(f, delimiter='\t').writerows(events)
@@ -347,60 +403,74 @@ def record_session(inport, session_idx, rec_duration, rec_number):
     mid.save(input_save)
     print(f"💾 MIDI 저장: {midi_out}")
 
-# --- 메인 루프 ---
-input_ports = mido.get_input_names()
-if not input_ports:
-    print("❌ MIDI 입력 장치 미발견")
-    sys.exit(1)
+def main():
+    # --- 메인 루프 ---
+    input_ports = mido.get_input_names()
+    if not input_ports:
+        print("❌ MIDI 입력 장치 미발견")
+        sys.exit(1)
 
-port_index = 1 if len(input_ports) > 1 else 0
-port_name  = input_ports[port_index]
-print(f"✅ MIDI 장치: {port_name}")
+    port_index = 1 if len(input_ports) > 1 else 0
+    port_name  = input_ports[port_index]
+    print(f"✅ MIDI 장치: {port_name}")
 
-is_sync_made = False
+    # Magenta 모델 로딩
+    print("\n🔄 Magenta 모델을 로딩합니다...\n")
+    bundle_file = os.path.join(base_dir, "drum_kit_rnn.mag")
+    bundle = sequence_generator_bundle.read_bundle_file(bundle_file)
+    generator = drums_rnn_sequence_generator.get_generator_map()['drum_kit'](
+        checkpoint=None, bundle=bundle)
+    generator.initialize()
+    print("✅ Magenta 모델 로딩 완료!")
 
-num_sessions = len(rec_seq) // 3
+    global is_sync_made
+    is_sync_made = False
 
-with mido.open_input(port_name) as inport:
-    for session_idx in range(num_sessions):
-        delay_time   = float(rec_seq[session_idx*3 + 0])
-        total_record = float(rec_seq[session_idx*3 + 1])
-        make_time    = float(rec_seq[session_idx*3 + 2])
+    num_sessions = len(rec_seq) // 3
 
-        print("-" * 50)
-        print(f"➡️ Session {session_idx} 시작")
-        print(f"   (Delay: {delay_time}s, Record(total): {total_record}s, Generate: {make_time}s)")
-        print("-" * 50)
+    with mido.open_input(port_name) as inport:
+        for session_idx in range(num_sessions):
+            delay_time   = float(rec_seq[session_idx*3 + 0])
+            total_record = float(rec_seq[session_idx*3 + 1])
+            make_time    = float(rec_seq[session_idx*3 + 2])
 
-        if session_idx == 0:
-            print("\n⏳ 3초 카운트다운")
-            for i in (3, 2, 1):
-                print(f"{i}...")
-                wait_start_time = time.time()
-                while time.time() - wait_start_time < 1.0:
-                    inport.poll()
-                    time.sleep(0.01)
+            print("-" * 50)
+            print(f"➡️ Session {session_idx} 시작")
+            print(f"   (Delay: {delay_time}s, Record(total): {total_record}s, Generate: {make_time}s)")
+            print("-" * 50)
 
-            for _ in inport.iter_pending():
-                pass
-            print("------------- 첫 타격을 기다립니다 -------------")
+            if session_idx == 0:
+                print("\n⏳ 3초 카운트다운")
+                for i in (3, 2, 1):
+                    print(f"{i}...")
+                    wait_start_time = time.time()
+                    while time.time() - wait_start_time < 1.0:
+                        inport.poll()
+                        time.sleep(0.01)
 
-        half_rec = total_record / 2.0
-        half_make = make_time / 2.0
+                for _ in inport.iter_pending():
+                    pass
+                print("------------- 첫 타격을 기다립니다 -------------")
 
-        record_session(inport, session_idx, half_rec, rec_number=1)
-        t1 = threading.Thread(target=generate_with_magenta, args=(session_idx, 1, half_make))
-        t1.start()
-        record_session(inport, session_idx, half_rec, rec_number=2)
-        t2 = threading.Thread(target=generate_with_magenta, args=(session_idx, 2, half_make))
-        t2.start()
-        t1.join()
-        t2.join()
+            half_rec = total_record / 2.0
+            half_make = make_time / 2.0
 
-        print("=" *20 + f"Session {session_idx} 모든 작업 완료" + "=" * 20 + "\n")
+            record_session(inport, session_idx, half_rec, rec_number=1)
+            t1 = threading.Thread(target=generate_with_magenta, args=(session_idx, 1, half_make, generator))
+            t1.start()
+            record_session(inport, session_idx, half_rec, rec_number=2)
+            t2 = threading.Thread(target=generate_with_magenta, args=(session_idx, 2, half_make, generator))
+            t2.start()
+            t1.join()
+            t2.join()
 
-        if session_idx < num_sessions - 1:
-            print(f"⏸ 다음 세션까지 {delay_time}s 대기합니다...")
-            flush_for_nsec(inport, delay_time)
+            print("=" *20 + f"Session {session_idx} 모든 작업 완료" + "=" * 20 + "\n")
 
-print("\n🎉 모든 세션이 완료되었습니다! 🎉")
+            if session_idx < num_sessions - 1:
+                print(f"⏸ 다음 세션까지 {delay_time}s 대기합니다...")
+                flush_for_nsec(inport, delay_time)
+
+    print("\n🎉 모든 세션이 완료되었습니다! 🎉")
+
+if __name__ == "__main__":
+    main()
