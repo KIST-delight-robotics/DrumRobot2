@@ -4,3 +4,6 @@
 ----- 0821_2 -----
 	Set CAN Frame Error : Out of Min Range (L_arm3)
 	Desired Joint Angle : -1.07832deg
+----- 0828_1 -----
+	Set CAN Frame Error : Safety Check (L_arm2)
+	Desired Joint Angle : 25.7823deg        Current Joint Angle : -4.5deg

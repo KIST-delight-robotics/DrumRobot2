@@ -661,20 +661,12 @@ void DrumRobot::sendLoopForThread()
             if (isMoving)
             {
                 flagObj.setFixationFlag("moving");
-                fun.appendToCSV("debug fixed", false, 0);
             }
             else
             {
                 flagObj.setFixationFlag("fixed");
-                fun.appendToCSV("debug fixed", false, 1);
             }
         }
-
-        int fixed_d = flagObj.getFixationFlag()?1:0;
-        int newData_d = newData?1:0;
-        int wasFixed_d = wasFixed?1:0;
-        std::string fileName = "debug fixed";
-        fun.appendToCSV(fileName, false, fixed_d, newData_d, wasFixed_d);
 
         //////////////////////////////////////////////////////////////////////////
         ///////////////////////////////////보내기///////////////////////////////////
@@ -892,6 +884,10 @@ void DrumRobot::runPythonInThread()
                     fun.clear_directory(velodir);
                     fun.clear_directory(inputdir);
                     fun.clear_directory(outputdir);
+
+                    std::remove(syncPath.c_str());
+                    std::remove(syncPath.c_str());
+                    std::remove(syncPath.c_str());
                 }
             }
             else
@@ -1041,7 +1037,7 @@ void DrumRobot::sendAddStanceProcess()
     state.main = Main::Ideal;
 
     // send thread에서 읽기 전까지 대기
-    while (flagObj.getFixationFlag())
+    while (!allMotorsUnConected && flagObj.getFixationFlag())
     {
        usleep(100); 
     }
@@ -1457,13 +1453,17 @@ void DrumRobot::sendPlayProcess()
                 {
                     pathManager.processLine(measureMatrix);
                 }
-                
                 // send thread에서 읽기 전까지 대기
                 if (fileIndex == 0)
                 {
+                    int sleepcnt = 0;
                     while (flagObj.getFixationFlag())
+                    // while (!allMotorsUnConected && flagObj.getFixationFlag())
                     {
-                        usleep(100); 
+                        usleep(100);
+                        sleepcnt ++;
+                        if(sleepcnt == 20)
+                            break;
                     }
                 }
 
@@ -1505,6 +1505,32 @@ void DrumRobot::sendPlayProcess()
         pathManager.processLine(measureMatrix);
     }
 
+    // 악보 파일 저장 후 삭제
+    for (int i = 0; i < fileIndex; i++)
+    {
+        txtIndexPath = txtPath + std::to_string(i) + ".txt";
+
+        // 현재 시간 가져오기
+        auto now = std::chrono::system_clock::now();
+        std::time_t t = std::chrono::system_clock::to_time_t(now);
+        std::tm localTime = *std::localtime(&t);
+
+        // 시간 문자열 생성 (MMDDHHMM)
+        std::ostringstream timeStream;
+        timeStream << std::setw(2) << std::setfill('0') << localTime.tm_mon + 1   // 월
+                << std::setw(2) << std::setfill('0') << localTime.tm_mday       // 일
+                << std::setw(2) << std::setfill('0') << localTime.tm_hour       // 시
+                << std::setw(2) << std::setfill('0') << localTime.tm_min;       // 분
+        std::string timeStr = timeStream.str();
+        
+        std::string saveFolder = "/home/shy/DrumRobot/DrumSound/codes_save/";
+
+        std::string saveCode = saveFolder + "output7_final" + std::to_string(currentIterations-1) + std::to_string(i) + "_" + timeStr + ".txt";
+
+        std::filesystem::rename(txtIndexPath.c_str(), saveCode.c_str());
+        std::remove(txtIndexPath.c_str());
+    }
+
     std::cout << "Play is Over\n";
     if (repeatNum == currentIterations)
     {
@@ -1515,17 +1541,8 @@ void DrumRobot::sendPlayProcess()
     else
     {
         flagObj.setAddStanceFlag("isReady"); // Play 반복 시 Ready 으로 이동
-        
-        // 악보 파일 저장 후 삭제
-        for (int i = 0; i < fileIndex; i++)
-        {
-            txtIndexPath = txtPath + std::to_string(i) + ".txt";
-            std::string saveCode = txtPath +  std::to_string(currentIterations-1) + std::to_string(i) + "_save.txt";
-
-            std::filesystem::rename(txtIndexPath.c_str(), saveCode.c_str());
-            std::remove(txtIndexPath.c_str());
-        }
     }
+
     state.main = Main::AddStance;
 }
 
