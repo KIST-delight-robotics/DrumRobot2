@@ -1006,7 +1006,7 @@ VectorXd PathManager::getWaistParams(VectorXd &pR, VectorXd &pL)
 
     if (j == 0)
     {
-        std::cout << "IKFUN is not solved!! (Waist Range)\n";
+        std::cout << "Error : Waist Range (IK is not solved!!)\n";
         state.main = Main::Error;
 
         output(0) = 0;
@@ -2357,6 +2357,12 @@ VectorXd PathManager::getJointAngles(double q0)
     bool printError = true;
     VectorXd sol = solveGeometricIK(TT.trajectoryR, TT.trajectoryL, q0, TT.wristAngleR, TT.wristAngleL, printError);
 
+    if (sol(0) >= 99)   // 해가 존재하지 않음
+    {
+        std::cout << "Error : No solution (IK is not solved!!)\n";
+        state.main = Main::Error;
+    }
+    
     for (int i = 0; i < 9; i++)
     {
         q(i) = sol(i);
@@ -3224,6 +3230,16 @@ VectorXd PathManager::solveGeometricIK(VectorXd &pR, VectorXd &pL, double theta0
     double x = zeta * zeta + r2 - R1 * R1 - R2 * R2;
     double y = sqrt(4.0 * R1 * R1 * R2 * R2 - x * x);
 
+    if (4.0 * L1 * L1 * L2 * L2 - x * x < 0)
+    {
+        err = 1.0;  // IK 안풀림
+
+        output.resize(10);
+        output << 99.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, err;    // theta 0을 90도로 설정 -> Error State로 이동
+
+        return output;
+    }
+    
     double theta4 = atan2(y, x);
 
     if (theta4 < 0 || theta4 > 140.0 * M_PI / 180.0) // the4 범위 : 0deg ~ 120deg
@@ -3260,6 +3276,16 @@ VectorXd PathManager::solveGeometricIK(VectorXd &pR, VectorXd &pL, double theta0
 
     x = zeta * zeta + r2 - L1 * L1 - L2 * L2;
     y = sqrt(4.0 * L1 * L1 * L2 * L2 - x * x);
+
+    if (4.0 * L1 * L1 * L2 * L2 - x * x < 0)
+    {
+        err = 1.0;  // IK 안풀림
+        
+        output.resize(10);
+        output << 99.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, err;    // theta 0을 90도로 설정 -> Error State로 이동
+
+        return output;
+    }
 
     double theta6 = atan2(y, x);
 
