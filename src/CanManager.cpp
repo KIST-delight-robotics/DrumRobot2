@@ -760,8 +760,6 @@ bool CanManager::sendMotorFrame(std::shared_ptr<GenericMotor> motor)
         }
     }
     
-    fun.appendToCSV("send", false, motor->nodeId, motor->socket);
-    
     return true;
 }
 
