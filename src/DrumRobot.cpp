@@ -722,6 +722,9 @@ void DrumRobot::sendLoopForThread()
 
         cycleCounter = (cycleCounter + 1) % 5;
 
+        int debug = flagObj.getFixationFlag()?1:0;
+        fun.appendToCSV("debug fixed", false, debug);
+
         std::this_thread::sleep_until(sendLoopPeriod);
     }
 }
@@ -1344,6 +1347,8 @@ std::string DrumRobot::selectPlayMode_IW()
                         std::this_thread::sleep_for(std::chrono::milliseconds(100)); // 100ms 대기
                     }
 
+                    inputWaitMs = waitTime.front() * 1000;
+                    waitTime.pop();
                     setSyncTime((int)inputWaitMs);
                 }
                 else if (useDrumPad)
@@ -1800,30 +1805,33 @@ void DrumRobot::sendPlayProcess()
         pathManager.processLine(measureMatrix);
     }
 
-    // 악보 파일 저장 후 삭제
-    for (int i = 0; i < fileIndex; i++)
+    if(txtPath == magentaPath)
     {
-        txtIndexPath = txtPath + std::to_string(i) + ".txt";
+        // 악보 파일 저장 후 삭제
+        for (int i = 0; i < fileIndex; i++)
+        {
+            txtIndexPath = txtPath + std::to_string(i) + ".txt";
 
-        // 현재 시간 가져오기
-        auto now = std::chrono::system_clock::now();
-        std::time_t t = std::chrono::system_clock::to_time_t(now);
-        std::tm localTime = *std::localtime(&t);
+            // 현재 시간 가져오기
+            auto now = std::chrono::system_clock::now();
+            std::time_t t = std::chrono::system_clock::to_time_t(now);
+            std::tm localTime = *std::localtime(&t);
 
-        // 시간 문자열 생성 (MMDDHHMM)
-        std::ostringstream timeStream;
-        timeStream << std::setw(2) << std::setfill('0') << localTime.tm_mon + 1   // 월
-                << std::setw(2) << std::setfill('0') << localTime.tm_mday       // 일
-                << std::setw(2) << std::setfill('0') << localTime.tm_hour       // 시
-                << std::setw(2) << std::setfill('0') << localTime.tm_min;       // 분
-        std::string timeStr = timeStream.str();
-        
-        std::string saveFolder = "/home/shy/DrumRobot/DrumSound/codes_save/";
+            // 시간 문자열 생성 (MMDDHHMM)
+            std::ostringstream timeStream;
+            timeStream << std::setw(2) << std::setfill('0') << localTime.tm_mon + 1   // 월
+                    << std::setw(2) << std::setfill('0') << localTime.tm_mday       // 일
+                    << std::setw(2) << std::setfill('0') << localTime.tm_hour       // 시
+                    << std::setw(2) << std::setfill('0') << localTime.tm_min;       // 분
+            std::string timeStr = timeStream.str();
+            
+            std::string saveFolder = "/home/shy/DrumRobot/DrumSound/codes_save/";
 
-        std::string saveCode = saveFolder + "output7_final" + std::to_string(currentIterations-1) + std::to_string(i) + "_" + timeStr + ".txt";
+            std::string saveCode = saveFolder + "output7_final" + std::to_string(currentIterations-1) + std::to_string(i) + "_" + timeStr + ".txt";
 
-        std::filesystem::rename(txtIndexPath.c_str(), saveCode.c_str());
-        std::remove(txtIndexPath.c_str());
+            std::filesystem::rename(txtIndexPath.c_str(), saveCode.c_str());
+            std::remove(txtIndexPath.c_str());
+        }
     }
 
     std::cout << "Play is Over\n";
@@ -1837,7 +1845,7 @@ void DrumRobot::sendPlayProcess()
     {
         flagObj.setAddStanceFlag("isReady"); // Play 반복 시 Ready 으로 이동
     }
-
+    
     state.main = Main::AddStance;
 }
 
