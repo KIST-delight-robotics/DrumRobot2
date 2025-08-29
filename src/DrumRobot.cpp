@@ -1245,8 +1245,8 @@ std::string DrumRobot::selectPlayMode_IW()
     int maxonMode = 1;
     int triggerMode = 1;
     float inputWaitMs = 3000.0; // 3s
-    std::string txtFileName = "null";
-    std::string txtPath = "null";
+    static std::string txtFileName = "null";
+    std::string txtPath = txtBasePath + txtFileName;;
     std::string wavFileName = "null";
 
     while(cnt < maxAttempts)
@@ -1772,6 +1772,7 @@ void DrumRobot::sendPlayProcess()
             if (fileIndex == 0)                     ////////// 1. Play 시작도 못한 경우 (악보 입력 오타 등) -> Ideal 로 이동
             {
                 std::cout << "not find " << txtIndexPath << "\n";
+                sleep(1);
 
                 repeatNum = 1;
                 currentIterations = 1;
