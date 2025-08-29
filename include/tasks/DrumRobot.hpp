@@ -175,6 +175,7 @@ private:
     void setSyncTime(int waitingTime);
     void displayPlayCommands(bool useMagenta, bool useDrumPad, float inputWaitMs, std::string txtFileName);
     void setPythonArgs();
+    bool checkPreconditions(bool useMagenta, std::string txtPath);
     std::string selectPlayMode_IW();
     std::string selectPlayMode();
     string trimWhitespace(const std::string &str);

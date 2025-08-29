@@ -809,9 +809,9 @@ void DrumRobot::musicMachine()
                     }
                 }
             }
-
-            std::this_thread::sleep_for(std::chrono::milliseconds(10));
         }
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
 }
 
@@ -905,7 +905,7 @@ void DrumRobot::runPythonInThread()
             runPython = false;
         }
 
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
 }
 
@@ -1109,7 +1109,8 @@ void DrumRobot::displayPlayCommands(bool useMagenta, bool useDrumPad, float inpu
         std::cout << "trigger : Play When The Drum Pad is Struck. \n";
         std::cout << "args :\n";
         
-        if (repeatNum == delayTime.size())
+        int argsSize = delayTime.size();
+        if (repeatNum == argsSize)
         {
             std::cout << "\t- Repeat Num :" << repeatNum << "\n";
             for (int i = 0; i < repeatNum; i++)
@@ -1208,6 +1209,29 @@ void DrumRobot::setPythonArgs()
     }
 }
 
+bool DrumRobot::checkPreconditions(bool useMagenta, std::string txtPath)
+{
+    if (useMagenta)
+    {
+        // args 확인
+        int argsSize = delayTime.size();
+        if ((repeatNum != argsSize))
+        {
+            return false;
+        }
+    }
+    else
+    {
+        // code 확인
+        if (txtPath == "null")
+        {
+            return false;
+        }
+    }
+
+    return true;
+}
+
 std::string DrumRobot::selectPlayMode_IW()
 {
     std::string userInput;
@@ -1266,8 +1290,15 @@ std::string DrumRobot::selectPlayMode_IW()
         }
         else if (userInput == "bpm")
         {
-            std::cout << "\nEnter Initial BPM of Music: ";
-            std::cin >> pathManager.bpmOfScore;
+            do
+            {
+                std::cout << "\nEnter Initial BPM of Music: ";
+                std::cin >> pathManager.bpmOfScore;
+                if (pathManager.bpmOfScore <= 0)
+                {
+                    std::cout << "\nInvalid Input (BPM <= 0)\n";
+                }
+            } while (pathManager.bpmOfScore <= 0);
         }
         else if (userInput == "mode")
         {
@@ -1301,36 +1332,44 @@ std::string DrumRobot::selectPlayMode_IW()
         }
         else if (userInput == "run")
         {
-            if (useMagenta)
+            if (checkPreconditions(useMagenta, txtPath))   // 오류 사전 점검
             {
-                pythonClass = 0;
-                runPython = true;
+                if (useMagenta)
+                {
+                    pythonClass = 0;
+                    runPython = true;
 
-                std::string txtIndexPath = txtPath + "0.txt";
-                while (!std::filesystem::exists(txtIndexPath)) {
-                    std::this_thread::sleep_for(std::chrono::milliseconds(100)); // 100ms 대기
+                    std::string txtIndexPath = txtPath + "0.txt";
+                    while (!std::filesystem::exists(txtIndexPath)) {
+                        std::this_thread::sleep_for(std::chrono::milliseconds(100)); // 100ms 대기
+                    }
+
+                    setSyncTime((int)inputWaitMs);
                 }
+                else if (useDrumPad)
+                {
+                    pythonClass = 1;
+                    runPython = true;
 
-                setSyncTime((int)inputWaitMs);
-            }
-            else if (useDrumPad)
-            {
-                pythonClass = 1;
-                runPython = true;
+                    while (!std::filesystem::exists(syncPath)) {
+                        std::this_thread::sleep_for(std::chrono::milliseconds(100)); // 100ms 대기
+                    }
 
-                while (!std::filesystem::exists(syncPath)) {
-                    std::this_thread::sleep_for(std::chrono::milliseconds(100)); // 100ms 대기
+                    setSyncTime((int)inputWaitMs);
                 }
-
-                setSyncTime((int)inputWaitMs);
+                else
+                {
+                    syncTime = std::chrono::system_clock::now() + std::chrono::milliseconds((int)inputWaitMs);
+                    setWaitingTime = true;
+                }
+                
+                return txtPath;
             }
             else
             {
-                syncTime = std::chrono::system_clock::now() + std::chrono::milliseconds((int)inputWaitMs);
-                setWaitingTime = true;
+                std::cout << "\nInvalid Command\n";
+                sleep(1);
             }
-            
-            return txtPath;
         }
         else if (userInput == "exit")
         {
@@ -1341,6 +1380,8 @@ std::string DrumRobot::selectPlayMode_IW()
             std::cout << "\nInvalid Command\n";
             sleep(1);
         }
+
+        cnt++;
     }
 
     std::cout << "\n입력을 시도한 횟수가 " << maxAttempts << " 이상입니다\n";
@@ -1705,16 +1746,17 @@ void DrumRobot::sendPlayProcess()
                 {
                     pathManager.processLine(measureMatrix);
                 }
+
                 // send thread에서 읽기 전까지 대기
                 if (fileIndex == 0)
                 {
-                    int sleepcnt = 0;
+                    int sleepCnt = 0;
                     while (flagObj.getFixationFlag())
                     // while (!allMotorsUnConected && flagObj.getFixationFlag())
                     {
                         usleep(100);
-                        sleepcnt ++;
-                        if(sleepcnt == 20)
+                        sleepCnt ++;
+                        if(sleepCnt == 50)
                             break;
                     }
                 }
