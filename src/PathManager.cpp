@@ -2438,7 +2438,7 @@ void PathManager::pushCommandBuffer(VectorXd &Qi)
                     newData.kp = 0;
                     newData.kd = 0;
                 }
-                else if (MaxonMode == "CST")
+                else if (maxonMode == "CST")
                 {
                     newData.mode = maxonMotor->CST;
                     newData.kp = Kp;

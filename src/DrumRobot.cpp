@@ -1150,7 +1150,9 @@ void DrumRobot::displayPlayCommands(bool useMagenta, bool useDrumPad, float inpu
     std::cout << "bpm : " << pathManager.bpmOfScore << "\n";
     
     // maxon motor mode
-    if (pathManager.MaxonMode == "CST")
+    if (pathManager.maxonMode == "unknown")
+        std::cout << "mode : unknown \n";
+    else if (pathManager.maxonMode == "CST")
         std::cout << "mode : Maxon Motor Mode CST \n";
     else
         std::cout << "mode : Maxon Motor Mode CSP \n";
@@ -1222,6 +1224,11 @@ bool DrumRobot::checkPreconditions(bool useMagenta, std::string txtPath)
         {
             return false;
         }
+
+        if (pathManager.maxonMode == "unknown")
+        {
+            return false;
+        }
     }
     else
     {
@@ -1230,12 +1237,17 @@ bool DrumRobot::checkPreconditions(bool useMagenta, std::string txtPath)
         {
             return false;
         }
+
+        if (pathManager.maxonMode == "unknown")
+        {
+            return false;
+        }
     }
 
     return true;
 }
 
-std::string DrumRobot::selectPlayMode_IW()
+std::string DrumRobot::selectPlayMode()
 {
     std::string userInput;
     int cnt = 0;    // 입력 횟수 (일정 횟수 초과되면 오류)
@@ -1245,7 +1257,7 @@ std::string DrumRobot::selectPlayMode_IW()
 
     bool useMagenta = false;
     bool useDrumPad = false;
-    int maxonMode = 1;
+    int mode = 1;
     int triggerMode = 1;
     float inputWaitMs = 3000.0; // 3s
     static std::string txtFileName = "null";
@@ -1305,19 +1317,27 @@ std::string DrumRobot::selectPlayMode_IW()
         }
         else if (userInput == "mode")
         {
-            std::cout << "\nEnter Maxon Control Mode (CSP : 1 / CST : 0): ";
-            std::cin >> maxonMode;
+            do
+            {
+                std::cout << "\nEnter Maxon Control Mode (CSP : 1 / CST : 0): ";
+                std::cin >> mode;
 
-            if (maxonMode == 0)
-            {
-                pathManager.MaxonMode = "CST";
-                pathManager.Kp = 60;
-                pathManager.Kd = 7;
-            }
-            else if (maxonMode == 1)
-            {
-                pathManager.MaxonMode = "CSP";
-            }
+                if (mode == 0)
+                {
+                    pathManager.maxonMode = "CST";
+                    pathManager.Kp = 60;
+                    pathManager.Kd = 7;
+                }
+                else if (mode == 1)
+                {
+                    pathManager.maxonMode = "CSP";
+                }
+                else
+                {
+                    std::cout << "\nInvalid Input\n";
+                    pathManager.maxonMode = "unknown";
+                }
+            } while (pathManager.maxonMode == "unknown");
         }
         else if (userInput == "music")
         {
@@ -1393,209 +1413,6 @@ std::string DrumRobot::selectPlayMode_IW()
     sleep(1);
 
     return errCode;
-}
-
-std::string DrumRobot::selectPlayMode()
-{
-    std::string txtPath;
-    std::string txtFileName;
-    bool useMagenta = false;
-    int input;
-
-    ////////////////////////////////////////////
-    // 악보, bpm, 연주모드 입력받기
-
-    std::cout << "\nEnter Music Code Name (Magenta : output7_final, Return to Ideal State : 0): ";
-    std::cin >> txtFileName;
-
-    if (txtFileName == "output7_final") // 마젠타 사용 시 최종 출력 파일 이름
-    {
-        // txtPath = magentaPath + txtFileName + ".txt";
-        txtPath = magentaPath + txtFileName;
-        useMagenta = true;
-        //반복횟수에 따라 딜레이시간 , 만들시간 정의해주기 
-        std::cout << "반복 횟수 : ";
-        cin >> repeatNum;
-        for(int i = 0; i < repeatNum; i++)
-        {
-            std::cout << i + 1 << "번째 delay time : ";
-            cin >> delayTime_i;
-            std::cout << i + 1 << "번째 record time : ";
-            cin >> recordTime_i;
-            std::cout << i + 1 << "번째 make time : ";
-            cin >> makeTime_i;
-            delayTime.push(delayTime_i);
-            recordTime.push(recordTime_i);
-            makeTime.push(makeTime_i);
-
-            if ((recordTime_i == 0) || (makeTime_i == 0))
-            {
-                for (int j = 0; j < i + 1; j++) // 큐 삭제
-                {
-                    delayTime.pop();
-                    recordTime.pop();
-                    makeTime.pop();
-                }
-
-                std::string inputErr = "null"; // 잘못 입력한 경우 : Ideal 로 이동
-                return inputErr;
-            }
-        }
-    }
-    else if (txtFileName == "0")
-    {
-        std::string inputErr = "null"; // 잘못 입력한 경우 : Ideal 로 이동
-        return inputErr;
-    }
-    else
-    {
-        // txtPath = txtBasePath + txtFileName + std::to_string(fileIndex) + ".txt";
-        txtPath = txtBasePath + txtFileName;
-        useMagenta = false;
-        repeatNum = 1;
-    }
-
-    std::cout << "Enter Initial BPM of Music: ";
-    std::cin >> pathManager.bpmOfScore;
-
-    std::cout << "Enter Maxon Control Mode (CSP : 1 / CST : 0): ";
-    std::cin >> input;
-    
-    if (input == 0)
-    {
-        pathManager.MaxonMode = "CST";
-        pathManager.Kp = 60;
-        pathManager.Kd = 7;
-    }
-    else
-    {
-        pathManager.MaxonMode = "CSP";
-    }
-
-    ////////////////////////////////////////////
-    // 1 음악 입력 2 그냥연주
-
-    std::cout << "\nEnter (Drumming With Music : 1 / Just Drumming : 2): ";
-    std::cin >> input;
-
-    if (input == 1)
-    {
-        std::string wavFileName;
-        std::cout << "Enter Music Name: ";
-        std::cin >> wavFileName;
-        wavPath = wavBasePath + wavFileName + ".wav";
-        playMusic = true;
-    }
-    else //2
-    {
-        playMusic = false;
-    }
-
-    ////////////////////////////////////////////
-    // 시작 트리거 정하기 1 -> 일정시간뒤에 2 -> 입력들어오고 난 후에 일정시간 뒤에 0 -> back
-
-    if (useMagenta)
-    {
-        std::cout << "\nPlay When Receiving Input \n";
-        input = 2;
-    }
-    else
-    {
-        std::cout << "\nEnter (Play After Waiting : 1 / Play When Receiving Input : 2 / Return to Ideal State : 0): ";
-        std::cin >> input;
-    }
-
-    if (input == 1)
-    {
-        float inputWaitMs = 0.0;
-        std::cout << "Enter Waiting Time: ";
-        std::cin >> inputWaitMs;
-        inputWaitMs *= 1000;
-
-        syncTime = std::chrono::system_clock::now() + std::chrono::milliseconds((int)inputWaitMs);
-        setWaitingTime = true;
-    }
-    else if (input == 2)
-    {
-        float inputWaitMs = 0.0;
-
-        if (useMagenta)
-        {
-            //여기에서 musicMachine 마젠타 돌아간다
-            if (repeatNum == 1)
-            {
-                std::cout << "Enter Waiting Time: ";
-                std::cin >> inputWaitMs;
-                inputWaitMs *= 1000;
-
-                if (inputWaitMs == 0.0)
-                {
-                    std::string inputErr = "null"; // 잘못 입력한 경우 : Ideal 로 이동
-                    return inputErr;
-                }
-            }
-            else
-            {
-                for (int i = 0; i < repeatNum; i++)
-                {
-                    std::cout << i + 1 << "번째 wait time : ";
-                    cin >> waitTime_i;
-                    waitTime.push(waitTime_i);
-
-                    if (waitTime_i == 0)
-                    {
-                        for (int j = 0; j < i + 1; j++)  // 큐 삭제
-                        {
-                            waitTime.pop();
-                        }
-
-                        for (int j = 0; j < repeatNum; j++)  // 큐 삭제
-                        {
-                            delayTime.pop();
-                            recordTime.pop();
-                            makeTime.pop();
-                        }
-
-                        std::string inputErr = "null"; // 잘못 입력한 경우 : Ideal 로 이동
-                        return inputErr;
-                    }
-                }
-                inputWaitMs = waitTime.front() * 1000;
-                waitTime.pop();
-            }
-
-            pythonClass = 0;
-            runPython = true;
-
-            std::string txtIndexPath = txtPath + "0.txt";
-            while (!std::filesystem::exists(txtIndexPath)) {
-                std::this_thread::sleep_for(std::chrono::milliseconds(100)); // 100ms 대기
-            }
-        }
-        else
-        {
-            //그저 시간채크 하는 코드
-            std::cout << "Enter Waiting Time: ";
-            std::cin >> inputWaitMs;
-            inputWaitMs *= 1000;
-            
-            pythonClass = 1;
-            runPython = true;
-
-            while (!std::filesystem::exists(syncPath)) {
-                std::this_thread::sleep_for(std::chrono::milliseconds(100)); // 100ms 대기
-            }
-        }
-
-        setSyncTime((int)inputWaitMs);
-    }
-    else
-    {
-        std::string inputErr = "null"; // 잘못 입력한 경우 : Ideal 로 이동
-        return inputErr;
-    }
-
-    return txtPath;
 }
 
 string DrumRobot::trimWhitespace(const std::string &str)
@@ -1704,7 +1521,7 @@ void DrumRobot::sendPlayProcess()
     if (repeatNum == currentIterations) // == 1
     {
         currentIterations = 1;
-        txtPath = selectPlayMode_IW();
+        txtPath = selectPlayMode();
 
         if (txtPath == "null")  // 잘못 입력한 경우 : Ideal 로 이동
         {

@@ -67,7 +67,7 @@ public:
     bool startOfPlay = false;
     //
     double bpmOfScore = 100.0;      ///< 악보의 BPM 정보.
-    string MaxonMode = "CST";
+    string maxonMode = "unknown";
     int Kp, Kd;
 
     void initPathManager();
