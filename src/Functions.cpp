@@ -966,7 +966,75 @@ std::pair<int, int> Functions::assignHandsByPosition(int inst1, int inst2) {
 //     // std::cout << "손 어사인 포함 변환 완료! 저장 위치 → " << outputFilename << "\n";
 // }
 
-void Functions::assignHandsToEvents(const std::string& inputFilename, const std::string& outputFilename) {
+static int Functions::zoneOf(int inst) {
+    if (inst == 0) return 0;          // 비어있음
+    if (inst == 5) return 1;          // 하이햇
+    if (inst == 8 || inst == 4 || inst == 1) return 2; // 크래시(8), 하이탐(4), 스네어(1)
+    if (inst == 2 || inst == 3 || inst == 6) return 3; // 플로어(2), 미드탐(3), 라이드벨(6)
+    if (inst == 7) return 4;          // 라이드(7)
+    return 3; // 정의 밖은 기본적으로 중앙-우측 계열로 가정
+}
+
+static bool Functions::isCrossed(int rightInst, int leftInst) {
+    if (rightInst == 0 || leftInst == 0) return false;          // 한 손 비어있으면 꼬임 아님
+    if (rightInst == 5 && leftInst == 1) return false;          // 예외 허용(오른손 하이햇, 왼손 스네어)
+    int zr = zoneOf(rightInst);
+    int zl = zoneOf(leftInst);
+    return (zl > zr);
+}
+
+// 손 크로스 방지 함수
+void Functions::checkCross(int& rightHand, int& leftHand, int prevRightNote, int prevLeftNote) {
+    // std::cout << "    [CrossCheck] In RH=" << rightHand << " LH=" << leftHand
+    //           << " | lastR=" << prevRightNote << " lastL=" << prevLeftNote << "\n";
+
+    // 1) 양손 동시타 → 현재 프레임 내에서 교차 검사
+    if (rightHand && leftHand) {
+        int zr = zoneOf(rightHand), zl = zoneOf(leftHand);
+        //std::cout << "    [Both] zone(LH)=" << zl << ", zone(RH)=" << zr << "\n";
+        if (isCrossed(rightHand, leftHand)) {
+            // std::cout << "    [Both→Swap] LH(" << leftHand << ',' << zl
+            //           << ") > RH(" << rightHand << ',' << zr << ") → Swap\n";
+            std::swap(rightHand, leftHand);
+            // std::cout << "    [Both→After] RH=" << rightHand
+            //           << " LH=" << leftHand << "\n";
+        }
+        return;
+    }
+
+    // 2) 단일타: RH만 있음 → 이전 왼손과 비교
+    if (rightHand && !leftHand) {
+        if (prevLeftNote && isCrossed(rightHand, prevLeftNote)) {
+            int zr = zoneOf(rightHand), zl = zoneOf(prevLeftNote);
+            // std::cout << "    [Single RH] RH(" << rightHand << ',' << zr
+            //           << ") vs lastL(" << prevLeftNote << ',' << zl << ") → LH 재배정\n";
+            leftHand = rightHand;
+            rightHand = 0;
+            // std::cout << "    [Single RH→After] RH=" << rightHand
+            //           << " LH=" << leftHand << "\n";
+        }
+        return;
+    }
+
+    // 3) 단일타: LH만 있음 → 이전 오른손과 비교
+    if (leftHand && !rightHand) {
+        if (prevRightNote && isCrossed(prevRightNote, leftHand)) {
+            int zr = zoneOf(prevRightNote), zl = zoneOf(leftHand);
+            // std::cout << "    [Single LH] lastR(" << prevRightNote << ',' << zr
+            //           << ") vs LH(" << leftHand << ',' << zl << ") → RH 재배정\n";
+            rightHand = leftHand;
+            leftHand = 0;
+            // std::cout << "    [Single LH→After] RH=" << rightHand
+            //           << " LH=" << leftHand << "\n";
+        }
+        return;
+    }
+
+    //std::cout << "    [None] RH=0, LH=0 → skip\n";
+}
+
+
+void Functions::kassignHandsToEvents(const std::string& inputFilename, const std::string& outputFilename) {
     std::ifstream input(inputFilename);
     if (!input.is_open()) {
         std::cerr << "입력 파일 열기 실패: " << inputFilename << "\n";
@@ -1165,6 +1233,8 @@ void Functions::assignHandsToEvents(const std::string& inputFilename, const std:
         }
 
         // std::cout << "→ 결과: RH = " << e.rightHand << ", LH = " << e.leftHand << "\n\n";
+
+        checkCross(e.rightHand, e.leftHand, prevRightNote, prevLeftNote);
 
         prevRight = e.rightHand;
         prevLeft = e.leftHand;

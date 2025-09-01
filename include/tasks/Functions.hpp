@@ -80,6 +80,12 @@ public:
     
     void convertMcToC(const std::string& inputFilename, const std::string& outputFilename);
     pair<int, int> assignHandsByPosition(int inst1, int inst2);
+
+
+    static int zoneOf(int inst);
+    static bool isCrossed(int rightInst, int leftInst);
+    void checkCross(int& rightHand, int& leftHand, int prevRightNote, int prevLeftNote);
+    
     void assignHandsToEvents(const std::string& inputFilename, const std::string& outputFilename);
     void addGroove(int bpm, const std::string& inputFilename, const std::string& outputFilename);
     void convertToMeasureFile(const std::string& inputFilename, const std::string& outputFilename, bool endFlag);
