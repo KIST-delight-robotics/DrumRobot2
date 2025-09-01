@@ -115,7 +115,13 @@
         "polynomials": "cpp",
         "geometry": "cpp",
         "levenbergmarquardt": "cpp",
-        "hash_set": "cpp"
+        "hash_set": "cpp",
+        "qtalignedmalloc": "cpp",
+        "*.inc": "cpp",
+        "cassert": "cpp",
+        "cerrno": "cpp",
+        "cfloat": "cpp",
+        "climits": "cpp"
     },
     "makefile.launchConfigurations": [
         {

@@ -1785,12 +1785,12 @@ void DrumRobot::sendPlayProcess()
                 state.main = Main::Ideal;
                 return;
             }
-            else if (flagObj.getFixationFlag())     ////////// 2. 로봇 상태가 fixed 로 변경 (악보가 들어오기 전 명령 소진) -> 에러
-            {
-                std::cout << "Error : not find " << txtIndexPath << "\n";
-                state.main = Main::Error;
-                return;
-            }
+            // else if (flagObj.getFixationFlag())     ////////// 2. 로봇 상태가 fixed 로 변경 (악보가 들어오기 전 명령 소진) -> 에러
+            // {
+            //     std::cout << "Error : not find " << txtIndexPath << "\n";
+            //     state.main = Main::Error;
+            //     return;
+            // }
             else                                    ////////// 3. 다음 악보 생성될 때까지 대기
             {
                 inputFile.clear();            // 상태 비트 초기화
