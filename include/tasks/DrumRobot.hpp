@@ -176,7 +176,6 @@ private:
     void displayPlayCommands(bool useMagenta, bool useDrumPad, float inputWaitMs, std::string txtFileName);
     void setPythonArgs();
     bool checkPreconditions(bool useMagenta, std::string txtPath);
-    std::string selectPlayMode_IW();
     std::string selectPlayMode();
     string trimWhitespace(const std::string &str);
     bool readMeasure(ifstream& inputFile);  // 한번에 읽을 악보의 크기(measureThreshold)만큼 읽으면 true 반환
