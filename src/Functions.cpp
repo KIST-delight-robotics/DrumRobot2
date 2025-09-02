@@ -1034,7 +1034,7 @@ void Functions::checkCross(int& rightHand, int& leftHand, int prevRightNote, int
 }
 
 
-void Functions::kassignHandsToEvents(const std::string& inputFilename, const std::string& outputFilename) {
+void Functions::assignHandsToEvents(const std::string& inputFilename, const std::string& outputFilename) {
     std::ifstream input(inputFilename);
     if (!input.is_open()) {
         std::cerr << "입력 파일 열기 실패: " << inputFilename << "\n";
