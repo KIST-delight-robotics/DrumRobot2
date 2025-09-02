@@ -243,7 +243,7 @@ def record_session(inport, session_idx, rec_duration, rec_number):
             delta_time = msg.time - last_event_abs_time
             last_event_abs_time = msg.time
             ticks = mido.second2tick(delta_time, ticks_per_beat, tempo_us_per_beat)
-            track.append(msg.copy(time=max(0, int(round(ticks)))))
+            track.append(msg.copy(time=max(0, int(round(ticks))))) 
 
     midi_out = os.path.join(input_dir, f"input_{session_idx}{rec_number-1}.mid")
     input_save = os.path.join("/home/shy/DrumRobot/DrumSound/midi_save/midi_input", f"input__{session_idx}{rec_number-1}.mid")
