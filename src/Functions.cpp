@@ -966,7 +966,7 @@ std::pair<int, int> Functions::assignHandsByPosition(int inst1, int inst2) {
 //     // std::cout << "손 어사인 포함 변환 완료! 저장 위치 → " << outputFilename << "\n";
 // }
 
-static int Functions::zoneOf(int inst) {
+int Functions::zoneOf(int inst) {
     if (inst == 0) return 0;          // 비어있음
     if (inst == 5) return 1;          // 하이햇
     if (inst == 8 || inst == 4 || inst == 1) return 2; // 크래시(8), 하이탐(4), 스네어(1)
@@ -975,7 +975,7 @@ static int Functions::zoneOf(int inst) {
     return 3; // 정의 밖은 기본적으로 중앙-우측 계열로 가정
 }
 
-static bool Functions::isCrossed(int rightInst, int leftInst) {
+bool Functions::isCrossed(int rightInst, int leftInst) {
     if (rightInst == 0 || leftInst == 0) return false;          // 한 손 비어있으면 꼬임 아님
     if (rightInst == 5 && leftInst == 1) return false;          // 예외 허용(오른손 하이햇, 왼손 스네어)
     int zr = zoneOf(rightInst);

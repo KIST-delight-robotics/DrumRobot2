@@ -1711,8 +1711,7 @@ void DrumRobot::runPythonForMagenta()
         std::cin >> selected_input;
 
         if (selected_input == "1") {
-            // midPath = "/home/shy/DrumRobot/DrumSound/output_temp_03.mid";
-            midPath = "/home/shy/DrumRobot/DrumSound/output__01.mid";
+            midPath = "/home/shy/DrumRobot/DrumSound/output_temp_03.mid";
         } else if (selected_input == "2") {
             midPath = "/home/shy/DrumRobot/DrumSound/output_temp_08.mid";
         } else {
