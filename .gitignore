@@ -3,7 +3,7 @@ venv/
 magenta-env/
 DrumSound/magenta-env/
 DrumSound/magenta_drum/venv/
-magenta/magenta-env/
+magenta/magenta_env/
 magenta/model/
 
 # 파이썬 캐시 파일
