@@ -14,7 +14,7 @@ tf.get_logger().setLevel('ERROR')   # TensorFlow 경고 메시지 억제
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'    # TensorFlow의 로그 레벨 설정 (CUDA 관련 경고 및 TensorFlow 경고 숨기기)
 
 input_device_name = 'NUX DP-2000:NUX DP-2000 MIDI 1 20:0'  # 연결된 장치 이름
-output_file_path = 'drum_recording.mid'
+output_file_path = 'record/drum_recording.mid'
 
 # rec.record_midi(input_device_name, output_file_path)
 # print_midi_sequence(output_file_path)
