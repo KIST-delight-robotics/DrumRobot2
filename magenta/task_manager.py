@@ -1,15 +1,13 @@
-from myRecordMIDI import MyRecord
-from myMagenta import MyMagenta
-from myPrintMIDI import print_midi_sequence
-from myPrintMIDI import print_midi_mido
-from myPrintMIDI import print_midi_pretty_midi
+from midi_recording import RecordingManager
+from magenta_model import MagentaManager
+from midi_match import match_best_from_cache
 
 class taskManager:
     def __init__(self):
         print("1")
 
     def make_sync(self):
-        rec = MyRecord()
+        rec = RecordingManager()
 
     def make_midi(self, num_repeats, wait_times, recording_times, creation_times):
         print(f"[Python] number of repeats : {num_repeats}")

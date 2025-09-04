@@ -8,7 +8,7 @@ import tensorflow as tf
 tf.get_logger().setLevel('ERROR')   # TensorFlow 경고 메시지 억제
 
 import sys
-from myClass import taskManager
+from task_manager import taskManager
 
 program_name = sys.argv[0]
 program_mode = sys.argv[1]
@@ -49,9 +49,3 @@ elif program_mode == "--record":
 
 else:
     print("[Python] [ERROR] args1")
-
-
-
-
-
-

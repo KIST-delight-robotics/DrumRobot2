@@ -3,7 +3,7 @@ from magenta.models.music_vae import TrainedModel
 from magenta.models.music_vae import configs
 import note_seq
 
-class MyMagenta:
+class MagentaManager:
     
     def __init__(self, config_name, checkpoint_path):
         # 사용할 모델 이름 설정
