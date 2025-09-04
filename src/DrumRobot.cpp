@@ -1198,19 +1198,22 @@ void DrumRobot::setPythonArgs()
     // 반복횟수에 따라 딜레이, 녹음, 생성 시간 입력
     for(int i = 0; i < repeatNum; i++)
     {
+        float dT, rT, mT, wT;
+
         std::cout << "\n";
         std::cout << i + 1 << "번째 delay time : ";
-        cin >> delayTime_i;
+        cin >> dT;
         std::cout << i + 1 << "번째 record time : ";
-        cin >> recordTime_i;
+        cin >> rT;
         std::cout << i + 1 << "번째 make time : ";
-        cin >> makeTime_i;
+        cin >> mT;
         std::cout << i + 1 << "번째 wait time : ";
-        cin >> waitTime_i;
-        delayTime.push(delayTime_i);
-        recordTime.push(recordTime_i);
-        makeTime.push(makeTime_i);
-        waitTime.push(waitTime_i);
+        cin >> wT;
+
+        delayTime.push(dT);
+        recordTime.push(rT);
+        makeTime.push(mT);
+        waitTime.push(wT);
     }
 }
 
@@ -1362,6 +1365,26 @@ std::string DrumRobot::selectPlayMode()
                     pythonClass = 0;
                     runPython = true;
 
+                    // std::string pythonCmd = "/home/shy/DrumRobot/magenta/magenta_env/bin/python /home/shy/DrumRobot/magenta/script.py --sync";
+
+                    // pythonCmd += " --repeat " + std::to_string(repeatNum);
+                    // for (int i = 0; i < repeatNum; i++)
+                    // {
+                    //     float dT = delayTime.front(); delayTime.pop();
+                    //     float rT = recordTime.front(); recordTime.pop();
+                    //     float mT = makeTime.front(); makeTime.pop();
+
+                    //     pythonCmd += " " + std::to_string(dT);
+                    //     pythonCmd += " " + std::to_string(rT);
+                    //     pythonCmd += " " + std::to_string(mT);
+                    // }
+
+                    // pythonCmd += " &";   // 백그라운드 실행
+
+                    // int ret = std::system(pythonCmd.c_str());
+                    // if (ret != 0)
+                    //     std::cerr << "Python script failed to execute with code " << ret << std::endl;
+
                     std::string txtIndexPath = txtPath + "0.txt";
                     while (!std::filesystem::exists(txtIndexPath)) {
                         std::this_thread::sleep_for(std::chrono::milliseconds(100)); // 100ms 대기
@@ -1375,6 +1398,13 @@ std::string DrumRobot::selectPlayMode()
                 {
                     pythonClass = 1;
                     runPython = true;
+
+                    // std::string pythonCmd = "/home/shy/DrumRobot/magenta/magenta_env/bin/python /home/shy/DrumRobot/magenta/script.py --record";
+                    // pythonCmd += " &";   // 백그라운드 실행
+
+                    // int ret = std::system(pythonCmd.c_str());
+                    // if (ret != 0)
+                    //     std::cerr << "Python script failed to execute with code " << ret << std::endl;
 
                     while (!std::filesystem::exists(syncPath)) {
                         std::this_thread::sleep_for(std::chrono::milliseconds(100)); // 100ms 대기
