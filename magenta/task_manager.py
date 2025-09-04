@@ -27,9 +27,9 @@ class taskManager:
         print(f"[Python] number of repeats : {num_repeats}")
         
         for i in range(num_repeats):
-            print(f"\n[Python] {i+1} wait times : {wait_times[i]}")
-            print(f"[Python] {i+1} recording times : {recording_times[i]}")
-            print(f"[Python] {i+1} creation times : {creation_times[i]}")
+            print(f"\n[Python] wait times : {wait_times[i]}")
+            print(f"[Python] recording times : {recording_times[i]}")
+            print(f"[Python] creation times : {creation_times[i]}")
 
             # 첫 번째 녹음
             recording_file_name = recording_file_path + str(i) + '_1.mid'
@@ -37,6 +37,7 @@ class taskManager:
 
             # 가장 유시한 리듬
             base_midi = 'basic/' + match_best_from_cache(recording_file_name)
+            print(f"[Python] matching : {base_midi}")
             
             # 마젠타
             output_filename = magenta_output_path + '_1'
@@ -50,6 +51,7 @@ class taskManager:
 
             # 가장 유사한 리듬
             base_midi = 'basic/' + match_best_from_cache(recording_file_name)
+            print(f"[Python] matching : {base_midi}")
             
             # 마젠타
             output_filename = magenta_output_path + '_2'
