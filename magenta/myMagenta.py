@@ -49,7 +49,7 @@ class MyMagenta:
     def print_model(self):
         print(f"\nModel Name: {self.config_name}")
         print(f"Model Checkpoint Path: {self.checkpoint_path}\n")
-
+    
     def generate_music(self, output_filename):
         # 생성
         generated_sequences = self.model.sample(n=self.num_samples, length=self.length, temperature=self.temperature)
@@ -87,7 +87,7 @@ class MyMagenta:
         input_sequence2 = note_seq.midi_file_to_sequence_proto(input_midi2)
 
         # 보간
-        generated_sequences = self.model.interpolate(start_sequence=input_sequence1, end_sequence=input_sequence2, num_steps=self.num_samples, length=self.length, temperature=self.temperature)
+        generated_sequences = self.model.interpolate(start_sequence=input_sequence1, end_sequence=input_sequence2, num_steps=self.num_samples, length=self.length, temperature=self.temperature, assert_same_length=False)
 
         # 생성된 MIDI 파일 저장할 경로 설정
         os.makedirs(self.output_dir, exist_ok=True)

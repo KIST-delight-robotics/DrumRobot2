@@ -163,13 +163,9 @@ private:
     int repeatNum = 1;
     int currentIterations = 1;
     queue<float> delayTime;
-    float delayTime_i;
     queue<float> makeTime;
-    float makeTime_i;
     queue<float> recordTime;
-    float recordTime_i;
     queue<float> waitTime;
-    float waitTime_i;
 
     void initializePlayState();
     void setSyncTime(int waitingTime);
