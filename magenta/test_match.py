@@ -1,8 +1,12 @@
 #!/usr/bin/env python3
+import os
+import numpy as np
+from typing import Tuple
+from mido import MidiFile
 
 def match_best_from_cache(midi_path: str,
                           cache_path: str = "library_cache.npz",
-                          weights: tuple[float, float] = (0.6, 0.4),
+                          weights: Tuple[float, float] = (0.6, 0.4),
                           return_score: bool = False):
     """
     입력 MIDI(항상 2마디 기준으로 처리)를 캐시(library_cache.npz)에 들어있는 베이직 패턴들과 비교하여
@@ -29,10 +33,6 @@ def match_best_from_cache(midi_path: str,
     FileNotFoundError : cache_path 또는 midi_path가 없을 때
     ValueError        : 캐시 레이아웃이 킥/스네어(64차원)과 다를 때
     """
-    # 내부에서만 쓰는 의존성 import (외부 네임스페이스 오염 방지)
-    import os
-    import numpy as np
-    from mido import MidiFile
 
     # ---------- 내부 상수/셋업 ----------
     BAR_LEN_BEATS = 4.0
@@ -87,13 +87,11 @@ def match_best_from_cache(midi_path: str,
 
     def _concat_2bars_to_vector(g2):
         """2마디 -> 64차원 벡터(kick32 + snare32)"""
-        import numpy as np
         def flat(inst): return g2[0][inst] + g2[1][inst]
         return np.array(flat("kick") + flat("snare"), dtype=np.uint8)
 
     def _hamming_sim_ks(vecA, vecB, w=(0.6, 0.4)) -> float:
         """킥/스네어 구간별 해밍 유사도 가중 평균"""
-        import numpy as np
         if vecA.shape != (64,) or vecB.shape != (64,):
             raise ValueError("유사도 계산은 64차원 벡터만 지원합니다. (kick32|snare32)")
         kW, sW = w
@@ -109,7 +107,6 @@ def match_best_from_cache(midi_path: str,
     if not os.path.isfile(midi_path):
         raise FileNotFoundError(f"입력 MIDI를 찾을 수 없습니다: {midi_path}")
 
-    import numpy as np
     npz  = np.load(cache_path, allow_pickle=True)
     names   = npz["names"]          # object array of str
     vectors = npz["vectors"]        # (N, 64)
