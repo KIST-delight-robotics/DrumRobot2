@@ -37,7 +37,7 @@ class taskManager:
 
             # 가장 유시한 리듬
             base_midi = 'basic/' + match_best_from_cache(recording_file_name)
-            print(f"[Python] matching : {base_midi}")
+            print(f"\n[Python] matching : {base_midi}")
             
             # 마젠타
             output_filename = magenta_output_path + '_1'
@@ -51,7 +51,7 @@ class taskManager:
 
             # 가장 유사한 리듬
             base_midi = 'basic/' + match_best_from_cache(recording_file_name)
-            print(f"[Python] matching : {base_midi}")
+            print(f"\n[Python] matching : {base_midi}")
             
             # 마젠타
             output_filename = magenta_output_path + '_2'

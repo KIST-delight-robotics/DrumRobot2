@@ -105,7 +105,7 @@ class RecordingManager:
 
                 if msg.type == 'note_on' and not first_note_received:
                     first_note_received = True  # 첫 번째 note_on 메시지 수신 시
-                    print("[Python] First note received, make sync file")
+                    print("\n[Python] First note received, make sync file")
                     self.make_sync_file()   # sync 파일 생성
 
             # 주어진 시간만큼 녹음하고 탈출
@@ -173,7 +173,7 @@ class RecordingManager:
         # MIDI 파일 저장
         track.append(mido.MetaMessage('end_of_track', time=1))
         mid.save(output_file)
-        print(f"[Python] Recording saved to {output_file}")
+        print(f"\n[Python] Recording saved to {output_file}")
         midi_input.close()
 
     # 첫 타격 감지 후 일정 시간동안 MIDI 신호를 실시간으로 받아와서 MIDI 파일로 저장
@@ -245,5 +245,5 @@ class RecordingManager:
         # MIDI 파일 저장
         track.append(mido.MetaMessage('end_of_track', time=1))
         mid.save(output_file)
-        print(f"[Python] Recording saved to {output_file}")
+        print(f"\n[Python] Recording saved to {output_file}")
         midi_input.close()
