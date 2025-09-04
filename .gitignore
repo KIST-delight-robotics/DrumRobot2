@@ -10,6 +10,11 @@ __pycache__/
 *.pyo
 *.pyd
 
+# Python 가상환경 & 캐시 파일
+magenta/magenta_env/
+magenta/model/
+magenta/__pycache__/
+
 # Jupyter 체크포인트
 .ipynb_checkpoints/
 
