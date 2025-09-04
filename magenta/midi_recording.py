@@ -32,7 +32,6 @@ def print_midi_pretty_midi(midi_path):
     
     print(f"Total Number of Notes: {num_notes}")
 
-# Start sequence와 End sequence의 노트 출력하기
 def print_midi_sequence(midi_path):
 
     # 입력 MIDI 파일을 로드
@@ -41,6 +40,11 @@ def print_midi_sequence(midi_path):
     for note in input_sequence.notes:
         print(f"Pitch: {note.pitch}, Start Time: {note.start_time}, End Time: {note.end_time}, Is Drum: {note.is_drum}")
 
+# 미디 분석 및 출력
+midi_path = 'record/drum_recording_0_2.mid'
+print_midi_sequence(midi_path)
+
+# 녹음 오브젝트
 class RecordingManager:
     def __init__(self, input_port_name):
         self.bpm = 120
