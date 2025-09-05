@@ -535,8 +535,8 @@ void Functions::handleMetaEvent(const std::vector<unsigned char>& data, size_t& 
     size_t startPos = pos;
     if (metaType == 0x21 && length == 1) {
     } else if (metaType == 0x58 && length == 4) {
-        unsigned char numerator = data[pos];
-        unsigned char denominator = 1 << data[pos + 1];
+        // unsigned char numerator = data[pos];
+        // unsigned char denominator = 1 << data[pos + 1];
         // std::cout << "  - Time Signature: " << (int)numerator << "/" << (int)denominator << "\n";
     } else if (metaType == 0x51 && length == 3) {
         int tempo = ((data[pos] & 0xFF) << 16) |
@@ -551,7 +551,7 @@ void Functions::handleMetaEvent(const std::vector<unsigned char>& data, size_t& 
 }
 
 void Functions::handleChannel10(const std::vector<unsigned char>& data, size_t& pos, unsigned char eventType) {
-    unsigned char control = data[pos++];
+    // unsigned char control = data[pos++];
     if (eventType == 0xB9) pos++;
 }
 
@@ -990,7 +990,7 @@ void Functions::checkCross(int& rightHand, int& leftHand, int prevRightNote, int
 
     // 1) 양손 동시타 → 현재 프레임 내에서 교차 검사
     if (rightHand && leftHand) {
-        int zr = zoneOf(rightHand), zl = zoneOf(leftHand);
+        // int zr = zoneOf(rightHand), zl = zoneOf(leftHand);
         //std::cout << "    [Both] zone(LH)=" << zl << ", zone(RH)=" << zr << "\n";
         if (isCrossed(rightHand, leftHand)) {
             // std::cout << "    [Both→Swap] LH(" << leftHand << ',' << zl
@@ -1005,7 +1005,7 @@ void Functions::checkCross(int& rightHand, int& leftHand, int prevRightNote, int
     // 2) 단일타: RH만 있음 → 이전 왼손과 비교
     if (rightHand && !leftHand) {
         if (prevLeftNote && isCrossed(rightHand, prevLeftNote)) {
-            int zr = zoneOf(rightHand), zl = zoneOf(prevLeftNote);
+            // int zr = zoneOf(rightHand), zl = zoneOf(prevLeftNote);
             // std::cout << "    [Single RH] RH(" << rightHand << ',' << zr
             //           << ") vs lastL(" << prevLeftNote << ',' << zl << ") → LH 재배정\n";
             leftHand = rightHand;
@@ -1019,7 +1019,7 @@ void Functions::checkCross(int& rightHand, int& leftHand, int prevRightNote, int
     // 3) 단일타: LH만 있음 → 이전 오른손과 비교
     if (leftHand && !rightHand) {
         if (prevRightNote && isCrossed(prevRightNote, leftHand)) {
-            int zr = zoneOf(prevRightNote), zl = zoneOf(leftHand);
+            // int zr = zoneOf(prevRightNote), zl = zoneOf(leftHand);
             // std::cout << "    [Single LH] lastR(" << prevRightNote << ',' << zr
             //           << ") vs LH(" << leftHand << ',' << zl << ") → RH 재배정\n";
             rightHand = leftHand;

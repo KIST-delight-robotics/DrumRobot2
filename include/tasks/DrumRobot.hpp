@@ -80,8 +80,6 @@ public:
 
     // init
     void initializeDrumRobot();
-
-    bool file_found = false;    // mid 파일 들어왔는지 확인
     
 private:
     State &state;
@@ -178,9 +176,8 @@ private:
     bool readMeasure(ifstream& inputFile);  // 한번에 읽을 악보의 크기(measureThreshold)만큼 읽으면 true 반환
     void sendPlayProcess();
 
-    //////////////////////////////////////////////////////////////// python (magenta)
+    //////////////////////////////////////////////////////////////// 
 
-    void runPythonForMagenta();         // 기존 파이썬 코드 실행 후 악보 생성
-    void getMagentaSheet(std::string midPath, std::string veloPath, int recordingIndex);    // 파이썬 코드 실행 x 악보만 생성
+    void generateCodeFromMIDI(std::string midPath, std::string veloPath, int recordingIndex);
 
 };
