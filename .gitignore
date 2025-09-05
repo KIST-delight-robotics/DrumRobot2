@@ -24,3 +24,6 @@ magenta/__pycache__/``
 # OS별 임시 파일
 .DS_Store
 Thumbs.db
+
+# 충돌 룩업 테이블
+include/table/

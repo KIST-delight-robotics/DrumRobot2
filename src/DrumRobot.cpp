@@ -824,87 +824,61 @@ void DrumRobot::runPythonInThread()
     {
         if (runPython)
         {
-            if (pythonClass == 0)
+            std::string pythonCmd = pythonScript + " " + pythonArgs;
+
+            if (pythonArgs == "--sync")
             {
-                // 시간 측정 + 마젠타
-                if(repeatNum ==1)
-                {
-                    std::string pythonCmd = "/home/shy/DrumRobot/DrumSound/magenta-env/bin/python /home/shy/DrumRobot/DrumSound/getMIDITimeMagenta.py";
-
-                    int ret = std::system(pythonCmd.c_str());
-                    if (ret != 0)
-                    {
-                        std::cerr << "Python script failed to execute with code " << ret << std::endl;
-                    }
-
-                    getMagentaSheet("/home/shy/DrumRobot/DrumSound/output.mid", "null", 0);
-                }
-                else
-                {
-                    std::string pythonArgs = "--rec_times ";
-                        
-                    for (int i = 0; i < repeatNum; ++i) {
-                        float d = delayTime.front(); delayTime.pop();
-                        float r = recordTime.front(); recordTime.pop();
-                        float m = makeTime.front(); makeTime.pop();
-
-                        pythonArgs += std::to_string(d) + " ";
-                        pythonArgs += std::to_string(r) + " ";
-                        pythonArgs += std::to_string(m) + " ";
-                    }
-
-                    std::string pythonCmd = "/home/shy/DrumRobot/DrumSound/magenta-env/bin/python "
-                    // "/home/shy/DrumRobot/DrumSound/getMIDI_rec_Mag.py " + pythonArgs + " &";
-                    "/home/shy/DrumRobot/DrumSound/GetMidi.py " + pythonArgs + " &";
-
-                    int ret = std::system(pythonCmd.c_str());  // 비동기 실행 (백그라운드 &)
-                    if (ret != 0)
-                    {
-                        std::cerr << "Python script failed to execute with code " << ret << std::endl;
-                    }
-
-                    for (int i = 0; i < repeatNum; i++)
-                    {
-                        for (int j = 0; j < 2; j++)
-                        {
-                            std::string midiPath = "/home/shy/DrumRobot/DrumSound/record_output/output_" + std::to_string(i) + std::to_string(j) + ".mid";
-                            std::string veloPath = "/home/shy/DrumRobot/DrumSound/record_velocity/drum_events_" + std::to_string(i) + std::to_string(j) + ".csv";
-
-                            // 해당 MIDI 파일이 생성될 때까지 대기
-                            while (!std::filesystem::exists(midiPath)) {
-                                std::this_thread::sleep_for(std::chrono::milliseconds(100));
-                            }
-                            
-                            getMagentaSheet(midiPath, veloPath, j);  // 파이썬이 끝나지 않아도 즉시 실행
-                        }
-                    }
-
-                    // getMIDI_rec_Mag.py의 출력이 담긴 폴더 주소. getMagnetaSheet 후에 파일 지우기 위함.
-                    std::string velodir = "/home/shy/DrumRobot/DrumSound/record_velocity";
-                    std::string inputdir = "/home/shy/DrumRobot/DrumSound/record_input";
-                    std::string outputdir = "/home/shy/DrumRobot/DrumSound/record_output";
-
-                    fun.clear_directory(velodir);
-                    fun.clear_directory(inputdir);
-                    fun.clear_directory(outputdir);
-
-                    std::remove(syncPath.c_str());
-                    std::remove(syncPath.c_str());
-                    std::remove(syncPath.c_str());
-                }
-            }
-            else
-            {
-                // 시간만 측정
-                std::string pythonCmd = "/home/shy/DrumRobot/DrumSound/magenta-env/bin/python /home/shy/DrumRobot/DrumSound/getMIDITime.py";
+                pythonCmd += " --path ../magenta/ &";   // 경로 설정 & 백그라운드 실행
 
                 int ret = std::system(pythonCmd.c_str());
                 if (ret != 0)
-                {
                     std::cerr << "Python script failed to execute with code " << ret << std::endl;
-                }
-                
             }
+            else if (pythonArgs == "--record")
+            {
+                pythonCmd += " --repeat " + std::to_string(repeatNum);
+                for (int i = 0; i < repeatNum; i++)
+                {
+                    float dT = delayTime.front(); delayTime.pop();
+                    float rT = recordTime.front(); recordTime.pop();
+                    float mT = makeTime.front(); makeTime.pop();
+
+                    pythonCmd += " " + std::to_string(dT);
+                    pythonCmd += " " + std::to_string(rT);
+                    pythonCmd += " " + std::to_string(mT);
+                }
+
+                pythonCmd += " --path ../magenta/ &";   // 경로 설정 & 백그라운드 실행
+
+                int ret = std::system(pythonCmd.c_str());
+                if (ret != 0)
+                    std::cerr << "Python script failed to execute with code " << ret << std::endl;
+
+                for (int i = 0; i < repeatNum; i++)
+                {
+                    for (int j = 0; j < 2; j++)
+                    {
+                        std::string outputMid = "../magenta/generated/output_" + std::to_string(j+1) + "3.mid";
+                        std::string outputVel = "null";
+
+                        // 해당 미디 파일 생성될 때까지 대기
+                        while(!std::filesystem::exists(outputMid))
+                            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+
+                        generateCodeFromMIDI(outputMid, outputVel, j);
+                    }
+                }
+
+                // 폴더 비우기
+                std::string recordDir = "../magenta/record";
+                std::string outputMidDir = "../magenta/generated";
+                std::string outputVelDir = "../magenta/velocity";
+            
+                fun.clear_directory(recordDir);
+                fun.clear_directory(outputMidDir);
+                fun.clear_directory(outputVelDir);
+            }
+
             runPython = false;
         }
 
@@ -953,10 +927,10 @@ void DrumRobot::processInput(const std::string &input, string flagName)
     {
         state.main = Main::Play;
     }
-    else if (input == "m" && flagName == "isReady")
-    {
-        runPythonForMagenta();
-    }
+    // else if (input == "m" && flagName == "isReady")
+    // {
+        
+    // }
     else if (input == "h" && flagName == "isReady")
     {
         flagObj.setAddStanceFlag("isHome");
@@ -1094,10 +1068,6 @@ void DrumRobot::setSyncTime(int waitingTimeMillisecond)
     
     syncTime = base_time + std::chrono::milliseconds(waitingTimeMillisecond);
     setWaitingTime = true;
-
-    // fun.appendToCSV("sync_test.txt", false, -1, inputWaitMs);
-    // fun.appendToCSV("sync_test.txt", false, syncTime);
-    // fun.appendToCSV("sync_test.txt", false, base_time);
 }
 
 void DrumRobot::displayPlayCommands(bool useMagenta, bool useDrumPad, float inputWaitMs, std::string txtFileName)
@@ -1264,7 +1234,7 @@ std::string DrumRobot::selectPlayMode()
     int triggerMode = 1;
     float inputWaitMs = 3000.0; // 3s
     static std::string txtFileName = "null";
-    std::string txtPath = txtBasePath + txtFileName;;
+    std::string txtPath = txtBaseFolderPath + txtFileName;;
     std::string wavFileName = "null";
 
     while(cnt < maxAttempts)
@@ -1281,7 +1251,7 @@ std::string DrumRobot::selectPlayMode()
         }
         else if (userInput == "args" && useMagenta)
         {
-            txtPath = magentaPath;    // 마젠타 사용 시 최종 출력 파일 이름
+            txtPath = magentaCodePath;    // 마젠타 사용 시 최종 출력 파일 이름
             
             setPythonArgs();
         }
@@ -1290,7 +1260,7 @@ std::string DrumRobot::selectPlayMode()
             std::cout << "\nEnter Music Code Name: ";
             std::cin >> txtFileName;
 
-            txtPath = txtBasePath + txtFileName;
+            txtPath = txtBaseFolderPath + txtFileName;
             repeatNum = 1;
         }
         else if (userInput == "trigger" && (!useMagenta))
@@ -1352,7 +1322,7 @@ std::string DrumRobot::selectPlayMode()
             {
                 std::cout << "\nEnter Music Name: ";
                 std::cin >> wavFileName;
-                wavPath = wavBasePath + wavFileName + ".wav";
+                wavPath = wavBaseFolderPath + wavFileName + ".wav";
                 playMusic = true;
             }
         }
@@ -1362,32 +1332,12 @@ std::string DrumRobot::selectPlayMode()
             {
                 if (useMagenta)
                 {
-                    pythonClass = 0;
+                    pythonArgs = "--record";
                     runPython = true;
-
-                    // std::string pythonCmd = "/home/shy/DrumRobot/magenta/magenta_env/bin/python /home/shy/DrumRobot/magenta/script.py --sync";
-
-                    // pythonCmd += " --repeat " + std::to_string(repeatNum);
-                    // for (int i = 0; i < repeatNum; i++)
-                    // {
-                    //     float dT = delayTime.front(); delayTime.pop();
-                    //     float rT = recordTime.front(); recordTime.pop();
-                    //     float mT = makeTime.front(); makeTime.pop();
-
-                    //     pythonCmd += " " + std::to_string(dT);
-                    //     pythonCmd += " " + std::to_string(rT);
-                    //     pythonCmd += " " + std::to_string(mT);
-                    // }
-
-                    // pythonCmd += " &";   // 백그라운드 실행
-
-                    // int ret = std::system(pythonCmd.c_str());
-                    // if (ret != 0)
-                    //     std::cerr << "Python script failed to execute with code " << ret << std::endl;
 
                     std::string txtIndexPath = txtPath + "0.txt";
                     while (!std::filesystem::exists(txtIndexPath)) {
-                        std::this_thread::sleep_for(std::chrono::milliseconds(100)); // 100ms 대기
+                        std::this_thread::sleep_for(std::chrono::milliseconds(1)); // 1ms 대기
                     }
 
                     inputWaitMs = waitTime.front() * 1000;
@@ -1396,18 +1346,11 @@ std::string DrumRobot::selectPlayMode()
                 }
                 else if (useDrumPad)
                 {
-                    pythonClass = 1;
+                    pythonArgs = "--sync";
                     runPython = true;
 
-                    // std::string pythonCmd = "/home/shy/DrumRobot/magenta/magenta_env/bin/python /home/shy/DrumRobot/magenta/script.py --record";
-                    // pythonCmd += " &";   // 백그라운드 실행
-
-                    // int ret = std::system(pythonCmd.c_str());
-                    // if (ret != 0)
-                    //     std::cerr << "Python script failed to execute with code " << ret << std::endl;
-
                     while (!std::filesystem::exists(syncPath)) {
-                        std::this_thread::sleep_for(std::chrono::milliseconds(100)); // 100ms 대기
+                        std::this_thread::sleep_for(std::chrono::milliseconds(1)); // 1ms 대기
                     }
 
                     setSyncTime((int)inputWaitMs);
@@ -1542,7 +1485,6 @@ void DrumRobot::sendPlayProcess()
     std::string txtPath;
     std::string txtIndexPath;
     int fileIndex = 0;
-    // std::ifstream inputFile;
 
     // 초기화
     initializePlayState();
@@ -1563,11 +1505,11 @@ void DrumRobot::sendPlayProcess()
     else
     {
         currentIterations++;
-        txtPath = magentaPath;
+        txtPath = magentaCodePath;
 
         txtIndexPath = txtPath + std::to_string(fileIndex) + ".txt";
         while (!std::filesystem::exists(txtIndexPath)) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(100)); // 100ms 대기
+            std::this_thread::sleep_for(std::chrono::milliseconds(1)); // 100ms 대기
         }
 
         float inputWaitMs = waitTime.front() * 1000;
@@ -1580,9 +1522,6 @@ void DrumRobot::sendPlayProcess()
         std::ifstream inputFile;
         txtIndexPath = txtPath + std::to_string(fileIndex) + ".txt";
         inputFile.open(txtIndexPath); // 파일 열기
-
-        // inputFile.seekg(0, ios::beg); // 안전하게 파일 맨 처음으로 이동
-        // inputFile.clear();            // 상태 비트 초기화
 
         if (inputFile.is_open())     //////////////////////////////////////// 파일 열기 성공
         {
@@ -1632,12 +1571,12 @@ void DrumRobot::sendPlayProcess()
                 state.main = Main::Ideal;
                 return;
             }
-            // else if (flagObj.getFixationFlag())     ////////// 2. 로봇 상태가 fixed 로 변경 (악보가 들어오기 전 명령 소진) -> 에러
-            // {
-            //     std::cout << "Error : not find " << txtIndexPath << "\n";
-            //     state.main = Main::Error;
-            //     return;
-            // }
+            else if (flagObj.getFixationFlag())     ////////// 2. 로봇 상태가 fixed 로 변경 (악보가 들어오기 전 명령 소진) -> 에러
+            {
+                std::cout << "Error : not find " << txtIndexPath << "\n";
+                state.main = Main::Error;
+                return;
+            }
             else                                    ////////// 3. 다음 악보 생성될 때까지 대기
             {
                 inputFile.clear();            // 상태 비트 초기화
@@ -1652,7 +1591,7 @@ void DrumRobot::sendPlayProcess()
         pathManager.processLine(measureMatrix);
     }
 
-    if(txtPath == magentaPath)
+    if(txtPath == magentaCodePath)
     {
         // 악보 파일 저장 후 삭제
         for (int i = 0; i < fileIndex; i++)
@@ -1672,9 +1611,9 @@ void DrumRobot::sendPlayProcess()
                     << std::setw(2) << std::setfill('0') << localTime.tm_min;       // 분
             std::string timeStr = timeStream.str();
             
-            std::string saveFolder = "/home/shy/DrumRobot/DrumSound/codes_save/";
+            std::string saveFolder = "../../DrumRobot_data/codes/";
 
-            std::string saveCode = saveFolder + "output7_final" + std::to_string(currentIterations-1) + std::to_string(i) + "_" + timeStr + ".txt";
+            std::string saveCode = saveFolder + "save_code_" + std::to_string(currentIterations-1) + std::to_string(i) + "_" + timeStr + ".txt";
 
             std::filesystem::rename(txtIndexPath.c_str(), saveCode.c_str());
             std::remove(txtIndexPath.c_str());
@@ -1697,256 +1636,114 @@ void DrumRobot::sendPlayProcess()
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/*                           Python (Magenta)                                 */
+/*                                                                            */
 ////////////////////////////////////////////////////////////////////////////////
 
-void DrumRobot::runPythonForMagenta()
+void DrumRobot::generateCodeFromMIDI(std::string midPath, std::string veloPath, int recordingIndex)
 {
-    filesystem::path midPath;
+    // 경로 설정
+    filesystem::path outputPath1 = "../include/magenta/output1_drum_hits_time.csv"; 
+    filesystem::path outputPath2 = "../include/magenta/output2_mc.csv";   
+    filesystem::path outputPath3 = "../include/magenta/output3_mc2c.csv";    
+    filesystem::path outputPath4 = "../include/magenta/output4_hand_assign.csv";
 
-    filesystem::path outputPath1 = "/home/shy/DrumRobot/DrumSound/output1_drum_hits_time.csv"; 
-    filesystem::path outputPath2 = "/home/shy/DrumRobot/DrumSound/output2_mc.csv";   
-    filesystem::path outputPath3 = "/home/shy/DrumRobot/DrumSound/output3_mc2c.csv";    
-    filesystem::path outputPath4 = "/home/shy/DrumRobot/DrumSound/output4_hand_assign.csv";
-    filesystem::path outputPath5 = "/home/shy/DrumRobot/DrumSound/output5_add_groove.txt";
-    filesystem::path outputPath6 = "/home/shy/DrumRobot/DrumSound/output6_final.txt";
-    
-    int userInput = 100;
-    cout << "\n 1 - 녹음 \n 2 - 악보 생성\n";
-    cout << "Enter Command: ";
-    cin >> userInput;
+    filesystem::path outputPath5 = "../include/magenta/output5_vel.txt";
+    filesystem::path outputPath6 = "../include/magenta/output6_add_groove.txt";
 
-    if (userInput == 1)
-    {
-        //이부분에 파이썬 파일 실행시키기 
-        std::string pythonCmd = "/home/shy/DrumRobot/DrumSound/magenta-env/bin/python /home/shy/DrumRobot/DrumSound/getMIDI_input.py";
+    filesystem::path outputPath = magentaCodePath + std::to_string(recordingIndex) + ".txt";
 
-        int ret = std::system(pythonCmd.c_str());
-        if (ret != 0) {
-            std::cerr << "Python 스크립트 실행 실패!\n";
-            return;
-        }
-
-        // mid 파일 들어올 때까지 대기
-        //filesystem::path midPath = "/home/shy/DrumSound/output.mid";        // 파일 경로 + 이름
-    }
-    else if (userInput == 2)
-    {
-        // 2. 사용자에게 사용할 파일 선택
-        std::string selected_input;
-        std::cout << "\n원하는 리듬 스타일을 선택하세요:\n";
-        std::cout << "1 - 안정적인 리듬 (temperature 0.3)\n";
-        std::cout << "2 - 창의적인 리듬 (temperature 0.8)\n";
-        std::cout << "입력: ";
-        std::cin >> selected_input;
-
-        if (selected_input == "1") {
-            midPath = "/home/shy/DrumRobot/DrumSound/output_temp_03.mid";
-        } else if (selected_input == "2") {
-            midPath = "/home/shy/DrumRobot/DrumSound/output_temp_08.mid";
-        } else {
-            std::cerr << "잘못된 입력입니다. 1 또는 2를 입력하세요.\n";
-            return;
-        }
-
-        while(!file_found) // ready 상태인지도 확인해주기
-        {
-            if (filesystem::exists(midPath) && flagObj.getAddStanceFlag() == "isReady")
-            {
-                file_found = true;          // 악보 끝나면 악보 지우고 false로
-                break;
-            } 
-            std::this_thread::sleep_for(std::chrono::milliseconds(500)); // 0.5초마다 체크
-        }
-
-        // mid 파일 받아서 악보 생성하기
-        if(file_found)
-        {
-            size_t pos;
-            unsigned char runningStatus;
-            // int initial_setting_flag = 0;
-            double note_on_time = 0;
-
-            std::vector<unsigned char> midiData;
-
-            if (filesystem::exists(midPath) && flagObj.getAddStanceFlag() == "isReady")
-            {
-                if (!fun.readMidiFile(midPath, midiData)) cout << "mid file error\n";
-            } 
-            // if (!fun.readMidiFile(targetPath, midiData)) cout << "mid file error\n";
-            pos = 14;
-            int tpqn = (midiData[12] << 8) | midiData[13];
-            int bpm;
-
-            while (pos + 8 <= midiData.size()) {
-                if (!(midiData[pos] == 'M' && midiData[pos+1] == 'T' && midiData[pos+2] == 'r' && midiData[pos+3] == 'k')) {
-                    // std::cerr << "MTrk expected at pos " << pos << "\n";
-                    break;
-                }
-                size_t trackLength = (midiData[pos+4] << 24) |
-                                (midiData[pos+5] << 16) |
-                                (midiData[pos+6] << 8) |
-                                midiData[pos+7];
-                pos += 8;
-                size_t trackEnd = pos + trackLength;
-
-                note_on_time = 0;
-                while (pos < trackEnd) {
-                    size_t delta = fun.readTime(midiData, pos);
-                    note_on_time += delta;
-                    fun.analyzeMidiEvent(midiData, pos, runningStatus, note_on_time, tpqn, bpm, outputPath1);
-                }
-                pos = trackEnd;
-            }
-
-            fun.roundDurationsToStep(outputPath1, outputPath2); 
-            fun.convertMcToC(outputPath2, outputPath3);
-            fun.assignHandsToEvents(outputPath3, outputPath4);
-            // fun.addGroove(bpm, outputPath4, outputPath5);
-            fun.convertToMeasureFile(outputPath4, outputPath6, true);
-
-            file_found = false;
-            // if(filesystem::exists(midPath))
-            // {
-            //     filesystem::remove(midPath);
-            // }
-        }
-    }
-}
-
-void DrumRobot::getMagentaSheet(std::string midPath, std::string veloPath, int recordingIndex)
-{
-    // filesystem::path midPath;
-
-    filesystem::path outputPath1 = "/home/shy/DrumRobot/DrumSound/output1_drum_hits_time.csv"; 
-    filesystem::path outputPath2 = "/home/shy/DrumRobot/DrumSound/output2_mc.csv";   
-    filesystem::path outputPath3 = "/home/shy/DrumRobot/DrumSound/output3_mc2c.csv";    
-    filesystem::path outputPath4 = "/home/shy/DrumRobot/DrumSound/output4_hand_assign.csv";
-
-    filesystem::path outputPath5 = "/home/shy/DrumRobot/DrumSound/output5_vel.txt";
-    filesystem::path outputPath6 = "/home/shy/DrumRobot/DrumSound/output6_add_groove.txt";
-
-    filesystem::path outputPath7 = "/home/shy/DrumRobot/DrumSound/output7_final" + std::to_string(recordingIndex) + ".txt";
-
-    //루프돌때마다 이름 바꿔줘야함
-    filesystem::path velocityFile = veloPath; //"/home/shy/DrumRobot/DrumSound/record_velocity/drum_events_00.txt";
-    std::string outputVel = "/home/shy/DrumRobot/DrumSound/vel_output.txt";
-
-    // midPath = "/home/shy/DrumRobot/DrumSound/output_0.mid";
-
-    while(!file_found) // ready 상태인지도 확인해주기
-    {
-        if (filesystem::exists(midPath) && flagObj.getAddStanceFlag() == "isReady")
-        {
-            file_found = true;          // 악보 끝나면 악보 지우고 false로
-            break;
-        } 
-        std::this_thread::sleep_for(std::chrono::milliseconds(500)); // 0.5초마다 체크
-    }
+    std::string outputVel = "../include/magenta/vel_output.txt";
 
     // mid 파일 받아서 악보 생성하기
-    if(file_found)
+    size_t pos;
+    unsigned char runningStatus;
+    // int initial_setting_flag = 0;
+    double note_on_time = 0;
+
+    std::vector<unsigned char> midiData;
+
+    if (filesystem::exists(midPath) && flagObj.getAddStanceFlag() == "isReady")
     {
-        size_t pos;
-        unsigned char runningStatus;
-        // int initial_setting_flag = 0;
-        double note_on_time = 0;
+        if (!fun.readMidiFile(midPath, midiData)) cout << "mid file error\n";
+    } 
+    // if (!fun.readMidiFile(targetPath, midiData)) cout << "mid file error\n";
+    pos = 14;
+    int tpqn = (midiData[12] << 8) | midiData[13];
+    int bpm;
 
-        std::vector<unsigned char> midiData;
-
-        if (filesystem::exists(midPath) && flagObj.getAddStanceFlag() == "isReady")
-        {
-            if (!fun.readMidiFile(midPath, midiData)) cout << "mid file error\n";
-        } 
-        // if (!fun.readMidiFile(targetPath, midiData)) cout << "mid file error\n";
-        pos = 14;
-        int tpqn = (midiData[12] << 8) | midiData[13];
-        int bpm;
-
-        while (pos + 8 <= midiData.size()) {
-            if (!(midiData[pos] == 'M' && midiData[pos+1] == 'T' && midiData[pos+2] == 'r' && midiData[pos+3] == 'k')) {
-                // std::cerr << "MTrk expected at pos " << pos << "\n";
-                break;
-            }
-            size_t trackLength = (midiData[pos+4] << 24) |
-                            (midiData[pos+5] << 16) |
-                            (midiData[pos+6] << 8) |
-                            midiData[pos+7];
-            pos += 8;
-            size_t trackEnd = pos + trackLength;
-
-            note_on_time = 0;
-            while (pos < trackEnd) {
-                size_t delta = fun.readTime(midiData, pos);
-                note_on_time += delta;
-                fun.analyzeMidiEvent(midiData, pos, runningStatus, note_on_time, tpqn, bpm, outputPath1);
-            }
-            pos = trackEnd;
+    while (pos + 8 <= midiData.size()) {
+        if (!(midiData[pos] == 'M' && midiData[pos+1] == 'T' && midiData[pos+2] == 'r' && midiData[pos+3] == 'k')) {
+            // std::cerr << "MTrk expected at pos " << pos << "\n";
+            break;
         }
+        size_t trackLength = (midiData[pos+4] << 24) |
+                        (midiData[pos+5] << 16) |
+                        (midiData[pos+6] << 8) |
+                        midiData[pos+7];
+        pos += 8;
+        size_t trackEnd = pos + trackLength;
 
-        //이거 세기 반영 시키는 변수 안하면 원본 그대로 
-        bool mapTo357 = false;
-        vector<Functions::Seg> segs;
-
-        fun.roundDurationsToStep(outputPath1, outputPath2); 
-        fun.convertMcToC(outputPath2, outputPath3);
-        fun.assignHandsToEvents(outputPath3, outputPath4);
-
-        if (veloPath != "null")
-        {
-            // //velocityFile 세기 파일 outputFile 우리가 쓸 아웃풋 파일
-            // fun.analyzeVelocityWithLowPassFilter(velocityFile, outputVel, bpm);
-
-            // //위에서 만든 아웃풋 파일 넣어주기 그럼 segs 에 필터씌운 정보 저장댐
-            // fun.loadSegments(outputVel, segs);
-
-            // //수정전 악보 scoreIn 최종 출력 파일 scoreOut
-            // fun.applyIntensityToScore(segs, outputPath4, outputPath5, mapTo357);
-
-            // //그루브 추가 
-            // fun.addGroove(bpm, outputPath5, outputPath6);
-            // 그루브랑 세기 관련 악보 돌리려면 밑에 한줄 주석처리하고 돌리기
-            outputPath6 = outputPath4;
-
-            bool endFlag = false;
-            if (recordingIndex == 1)    // 녹음 2번해야 끝
-            {
-                endFlag = true;
-            }
-            
-            fun.convertToMeasureFile(outputPath6, outputPath7, endFlag);
-
-            file_found = false;
-            // if(filesystem::exists(midPath))
-            // {
-            //     filesystem::remove(midPath);
-            // }
-
-            std::remove(outputPath1.c_str());      // 중간 단계 txt 파일 삭제
-            std::remove(outputPath2.c_str());
-            std::remove(outputPath3.c_str());
-            std::remove(outputPath4.c_str());
-
-            std::remove(outputPath5.c_str());
-            std::remove(outputPath6.c_str());
-            std::remove(outputVel.c_str());
+        note_on_time = 0;
+        while (pos < trackEnd) {
+            size_t delta = fun.readTime(midiData, pos);
+            note_on_time += delta;
+            fun.analyzeMidiEvent(midiData, pos, runningStatus, note_on_time, tpqn, bpm, outputPath1);
         }
-        else
+        pos = trackEnd;
+    }
+
+    //이거 세기 반영 시키는 변수 안하면 원본 그대로 
+    bool mapTo357 = false;
+    vector<Functions::Seg> segs;
+
+    fun.roundDurationsToStep(outputPath1, outputPath2); 
+    fun.convertMcToC(outputPath2, outputPath3);
+    fun.assignHandsToEvents(outputPath3, outputPath4);
+
+    if (veloPath != "null")
+    {
+        // veloPath 세기 파일 outputFile 우리가 쓸 아웃풋 파일
+        fun.analyzeVelocityWithLowPassFilter(veloPath, outputVel, bpm);
+
+        // 위에서 만든 아웃풋 파일 넣어주기 그럼 segs 에 필터씌운 정보 저장댐
+        fun.loadSegments(outputVel, segs);
+
+        // 수정전 악보 scoreIn 최종 출력 파일 scoreOut
+        fun.applyIntensityToScore(segs, outputPath4, outputPath5, mapTo357);
+
+        // 그루브 추가 
+        fun.addGroove(bpm, outputPath5, outputPath6);
+
+        bool endFlag = false;
+        if (recordingIndex == 1)    // 녹음 2번해야 끝
         {
-            bool endFlag = true;
-            fun.convertToMeasureFile(outputPath4, outputPath7, endFlag);
-
-            file_found = false;
-            // if(filesystem::exists(midPath))
-            // {
-            //     filesystem::remove(midPath);
-            // }
-
-            std::remove(outputPath1.c_str());      // 중간 단계 txt 파일 삭제
-            std::remove(outputPath2.c_str());
-            std::remove(outputPath3.c_str());
-            std::remove(outputPath4.c_str());
+            endFlag = true;
         }
+        
+        fun.convertToMeasureFile(outputPath6, outputPath, endFlag);
+
+        std::remove(outputPath1.c_str());      // 중간 단계 txt 파일 삭제
+        std::remove(outputPath2.c_str());
+        std::remove(outputPath3.c_str());
+        std::remove(outputPath4.c_str());
+
+        std::remove(outputPath5.c_str());
+        std::remove(outputPath6.c_str());
+        std::remove(outputVel.c_str());
+    }
+    else
+    {
+        bool endFlag = false;
+        if (recordingIndex == 1)    // 녹음 2번해야 끝
+        {
+            endFlag = true;
+        }
+        fun.convertToMeasureFile(outputPath4, outputPath, endFlag);
+
+        std::remove(outputPath1.c_str());      // 중간 단계 txt 파일 삭제
+        std::remove(outputPath2.c_str());
+        std::remove(outputPath3.c_str());
+        std::remove(outputPath4.c_str());
     }
 }
 

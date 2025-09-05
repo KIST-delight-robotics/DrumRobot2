@@ -41,18 +41,25 @@ def print_midi_sequence(midi_path):
         print(f"Pitch: {note.pitch}, Start Time: {note.start_time}, End Time: {note.end_time}, Is Drum: {note.is_drum}")
 
 # 미디 분석 및 출력
-midi_path = 'record/drum_recording_0_2.mid'
-print_midi_sequence(midi_path)
+# midi_path = 'record/drum_recording_0_1_quantizer.mid'
+# print("sequence----------------------------------------------------")
+# print_midi_sequence(midi_path)
+# print("mido----------------------------------------------------")
+# print_midi_mido(midi_path)
+# print("pretty----------------------------------------------------")
+# print_midi_pretty_midi(midi_path)
 
 # 녹음 오브젝트
 class RecordingManager:
-    def __init__(self, input_port_name):
+    def __init__(self, input_port_name, base_path):
         self.bpm = 120
         self.input_port_name = input_port_name
 
         midi_input = mido.open_input(self.input_port_name)
         print(f"\n[Python] Connected to {self.input_port_name}")
         midi_input.close()
+
+        self.base_path = base_path
         
     def print_device_name(self):
         # 연결된 MIDI 입력 장치 이름 확인
@@ -71,13 +78,18 @@ class RecordingManager:
     
     def make_sync_file(self):
         current_time = datetime.datetime.now().strftime("%H:%M:%S.%f")[:-3]
-        with open("/home/shy/DrumRobot/include/sync/sync.txt", "w") as f:
-            f.write(current_time)
+        
+        if self.base_path == 'null':
+            with open("sync/sync.txt", "w") as f:
+                f.write(current_time)
+        else:
+            with open(self.base_path + "sync/sync.txt", "w") as f:
+                f.write(current_time)
 
     # 첫 타격 감지
     def detect_first_hit(self):
         bpm = self.bpm  # 템포
-        ticks_per_beat = 220  # 1 비트(quarter note) 당 틱 수
+        ticks_per_beat = 480  # 1 비트(quarter note) 당 틱 수
         
         # MIDI 입력 포트 연결
         midi_input = mido.open_input(self.input_port_name)
