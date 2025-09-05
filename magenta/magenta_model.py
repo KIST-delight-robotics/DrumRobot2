@@ -3,7 +3,7 @@ from magenta.models.music_vae import TrainedModel
 from magenta.models.music_vae import configs
 import note_seq
 
-class MyMagenta:
+class MagentaManager:
     
     def __init__(self, config_name, checkpoint_path):
         # 사용할 모델 이름 설정
@@ -47,9 +47,9 @@ class MyMagenta:
         self.output_dir = output_dir
 
     def print_model(self):
-        print(f"\nModel Name: {self.config_name}")
-        print(f"Model Checkpoint Path: {self.checkpoint_path}\n")
-
+        print(f"\n[Python] Model Name: {self.config_name}")
+        print(f"[Python] Model Checkpoint Path: {self.checkpoint_path}\n")
+    
     def generate_music(self, output_filename):
         # 생성
         generated_sequences = self.model.sample(n=self.num_samples, length=self.length, temperature=self.temperature)
@@ -62,7 +62,7 @@ class MyMagenta:
             midi_filename = output_filename + f"{i+1}.mid"
             output_path = os.path.join(self.output_dir, midi_filename)
             note_seq.sequence_proto_to_midi_file(sequence, output_path)
-            print(f"Generated MIDI file: {midi_filename}")
+            print(f"[Python] Generated MIDI file: {midi_filename}")
 
     def generate_music_from_input(self, input_midi, output_filename):
         # 입력 MIDI 파일 변환
@@ -79,7 +79,7 @@ class MyMagenta:
             midi_filename = output_filename + f"{i+1}.mid"
             output_path = os.path.join(self.output_dir, midi_filename)
             note_seq.sequence_proto_to_midi_file(sequence, output_path)
-            print(f"Generated MIDI file: {midi_filename}")
+            print(f"[Python] Generated MIDI file: {midi_filename}")
 
     def interpolate_music(self, input_midi1, input_midi2, output_filename):
         # 입력 MIDI 파일 변환
@@ -87,7 +87,7 @@ class MyMagenta:
         input_sequence2 = note_seq.midi_file_to_sequence_proto(input_midi2)
 
         # 보간
-        generated_sequences = self.model.interpolate(start_sequence=input_sequence1, end_sequence=input_sequence2, num_steps=self.num_samples, length=self.length, temperature=self.temperature)
+        generated_sequences = self.model.interpolate(start_sequence=input_sequence1, end_sequence=input_sequence2, num_steps=self.num_samples, length=self.length, temperature=self.temperature, assert_same_length=False)
 
         # 생성된 MIDI 파일 저장할 경로 설정
         os.makedirs(self.output_dir, exist_ok=True)
@@ -97,7 +97,7 @@ class MyMagenta:
             midi_filename = output_filename + f"{i+1}.mid"
             output_path = os.path.join(self.output_dir, midi_filename)
             note_seq.sequence_proto_to_midi_file(sequence, output_path)
-            print(f"Generated MIDI file: {midi_filename}")
+            print(f"[Python] Generated MIDI file: {midi_filename}")
 
 # 모델 이름 - 모델 체크포인트 파일 경로
 # 'cat-drums_2bar_small' - '/home/shy/IW_test/magenta/model/cat-drums_2bar_small.lokl.tar'
