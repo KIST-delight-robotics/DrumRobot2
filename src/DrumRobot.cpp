@@ -824,87 +824,54 @@ void DrumRobot::runPythonInThread()
     {
         if (runPython)
         {
-            if (pythonClass == 0)
+            std::string pythonCmd = pythonScript + " " + pythonArgs;
+
+            if (pythonArgs == "--sync")
             {
-                // 시간 측정 + 마젠타
-                if(repeatNum ==1)
-                {
-                    std::string pythonCmd = "/home/shy/DrumRobot/DrumSound/magenta-env/bin/python /home/shy/DrumRobot/DrumSound/getMIDITimeMagenta.py";
-
-                    int ret = std::system(pythonCmd.c_str());
-                    if (ret != 0)
-                    {
-                        std::cerr << "Python script failed to execute with code " << ret << std::endl;
-                    }
-
-                    getMagentaSheet("/home/shy/DrumRobot/DrumSound/output.mid", "null", 0);
-                }
-                else
-                {
-                    std::string pythonArgs = "--rec_times ";
-                        
-                    for (int i = 0; i < repeatNum; ++i) {
-                        float d = delayTime.front(); delayTime.pop();
-                        float r = recordTime.front(); recordTime.pop();
-                        float m = makeTime.front(); makeTime.pop();
-
-                        pythonArgs += std::to_string(d) + " ";
-                        pythonArgs += std::to_string(r) + " ";
-                        pythonArgs += std::to_string(m) + " ";
-                    }
-
-                    std::string pythonCmd = "/home/shy/DrumRobot/DrumSound/magenta-env/bin/python "
-                    // "/home/shy/DrumRobot/DrumSound/getMIDI_rec_Mag.py " + pythonArgs + " &";
-                    "/home/shy/DrumRobot/DrumSound/GetMidi.py " + pythonArgs + " &";
-
-                    int ret = std::system(pythonCmd.c_str());  // 비동기 실행 (백그라운드 &)
-                    if (ret != 0)
-                    {
-                        std::cerr << "Python script failed to execute with code " << ret << std::endl;
-                    }
-
-                    for (int i = 0; i < repeatNum; i++)
-                    {
-                        for (int j = 0; j < 2; j++)
-                        {
-                            std::string midiPath = "/home/shy/DrumRobot/DrumSound/record_output/output_" + std::to_string(i) + std::to_string(j) + ".mid";
-                            std::string veloPath = "/home/shy/DrumRobot/DrumSound/record_velocity/drum_events_" + std::to_string(i) + std::to_string(j) + ".csv";
-
-                            // 해당 MIDI 파일이 생성될 때까지 대기
-                            while (!std::filesystem::exists(midiPath)) {
-                                std::this_thread::sleep_for(std::chrono::milliseconds(100));
-                            }
-                            
-                            getMagentaSheet(midiPath, veloPath, j);  // 파이썬이 끝나지 않아도 즉시 실행
-                        }
-                    }
-
-                    // getMIDI_rec_Mag.py의 출력이 담긴 폴더 주소. getMagnetaSheet 후에 파일 지우기 위함.
-                    std::string velodir = "/home/shy/DrumRobot/DrumSound/record_velocity";
-                    std::string inputdir = "/home/shy/DrumRobot/DrumSound/record_input";
-                    std::string outputdir = "/home/shy/DrumRobot/DrumSound/record_output";
-
-                    fun.clear_directory(velodir);
-                    fun.clear_directory(inputdir);
-                    fun.clear_directory(outputdir);
-
-                    std::remove(syncPath.c_str());
-                    std::remove(syncPath.c_str());
-                    std::remove(syncPath.c_str());
-                }
-            }
-            else
-            {
-                // 시간만 측정
-                std::string pythonCmd = "/home/shy/DrumRobot/DrumSound/magenta-env/bin/python /home/shy/DrumRobot/DrumSound/getMIDITime.py";
+                pythonCmd += " &";   // 백그라운드 실행
 
                 int ret = std::system(pythonCmd.c_str());
                 if (ret != 0)
-                {
                     std::cerr << "Python script failed to execute with code " << ret << std::endl;
-                }
-                
             }
+            else if (pythonArgs == "--record")
+            {
+                pythonCmd += " --repeat " + std::to_string(repeatNum);
+                for (int i = 0; i < repeatNum; i++)
+                {
+                    float dT = delayTime.front(); delayTime.pop();
+                    float rT = recordTime.front(); recordTime.pop();
+                    float mT = makeTime.front(); makeTime.pop();
+
+                    pythonCmd += " " + std::to_string(dT);
+                    pythonCmd += " " + std::to_string(rT);
+                    pythonCmd += " " + std::to_string(mT);
+                }
+
+                pythonCmd += " &";   // 백그라운드 실행
+
+                int ret = std::system(pythonCmd.c_str());
+                if (ret != 0)
+                    std::cerr << "Python script failed to execute with code " << ret << std::endl;
+
+                for (int i = 0; i < repeatNum; i++)
+                {
+                    // getMagentaSheet();
+                }
+
+                std::string velodir = "/home/shy/DrumRobot/DrumSound/record_velocity";
+                std::string inputdir = "/home/shy/DrumRobot/DrumSound/record_input";
+                std::string outputdir = "/home/shy/DrumRobot/DrumSound/record_output";
+
+                fun.clear_directory(velodir);
+                fun.clear_directory(inputdir);
+                fun.clear_directory(outputdir);
+
+                std::remove(syncPath.c_str());
+                std::remove(syncPath.c_str());
+                std::remove(syncPath.c_str());
+            }
+
             runPython = false;
         }
 
@@ -1264,7 +1231,7 @@ std::string DrumRobot::selectPlayMode()
     int triggerMode = 1;
     float inputWaitMs = 3000.0; // 3s
     static std::string txtFileName = "null";
-    std::string txtPath = txtBasePath + txtFileName;;
+    std::string txtPath = txtBaseFolderPath + txtFileName;;
     std::string wavFileName = "null";
 
     while(cnt < maxAttempts)
@@ -1281,7 +1248,7 @@ std::string DrumRobot::selectPlayMode()
         }
         else if (userInput == "args" && useMagenta)
         {
-            txtPath = magentaPath;    // 마젠타 사용 시 최종 출력 파일 이름
+            txtPath = magentaCodePath;    // 마젠타 사용 시 최종 출력 파일 이름
             
             setPythonArgs();
         }
@@ -1290,7 +1257,7 @@ std::string DrumRobot::selectPlayMode()
             std::cout << "\nEnter Music Code Name: ";
             std::cin >> txtFileName;
 
-            txtPath = txtBasePath + txtFileName;
+            txtPath = txtBaseFolderPath + txtFileName;
             repeatNum = 1;
         }
         else if (userInput == "trigger" && (!useMagenta))
@@ -1352,7 +1319,7 @@ std::string DrumRobot::selectPlayMode()
             {
                 std::cout << "\nEnter Music Name: ";
                 std::cin >> wavFileName;
-                wavPath = wavBasePath + wavFileName + ".wav";
+                wavPath = wavBaseFolderPath + wavFileName + ".wav";
                 playMusic = true;
             }
         }
@@ -1362,28 +1329,8 @@ std::string DrumRobot::selectPlayMode()
             {
                 if (useMagenta)
                 {
-                    pythonClass = 0;
+                    pythonArgs = "--record";
                     runPython = true;
-
-                    // std::string pythonCmd = "/home/shy/DrumRobot/magenta/magenta_env/bin/python /home/shy/DrumRobot/magenta/script.py --sync";
-
-                    // pythonCmd += " --repeat " + std::to_string(repeatNum);
-                    // for (int i = 0; i < repeatNum; i++)
-                    // {
-                    //     float dT = delayTime.front(); delayTime.pop();
-                    //     float rT = recordTime.front(); recordTime.pop();
-                    //     float mT = makeTime.front(); makeTime.pop();
-
-                    //     pythonCmd += " " + std::to_string(dT);
-                    //     pythonCmd += " " + std::to_string(rT);
-                    //     pythonCmd += " " + std::to_string(mT);
-                    // }
-
-                    // pythonCmd += " &";   // 백그라운드 실행
-
-                    // int ret = std::system(pythonCmd.c_str());
-                    // if (ret != 0)
-                    //     std::cerr << "Python script failed to execute with code " << ret << std::endl;
 
                     std::string txtIndexPath = txtPath + "0.txt";
                     while (!std::filesystem::exists(txtIndexPath)) {
@@ -1396,15 +1343,8 @@ std::string DrumRobot::selectPlayMode()
                 }
                 else if (useDrumPad)
                 {
-                    pythonClass = 1;
+                    pythonArgs = "--sync";
                     runPython = true;
-
-                    // std::string pythonCmd = "/home/shy/DrumRobot/magenta/magenta_env/bin/python /home/shy/DrumRobot/magenta/script.py --record";
-                    // pythonCmd += " &";   // 백그라운드 실행
-
-                    // int ret = std::system(pythonCmd.c_str());
-                    // if (ret != 0)
-                    //     std::cerr << "Python script failed to execute with code " << ret << std::endl;
 
                     while (!std::filesystem::exists(syncPath)) {
                         std::this_thread::sleep_for(std::chrono::milliseconds(100)); // 100ms 대기
@@ -1563,7 +1503,7 @@ void DrumRobot::sendPlayProcess()
     else
     {
         currentIterations++;
-        txtPath = magentaPath;
+        txtPath = magentaCodePath;
 
         txtIndexPath = txtPath + std::to_string(fileIndex) + ".txt";
         while (!std::filesystem::exists(txtIndexPath)) {
@@ -1652,7 +1592,7 @@ void DrumRobot::sendPlayProcess()
         pathManager.processLine(measureMatrix);
     }
 
-    if(txtPath == magentaPath)
+    if(txtPath == magentaCodePath)
     {
         // 악보 파일 저장 후 삭제
         for (int i = 0; i < fileIndex; i++)

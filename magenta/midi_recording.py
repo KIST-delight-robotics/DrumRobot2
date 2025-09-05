@@ -41,8 +41,13 @@ def print_midi_sequence(midi_path):
         print(f"Pitch: {note.pitch}, Start Time: {note.start_time}, End Time: {note.end_time}, Is Drum: {note.is_drum}")
 
 # 미디 분석 및 출력
-midi_path = 'record/drum_recording_0_2.mid'
-print_midi_sequence(midi_path)
+# midi_path = 'record/drum_recording_0_1_quantizer.mid'
+# print("sequence----------------------------------------------------")
+# print_midi_sequence(midi_path)
+# print("mido----------------------------------------------------")
+# print_midi_mido(midi_path)
+# print("pretty----------------------------------------------------")
+# print_midi_pretty_midi(midi_path)
 
 # 녹음 오브젝트
 class RecordingManager:
@@ -71,7 +76,7 @@ class RecordingManager:
     
     def make_sync_file(self):
         current_time = datetime.datetime.now().strftime("%H:%M:%S.%f")[:-3]
-        with open("/home/shy/DrumRobot/include/sync/sync.txt", "w") as f:
+        with open("sync/sync.txt", "w") as f:
             f.write(current_time)
 
     # 첫 타격 감지

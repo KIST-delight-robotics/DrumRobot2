@@ -203,7 +203,7 @@ void PathManager::processLine(MatrixXd &measureMatrix)
 
 void PathManager::setDrumCoordinate()
 {
-    ifstream inputFile("../include/managers/rT.txt");
+    ifstream inputFile("../include/drum/drum_position.txt");
 
     if (!inputFile.is_open())
     {

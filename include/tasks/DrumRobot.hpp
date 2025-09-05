@@ -146,18 +146,19 @@ private:
     double measureTotalTime = 0.0;     ///< 악보를 읽는 동안 누적 시간. [s]
     bool endOfScore = false;           ///< 악보의 종료 코드 확인
 
-    std::string txtBasePath = "/home/shy/DrumRobot/include/codes/";    // 악보 파일 경로
-    std::string wavBasePath = "/home/shy/DrumRobot/include/music/";    // 음악 파일 경로
-    std::string magentaPath = "/home/shy/DrumRobot/DrumSound/output7_final";        // 마젠타 생성 악보 경로
+    std::string txtBaseFolderPath = "../include/codes/";    // 악보 폴더 경로
+    std::string wavBaseFolderPath = "../include/music/";    // 음악 폴더 경로
+    std::string magentaCodePath = "../include/magenta/codeMagenta";        // 마젠타 생성 악보 경로
     std::string wavPath;        // wav 파일 경로
 
     // 싱크 연주를 위한 변수들
     bool playMusic = false;
-    std::string syncPath = "/home/shy/DrumRobot/include/sync/sync.txt";      // 싱크 파일 경로
+    std::string syncPath = "../magenta/sync/sync.txt";      // 싱크 파일 경로
     std::chrono::system_clock::time_point syncTime;
     bool setWaitingTime = false;
     bool runPython = false;
-    int pythonClass = 0;    // 어떤 파이썬을 실행할지 (1 : 시간 측정, 0 : 마젠타)
+    std::string pythonArgs;
+    std::string pythonScript = "../magenta/magenta_env/bin/python3 ../magenta/script.py";
 
     // 마젠타 반복 생성을 위한 변수들
     int repeatNum = 1;

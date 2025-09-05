@@ -308,7 +308,7 @@ private:
     void pushCommandBuffer(VectorXd &Qi);
 
     //////////////////////////////////// Detect Collision
-    std::string tablePath = "/home/shy/DrumRobot_table/TABLE.bin";    // 테이블 위치
+    std::string tablePath = "../include/table/TABLE.bin";    // 테이블 위치
 
     bool detectCollision(MatrixXd &measureMatrix);
     int findDetectionRange(MatrixXd &measureMatrix);
