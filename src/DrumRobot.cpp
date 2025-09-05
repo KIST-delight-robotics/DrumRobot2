@@ -833,10 +833,14 @@ void DrumRobot::runPythonInThread()
                 int ret = std::system(pythonCmd.c_str());
                 if (ret != 0)
                     std::cerr << "Python script failed to execute with code " << ret << std::endl;
+                
+                std::cout << "\n Python script is running... \n";
             }
             else if (pythonArgs == "--record")
             {
                 pythonCmd += " --repeat " + std::to_string(repeatNum);
+
+                pythonCmd += " --param";
                 for (int i = 0; i < repeatNum; i++)
                 {
                     float dT = delayTime.front(); delayTime.pop();
@@ -853,6 +857,8 @@ void DrumRobot::runPythonInThread()
                 int ret = std::system(pythonCmd.c_str());
                 if (ret != 0)
                     std::cerr << "Python script failed to execute with code " << ret << std::endl;
+
+                std::cout << "\n Python script is running... \n";
 
                 for (int i = 0; i < repeatNum; i++)
                 {

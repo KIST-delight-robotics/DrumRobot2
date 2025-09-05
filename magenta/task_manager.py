@@ -4,6 +4,8 @@ from magenta_music_vae import MagentaManager
 from midi_match import match_best_from_cache
 from midi_quantizer import quantize_drum_midi
 
+from quantize_pretty_midi import quantize_midi
+
 class taskManager:
     def __init__(self, base_path):
         self.base_path = base_path
@@ -14,13 +16,15 @@ class taskManager:
         if self.base_path == 'null':
             self.checkpoint_path = 'model/cat-drums_2bar_small.hikl.tar'
             self.recording_file_path = 'record/drum_recording_'      # 녹음 저장할 위치
-            self.magenta_output_path = 'output'           # 마젠타 출력 위치
+            self.magenta_output = 'generated/output'           # 마젠타 출력 위치
             self.base_folder = 'basic/'
+            self.cache_path = "library_cache.npz"
         else:
             self.checkpoint_path = self.base_path + 'model/cat-drums_2bar_small.hikl.tar'
             self.recording_file_path = self.base_path + 'record/drum_recording_'      # 녹음 저장할 위치
-            self.magenta_output_path = self.base_path + 'output'           # 마젠타 출력 위치
+            self.magenta_output = self.base_path + 'generated/output'           # 마젠타 출력 위치
             self.base_folder = self.base_path + 'basic/'
+            self.cache_path = self.base_path + "library_cache.npz"
 
     def make_sync(self):
         
@@ -30,8 +34,10 @@ class taskManager:
 
     def make_midi(self, num_repeats, wait_times, recording_times, creation_times):
         
+        # 경로 설정
         self.set_path()
 
+        # 오브젝트 생성
         rec = RecordingManager(self.device_name, self.base_path)
         mgt = MagentaManager(self.config_name, self.checkpoint_path)
         
@@ -48,11 +54,11 @@ class taskManager:
 
             # 전처리
             quantize_midi_file = quantize_drum_midi(recording_file_name)        # 양자화
-            base_midi = self.base_folder + match_best_from_cache(quantize_midi_file)    # 가장 유시한 리듬
+            base_midi = self.base_folder + match_best_from_cache(midi_path=quantize_midi_file, cache_path=self.cache_path)    # 가장 유시한 리듬
             print(f"\n[Python] matching : {base_midi}")
             
             # 마젠타
-            output_filename = self.magenta_output_path + '_1'
+            output_filename = self.magenta_output + '_1'
             thread1 = threading.Thread(target=mgt.interpolate_music, args=(quantize_midi_file, base_midi, output_filename))
             thread1.start()
 
@@ -63,11 +69,11 @@ class taskManager:
 
             # 전처리
             quantize_midi_file = quantize_drum_midi(recording_file_name)        # 양자화
-            base_midi = self.base_folder + match_best_from_cache(quantize_midi_file)   # 가장 유시한 리듬
+            base_midi = self.base_folder + match_best_from_cache(midi_path=quantize_midi_file, cache_path=self.cache_path)   # 가장 유시한 리듬
             print(f"\n[Python] matching : {base_midi}")
             
             # 마젠타
-            output_filename = self.magenta_output_path + '_2'
+            output_filename = self.magenta_output + '_2'
             thread2 = threading.Thread(target=mgt.interpolate_music, args=(quantize_midi_file, base_midi, output_filename))
             thread2.start()
 

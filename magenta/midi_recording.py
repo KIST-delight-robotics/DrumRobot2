@@ -69,6 +69,7 @@ class RecordingManager:
     def clear_input_buffer(self, midi_input, wait_second=3):
         # 현재 입력 포트에서 대기 중인 모든 메시지를 읽어 버립니다.
         print("\n[Python] Clearing input buffer...")
+        print(f"[Python] Waiting for {wait_second} seconds.")
         start = time.time()
         while time.time() < start + wait_second:
             for msg in midi_input.iter_pending():
@@ -109,6 +110,7 @@ class RecordingManager:
         
         first_note_received = False
 
+        print("[Python] Waiting for the first hit...")
         # MIDI 입력을 받아 메시지를 파일에 기록
         while True:
 
