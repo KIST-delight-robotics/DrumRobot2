@@ -112,7 +112,7 @@ def main():
         "input_file": "/home/shy/DrumRobot/DrumSound/input_00.mid",
         "output_file": "/home/shy/DrumRobot/DrumSound/output_00.mid",
         "bpm": 100,
-        "subdivisions": 4,
+        "subdivisions": 2,
         "debounce_threshold": 0.04,
         "cluster_threshold": 0.02
     }
