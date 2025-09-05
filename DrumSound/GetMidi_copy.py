@@ -70,9 +70,7 @@ def apply_debouncing(messages, threshold, filepath):
 
 def apply_clustering(messages, threshold, filepath):
     """2단계: 노트 클러스터링. 동시 타격 노트를 그룹화합니다."""
-    print(f"  [파이프라인 2/3] 클러스터링 시작 (임계값: {threshold*1000:.0f}ms0.06979166666666667
-42, 0.009375
-42, 0.13125")
+    print(f"  [파이프라인 2/3] 클러스터링 시작 (임계값: {threshold*1000:.0f}ms)...")
     clusters = []
     if messages:
         current_cluster = [messages[0]]
@@ -127,7 +125,7 @@ def preprocess_midi_pipeline(messages, params, base_filepath): # [수정] base_f
     print("✅ MIDI 전처리 파이프라인 완료!")
     return final_msgs
 
-def analyze_drum_patterns(messages, bpm):       # 노트 갯수, 노트 간격, 복잡도로 판단
+def analyze_drum_patterns(messages, bpm):       # 3가지 기준(노트 갯수, 노트 간격, 복잡도)으로 FI 판단
     """
     녹음된 MIDI 메시지를 분석하여 각 마디가 '비트'인지 '필 인'인지 분류합니다.
     
@@ -149,33 +147,19 @@ def analyze_drum_patterns(messages, bpm):       # 노트 갯수, 노트 간격, 
     for msg in messages:
         bar_index = min(int(msg.time / seconds_per_bar), num_bars - 1)
         bars[bar_index].append(msg)
-
-    target_notes = {41, 38, 45, 47, 48, 50}
     
     # --- 2. 마디별 통계 계산 ---
     bar_stats = []
     for i, bar_notes in enumerate(bars):
         note_count = len(bar_notes)
-        
-        # drum_type_count를 루프 내에서 사용할 지역 변수로 선언
-        current_drum_type_count = 0
-        
+                
         if note_count < 2:
             unique_instruments = len(set(m.note for m in bar_notes))
             ioi_std = 0.0
-            # 노트가 적어도 drum_type_count는 계산해주는 것이 좋습니다.
-            if note_count > 0:
-                played_notes = {m.note for m in bar_notes}
-                matched_drum_types = played_notes.intersection(target_notes)
-                current_drum_type_count = len(matched_drum_types)
         else:
             unique_instruments = len(set(m.note for m in bar_notes))
             
             # --- [수정] 현재 마디의 drum_type_count 계산 ---
-            played_notes = {m.note for m in bar_notes}
-            matched_drum_types = played_notes.intersection(target_notes)
-            current_drum_type_count = len(matched_drum_types)
-            
             note_times = sorted([m.time for m in bar_notes])
             iois = np.diff(note_times)
             ioi_std = np.std(iois) if len(iois) > 0 else 0.0
@@ -185,7 +169,6 @@ def analyze_drum_patterns(messages, bpm):       # 노트 갯수, 노트 간격, 
             'note_count': note_count,
             'unique_instruments': unique_instruments,
             'rhythmic_complexity': ioi_std,
-            'drum_type_count': current_drum_type_count # [수정] 계산된 값을 딕셔너리에 저장
         })
         
     # --- 3. 필 인 점수 계산 및 분류 ---
@@ -193,8 +176,6 @@ def analyze_drum_patterns(messages, bpm):       # 노트 갯수, 노트 간격, 
     avg_note_count = np.mean([s['note_count'] for s in bar_stats])
     avg_instruments = np.mean([s['unique_instruments'] for s in bar_stats])
     avg_complexity = np.mean([s['rhythmic_complexity'] for s in bar_stats])
-    print(f"{avg_instruments}")
-
 
     results = []
     for stats in bar_stats:
@@ -204,13 +185,12 @@ def analyze_drum_patterns(messages, bpm):       # 노트 갯수, 노트 간격, 
         complexity_score = stats['rhythmic_complexity'] / avg_complexity if avg_complexity > 0 else 1
         
         # 각 지표에 가중치를 두어 최종 '필 인 점수' 계산
-        final_score = (density_score * 0.0) + (instrument_score * 1.0) + (complexity_score * 0.0)
+        final_score = (density_score * 0.2) + (instrument_score * 0.6) + (complexity_score * 0.2)
         
         # 임계값(예: 1.3)을 넘으면 '필 인', 아니면 '비트'로 판단
         # 이 임계값은 연주 스타일에 따라 조절이 필요합니다.
-        FILL_IN_THRESHOLD = 1.0
-        # classification = 'Fill-in' if final_score >= FILL_IN_THRESHOLD else 'Beat'
-        classification = 'Fill-in' if stats['drum_type_count'] >= 2 else 'Beat'
+        FILL_IN_THRESHOLD = 1.3
+        classification = 'Fill-in' if final_score >= FILL_IN_THRESHOLD else 'Beat'
         
         results.append({
             'bar': stats['bar_index'] + 1,

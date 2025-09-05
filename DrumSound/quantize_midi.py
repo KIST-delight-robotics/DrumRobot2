@@ -1,3 +1,4 @@
+"""mido 패키지로 midi 분석하는 파이썬 코드(함수화 안함)"""
 import mido
 from mido import MidiFile, MidiTrack, MetaMessage
 import os
