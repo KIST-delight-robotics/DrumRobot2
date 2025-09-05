@@ -828,7 +828,7 @@ void DrumRobot::runPythonInThread()
 
             if (pythonArgs == "--sync")
             {
-                pythonCmd += " &";   // 백그라운드 실행
+                pythonCmd += " --path ../magenta/ &";   // 경로 설정 & 백그라운드 실행
 
                 int ret = std::system(pythonCmd.c_str());
                 if (ret != 0)
@@ -848,7 +848,7 @@ void DrumRobot::runPythonInThread()
                     pythonCmd += " " + std::to_string(mT);
                 }
 
-                pythonCmd += " &";   // 백그라운드 실행
+                pythonCmd += " --path ../magenta/ &";   // 경로 설정 & 백그라운드 실행
 
                 int ret = std::system(pythonCmd.c_str());
                 if (ret != 0)
@@ -863,7 +863,7 @@ void DrumRobot::runPythonInThread()
 
                         // 해당 미디 파일 생성될 때까지 대기
                         while(!std::filesystem::exists(outputMid))
-                            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+                            std::this_thread::sleep_for(std::chrono::milliseconds(1));
 
                         generateCodeFromMIDI(outputMid, outputVel, j);
                     }
@@ -1337,7 +1337,7 @@ std::string DrumRobot::selectPlayMode()
 
                     std::string txtIndexPath = txtPath + "0.txt";
                     while (!std::filesystem::exists(txtIndexPath)) {
-                        std::this_thread::sleep_for(std::chrono::milliseconds(100)); // 100ms 대기
+                        std::this_thread::sleep_for(std::chrono::milliseconds(1)); // 1ms 대기
                     }
 
                     inputWaitMs = waitTime.front() * 1000;
@@ -1350,7 +1350,7 @@ std::string DrumRobot::selectPlayMode()
                     runPython = true;
 
                     while (!std::filesystem::exists(syncPath)) {
-                        std::this_thread::sleep_for(std::chrono::milliseconds(100)); // 100ms 대기
+                        std::this_thread::sleep_for(std::chrono::milliseconds(1)); // 1ms 대기
                     }
 
                     setSyncTime((int)inputWaitMs);
@@ -1509,7 +1509,7 @@ void DrumRobot::sendPlayProcess()
 
         txtIndexPath = txtPath + std::to_string(fileIndex) + ".txt";
         while (!std::filesystem::exists(txtIndexPath)) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(100)); // 100ms 대기
+            std::this_thread::sleep_for(std::chrono::milliseconds(1)); // 100ms 대기
         }
 
         float inputWaitMs = waitTime.front() * 1000;

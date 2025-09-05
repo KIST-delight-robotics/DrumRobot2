@@ -11,41 +11,48 @@ import sys
 from task_manager import taskManager
 
 program_name = sys.argv[0]
-program_mode = sys.argv[1]
 print(f"[Python] program name : {program_name}")
-print(f"[Python] program mode : {program_mode}")
 
-tm = taskManager()
-
-if program_mode == "--sync":
-
-    tm.make_sync()
-
-elif program_mode == "--record":
+base_path = 'null'
+num_args = len(sys.argv) - 1
+for i in range(num_args):
+    arg = sys.argv[i+1]
     
-    if sys.argv[2] == "--repeat":
+    if arg == "--sync": 
+        print(f"[Python] program mode : {arg}")   
+        record = False
+    
+    elif arg == "--record":
+        print(f"[Python] program mode : {arg}")
+        record = True
+    
+    elif arg == "--repeat":
+        num_repeats = int(sys.argv[i+2])
+    
+    elif arg == "--param":
+        num_param = len(sys.argv) - i - 2
         
-        num_repeats = int(sys.argv[3])
-        num_args = len(sys.argv) - 4
-        
-        if num_args >= num_repeats * 3:
+        if num_param >= num_repeats * 3:
             
             wait_times = []
             recording_times = []
             creation_times = []
             
-            for i in range(num_repeats):
-                wait_times.append(float(sys.argv[3*(i+1) + 1]))
-                recording_times.append(float(sys.argv[3*(i+1) + 2]))
-                creation_times.append(float(sys.argv[3*(i+1) + 3]))
-
-            tm.make_midi(num_repeats, wait_times, recording_times, creation_times)
-        
-        else:
-            print("[Python] [ERROR] args3")
+            for j in range(num_repeats):
+                wait_times.append(float(sys.argv[i + 2 + 3*j]))
+                recording_times.append(float(sys.argv[i + 3 + 3*j]))
+                creation_times.append(float(sys.argv[i + 4 + 3*j]))
+    
+    elif arg == "--path":
+        base_path = sys.argv[i+2]
+        pass
     
     else:
-        print("[Python] [ERROR] args2")
+        pass
 
+tm = taskManager(base_path)
+
+if record:
+    tm.make_midi(num_repeats, wait_times, recording_times, creation_times)
 else:
-    print("[Python] [ERROR] args1")
+    tm.make_sync()
