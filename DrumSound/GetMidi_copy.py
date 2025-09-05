@@ -7,6 +7,7 @@ import csv
 import os
 import argparse
 import datetime
+import numpy as np
 
 import tensorflow.compat.v1 as tf
 from magenta.models.drums_rnn import drums_rnn_sequence_generator
@@ -61,16 +62,17 @@ def apply_debouncing(messages, threshold, filepath):
             
             # 위 두 조건 중 하나라도 참이면 유효한 타격으로 인정
             filtered_notes.append(msg)
-            print(f"{msg.note}, {msg.time}, {msg.velocity}")
             last_hit_times[note_id] = msg.time # 마지막 타격 시간 기록 갱신
             
-    print(f"    > 원본 {len(messages)}개 노트 -> 필터링 후 {len(filtered_notes)}개")
-    save_step_to_csv(filtered_notes, filepath, 'debouce')
+    # print(f"    > 원본 {len(messages)}개 노트 -> 필터링 후 {len(filtered_notes)}개")
+    # save_step_to_csv(filtered_notes, filepath, 'debouce')
     return filtered_notes
 
 def apply_clustering(messages, threshold, filepath):
     """2단계: 노트 클러스터링. 동시 타격 노트를 그룹화합니다."""
-    print(f"  [파이프라인 2/3] 클러스터링 시작 (임계값: {threshold*1000:.0f}ms)...")
+    print(f"  [파이프라인 2/3] 클러스터링 시작 (임계값: {threshold*1000:.0f}ms0.06979166666666667
+42, 0.009375
+42, 0.13125")
     clusters = []
     if messages:
         current_cluster = [messages[0]]
@@ -83,8 +85,8 @@ def apply_clustering(messages, threshold, filepath):
             else:
                 current_cluster = [messages[i]]
                 clusters.append(current_cluster)
-    print(f"    > {len(messages)}개 노트 -> {len(clusters)}개 클러스터로 그룹화")
-    save_step_to_csv(clusters, filepath, 'cluster') # [추가]
+    # print(f"    > {len(messages)}개 노트 -> {len(clusters)}개 클러스터로 그룹화")
+    # save_step_to_csv(clusters, filepath, 'cluster')
     return clusters
 
 def apply_grid_quantization(clusters, bpm, subdivisions_per_beat, filepath):
@@ -100,8 +102,8 @@ def apply_grid_quantization(clusters, bpm, subdivisions_per_beat, filepath):
         quantized_time = quantized_steps * quantize_step_duration
         for msg in cluster:
             quantized_messages.append(msg.copy(time=quantized_time))
-    print(f"    > {len(clusters)}개 클러스터 -> 양자화 완료")
-    save_step_to_csv(quantized_messages, filepath, 'quantize') # [추가]
+    # print(f"    > {len(clusters)}개 클러스터 -> 양자화 완료")
+    # save_step_to_csv(quantized_messages, filepath, 'quantize')
     return quantized_messages
 
 def preprocess_midi_pipeline(messages, params, base_filepath): # [수정] base_filepath 파라미터 추가
@@ -124,6 +126,159 @@ def preprocess_midi_pipeline(messages, params, base_filepath): # [수정] base_f
     
     print("✅ MIDI 전처리 파이프라인 완료!")
     return final_msgs
+
+def analyze_drum_patterns(messages, bpm):       # 노트 갯수, 노트 간격, 복잡도로 판단
+    """
+    녹음된 MIDI 메시지를 분석하여 각 마디가 '비트'인지 '필 인'인지 분류합니다.
+    
+    분석 지표:
+    1. 노트 밀도 (Note Density): 마디 안의 노트 개수
+    2. 악기 다양성 (Instrument Variation): 사용된 악기(노트 번호)의 종류 수
+    3. 리듬 복잡성 (Rhythmic Complexity): 노트 간격(IOI)의 표준편차
+    """
+    if not messages or bpm <= 0:
+        return []
+
+    # --- 1. 마디 단위로 노트 분할 ---
+    seconds_per_beat = 60.0 / bpm
+    seconds_per_bar = seconds_per_beat * 4
+    total_duration = messages[-1].time if messages else 0
+    num_bars = int(np.ceil(total_duration / seconds_per_bar))
+    
+    bars = [[] for _ in range(num_bars)]
+    for msg in messages:
+        bar_index = min(int(msg.time / seconds_per_bar), num_bars - 1)
+        bars[bar_index].append(msg)
+
+    target_notes = {41, 38, 45, 47, 48, 50}
+    
+    # --- 2. 마디별 통계 계산 ---
+    bar_stats = []
+    for i, bar_notes in enumerate(bars):
+        note_count = len(bar_notes)
+        
+        # drum_type_count를 루프 내에서 사용할 지역 변수로 선언
+        current_drum_type_count = 0
+        
+        if note_count < 2:
+            unique_instruments = len(set(m.note for m in bar_notes))
+            ioi_std = 0.0
+            # 노트가 적어도 drum_type_count는 계산해주는 것이 좋습니다.
+            if note_count > 0:
+                played_notes = {m.note for m in bar_notes}
+                matched_drum_types = played_notes.intersection(target_notes)
+                current_drum_type_count = len(matched_drum_types)
+        else:
+            unique_instruments = len(set(m.note for m in bar_notes))
+            
+            # --- [수정] 현재 마디의 drum_type_count 계산 ---
+            played_notes = {m.note for m in bar_notes}
+            matched_drum_types = played_notes.intersection(target_notes)
+            current_drum_type_count = len(matched_drum_types)
+            
+            note_times = sorted([m.time for m in bar_notes])
+            iois = np.diff(note_times)
+            ioi_std = np.std(iois) if len(iois) > 0 else 0.0
+            
+        bar_stats.append({
+            'bar_index': i,
+            'note_count': note_count,
+            'unique_instruments': unique_instruments,
+            'rhythmic_complexity': ioi_std,
+            'drum_type_count': current_drum_type_count # [수정] 계산된 값을 딕셔너리에 저장
+        })
+        
+    # --- 3. 필 인 점수 계산 및 분류 ---
+    # 전체 평균값 계산 (베이스라인 설정)
+    avg_note_count = np.mean([s['note_count'] for s in bar_stats])
+    avg_instruments = np.mean([s['unique_instruments'] for s in bar_stats])
+    avg_complexity = np.mean([s['rhythmic_complexity'] for s in bar_stats])
+    print(f"{avg_instruments}")
+
+
+    results = []
+    for stats in bar_stats:
+        # 평균 대비 얼마나 다른지 비율 계산
+        density_score = stats['note_count'] / avg_note_count if avg_note_count > 0 else 1
+        instrument_score = stats['unique_instruments'] / 4 if avg_instruments > 0 else 1
+        complexity_score = stats['rhythmic_complexity'] / avg_complexity if avg_complexity > 0 else 1
+        
+        # 각 지표에 가중치를 두어 최종 '필 인 점수' 계산
+        final_score = (density_score * 0.0) + (instrument_score * 1.0) + (complexity_score * 0.0)
+        
+        # 임계값(예: 1.3)을 넘으면 '필 인', 아니면 '비트'로 판단
+        # 이 임계값은 연주 스타일에 따라 조절이 필요합니다.
+        FILL_IN_THRESHOLD = 1.0
+        # classification = 'Fill-in' if final_score >= FILL_IN_THRESHOLD else 'Beat'
+        classification = 'Fill-in' if stats['drum_type_count'] >= 2 else 'Beat'
+        
+        results.append({
+            'bar': stats['bar_index'] + 1,
+            'classification': classification,
+            'score': round(final_score, 2)
+        })
+        
+    return results
+
+def classify_drum_patterns_only_drum_type(messages, bpm):      # 드럼 종류로만 판단
+    """
+    오직 '지정한 드럼 종류 개수'만을 기준으로 각 마디를 'Fill-in' 또는 'Beat'로 분류합니다.
+
+    Args:
+        messages (list): Mido MIDI 메시지 객체들의 리스트.
+        bpm (int): 연주의 분당 비트 수.
+
+    Returns:
+        list: 각 마디의 분류 결과가 담긴 딕셔너리 리스트.
+              예: [{'bar': 1, 'classification': 'Beat'}, {'bar': 2, 'classification': 'Fill-in'}]
+    """
+    # --- 전제 조건 확인 ---
+    if not messages or bpm <= 0:
+        return []
+
+    # --- 1. 마디 단위로 노트 분할 ---
+    seconds_per_beat = 60.0 / bpm
+    seconds_per_bar = seconds_per_beat * 4  # 4/4박자 기준
+    total_duration = messages[-1].time if messages else 0
+    num_bars = int(np.ceil(total_duration / seconds_per_bar))
+    
+    # 각 마디에 노트를 담을 빈 리스트들을 생성
+    bars = [[] for _ in range(num_bars)]
+    for msg in messages:
+        bar_index = min(int(msg.time / seconds_per_bar), num_bars - 1)
+        bars[bar_index].append(msg)
+
+    # --- 2. 마디별 분류 작업 ---
+
+    # 필인 판별의 기준이 될 드럼 노트 번호 (주로 스네어, 탐탐 계열)
+    target_notes = {41, 38, 45, 47, 48, 50}
+    
+    results = []
+    # 각 마디를 순회하며 분류 시작
+    for i, bar_notes in enumerate(bars):
+        
+        # 이번 마디에서 연주된 노트들의 종류를 중복 없이 추출
+        played_notes = {m.note for m in bar_notes}
+        
+        # 연주된 노트와 목표 노트의 교집합을 찾아 공통된 드럼 종류를 확인
+        matched_drum_types = played_notes.intersection(target_notes)
+        
+        # 공통된 드럼 종류의 개수를 계산
+        drum_type_count = len(matched_drum_types)
+        
+        # --- 최종 판별 ---
+        # 목표 드럼이 2종류 이상 사용되었으면 'Fill-in', 아니면 'Beat'로 분류
+        if drum_type_count >= 2:
+            classification = 'Fill-in'
+        else:
+            classification = 'Beat'
+            
+        results.append({
+            'bar': i + 1,
+            'classification': classification
+        })
+        
+    return results
 
 # -----------------------------------------------------------------
 
@@ -373,6 +528,18 @@ def record_session(inport, session_idx, rec_duration, rec_number):
         processed_msgs = []
     # ---------------------------------------------
     
+    if processed_msgs:
+        print("\n🔬 드럼 패턴 분석 시작 (비트 vs 필 인)...")
+        # BPM은 현재 100으로 고정되어 있으므로 그대로 사용합니다.
+        analysis_results = classify_drum_patterns_only_drum_type(processed_msgs, bpm=BPM) 
+        
+        # 분석 결과 출력
+        for result in analysis_results:
+            print(f"    > 마디 {result['bar']}: {result['classification']}")
+        print("-" * 20)
+    else:
+        print("\n🔬 녹음된 노트가 없어 분석을 건너뜁니다.")
+
     mid = MidiFile(ticks_per_beat=TICKS_PER_BEAT)
     track = MidiTrack(); mid.tracks.append(track)
     track.append(MetaMessage('set_tempo', tempo=tempo_us_per_beat, time=0))
