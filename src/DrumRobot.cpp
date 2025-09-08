@@ -353,6 +353,21 @@ void DrumRobot::motorSettingCmd()
     }
 }
 
+void DrumRobot::initializeFolder()
+{
+    std::string syncDir = "../magenta/sync";
+    std::string recordDir = "../magenta/record";
+    std::string outputMidDir = "../magenta/generated";
+    std::string outputVelDir = "../magenta/velocity";
+    std::string outputCode = "../include/magenta";
+
+    fun.clear_directory(syncDir);
+    fun.clear_directory(recordDir);
+    fun.clear_directory(outputMidDir);
+    fun.clear_directory(outputVelDir);
+    fun.clear_directory(outputCode);
+}
+
 bool DrumRobot::initializePos(const std::string &input)
 {
     // set zero
@@ -416,6 +431,9 @@ void DrumRobot::initializeDrumRobot()
 
     usbio.initUSBIO4761();
     fun.openCSVFile();
+
+    // 폴더 비우기
+    initializeFolder();
 
     std::cout << "System Initialize Complete [ Press Commands ]\n";
     std::cout << "- o : Set Zero & Offset setting\n";
@@ -722,9 +740,6 @@ void DrumRobot::sendLoopForThread()
 
         cycleCounter = (cycleCounter + 1) % 5;
 
-        int debug = flagObj.getFixationFlag()?1:0;
-        fun.appendToCSV("debug fixed", false, debug);
-
         std::this_thread::sleep_until(sendLoopPeriod);
     }
 }
@@ -833,10 +848,14 @@ void DrumRobot::runPythonInThread()
                 int ret = std::system(pythonCmd.c_str());
                 if (ret != 0)
                     std::cerr << "Python script failed to execute with code " << ret << std::endl;
+                
+                std::cout << "\nPython script is running... \n";
             }
             else if (pythonArgs == "--record")
             {
                 pythonCmd += " --repeat " + std::to_string(repeatNum);
+
+                pythonCmd += " --param";
                 for (int i = 0; i < repeatNum; i++)
                 {
                     float dT = delayTime.front(); delayTime.pop();
@@ -854,17 +873,20 @@ void DrumRobot::runPythonInThread()
                 if (ret != 0)
                     std::cerr << "Python script failed to execute with code " << ret << std::endl;
 
+                std::cout << "\nPython script is running... \n";
+
                 for (int i = 0; i < repeatNum; i++)
                 {
                     for (int j = 0; j < 2; j++)
                     {
-                        std::string outputMid = "../magenta/generated/output_" + std::to_string(j+1) + "3.mid";
+                        std::string outputMid = "../magenta/generated/output" + std::to_string(i) + "_" + std::to_string(j+1) + "3.mid";
                         std::string outputVel = "null";
 
                         // 해당 미디 파일 생성될 때까지 대기
                         while(!std::filesystem::exists(outputMid))
                             std::this_thread::sleep_for(std::chrono::milliseconds(1));
 
+                        usleep(100*1000);
                         generateCodeFromMIDI(outputMid, outputVel, j);
                     }
                 }
@@ -1555,7 +1577,7 @@ void DrumRobot::sendPlayProcess()
                 inputFile.close(); // 파일 닫기
                 fileIndex++;    // 다음 파일 열 준비
 
-                std::cout << "\n fileIndex : " << fileIndex << "\n";
+                // std::cout << "\nfileIndex : " << fileIndex << "\n";
             }
         }
         else     //////////////////////////////////////////////////////////// 파일 열기 실패
@@ -1571,12 +1593,12 @@ void DrumRobot::sendPlayProcess()
                 state.main = Main::Ideal;
                 return;
             }
-            else if (flagObj.getFixationFlag())     ////////// 2. 로봇 상태가 fixed 로 변경 (악보가 들어오기 전 명령 소진) -> 에러
-            {
-                std::cout << "Error : not find " << txtIndexPath << "\n";
-                state.main = Main::Error;
-                return;
-            }
+            // else if (flagObj.getFixationFlag())     ////////// 2. 로봇 상태가 fixed 로 변경 (악보가 들어오기 전 명령 소진) -> 에러
+            // {
+            //     std::cout << "Error : not find " << txtIndexPath << "\n";
+            //     state.main = Main::Error;
+            //     return;
+            // }
             else                                    ////////// 3. 다음 악보 생성될 때까지 대기
             {
                 inputFile.clear();            // 상태 비트 초기화
@@ -1667,6 +1689,7 @@ void DrumRobot::generateCodeFromMIDI(std::string midPath, std::string veloPath, 
         if (!fun.readMidiFile(midPath, midiData)) cout << "mid file error\n";
     } 
     // if (!fun.readMidiFile(targetPath, midiData)) cout << "mid file error\n";
+
     pos = 14;
     int tpqn = (midiData[12] << 8) | midiData[13];
     int bpm;

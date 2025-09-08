@@ -121,6 +121,7 @@ private:
     void initializeMotors();
     void initializeCanManager();
     void motorSettingCmd();
+    void initializeFolder();
     bool initializePos(const std::string &input);
 
     //////////////////////////////////////////////////////////////// Exit

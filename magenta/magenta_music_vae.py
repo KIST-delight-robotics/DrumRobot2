@@ -11,6 +11,8 @@ class MagentaManager:
         # 모델 체크포인트 파일 경로 설정
         self.checkpoint_path = checkpoint_path
 
+        self.print_model()
+
         # 모델 설정 로드
         self.config = configs.CONFIG_MAP[self.config_name]
 
@@ -21,9 +23,6 @@ class MagentaManager:
         self.num_samples = 5
         self.length = 32 # 2마디, 마디당 16단계
         self.temperature = 0.2
-
-        # 저장 경로 (폴더 이름)
-        self.output_dir = 'generated'
 
     def reload_model(self, config_name, checkpoint_path):
         # 사용할 모델 이름 설정
@@ -43,9 +42,6 @@ class MagentaManager:
         self.length = length
         self.temperature = temperature
 
-    def set_save_path(self, output_dir):
-        self.output_dir = output_dir
-
     def print_model(self):
         print(f"\n[Python] Model Name: {self.config_name}")
         print(f"[Python] Model Checkpoint Path: {self.checkpoint_path}\n")
@@ -54,14 +50,10 @@ class MagentaManager:
         # 생성
         generated_sequences = self.model.sample(n=self.num_samples, length=self.length, temperature=self.temperature)
 
-        # 생성된 MIDI 파일 저장할 경로 설정
-        os.makedirs(self.output_dir, exist_ok=True)
-
         # 생성된 드럼 패턴을 MIDI 파일로 저장
         for i, sequence in enumerate(generated_sequences):
             midi_filename = output_filename + f"{i+1}.mid"
-            output_path = os.path.join(self.output_dir, midi_filename)
-            note_seq.sequence_proto_to_midi_file(sequence, output_path)
+            note_seq.sequence_proto_to_midi_file(sequence, midi_filename)
             print(f"[Python] Generated MIDI file: {midi_filename}")
 
     def generate_music_from_input(self, input_midi, output_filename):
@@ -71,14 +63,10 @@ class MagentaManager:
         # 생성
         generated_sequences = self.model.sample(n=self.num_samples, length=self.length, temperature=self.temperature, c_input=input_sequence)
 
-        # 생성된 MIDI 파일 저장할 경로 설정
-        os.makedirs(self.output_dir, exist_ok=True)
-
         # 생성된 드럼 패턴을 MIDI 파일로 저장
         for i, sequence in enumerate(generated_sequences):
             midi_filename = output_filename + f"{i+1}.mid"
-            output_path = os.path.join(self.output_dir, midi_filename)
-            note_seq.sequence_proto_to_midi_file(sequence, output_path)
+            note_seq.sequence_proto_to_midi_file(sequence, midi_filename)
             print(f"[Python] Generated MIDI file: {midi_filename}")
 
     def interpolate_music(self, input_midi1, input_midi2, output_filename):
@@ -89,14 +77,10 @@ class MagentaManager:
         # 보간
         generated_sequences = self.model.interpolate(start_sequence=input_sequence1, end_sequence=input_sequence2, num_steps=self.num_samples, length=self.length, temperature=self.temperature, assert_same_length=False)
 
-        # 생성된 MIDI 파일 저장할 경로 설정
-        os.makedirs(self.output_dir, exist_ok=True)
-
         # 생성된 드럼 패턴을 MIDI 파일로 저장
         for i, sequence in enumerate(generated_sequences):
             midi_filename = output_filename + f"{i+1}.mid"
-            output_path = os.path.join(self.output_dir, midi_filename)
-            note_seq.sequence_proto_to_midi_file(sequence, output_path)
+            note_seq.sequence_proto_to_midi_file(sequence, midi_filename)
             print(f"[Python] Generated MIDI file: {midi_filename}")
 
 # 모델 이름 - 모델 체크포인트 파일 경로
