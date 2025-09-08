@@ -598,7 +598,7 @@ void Functions::filterSmallDurations(const std::string& inputFilename, const std
 }
 
 
-void Functions::roundDurationsToStep(const std::string& inputFilename, const std::string& outputFilename)
+void Functions::roundDurationsToStep(int bpm, const std::string& inputFilename, const std::string& outputFilename)
 {
     std::ifstream inputFile(inputFilename);
     std::ofstream outputFile(outputFilename);
@@ -615,6 +615,8 @@ void Functions::roundDurationsToStep(const std::string& inputFilename, const std
 
     std::string line;
     const double step = 0.05;
+    int targetBPM = 100;
+    const double scale = static_cast<double>(bpm) / static_cast<double>(targetBPM);
 
     while (std::getline(inputFile, line)) {
         std::istringstream iss(line);
@@ -626,8 +628,11 @@ void Functions::roundDurationsToStep(const std::string& inputFilename, const std
             continue;
         }
 
+        // BPM 기준 재정립
+        double rebased = duration * scale;
+
         // 0.05 단위로 반올림
-        double roundedDuration = std::round(duration / step) * step;
+        double roundedDuration = std::round(rebased / step) * step;
 
         outputFile << std::fixed << std::setprecision(3)
                    << roundedDuration << "\t" << note << std::endl;
