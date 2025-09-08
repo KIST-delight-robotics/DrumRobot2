@@ -71,7 +71,7 @@ public:
     bool readMidiFile(const std::string& filename, std::vector<unsigned char>& buffer);
 
     void filterSmallDurations(const std::string& inputFilename, const std::string& outputFilename);
-    void roundDurationsToStep(const std::string& inputFilename, const std::string& outputFilename);
+    void roundDurationsToStep(int bpm, const std::string& inputFilename, const std::string& outputFilename);
     size_t readTime(const std::vector<unsigned char>& data, size_t& pos);
     void handleMetaEvent(const std::vector<unsigned char>& data, size_t& pos, int &bpm);
     void handleChannel10(const std::vector<unsigned char>& data, size_t& pos, unsigned char eventType);
