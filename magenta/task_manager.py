@@ -7,7 +7,8 @@ from midi_quantizer import quantize_drum_midi
 from quantize_pretty_midi import quantize_midi
 
 class taskManager:
-    def __init__(self, base_path=None):
+    def __init__(self, bpm, base_path=None):
+        self.bpm = bpm
         self.base_path = base_path
         self.device_name = 'NUX DP-2000:NUX DP-2000 MIDI 1 20:0' # 연결된 장치 이름
         self.config_name = 'cat-drums_2bar_small'
@@ -28,7 +29,7 @@ class taskManager:
 
     def make_sync(self):
         
-        rec = RecordingManager(self.device_name, self.base_path)
+        rec = RecordingManager(self.device_name, self.bpm, self.base_path)
 
         rec.detect_first_hit()
 
@@ -38,7 +39,7 @@ class taskManager:
         self.set_path()
 
         # 오브젝트 생성
-        rec = RecordingManager(self.device_name, self.base_path)
+        rec = RecordingManager(self.device_name, self.bpm, self.base_path)
         mgt = MagentaManager(self.config_name, self.checkpoint_path)
         
         print(f"[Python] number of repeats : {num_repeats}")

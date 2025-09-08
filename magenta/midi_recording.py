@@ -51,8 +51,8 @@ def print_midi_sequence(midi_path):
 
 # 녹음 오브젝트
 class RecordingManager:
-    def __init__(self, input_port_name, base_path=None):
-        self.bpm = 120
+    def __init__(self, input_port_name, bpm=120, base_path=None):
+        self.bpm = bpm
         self.input_port_name = input_port_name
 
         print(f"\n[Python] Connected to {self.input_port_name}")
@@ -135,6 +135,7 @@ class RecordingManager:
 
     # 일정 시간동안 MIDI 신호를 실시간으로 받아와서 MIDI 파일로 저장
     def record_for_time(self, output_file, recording_second, buffer_clear_flag=False):
+        base_bpm = 120
         bpm = self.bpm  # 템포
         ticks_per_beat = 480  # 1 비트(quarter note) 당 틱 수
         seconds_per_beat = 60 / bpm  # 1 비트의 시간(초 단위)
@@ -149,7 +150,7 @@ class RecordingManager:
 
         # 트랙 이름 설정과 템포 설정
         track.append(mido.MetaMessage('track_name', name='Drum Track'))
-        track.append(mido.MetaMessage('set_tempo', tempo=mido.bpm2tempo(bpm)))  # 템포 설정
+        track.append(mido.MetaMessage('set_tempo', tempo=mido.bpm2tempo(base_bpm)))  # 템포 설정
         track.append(mido.MetaMessage('time_signature', numerator=4, denominator=4))
         track.append(Message('program_change', channel=9, program=0, time=0))
         
@@ -197,6 +198,7 @@ class RecordingManager:
 
     # 첫 타격 감지 후 일정 시간동안 MIDI 신호를 실시간으로 받아와서 MIDI 파일로 저장
     def record_after_first_hit(self, output_file, wait_second, recording_second):
+        base_bpm = 120
         bpm = self.bpm  # 템포
         ticks_per_beat = 480  # 1 비트(quarter note) 당 틱 수
         seconds_per_beat = 60 / bpm  # 1 비트의 시간(초 단위)
@@ -211,7 +213,7 @@ class RecordingManager:
 
         # 트랙 이름 설정과 템포 설정
         track.append(mido.MetaMessage('track_name', name='Drum Track'))
-        track.append(mido.MetaMessage('set_tempo', tempo=mido.bpm2tempo(bpm)))  # 템포 설정
+        track.append(mido.MetaMessage('set_tempo', tempo=mido.bpm2tempo(base_bpm)))  # 템포 설정
         track.append(mido.MetaMessage('time_signature', numerator=4, denominator=4))
         track.append(Message('program_change', channel=9, program=0, time=0))
         

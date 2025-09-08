@@ -13,6 +13,7 @@ from task_manager import taskManager
 program_name = sys.argv[0]
 print(f"[Python] program name : {program_name}")
 
+bpm = 120
 base_path = None
 num_args = len(sys.argv) - 1
 for i in range(num_args):
@@ -39,9 +40,13 @@ for i in range(num_args):
             creation_times = []
             
             for j in range(num_repeats):
-                wait_times.append(int(sys.argv[i + 2 + 3*j]))
+                wait_times.append(float(sys.argv[i + 2 + 3*j]))
                 recording_times.append(float(sys.argv[i + 3 + 3*j]))
                 creation_times.append(float(sys.argv[i + 4 + 3*j]))
+    
+    elif arg == "--bpm":
+        bpm = float(sys.argv[i+2])
+        pass
     
     elif arg == "--path":
         base_path = sys.argv[i+2]
@@ -50,7 +55,7 @@ for i in range(num_args):
     else:
         pass
 
-tm = taskManager(base_path)
+tm = taskManager(bpm=bpm, base_path=base_path)
 
 if record:
     tm.make_midi(num_repeats, wait_times, recording_times, creation_times)

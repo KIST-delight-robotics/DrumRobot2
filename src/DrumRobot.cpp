@@ -867,6 +867,9 @@ void DrumRobot::runPythonInThread()
                     pythonCmd += " " + std::to_string(mT);
                 }
 
+                pythonCmd += " --bpm";
+                pythonCmd += " " + std::to_string(pathManager.bpmOfScore);
+
                 pythonCmd += " --path ../magenta/ &";   // 경로 설정 & 백그라운드 실행
 
                 int ret = std::system(pythonCmd.c_str());
@@ -1549,7 +1552,7 @@ void DrumRobot::sendPlayProcess()
         {
             if (inputFile.peek() == std::ifstream::traits_type::eof())
             {
-                std::cout << "\n 파일 비어 있음 \n";
+                std::cout << "\n - The file exists, but it is empty.\n";
                 inputFile.clear();          // 상태 비트 초기화
                 usleep(100);                // 대기 : 다음 악보 작성 중 
             }
