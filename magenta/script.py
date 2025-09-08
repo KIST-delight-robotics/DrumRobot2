@@ -13,7 +13,7 @@ from task_manager import taskManager
 program_name = sys.argv[0]
 print(f"[Python] program name : {program_name}")
 
-base_path = 'null'
+base_path = None
 num_args = len(sys.argv) - 1
 for i in range(num_args):
     arg = sys.argv[i+1]
@@ -39,7 +39,7 @@ for i in range(num_args):
             creation_times = []
             
             for j in range(num_repeats):
-                wait_times.append(float(sys.argv[i + 2 + 3*j]))
+                wait_times.append(int(sys.argv[i + 2 + 3*j]))
                 recording_times.append(float(sys.argv[i + 3 + 3*j]))
                 creation_times.append(float(sys.argv[i + 4 + 3*j]))
     

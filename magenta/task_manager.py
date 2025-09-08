@@ -7,13 +7,13 @@ from midi_quantizer import quantize_drum_midi
 from quantize_pretty_midi import quantize_midi
 
 class taskManager:
-    def __init__(self, base_path):
+    def __init__(self, base_path=None):
         self.base_path = base_path
         self.device_name = 'NUX DP-2000:NUX DP-2000 MIDI 1 20:0' # 연결된 장치 이름
         self.config_name = 'cat-drums_2bar_small'
 
     def set_path(self):
-        if self.base_path == 'null':
+        if self.base_path is None:
             self.checkpoint_path = 'model/cat-drums_2bar_small.hikl.tar'
             self.recording_file_path = 'record/drum_recording_'      # 녹음 저장할 위치
             self.magenta_output = 'generated/output'           # 마젠타 출력 위치
@@ -58,7 +58,7 @@ class taskManager:
             print(f"\n[Python] matching : {base_midi}")
             
             # 마젠타
-            output_filename = self.magenta_output + '_1'
+            output_filename = self.magenta_output + str(i) + '_1'
             thread1 = threading.Thread(target=mgt.interpolate_music, args=(quantize_midi_file, base_midi, output_filename))
             thread1.start()
 
@@ -73,7 +73,7 @@ class taskManager:
             print(f"\n[Python] matching : {base_midi}")
             
             # 마젠타
-            output_filename = self.magenta_output + '_2'
+            output_filename = self.magenta_output + str(i) + '_2'
             thread2 = threading.Thread(target=mgt.interpolate_music, args=(quantize_midi_file, base_midi, output_filename))
             thread2.start()
 

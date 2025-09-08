@@ -51,13 +51,11 @@ def print_midi_sequence(midi_path):
 
 # 녹음 오브젝트
 class RecordingManager:
-    def __init__(self, input_port_name, base_path):
+    def __init__(self, input_port_name, base_path=None):
         self.bpm = 120
         self.input_port_name = input_port_name
 
-        midi_input = mido.open_input(self.input_port_name)
         print(f"\n[Python] Connected to {self.input_port_name}")
-        midi_input.close()
 
         self.base_path = base_path
         
@@ -70,17 +68,24 @@ class RecordingManager:
         # 현재 입력 포트에서 대기 중인 모든 메시지를 읽어 버립니다.
         print("\n[Python] Clearing input buffer...")
         print(f"[Python] Waiting for {wait_second} seconds.")
+        print(f"[Python] {wait_second}")
         start = time.time()
+        cnt_second = 1
         while time.time() < start + wait_second:
             for msg in midi_input.iter_pending():
                 # print(f"[Python] Message discarded: {msg}")    # 지워진 메세지 출력
                 pass
+
+            if time.time() > start + cnt_second:
+                print(f"[Python] {wait_second - cnt_second}")
+                cnt_second = cnt_second + 1
+
             time.sleep(0.01)   # CPU 사용률을 낮추기 위해 짧은 딜레이 추가
     
     def make_sync_file(self):
         current_time = datetime.datetime.now().strftime("%H:%M:%S.%f")[:-3]
         
-        if self.base_path == 'null':
+        if self.base_path is None:
             with open("sync/sync.txt", "w") as f:
                 f.write(current_time)
         else:
