@@ -2,8 +2,40 @@
 import pretty_midi
 import os
 import numpy as np
+import csv
 
-# --- 1. 전처리 파이프라인 각 단계 함수 (pretty_midi 버전) ---
+def map_drum_note(pitch: int) -> int:
+    """MIDI 노트 번호(pitch)를 지정된 매핑 번호로 변환합니다."""
+    mapping = {
+        38: 1, 41: 2, 45: 3,
+        47: 4, 48: 4, 50: 4,
+        42: 5, 51: 6, 49: 7,
+        57: 8, 36: 10, 46: 11
+    }
+    return mapping.get(pitch, 0)
+
+def save_notes_to_csv(notes: list, output_csv_path: str):
+    """
+    처리된 노트 리스트를 CSV 파일로 저장합니다.
+    (경과시간, 매핑 번호, 벨로시티)
+    """
+    if not notes:
+        print("CSV 저장을 위한 노트가 없습니다.")
+        return
+        
+    print(f"처리된 노트를 '{os.path.basename(output_csv_path)}' 파일로 저장합니다...")
+    
+    with open(output_csv_path, 'w', newline='') as f:
+        writer = csv.writer(f)
+        writer.writerow(['elapsed_time', 'mapped_note', 'velocity']) # CSV 헤더
+        
+        for note in notes:
+            elapsed_time = note.start
+            mapped_note_num = map_drum_note(note.pitch)
+            velocity = note.velocity
+            writer.writerow([elapsed_time, mapped_note_num, velocity])
+            
+    print(f"    > CSV 저장 완료!")
 
 def apply_debouncing(notes: list, threshold: float) -> list:
     """디바운싱 필터. 악기별로 잔타격을 제거합니다."""
@@ -21,7 +53,6 @@ def apply_debouncing(notes: list, threshold: float) -> list:
             last_hit_times[pitch] = note.start
             
     print(f"    > {len(notes)}개 노트 -> {len(filtered_notes)}개 노트")
-    print(f"{filtered_notes}")
     return filtered_notes
 
 def apply_clustering(notes: list, threshold: float) -> list:
@@ -100,9 +131,7 @@ def analyze_drum_patterns(notes: list, bpm: float):
         
     return classification
 
-# --- 2. 메인 실행 함수 ---
-
-def quantize_midi(input_filename: str, **kwargs):
+def quantize_midi(input_filename: str, **kwargs):       # 메인 함수 : string a = quantize_midi(input00.mid)로 사용, a에는 "Drum beat"/"Fill-in" 입력됨 
     """
     지정된 MIDI 파일을 전처리하고, 패턴을 분석한 후, 'output_...' 이름으로 저장합니다.
     분석 결과도 함께 반환합니다.
@@ -110,21 +139,25 @@ def quantize_midi(input_filename: str, **kwargs):
     
     # --- 기본 설정값 ---
     params = {
-        "base_path": "/home/shy/DrumRobot/DrumSound/",
-        "bpm": 100,
-        "subdivisions": 2,
+        "base_path": "/home/shy/DrumRobot/magenta/",
+        "bpm": 120,
+        "subdivisions": 2,      # 악보의 최소단위를 (4*subdivision)분 음표로 한다. ex) sub=2, 최소 단위: 8분 음표
         "debounce_threshold": 0.04,
         "cluster_threshold": 0.02
     }
     params.update(kwargs)
 
-    input_filepath = os.path.join(params["base_path"], input_filename)
-    
-    if not input_filename.startswith("input_"):
-        print(f"오류: 입력 파일 이름은 'input_'으로 시작해야 합니다. (현재: {input_filename})")
-        return None
-    output_filename = input_filename.replace("input_", "output_", 1)
-    output_filepath = os.path.join(params["base_path"], output_filename)
+    input_dirpath = os.path.join(params["base_path"], "record/")        # /home/shy/DrumRobot/magenta/record/
+    input_filepath = os.path.join(input_dirpath, input_filename)        # /home/shy/DrumRobot/magenta/record/(미디 파일 이름)
+
+    base_name = input_filename.replace("input_", "").replace(".mid", "")
+
+    csv_file_dir_path = os.path.join(params["base_path"], "velocity/")      # /home/shy/DrumRobot/magenta/velocity/
+    output_csv_filename = f"drum_events_{base_name}.csv"                    
+    output_csv_filepath = os.path.join(csv_file_dir_path, output_csv_filename)  # /home/shy/DrumRobot/magenta/velocity/drum_events_().csv
+
+    output_midi_filename = f"output_{base_name}.mid"
+    output_midi_filepath = os.path.join(params["base_path"], output_midi_filename)
 
     if not os.path.exists(input_filepath):
         print(f"오류: 입력 파일 '{input_filepath}'을 찾을 수 없습니다.")
@@ -152,6 +185,7 @@ def quantize_midi(input_filename: str, **kwargs):
     
     # [수정] 파일 저장 전, 양자화된 노트를 기준으로 패턴 분석
     analysis_results = analyze_drum_patterns(quantized_notes, bpm_to_use)
+    save_notes_to_csv(quantized_notes, output_csv_filepath)
 
     # 새로운 MIDI 파일 객체 생성 및 결과 저장
     output_pm = pretty_midi.PrettyMIDI()
@@ -159,23 +193,23 @@ def quantize_midi(input_filename: str, **kwargs):
     drum_instrument.notes.extend(quantized_notes)
     output_pm.instruments.append(drum_instrument)
     
-    output_pm.write(output_filepath)
-    print(f"✅ 전처리 완료! 결과가 '{output_filename}'에 저장되었습니다.\n")
+    output_pm.write(output_midi_filepath)
+    print(f"✅ 전처리 완료! 결과가 '{output_midi_filepath}'에 저장되었습니다.\n")
     
     # [수정] 분석 결과를 반환
-    print(f"{analysis_results}")
+    print(f"--------------------{analysis_results}--------------------\n")
     return analysis_results
 
-# --- 3. 스크립트 실행 예시 ---
+# # --- README ---
 if __name__ == '__main__':
-    # 이 스크립트를 직접 실행할 때 아래 코드가 동작합니다.
-    # 다른 파이썬 파일에서 import하여 사용할 때는 실행되지 않습니다.
+#    # 이 스크립트를 직접 실행할 때 아래 코드가 동작합니다.
+#    # 다른 파이썬 파일에서 import하여 사용할 때는 실행되지 않습니다.
     
-    # 예시 1: 기본 설정으로 "input_00.mid" 파일 처리
+#     # 예시 1: 기본 설정으로 "input_00.mid" 파일 처리
     quantize_midi("input_00.mid")
     
-    # # 예시 2: "input_01.mid" 파일을 16분음표(subdivisions=4) 기준으로 처리
-    # quantize_midi("input_01.mid", subdivisions=4)
+#    # 예시 2: "input_01.mid" 파일을 16분음표(subdivisions=4) 기준으로 처리
+#    quantize_midi("input_01.mid", subdivisions=4)
     
-    # # 예시 3: BPM을 120으로 강제 설정하여 처리
-    # quantize_midi("input_02.mid", bpm=120)
+#    # 예시 3: BPM을 120으로 강제 설정하여 처리
+#    quantize_midi("input_02.mid", bpm=120)
