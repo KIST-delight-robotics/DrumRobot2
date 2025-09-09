@@ -35,14 +35,14 @@ for i in range(num_args):
         
         if num_param >= num_repeats * 3:
             
-            wait_times = []
-            recording_times = []
-            creation_times = []
+            wait_times_sec = []
+            recording_times_bar = []
+            creation_times_bar = []
             
             for j in range(num_repeats):
-                wait_times.append(float(sys.argv[i + 2 + 3*j]))
-                recording_times.append(float(sys.argv[i + 3 + 3*j]))
-                creation_times.append(float(sys.argv[i + 4 + 3*j]))
+                wait_times_sec.append(float(sys.argv[i + 2 + 3*j]))
+                recording_times_bar.append(float(sys.argv[i + 3 + 3*j]))
+                creation_times_bar.append(float(sys.argv[i + 4 + 3*j]))
     
     elif arg == "--bpm":
         bpm = float(sys.argv[i+2])
@@ -58,6 +58,6 @@ for i in range(num_args):
 tm = taskManager(bpm=bpm, base_path=base_path)
 
 if record:
-    tm.make_midi(num_repeats, wait_times)
+    tm.make_midi(num_repeats, wait_times_sec, recording_times_bar)
 else:
     tm.make_sync()

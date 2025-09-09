@@ -42,7 +42,6 @@ def print_midi_sequence(midi_path):
 
 # # 미디 분석 및 출력
 # midi_path = 'record/drum_recording_0_1.mid'
-# midi_path = 'test5.mid'
 # print("sequence----------------------------------------------------")
 # print_midi_sequence(midi_path)
 # print("mido----------------------------------------------------")
@@ -175,13 +174,14 @@ class RecordingManager:
                 time_since_last_message = now - last_message_time  # 메시지 간의 시간 차이(초)
                 ticks_since_last_message = time_since_last_message / seconds_per_beat * ticks_per_beat  # 틱 단위로 변환
                 t = int(ticks_since_last_message)  # t를 틱 단위로 설정
-                last_message_time = time.time()
 
                 # 받은 메시지를 트랙에 추가
                 if msg.type == 'note_on':
                     track.append(Message('note_on', channel=9, note=msg.note, velocity=msg.velocity, time=t))
-                else:
+                    last_message_time = time.time()
+                elif msg.type == 'note_off':
                     track.append(Message('note_on', channel=9, note=msg.note, velocity=0, time=t))  # 'note_off'는 velocity가 0으로 처리
+                    last_message_time = time.time()
                         
             # 주어진 시간만큼 녹음하고 탈출
             elapsed_time = time.time() - start_time  # 첫 타격 이후 경과 시간
@@ -246,14 +246,15 @@ class RecordingManager:
                     time_since_last_message = now - last_message_time  # 메시지 간의 시간 차이(초)
                     ticks_since_last_message = time_since_last_message / seconds_per_beat * ticks_per_beat  # 틱 단위로 변환
                     t = int(ticks_since_last_message)  # t를 틱 단위로 설정
-                    last_message_time = time.time()
                         
                 if first_note_received:
                     # 받은 메시지를 트랙에 추가
                     if msg.type == 'note_on':
                         track.append(Message('note_on', channel=9, note=msg.note, velocity=msg.velocity, time=t))
-                    else:
+                        last_message_time = time.time()
+                    elif msg.type == 'note_off':
                         track.append(Message('note_on', channel=9, note=msg.note, velocity=0, time=t))  # 'note_off'는 velocity가 0으로 처리
+                        last_message_time = time.time()
 
             # 주어진 시간만큼 녹음하고 탈출
             if first_note_received:
