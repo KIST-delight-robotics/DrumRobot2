@@ -40,8 +40,9 @@ def print_midi_sequence(midi_path):
     for note in input_sequence.notes:
         print(f"Pitch: {note.pitch}, Start Time: {note.start_time}, End Time: {note.end_time}, Is Drum: {note.is_drum}")
 
-# 미디 분석 및 출력
-# midi_path = 'record/drum_recording_0_1_quantizer.mid'
+# # 미디 분석 및 출력
+# midi_path = 'record/drum_recording_0_1.mid'
+# midi_path = 'test5.mid'
 # print("sequence----------------------------------------------------")
 # print_midi_sequence(midi_path)
 # print("mido----------------------------------------------------")

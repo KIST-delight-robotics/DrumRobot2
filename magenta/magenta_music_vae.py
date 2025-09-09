@@ -3,6 +3,8 @@ from magenta.models.music_vae import TrainedModel
 from magenta.models.music_vae import configs
 import note_seq
 
+import copy
+
 class MagentaManager:
     
     def __init__(self, config_name, checkpoint_path):
@@ -69,6 +71,15 @@ class MagentaManager:
             note_seq.sequence_proto_to_midi_file(sequence, midi_filename)
             print(f"[Python] Generated MIDI file: {midi_filename}")
 
+    def change_tempo(self, note_sequence, new_tempo):
+        new_sequence = copy.deepcopy(note_sequence)
+        ratio = note_sequence.tempos[0].qpm / new_tempo
+        for note in new_sequence.notes:
+            note.start_time = note.start_time * ratio
+            note.end_time = note.end_time * ratio
+        new_sequence.tempos[0].qpm = new_tempo
+        return new_sequence
+
     def interpolate_music(self, input_midi1, input_midi2, output_filename):
         # 입력 MIDI 파일 변환
         input_sequence1 = note_seq.midi_file_to_sequence_proto(input_midi1)
@@ -79,29 +90,39 @@ class MagentaManager:
 
         # 생성된 드럼 패턴을 MIDI 파일로 저장
         for i, sequence in enumerate(generated_sequences):
+            # # New note sequence with changed tempo
+            # sequence_tempo_changed = self.change_tempo(sequence, 100)
+
             midi_filename = output_filename + f"{i+1}.mid"
             note_seq.sequence_proto_to_midi_file(sequence, midi_filename)
             print(f"[Python] Generated MIDI file: {midi_filename}")
 
 # 모델 이름 - 모델 체크포인트 파일 경로
-# 'cat-drums_2bar_small' - '/home/shy/IW_test/magenta/model/cat-drums_2bar_small.lokl.tar'
-# 'cat-drums_2bar_small' - '/home/shy/IW_test/magenta/model/cat-drums_2bar_small.hikl.tar' (interpolate)
-# 'hierdec-trio_16bar' - '/home/shy/IW_test/magenta/model/hierdec-trio_16bar.tar'
-# 'groovae_2bar_humanize' - '/home/shy/IW_test/magenta/model/groovae_2bar_humanize.tar'
+# 'cat-drums_2bar_small' - '/home/shy/DrumRobot/magenta/model/cat-drums_2bar_small.lokl.tar'
+# 'cat-drums_2bar_small' - '/home/shy/DrumRobot/magenta/model/cat-drums_2bar_small.hikl.tar' (interpolate)
+# 'hierdec-trio_16bar' - '/home/shy/DrumRobot/magenta/model/hierdec-trio_16bar.tar'
+# 'groovae_2bar_humanize' - '/home/shy/DrumRobot/magenta/model/groovae_2bar_humanize.tar'
+            
+# input_midi1 = '2bar_1.mid'
+# input_midi2 = '2bar_2.mid'
+# output_path = 'test'
+
+# mgt = MagentaManager(config_name='cat-drums_2bar_small', checkpoint_path='/home/shy/DrumRobot/magenta/model/cat-drums_2bar_small.hikl.tar')
+# mgt.interpolate_music(input_midi1, input_midi2, output_path)
 
 # 명령어로 실행
 # music_vae_generate \
 #   --config=cat-drums_2bar_small \
-#   --checkpoint_file=/home/shy/IW_test/magenta/model/cat-drums_2bar_small.lokl.tar \
+#   --checkpoint_file=/home/shy/DrumRobot/magenta/model/cat-drums_2bar_small.lokl.tar \
 #   --mode=sample \
 #   --num_outputs=5 \
-#   --output_dir=/home/shy/IW_test/magenta/generated
+#   --output_dir=/home/shy/DrumRobot/magenta/generated
   
 # music_vae_generate \
 # --config=cat-drums_2bar_small \
-# --checkpoint_file=/home/shy/IW_test/magenta/model/cat-drums_2bar_small.lokl.tar \
+# --checkpoint_file=/home/shy/DrumRobot/magenta/model/cat-drums_2bar_small.lokl.tar \
 # --mode=interpolate \
 # --num_outputs=5 \
-# --input_midi_1=/home/shy/IW_test/magenta/generated/0.mid \
-# --input_midi_2=/home/shy/IW_test/magenta/generated/1.mid \
-# --output_dir=/home/shy/IW_test/magenta/generated
+# --input_midi_1=/home/shy/DrumRobot/magenta/generated/0.mid \
+# --input_midi_2=/home/shy/DrumRobot/magenta/generated/1.mid \
+# --output_dir=/home/shy/DrumRobot/magenta/generated
