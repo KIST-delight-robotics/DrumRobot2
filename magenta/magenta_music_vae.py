@@ -110,6 +110,14 @@ class MagentaManager:
 # mgt = MagentaManager(config_name='cat-drums_2bar_small', checkpoint_path='/home/shy/DrumRobot/magenta/model/cat-drums_2bar_small.hikl.tar')
 # mgt.interpolate_music(input_midi1, input_midi2, output_path)
 
+input_path = 'magenta/basic/basic_4beats_1.mid'
+output_path = '/home/shy/output_based'
+
+mgt = MagentaManager(config_name='hierdec-trio_16bar', checkpoint_path='/home/shy/DrumRobot/magenta/model/hierdec-trio_16bar.tar')
+mgt.set_parameter(5, 256, 0.5)
+mgt.generate_music_from_input(input_path, output_path)
+# mgt.generate_music(output_path)
+
 # 명령어로 실행
 # music_vae_generate \
 #   --config=cat-drums_2bar_small \
