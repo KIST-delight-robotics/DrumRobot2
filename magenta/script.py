@@ -58,6 +58,6 @@ for i in range(num_args):
 tm = taskManager(bpm=bpm, base_path=base_path)
 
 if record:
-    tm.make_midi(num_repeats, wait_times, recording_times, creation_times)
+    tm.make_midi(num_repeats, wait_times)
 else:
     tm.make_sync()

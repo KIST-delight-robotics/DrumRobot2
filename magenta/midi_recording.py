@@ -135,11 +135,11 @@ class RecordingManager:
         midi_input.close()
 
     # 일정 시간동안 MIDI 신호를 실시간으로 받아와서 MIDI 파일로 저장
-    def record_for_time(self, output_file, recording_second, buffer_clear_flag=False):
-        base_bpm = 120
+    def record_for_time(self, output_file, buffer_clear_flag=False):
         bpm = self.bpm  # 템포
         ticks_per_beat = 480  # 1 비트(quarter note) 당 틱 수
         seconds_per_beat = 60 / bpm  # 1 비트의 시간(초 단위)
+        recording_second = 8 * seconds_per_beat    # 녹음 시간 (2마디)
         
         # MIDI 입력 포트 연결
         midi_input = mido.open_input(self.input_port_name)
@@ -151,14 +151,14 @@ class RecordingManager:
 
         # 트랙 이름 설정과 템포 설정
         track.append(mido.MetaMessage('track_name', name='Drum Track'))
-        track.append(mido.MetaMessage('set_tempo', tempo=mido.bpm2tempo(base_bpm)))  # 템포 설정
+        track.append(mido.MetaMessage('set_tempo', tempo=mido.bpm2tempo(bpm)))  # 템포 설정
         track.append(mido.MetaMessage('time_signature', numerator=4, denominator=4))
         track.append(Message('program_change', channel=9, program=0, time=0))
         
         if buffer_clear_flag:
             self.clear_input_buffer(midi_input)
 
-        print(f"\n[Python] Recording for {recording_second} seconds after the first note...")
+        print(f"\n[Python] Recording for {recording_second} seconds...")
         
         start_time = time.time()  # 녹음 시작 시간 기록
         last_message_time = time.time()
@@ -198,11 +198,11 @@ class RecordingManager:
         midi_input.close()
 
     # 첫 타격 감지 후 일정 시간동안 MIDI 신호를 실시간으로 받아와서 MIDI 파일로 저장
-    def record_after_first_hit(self, output_file, wait_second, recording_second):
-        base_bpm = 120
+    def record_after_first_hit(self, output_file, wait_second):
         bpm = self.bpm  # 템포
         ticks_per_beat = 480  # 1 비트(quarter note) 당 틱 수
         seconds_per_beat = 60 / bpm  # 1 비트의 시간(초 단위)
+        recording_second = 8 * seconds_per_beat    # 녹음 시간 (2마디)
         
         # MIDI 입력 포트 연결
         midi_input = mido.open_input(self.input_port_name)
@@ -214,7 +214,7 @@ class RecordingManager:
 
         # 트랙 이름 설정과 템포 설정
         track.append(mido.MetaMessage('track_name', name='Drum Track'))
-        track.append(mido.MetaMessage('set_tempo', tempo=mido.bpm2tempo(base_bpm)))  # 템포 설정
+        track.append(mido.MetaMessage('set_tempo', tempo=mido.bpm2tempo(bpm)))  # 템포 설정
         track.append(mido.MetaMessage('time_signature', numerator=4, denominator=4))
         track.append(Message('program_change', channel=9, program=0, time=0))
         

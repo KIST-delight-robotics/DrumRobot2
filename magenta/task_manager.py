@@ -33,7 +33,7 @@ class taskManager:
 
         rec.detect_first_hit()
 
-    def make_midi(self, num_repeats, wait_times, recording_times, creation_times):
+    def make_midi(self, num_repeats, wait_times):
         
         # 경로 설정
         self.set_path()
@@ -45,13 +45,9 @@ class taskManager:
         print(f"[Python] number of repeats : {num_repeats}")
         
         for i in range(num_repeats):
-            print(f"\n[Python] wait times : {wait_times[i]}")
-            print(f"[Python] recording times : {recording_times[i]}")
-            print(f"[Python] creation times : {creation_times[i]}")
-
             # 첫 번째 녹음
             recording_file_name = self.recording_file_path + str(i) + '_1.mid'
-            rec.record_after_first_hit(recording_file_name, wait_times[i], recording_times[i]/2)
+            rec.record_after_first_hit(recording_file_name, wait_times[i])
 
             # 전처리
             quantize_midi_file = quantize_drum_midi(recording_file_name)        # 양자화
@@ -66,7 +62,7 @@ class taskManager:
             # 두 번째 녹음
             recording_file_name = self.recording_file_path + str(i) + '_2.mid'
             buffer_clear_flag = False   # 두 번째 녹음은 버퍼 안비움
-            rec.record_for_time(recording_file_name, recording_times[i]/2, buffer_clear_flag)
+            rec.record_for_time(recording_file_name, buffer_clear_flag)
 
             # 전처리
             quantize_midi_file = quantize_drum_midi(recording_file_name)        # 양자화
