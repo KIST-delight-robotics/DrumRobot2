@@ -162,9 +162,9 @@ private:
     // 마젠타 반복 생성을 위한 변수들
     int repeatNum = 1;
     int currentIterations = 1;
-    queue<float> delayTime;
-    queue<float> makeTime;
-    queue<float> recordTime;
+    queue<int> delayTime;
+    queue<int> makeTime;
+    queue<int> recordTime;
     queue<float> waitTime;
 
     void initializePlayState();

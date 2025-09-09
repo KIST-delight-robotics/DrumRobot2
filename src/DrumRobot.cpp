@@ -860,9 +860,9 @@ void DrumRobot::runPythonInThread()
                 pythonCmd += " --param";
                 for (int i = 0; i < repeatNum; i++)
                 {
-                    float dT = delayTime.front(); delayTime.pop();
-                    float rT = recordTime.front(); recordTime.pop();
-                    float mT = makeTime.front(); makeTime.pop();
+                    int dT = delayTime.front(); delayTime.pop();
+                    int rT = recordTime.front(); recordTime.pop();
+                    int mT = makeTime.front(); makeTime.pop();
 
                     pythonCmd += " " + std::to_string(dT);
                     pythonCmd += " " + std::to_string(rT);
@@ -1124,7 +1124,7 @@ void DrumRobot::displayPlayCommands(bool useMagenta, bool useDrumPad, float inpu
                 delayTime.pop(); recordTime.pop(); makeTime.pop(); waitTime.pop();
                 delayTime.push(a); recordTime.push(b); makeTime.push(c); waitTime.push(d);
 
-                std::cout << "\t- " << i + 1 << "번째 Delay/Record/Make/Wait Time - (" << a << "/" << b << "/" << c << "/" << d << ") (s)\n";
+                std::cout << "\t- " << i + 1 << "번째 Delay Time/Record Bar/Make Bar/Wait Time - (" << a << "/" << b << "/" << c << "/" << d << ") (s)\n";
             }
         }
         else
@@ -1199,15 +1199,27 @@ void DrumRobot::setPythonArgs()
     // 반복횟수에 따라 딜레이, 녹음, 생성 시간 입력
     for(int i = 0; i < repeatNum; i++)
     {
-        float dT, rT, mT, wT;
+        int dT, rT, mT;
+        float wT;
 
         std::cout << "\n";
-        std::cout << i + 1 << "번째 delay time : ";
-        cin >> dT;
-        std::cout << i + 1 << "번째 record time : ";
-        cin >> rT;
-        std::cout << i + 1 << "번째 make time : ";
-        cin >> mT;
+        
+        do{
+            std::cout << i + 1 << "번째 delay time : ";
+            cin >> dT;
+        }while(dT != floor(dT));
+        do{ 
+            std::cout << i + 1 << "번째 record bar number : ";
+            cin >> rT;
+            if (rT % 2 == 1)
+                std::cout << "녹음 마디 갯수는 2의 배수여야 합니다.\n";
+        }while(rT % 2 == 1);
+        do{
+            std::cout << i + 1 << "번째 make bar number : ";
+            cin >> mT;
+            if(mT % 2 == 1)
+                std::cout << "생성 마디 갯수는 2의 배수여야 합니다.\n";
+        }while(mT % 2 == 1);
         std::cout << i + 1 << "번째 wait time : ";
         cin >> wT;
 
