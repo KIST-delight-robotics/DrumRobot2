@@ -835,7 +835,7 @@ void DrumRobot::musicMachine()
 
 void DrumRobot::runPythonInThread()
 {
-    int recordNum[2] = {0};
+    int recordNum[100] = {0};
 
     while (state.main != Main::Shutdown)
     {
@@ -868,7 +868,7 @@ void DrumRobot::runPythonInThread()
                     pythonCmd += " " + std::to_string(rT);
                     pythonCmd += " " + std::to_string(mT);
 
-                    recordNum[i] = (int)rT;
+                    recordNum[i] = (int)mT;
                 }
 
                 pythonCmd += " --bpm";
