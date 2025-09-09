@@ -835,6 +835,8 @@ void DrumRobot::musicMachine()
 
 void DrumRobot::runPythonInThread()
 {
+    int recordNum[2] = {0};
+
     while (state.main != Main::Shutdown)
     {
         if (runPython)
@@ -865,6 +867,8 @@ void DrumRobot::runPythonInThread()
                     pythonCmd += " " + std::to_string(dT);
                     pythonCmd += " " + std::to_string(rT);
                     pythonCmd += " " + std::to_string(mT);
+
+                    recordNum[i] = (int)rT;
                 }
 
                 pythonCmd += " --bpm";
@@ -880,17 +884,19 @@ void DrumRobot::runPythonInThread()
 
                 for (int i = 0; i < repeatNum; i++)
                 {
-                    for (int j = 0; j < 2; j++)
+                    for (int j = 0; j < recordNum[i]; j++)
                     {
                         std::string outputMid = "../magenta/generated/output" + std::to_string(i) + "_" + std::to_string(j+1) + "3.mid";
                         std::string outputVel = "null";
+
+                        bool endFlag = (j == recordNum[i] - 1);
 
                         // 해당 미디 파일 생성될 때까지 대기
                         while(!std::filesystem::exists(outputMid))
                             std::this_thread::sleep_for(std::chrono::milliseconds(1));
 
                         usleep(100*1000);
-                        generateCodeFromMIDI(outputMid, outputVel, j);
+                        generateCodeFromMIDI(outputMid, outputVel, j, endFlag);
                     }
                 }
 
@@ -1664,7 +1670,7 @@ void DrumRobot::sendPlayProcess()
 /*                                                                            */
 ////////////////////////////////////////////////////////////////////////////////
 
-void DrumRobot::generateCodeFromMIDI(std::string midPath, std::string veloPath, int recordingIndex)
+void DrumRobot::generateCodeFromMIDI(std::string midPath, std::string veloPath, int recordingIndex, bool endFlag)
 {
     // 경로 설정
     filesystem::path outputPath1 = "../include/magenta/output1_drum_hits_time.csv"; 
@@ -1739,12 +1745,6 @@ void DrumRobot::generateCodeFromMIDI(std::string midPath, std::string veloPath, 
 
         // 그루브 추가 
         fun.addGroove(bpm, outputPath5, outputPath6);
-
-        bool endFlag = false;
-        if (recordingIndex == 1)    // 녹음 2번해야 끝
-        {
-            endFlag = true;
-        }
         
         fun.convertToMeasureFile(outputPath6, outputPath, endFlag);
 
@@ -1759,11 +1759,6 @@ void DrumRobot::generateCodeFromMIDI(std::string midPath, std::string veloPath, 
     }
     else
     {
-        bool endFlag = false;
-        if (recordingIndex == 1)    // 녹음 2번해야 끝
-        {
-            endFlag = true;
-        }
         fun.convertToMeasureFile(outputPath4, outputPath, endFlag);
 
         std::remove(outputPath1.c_str());      // 중간 단계 txt 파일 삭제
