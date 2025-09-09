@@ -1722,7 +1722,7 @@ void DrumRobot::generateCodeFromMIDI(std::string midPath, std::string veloPath, 
     bool mapTo357 = false;
     vector<Functions::Seg> segs;
 
-    fun.roundDurationsToStep(outputPath1, outputPath2); 
+    fun.roundDurationsToStep(bpm, outputPath1, outputPath2); 
     fun.convertMcToC(outputPath2, outputPath3);
     fun.assignHandsToEvents(outputPath3, outputPath4);
 
