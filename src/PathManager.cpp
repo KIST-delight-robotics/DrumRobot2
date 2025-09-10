@@ -212,18 +212,17 @@ void PathManager::setDrumCoordinate()
     }
 
     // Read data into a 2D vector
-    MatrixXd instXYZ(6, 9);
+    MatrixXd instXYZ(6, 10);
 
     for (int i = 0; i < 6; ++i)
     {
-        for (int j = 0; j < 9; ++j)
+        for (int j = 0; j < 10; ++j)
         {
             inputFile >> instXYZ(i, j);
+            // std::cout << instXYZ(i, j) << " ";
         }
+        // std::cout <<"\n";
     }
-
-    drumCoordinateR.resize(3, 9);
-    drumCoordinateL.resize(3, 9);
 
     // Extract the desired elements
     Vector3d right_S;
@@ -235,6 +234,7 @@ void PathManager::setDrumCoordinate()
     Vector3d right_RC;
     Vector3d right_LC;
     Vector3d right_OHH;
+    Vector3d right_RB;
 
     Vector3d left_S;
     Vector3d left_FT;
@@ -245,6 +245,7 @@ void PathManager::setDrumCoordinate()
     Vector3d left_RC;
     Vector3d left_LC;
     Vector3d left_OHH;
+    Vector3d left_RB;
 
     for (int i = 0; i < 3; ++i)
     {
@@ -257,6 +258,7 @@ void PathManager::setDrumCoordinate()
         right_RC(i) = instXYZ(i, 6);
         right_LC(i) = instXYZ(i, 7);
         right_OHH(i) = instXYZ(i, 8);
+        right_RB(i) = instXYZ(i, 9);
 
         left_S(i) = instXYZ(i + 3, 0);
         left_FT(i) = instXYZ(i + 3, 1);
@@ -267,21 +269,25 @@ void PathManager::setDrumCoordinate()
         left_RC(i) = instXYZ(i + 3, 6);
         left_LC(i) = instXYZ(i + 3, 7);
         left_OHH(i) = instXYZ(i + 3, 8);
+        left_RB(i) = instXYZ(i + 3, 9);
     }
 
-    drumCoordinateR << right_S, right_FT, right_MT, right_HT, right_HH, right_R, right_RC, right_LC, right_OHH;
-    drumCoordinateL << left_S, left_FT, left_MT, left_HT, left_HH, left_R, left_RC, left_LC, left_OHH;
+    drumCoordinateR.resize(3, 10);
+    drumCoordinateL.resize(3, 10);
+
+    drumCoordinateR << right_S, right_FT, right_MT, right_HT, right_HH, right_R, right_RC, right_LC, right_OHH, right_RB;
+    drumCoordinateL << left_S,  left_FT,  left_MT,  left_HT,  left_HH,  left_R,  left_RC,  left_LC,  left_OHH,  left_RB;
 }
 
 void PathManager::setWristAngleOnImpact()
 {
     // 악기 별 타격 시 손목 각도
-    wristAngleOnImpactR.resize(1, 9);
-    wristAngleOnImpactL.resize(1, 9);
+    wristAngleOnImpactR.resize(1, 10);
+    wristAngleOnImpactL.resize(1, 10);
 
-    //                          S                  FT                  MT                  HT                  HH                  R                   RC                 LC                Open HH
-    wristAngleOnImpactR << 10.0*M_PI/180.0,   10.0*M_PI/180.0,     5.0*M_PI/180.0,     5.0*M_PI/180.0,    10.0*M_PI/180.0,    15.0*M_PI/180.0,    10.0*M_PI/180.0,   10.0*M_PI/180.0,  10.0*M_PI/180.0;
-    wristAngleOnImpactL << 10.0*M_PI/180.0,   10.0*M_PI/180.0,     5.0*M_PI/180.0,     5.0*M_PI/180.0,    10.0*M_PI/180.0,    15.0*M_PI/180.0,    10.0*M_PI/180.0,   10.0*M_PI/180.0,  10.0*M_PI/180.0;
+    //                          S                  FT                  MT                  HT                  HH                  R                   RC                 LC                Open HH           RB
+    wristAngleOnImpactR << 10.0*M_PI/180.0,   10.0*M_PI/180.0,     5.0*M_PI/180.0,     5.0*M_PI/180.0,    10.0*M_PI/180.0,    15.0*M_PI/180.0,    10.0*M_PI/180.0,   10.0*M_PI/180.0,  10.0*M_PI/180.0, 10.0*M_PI/180.0;
+    wristAngleOnImpactL << 10.0*M_PI/180.0,   10.0*M_PI/180.0,     5.0*M_PI/180.0,     5.0*M_PI/180.0,    10.0*M_PI/180.0,    15.0*M_PI/180.0,    10.0*M_PI/180.0,   10.0*M_PI/180.0,  10.0*M_PI/180.0, 10.0*M_PI/180.0;
 }
 
 void PathManager::setAddStanceAngle()
@@ -319,27 +325,27 @@ void PathManager::setReadyAngle()
     VectorXd defaultInstrumentR;    /// 오른팔 시작 위치 (ready 위치)
     VectorXd defaultInstrumentL;    /// 왼팔 시작 위치 (ready 위치)
 
-    VectorXd instrumentVector(18);
+    VectorXd instrumentVector(20);
 
-    defaultInstrumentR.resize(9);
-    defaultInstrumentL.resize(9);
-    defaultInstrumentR << 1, 0, 0, 0, 0, 0, 0, 0, 0;    // SN
-    defaultInstrumentL << 1, 0, 0, 0, 0, 0, 0, 0, 0;    // SN
+    defaultInstrumentR.resize(10);
+    defaultInstrumentL.resize(10);
+    defaultInstrumentR << 1, 0, 0, 0, 0, 0, 0, 0, 0, 0;    // SN
+    defaultInstrumentL << 1, 0, 0, 0, 0, 0, 0, 0, 0, 0;    // SN
 
     instrumentVector << defaultInstrumentR,
         defaultInstrumentL;
 
     // x,y,z position
-    MatrixXd combined(6, 18);
-    combined << drumCoordinateR, MatrixXd::Zero(3, 9), MatrixXd::Zero(3, 9), drumCoordinateL;
+    MatrixXd combined(6, 20);
+    combined << drumCoordinateR, MatrixXd::Zero(3, 10), MatrixXd::Zero(3, 10), drumCoordinateL;
     MatrixXd p = combined * instrumentVector;
 
     VectorXd pR = VectorXd::Map(p.data(), 3, 1);
     VectorXd pL = VectorXd::Map(p.data() + 3, 3, 1);
 
     // 타격 시 손목 각도
-    combined.resize(2, 18);
-    combined << wristAngleOnImpactR, MatrixXd::Zero(1, 9), MatrixXd::Zero(1, 9), wristAngleOnImpactL;
+    combined.resize(2, 20);
+    combined << wristAngleOnImpactR, MatrixXd::Zero(1, 10), MatrixXd::Zero(1, 10), wristAngleOnImpactL;
     MatrixXd defaultWristAngle = combined * instrumentVector;
 
     // 허리 각도 구하기
@@ -582,12 +588,12 @@ void PathManager::solveIKandPushCommand()
 
         pushCommandBuffer(q);                           // 명령 생성 후 push
 
-        // 데이터 기록
-        for (int i = 0; i < 9; i++)
-        {
-            std::string fileName = "solveIK_q" + to_string(i);
-            fun.appendToCSV(fileName, false, i, q(i));
-        }
+        // // 데이터 기록
+        // for (int i = 0; i < 9; i++)
+        // {
+        //     std::string fileName = "solveIK_q" + to_string(i);
+        //     fun.appendToCSV(fileName, false, i, q(i));
+        // }
     }
 
     if (waistParameterQueue.empty())    // DrumRobot 에게 끝났음 알리기
@@ -698,15 +704,15 @@ PathManager::TrajectoryData PathManager::getTrajectoryData(MatrixXd &measureMatr
     data.initialTimeR = dataR.first(0);
     data.initialTimeL = dataL.first(0);
 
-    data.finalTimeR = dataR.first(10);
-    data.finalTimeL = dataL.first(10);
+    data.finalTimeR = dataR.first(11);
+    data.finalTimeL = dataL.first(11);
 
     // 악기
-    VectorXd initialInstrumentR = dataR.first.block(1, 0, 9, 1);
-    VectorXd initialInstrumentL = dataL.first.block(1, 0, 9, 1);
+    VectorXd initialInstrumentR = dataR.first.block(1, 0, 10, 1);
+    VectorXd initialInstrumentL = dataL.first.block(1, 0, 10, 1);
 
-    VectorXd finalInstrumentR = dataR.first.block(11, 0, 9, 1);
-    VectorXd finalInstrumentL = dataL.first.block(11, 0, 9, 1);
+    VectorXd finalInstrumentR = dataR.first.block(12, 0, 10, 1);
+    VectorXd finalInstrumentL = dataL.first.block(12, 0, 10, 1);
 
     pair<VectorXd, double> initialTagetR = getTargetPosition(initialInstrumentR, 'R');
     pair<VectorXd, double> initialTagetL = getTargetPosition(initialInstrumentL, 'L');
@@ -734,11 +740,11 @@ PathManager::TrajectoryData PathManager::getTrajectoryData(MatrixXd &measureMatr
 pair<VectorXd, VectorXd> PathManager::parseTrajectoryData(VectorXd &t, VectorXd &inst, VectorXd &hihat, VectorXd &stateVector)
 {
     map<int, int> instrumentMapping = {
-        {1, 0}, {2, 1}, {3, 2}, {4, 3}, {5, 4}, {6, 5}, {7, 6}, {8, 7}, {11, 0}, {51, 0}, {61, 0}, {71, 0}, {81, 0}, {91, 0}, {9, 8}};
-    //    S       FT      MT      HT      HH       R      RC      LC       S        S        S        S        S        S     Open HH
+        {1, 0}, {2, 1}, {3, 2}, {4, 3}, {5, 4}, {6, 5}, {7, 6}, {8, 7}, {11, 0}, {51, 0}, {61, 0}, {71, 0}, {81, 0}, {91, 0}, {9, 8}, {10, 9}};
+    //    S       FT      MT      HT      HH       R      RC      LC       S        S        S        S        S        S     Open HH   RB
 
-    VectorXd initialInstrument = VectorXd::Zero(9), finalInstrument = VectorXd::Zero(9);
-    VectorXd outputVector = VectorXd::Zero(20);
+    VectorXd initialInstrument = VectorXd::Zero(10), finalInstrument = VectorXd::Zero(10);
+    VectorXd outputVector = VectorXd::Zero(22);
 
     VectorXd nextStateVector;
 
@@ -1799,10 +1805,10 @@ void PathManager::genPedalTrajectory(MatrixXd &measureMatrix, int n)
         
         pedalQueue.push(PT);
 
-        // 데이터 저장
-        std::string fileName;
-        fileName = "pedal_angle";
-        fun.appendToCSV(fileName, false, PT.bass, PT.hihat);
+        // // 데이터 저장
+        // std::string fileName;
+        // fileName = "pedal_angle";
+        // fun.appendToCSV(fileName, false, PT.bass, PT.hihat);
     }
 }
 
