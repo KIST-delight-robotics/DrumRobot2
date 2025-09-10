@@ -835,6 +835,7 @@ void DrumRobot::musicMachine()
 
 void DrumRobot::runPythonInThread()
 {
+    int recordNum[100] = {0};
     int creationNum[100] = {0};
 
     while (state.main != Main::Shutdown)
@@ -868,7 +869,8 @@ void DrumRobot::runPythonInThread()
                     pythonCmd += " " + std::to_string(rT);
                     pythonCmd += " " + std::to_string(mT);
 
-                    creationNum[i] = rT / 2;
+                    recordNum[i] = rT / 2;
+                    creationNum[i] = mT / 2;
                 }
 
                 pythonCmd += " --bpm";
@@ -886,10 +888,22 @@ void DrumRobot::runPythonInThread()
                 {
                     for (int j = 0; j < creationNum[i]; j++)
                     {
-                        std::string outputMid = "../magenta/generated/output" + std::to_string(i) + "_" + std::to_string(j+1) + "3.mid";
+                        std::string outputMid;
                         std::string outputVel = "null";
-
                         bool endFlag = (j == creationNum[i] - 1);
+
+                        if (j < recordNum[i])
+                        {
+                            outputMid = "../magenta/generated/output" + std::to_string(i) + "_" + std::to_string(j + 1) + "3.mid";
+                        }
+                        else if (j < 2 * recordNum[i])
+                        {
+                            outputMid = "../magenta/generated/output" + std::to_string(i) + "_" + std::to_string(j - recordNum[i] + 1) + "4.mid";
+                        }
+                        else
+                        {
+                            outputMid = "../magenta/generated/output" + std::to_string(i) + "_" + std::to_string(j - 2 * recordNum[i] + 1) + "2.mid";
+                        }
 
                         // 해당 미디 파일 생성될 때까지 대기
                         while(!std::filesystem::exists(outputMid))
@@ -1208,18 +1222,23 @@ void DrumRobot::setPythonArgs()
             std::cout << i + 1 << "번째 delay time : ";
             cin >> dT;
         }while(dT != floor(dT));
+        
         do{ 
             std::cout << i + 1 << "번째 record bar number : ";
             cin >> rT;
             if (rT % 2 == 1)
                 std::cout << "녹음 마디 갯수는 2의 배수여야 합니다.\n";
         }while(rT % 2 == 1);
+        
         do{
             std::cout << i + 1 << "번째 make bar number : ";
             cin >> mT;
             if(mT % 2 == 1)
                 std::cout << "생성 마디 갯수는 2의 배수여야 합니다.\n";
-        }while(mT % 2 == 1);
+            if(mT > 3*rT)
+                std::cout << "생성 마디 갯수는 녹음 마디의 3배 이하여하 합니다.\n";
+        }while(mT % 2 == 1 || mT > 3*rT);
+
         std::cout << i + 1 << "번째 wait time : ";
         cin >> wT;
 
@@ -1656,7 +1675,7 @@ void DrumRobot::sendPlayProcess()
             
             std::string saveFolder = "../../DrumRobot_data/codes/";
 
-            std::string saveCode = saveFolder + "save_code_" + std::to_string(currentIterations-1) + std::to_string(i) + "_" + timeStr + ".txt";
+            std::string saveCode = saveFolder + "save_code_" + timeStr + "_" + std::to_string(currentIterations-1) + std::to_string(i+1) + ".txt";
 
             std::filesystem::rename(txtIndexPath.c_str(), saveCode.c_str());
             std::remove(txtIndexPath.c_str());
