@@ -868,7 +868,7 @@ void DrumRobot::runPythonInThread()
                     pythonCmd += " " + std::to_string(rT);
                     pythonCmd += " " + std::to_string(mT);
 
-                    recordNum[i] = (int)mT;
+                    recordNum[i] = (int)rT;
                 }
 
                 pythonCmd += " --bpm";
