@@ -205,8 +205,7 @@ void DrumRobot::initializeCanManager()
 {
     canManager.initializeCAN();
     canManager.checkCanPortsStatus();
-    //true 모터연결안된것 김태황
-    allMotorsUnConected = canManager.setMotorsSocket();
+    allMotorsUnConected = canManager.setMotorsSocket(); // 연결된 모터 없음 : 테스트 모드
 }
 
 void DrumRobot::motorSettingCmd()
@@ -1622,7 +1621,7 @@ void DrumRobot::sendPlayProcess()
         }
         else     //////////////////////////////////////////////////////////// 파일 열기 실패
         {
-            if (fileIndex == 0)                     ////////// 1. Play 시작도 못한 경우 (악보 입력 오타 등) -> Ideal 로 이동
+            if (fileIndex == 0)                                             ////////// 1. Play 시작도 못한 경우 (악보 입력 오타 등) -> Ideal 로 이동
             {
                 std::cout << "not find " << txtIndexPath << "\n";
                 sleep(1);
@@ -1633,13 +1632,13 @@ void DrumRobot::sendPlayProcess()
                 state.main = Main::Ideal;
                 return;
             }
-            // else if (flagObj.getFixationFlag())     ////////// 2. 로봇 상태가 fixed 로 변경 (악보가 들어오기 전 명령 소진) -> 에러
-            // {
-            //     std::cout << "Error : not find " << txtIndexPath << "\n";
-            //     state.main = Main::Error;
-            //     return;
-            // }
-            else                                    ////////// 3. 다음 악보 생성될 때까지 대기
+            else if (flagObj.getFixationFlag() && (!allMotorsUnConected))   ////////// 2. 로봇 상태가 fixed 로 변경 (악보가 들어오기 전 명령 소진) -> 에러
+            {
+                std::cout << "Error : not find " << txtIndexPath << "\n";
+                state.main = Main::Error;
+                return;
+            }
+            else                                                            ////////// 3. 다음 악보 생성될 때까지 대기
             {
                 inputFile.clear();            // 상태 비트 초기화
                 usleep(100);
