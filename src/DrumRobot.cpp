@@ -861,8 +861,8 @@ void DrumRobot::runPythonInThread()
                 for (int i = 0; i < repeatNum; i++)
                 {
                     int dT = delayTime.front(); delayTime.pop();
-                    int rT = recordTime.front(); recordTime.pop();
-                    int mT = makeTime.front(); makeTime.pop();
+                    int rT = recordBarNum.front(); recordBarNum.pop();
+                    int mT = makeBarNum.front(); makeBarNum.pop();
 
                     pythonCmd += " " + std::to_string(dT);
                     pythonCmd += " " + std::to_string(rT);
@@ -1133,9 +1133,9 @@ void DrumRobot::displayPlayCommands(bool useMagenta, bool useDrumPad, float inpu
             for (int i = 0; i < repeatNum; i++)
             {
                 float a, b, c, d;
-                a = delayTime.front(); b = recordTime.front(); c = makeTime.front(); d = waitTime.front();
-                delayTime.pop(); recordTime.pop(); makeTime.pop(); waitTime.pop();
-                delayTime.push(a); recordTime.push(b); makeTime.push(c); waitTime.push(d);
+                a = delayTime.front(); b = recordBarNum.front(); c = makeBarNum.front(); d = waitTime.front();
+                delayTime.pop(); recordBarNum.pop(); makeBarNum.pop(); waitTime.pop();
+                delayTime.push(a); recordBarNum.push(b); makeBarNum.push(c); waitTime.push(d);
 
                 std::cout << "\t- " << i + 1 << "번째 Delay Time/Record Bar/Make Bar/Wait Time - (" << a << "/" << b << "/" << c << "/" << d << ") (s)\n";
             }
@@ -1199,11 +1199,11 @@ void DrumRobot::setPythonArgs()
     while (!delayTime.empty()) {
         delayTime.pop();  // 큐에서 항목을 하나씩 제거
     }
-    while (!recordTime.empty()) {
-        recordTime.pop();
+    while (!recordBarNum.empty()) {
+        recordBarNum.pop();
     }
-    while (!makeTime.empty()) {
-        makeTime.pop();
+    while (!makeBarNum.empty()) {
+        makeBarNum.pop();
     }
     while (!waitTime.empty()) {
         waitTime.pop();
@@ -1214,13 +1214,9 @@ void DrumRobot::setPythonArgs()
     {
         int dT, rT, mT;
         float wT;
-
-        std::cout << "\n";
         
-        do{
-            std::cout << i + 1 << "번째 delay time : ";
-            cin >> dT;
-        }while(dT != floor(dT));
+        std::cout << "\n" << i + 1 << "번째 delay time : ";
+        cin >> dT;
         
         do{ 
             std::cout << i + 1 << "번째 record bar number : ";
@@ -1242,8 +1238,8 @@ void DrumRobot::setPythonArgs()
         cin >> wT;
 
         delayTime.push(dT);
-        recordTime.push(rT);
-        makeTime.push(mT);
+        recordBarNum.push(rT);
+        makeBarNum.push(mT);
         waitTime.push(wT);
     }
 }
