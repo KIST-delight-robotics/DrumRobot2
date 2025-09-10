@@ -835,7 +835,7 @@ void DrumRobot::musicMachine()
 
 void DrumRobot::runPythonInThread()
 {
-    int recordNum[100] = {0};
+    int creationNum[100] = {0};
 
     while (state.main != Main::Shutdown)
     {
@@ -868,7 +868,7 @@ void DrumRobot::runPythonInThread()
                     pythonCmd += " " + std::to_string(rT);
                     pythonCmd += " " + std::to_string(mT);
 
-                    recordNum[i] = (int)rT;
+                    creationNum[i] = rT / 2;
                 }
 
                 pythonCmd += " --bpm";
@@ -884,12 +884,12 @@ void DrumRobot::runPythonInThread()
 
                 for (int i = 0; i < repeatNum; i++)
                 {
-                    for (int j = 0; j < recordNum[i]; j++)
+                    for (int j = 0; j < creationNum[i]; j++)
                     {
                         std::string outputMid = "../magenta/generated/output" + std::to_string(i) + "_" + std::to_string(j+1) + "3.mid";
                         std::string outputVel = "null";
 
-                        bool endFlag = (j == recordNum[i] - 1);
+                        bool endFlag = (j == creationNum[i] - 1);
 
                         // 해당 미디 파일 생성될 때까지 대기
                         while(!std::filesystem::exists(outputMid))
