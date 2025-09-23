@@ -124,6 +124,11 @@ private:
     void motorSettingCmd();
     void initializeFolder();
     bool initializePos(const std::string &input);
+
+    dynamixel::PortHandler   *port = dynamixel::PortHandler::getPortHandler("/dev/ttyUSB0");
+    dynamixel::PacketHandler *pkt  = dynamixel::PacketHandler::getPacketHandler(2.0);
+    dynamixel::GroupSyncWrite sw(port, pkt, ADDR_GOAL_POSITION, LEN_GOAL_POSITION);
+
     void initializeDXL();
 
     //////////////////////////////////////////////////////////////// Exit

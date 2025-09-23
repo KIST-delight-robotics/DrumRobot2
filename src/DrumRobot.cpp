@@ -764,11 +764,6 @@ void DrumRobot::sendLoopForThread()
                         isWriteError = true;
                     }
                 }
-                if(cycleCounter == 0)
-                {
-                    DXL 보내기
-
-                }
             }
             else if (motor->isMaxonMotor())
             {
