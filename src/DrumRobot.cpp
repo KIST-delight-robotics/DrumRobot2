@@ -427,6 +427,7 @@ void DrumRobot::initializeDrumRobot()
     initializeCanManager();
     motorSettingCmd(); // Maxon
     canManager.setSocketNonBlock();
+    initializeDXL();
 
     usbio.initUSBIO4761();
     fun.openCSVFile();
@@ -445,6 +446,46 @@ void DrumRobot::initializeDrumRobot()
     } while (!initializePos(input));
 }
 
+void DrumRobot::initializeDXL()
+{
+    // 포트 & 패킷
+    dynamixel::PortHandler   *port = dynamixel::PortHandler::getPortHandler("/dev/ttyUSB0");
+    dynamixel::PacketHandler *pkt  = dynamixel::PacketHandler::getPacketHandler(2.0);
+
+    // Open port
+    if (port->openPort())
+    {
+    printf("[DXL] --open port");
+    }
+    else
+    {
+    printf("Failed to open the port!\n");
+    }
+
+    // Set port baudrate
+    if (port->setBaudRate(57600))
+    {
+    printf(" --change the baudrate!\n");
+    }
+    else
+    {
+    printf("Failed to change the baudrate!\n");
+    }
+
+    for (int id = 0; id < 253; id++) // Dynamixel ID 범위: 0~252
+    {
+        uint16_t dxl_model_number = 0;
+        uint8_t dxl_error = 0;
+
+        int dxl_comm_result = pkt->ping(port, id, &dxl_model_number, &dxl_error);
+
+        if (dxl_comm_result == COMM_SUCCESS && dxl_error == 0)
+        {
+            printf("[ID:%03d] Found! Model number: %d\n", id, dxl_model_number);
+        }
+    }
+  
+}
 ////////////////////////////////////////////////////////////////////////////////
 /*                                    Exit                                    */
 ////////////////////////////////////////////////////////////////////////////////

@@ -1,4 +1,5 @@
 #include "../include/managers/PathManager.hpp" // 적절한 경로로 변경하세요.
+#include "../DynamixelSDK-3.8.4/c++/include/dynamixel_sdk/dynamixel_sdk.h"
 
 
 PathManager::PathManager(State &stateRef,
@@ -588,12 +589,12 @@ void PathManager::solveIKandPushCommand()
 
         pushCommandBuffer(q);                           // 명령 생성 후 push
 
-        // // 데이터 기록
-        // for (int i = 0; i < 9; i++)
-        // {
-        //     std::string fileName = "solveIK_q" + to_string(i);
-        //     fun.appendToCSV(fileName, false, i, q(i));
-        // }
+        // 데이터 기록
+        for (int i = 0; i < 9; i++)
+        {
+            std::string fileName = "solveIK_q" + to_string(i);
+            fun.appendToCSV(fileName, false, i, q(i));
+        }
     }
 
     if (waistParameterQueue.empty())    // DrumRobot 에게 끝났음 알리기
@@ -660,12 +661,12 @@ void PathManager::genTaskSpaceTrajectory(MatrixXd &measureMatrix, int n)
 
         TaskSpaceQueue.push(TT);
 
-        // // 데이터 저장
-        // std::string fileName;
-        // fileName = "Trajectory_R";
-        // fun.appendToCSV(fileName, false, TT.trajectoryR[0], TT.trajectoryR[1], TT.trajectoryR[2]);
-        // fileName = "Trajectory_L";
-        // fun.appendToCSV(fileName, false, TT.trajectoryL[0], TT.trajectoryL[1], TT.trajectoryL[2]);
+        // 데이터 저장
+        std::string fileName;
+        fileName = "Trajectory_R";
+        fun.appendToCSV(fileName, false, TT.trajectoryR[0], TT.trajectoryR[1], TT.trajectoryR[2]);
+        fileName = "Trajectory_L";
+        fun.appendToCSV(fileName, false, TT.trajectoryL[0], TT.trajectoryL[1], TT.trajectoryL[2]);
         // fileName = "S";
         // fun.appendToCSV(fileName, false, sR, sL);
 

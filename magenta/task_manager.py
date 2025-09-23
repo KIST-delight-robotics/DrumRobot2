@@ -64,7 +64,7 @@ class taskManager:
                 
                 if j == 0:
                     # 첫 번째 녹음    
-                    rec.record_after_first_hit(recording_file_name, wait_times_sec[i])
+                    rec.record_after_first_hit(recording_file_name, wait_times_sec[i], i)
                 else:
                     buffer_clear_flag = False   # 두 번째 녹음부터 버퍼 안비움
                     rec.record_for_time(recording_file_name, buffer_clear_flag)

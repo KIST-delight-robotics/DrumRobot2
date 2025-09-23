@@ -198,7 +198,7 @@ class RecordingManager:
         midi_input.close()
 
     # 첫 타격 감지 후 일정 시간동안 MIDI 신호를 실시간으로 받아와서 MIDI 파일로 저장
-    def record_after_first_hit(self, output_file, wait_second):
+    def record_after_first_hit(self, output_file, wait_second, test):
         bpm = self.bpm  # 템포
         ticks_per_beat = 480  # 1 비트(quarter note) 당 틱 수
         seconds_per_beat = 60 / bpm  # 1 비트의 시간(초 단위)
@@ -236,6 +236,8 @@ class RecordingManager:
 
                 if msg.type == 'note_on' and not first_note_received:
                     first_note_received = True  # 첫 번째 note_on 메시지 수신 시
+                    if test == 0:
+                        self.clear_input_buffer(midi_input, 4.10256)
                     start_time = time.time()  # 녹음 시작 시간 기록
                     last_message_time = time.time()
                     t = 0
