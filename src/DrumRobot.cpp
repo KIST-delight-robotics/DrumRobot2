@@ -407,11 +407,11 @@ bool DrumRobot::initializePos(const std::string &input)
         param_goal_position[3] = DXL_HIBYTE(DXL_HIWORD(goal_position));
 
         // 모터 1번 추가
-        bool result1 = sw.addParam(1, param_goal_position);
+        bool result1 = sw->addParam(1, param_goal_position);
         // 모터 2번 추가
-        bool result2 = sw.addParam(2, param_goal_position);
-        sw.txPacket();
-        sw.clearParam();
+        bool result2 = sw->addParam(2, param_goal_position);
+        sw->txPacket();
+        sw->clearParam();
 
         std::cout << "set zero and offset setting ~ ~ ~\n";
         sleep(2);   // Set Zero 명령이 확실히 실행된 후
@@ -503,6 +503,9 @@ void DrumRobot::initializeDXL()
             printf("[ID:%03d] Found! Model number: %d\n", id, dxl_model_number);
         }
     }
+    sw = std::make_unique<dynamixel::GroupSyncWrite>(port, pkt, 116, 4);
+
+
   
 }
 ////////////////////////////////////////////////////////////////////////////////
