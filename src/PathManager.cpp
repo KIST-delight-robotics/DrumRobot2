@@ -2241,7 +2241,7 @@ std::pair<double, vector<double>> PathManager::getWaistAngleT2(std::vector<Waist
     {
         if (paramsSize > i+1)
         {
-            a(i) = (waistParams[1].optimized_q0 - waistAngleT1) / (timeVector(i+2)-timeVector(1));
+            a(i) = (waistParams[i+1].optimized_q0 - waistAngleT1) / (timeVector(i+2)-timeVector(1));
         }
         else
         {
@@ -2267,11 +2267,11 @@ std::pair<double, vector<double>> PathManager::getWaistAngleT2(std::vector<Waist
     }
     else
     {
-        for (int i = 0; i < 3; i++)
+        for (int i = 0; i < 2; i++)
         {
             if (paramsSize > i+2)
             {
-                a(i) = (waistParams[1].optimized_q0 - waistAngleT1) / (timeVector(i+3)-timeVector(2));
+                a(i) = (waistParams[i+2].optimized_q0 - waistAngleT2) / (timeVector(i+3)-timeVector(2));
             }
             else
             {
@@ -2279,7 +2279,7 @@ std::pair<double, vector<double>> PathManager::getWaistAngleT2(std::vector<Waist
             }
         }
 
-        avg_a = a.sum()/3.0;
+        avg_a = a.sum()/2.0;
         waistAngleT3 = avg_a*(timeVector(3)-timeVector(2)) + waistAngleT2;
 
         // 허리 범위 확인
