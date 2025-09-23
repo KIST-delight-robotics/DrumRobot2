@@ -390,6 +390,29 @@ bool DrumRobot::initializePos(const std::string &input)
                 maxonMotor->finalMotorPosition = 0.0;
             }
         }
+
+        // DXL 토크 ON
+        uint8_t err = 0;
+        pkt->write1ByteTxRx(port, 1, 64, 1, &err);
+        pkt->write1ByteTxRx(port, 2, 64, 1, &err);
+
+        // 목표 위치 값
+        int32_t goal_position = 2043;
+
+        // 바이트 배열로 변환 (Dynamixel은 리틀엔디안)
+        uint8_t param_goal_position[4];
+        param_goal_position[0] = DXL_LOBYTE(DXL_LOWORD(goal_position));
+        param_goal_position[1] = DXL_HIBYTE(DXL_LOWORD(goal_position));
+        param_goal_position[2] = DXL_LOBYTE(DXL_HIWORD(goal_position));
+        param_goal_position[3] = DXL_HIBYTE(DXL_HIWORD(goal_position));
+
+        // 모터 1번 추가
+        bool result1 = sw.addParam(1, param_goal_position);
+        // 모터 2번 추가
+        bool result2 = sw.addParam(2, param_goal_position);
+        sw.txPacket();
+        sw.clearParam();
+
         std::cout << "set zero and offset setting ~ ~ ~\n";
         sleep(2);   // Set Zero 명령이 확실히 실행된 후
 
@@ -448,10 +471,6 @@ void DrumRobot::initializeDrumRobot()
 
 void DrumRobot::initializeDXL()
 {
-    // 포트 & 패킷
-    dynamixel::PortHandler   *port = dynamixel::PortHandler::getPortHandler("/dev/ttyUSB0");
-    dynamixel::PacketHandler *pkt  = dynamixel::PacketHandler::getPacketHandler(2.0);
-
     // Open port
     if (port->openPort())
     {
@@ -744,6 +763,11 @@ void DrumRobot::sendLoopForThread()
                     {
                         isWriteError = true;
                     }
+                }
+                if(cycleCounter == 0)
+                {
+                    DXL 보내기
+
                 }
             }
             else if (motor->isMaxonMotor())
