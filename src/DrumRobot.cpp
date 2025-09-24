@@ -391,27 +391,6 @@ bool DrumRobot::initializePos(const std::string &input)
             }
         }
 
-        // DXL 토크 ON
-        uint8_t err = 0;
-        pkt->write1ByteTxRx(port, 1, 64, 1, &err);
-        pkt->write1ByteTxRx(port, 2, 64, 1, &err);
-
-        // 목표 위치 값
-        int32_t goal_position = 2043;
-
-        // 바이트 배열로 변환 (Dynamixel은 리틀엔디안)
-        uint8_t param_goal_position[4];
-        param_goal_position[0] = DXL_LOBYTE(DXL_LOWORD(goal_position));
-        param_goal_position[1] = DXL_HIBYTE(DXL_LOWORD(goal_position));
-        param_goal_position[2] = DXL_LOBYTE(DXL_HIWORD(goal_position));
-        param_goal_position[3] = DXL_HIBYTE(DXL_HIWORD(goal_position));
-
-        // 모터 1번 추가
-        bool result1 = sw->addParam(1, param_goal_position);
-        // 모터 2번 추가
-        bool result2 = sw->addParam(2, param_goal_position);
-        sw->txPacket();
-        sw->clearParam();
 
         std::cout << "set zero and offset setting ~ ~ ~\n";
         sleep(2);   // Set Zero 명령이 확실히 실행된 후
@@ -421,6 +400,8 @@ bool DrumRobot::initializePos(const std::string &input)
 
         state.main = Main::AddStance;
         flagObj.setAddStanceFlag("isHome"); // 시작 자세는 Home 자세와 같음
+
+        sendDXLAddStancePath();
 
         return true;
     }
@@ -439,6 +420,43 @@ bool DrumRobot::initializePos(const std::string &input)
         std::cout << "Invalid command or not allowed in current state!\n";
         return false;
     }
+}
+
+void DrumRobot::sendDXLAddStancePath()
+{
+    sw = std::make_unique<dynamixel::GroupSyncWrite>(port, pkt, 108, 12);
+
+    // DXL 토크 ON
+    uint8_t err = 0;
+    pkt->write1ByteTxRx(port, 1, 64, 1, &err);
+    pkt->write1ByteTxRx(port, 2, 64, 1, &err);
+
+    // 모터별 목표 값 배열 정의
+    // 순서: {Profile Acceleration, Profile Velocity, Goal Position}
+    int32_t values_motor1[3] = {1000, 1000, AngleToTick(0)};
+    int32_t values_motor2[3] = {1000, 1000, AngleToTick(90)};
+
+    uint8_t param_motor1[12];
+    uint8_t param_motor2[12];
+
+    // memcpy를 사용해 정수 배열의 내용을 바이트 배열로 복사
+    memcpy(param_motor1, values_motor1, sizeof(values_motor1));
+    memcpy(param_motor2, values_motor2, sizeof(values_motor2));
+
+    bool result1 = sw->addParam(1, param_motor1);
+    bool result2 = sw->addParam(2, param_motor2);
+
+    sw->txPacket();
+    sw->clearParam();
+}
+
+int32_t DrumRobot::AngleToTick(float degree)
+{
+    degree = std::clamp(degree, -180.f, 180.f);
+    const double ticks_per_degree = 4096.0 / 360.0;
+    double ticks = 2048.0 - (degree * ticks_per_degree);
+
+    return static_cast<int32_t>(std::round(ticks));
 }
 
 void DrumRobot::initializeDrumRobot()
@@ -503,11 +521,8 @@ void DrumRobot::initializeDXL()
             printf("[ID:%03d] Found! Model number: %d\n", id, dxl_model_number);
         }
     }
-    sw = std::make_unique<dynamixel::GroupSyncWrite>(port, pkt, 116, 4);
-
-
-  
 }
+
 ////////////////////////////////////////////////////////////////////////////////
 /*                                    Exit                                    */
 ////////////////////////////////////////////////////////////////////////////////
@@ -1753,6 +1768,31 @@ void DrumRobot::sendPlayProcess()
     }
     
     state.main = Main::AddStance;
+}
+
+int32_t getPresentPosition(dynamixel::PortHandler *portHandler, dynamixel::PacketHandler *packetHandler, uint8_t dxl_id)
+{
+    uint32_t present_position = 0; // SDK 함수가 uint32_t*를 요구하므로 부호 없는 정수로 선언
+    uint8_t dxl_error = 0;
+    int dxl_comm_result = COMM_TX_FAIL;
+
+    // 4바이트 길이의 현재 위치 데이터를 읽어옵니다.
+    dxl_comm_result = packetHandler->read4ByteTxRx(portHandler, dxl_id, ADDR_PRO_PRESENT_POSITION, &present_position, &dxl_error);
+
+    if (dxl_comm_result != COMM_SUCCESS)
+    {
+        // 통신 자체에 실패한 경우
+        fprintf(stderr, "[ID:%03d] TxRxPacket Failed: %s\n", dxl_id, packetHandler->getTxRxResult(dxl_comm_result));
+        return INT32_MAX; // 에러를 나타내는 특수 값 반환
+    }
+    else if (dxl_error != 0)
+    {
+        // 통신은 성공했으나 모터에서 에러 상태를 응답한 경우
+        fprintf(stderr, "[ID:%03d] Packet Error: %s\n", dxl_id, packetHandler->getRxPacketError(dxl_error));
+        return INT32_MAX;
+    }
+
+    return static_cast<int32_t>(present_position);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
