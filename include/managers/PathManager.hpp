@@ -76,7 +76,7 @@ public:
     void processLine(MatrixXd &measureMatrix);
 
     // DXL
-    std::queue<std::pair<float,float>> dxlQueue;
+    std::queue<std::pair<float,float>> dxlCommandBuffer;
 
 private:
     TMotorCommandParser TParser; ///< T 모터 명령어 파서.

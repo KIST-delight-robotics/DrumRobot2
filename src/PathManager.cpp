@@ -559,6 +559,8 @@ void PathManager::genTrajectory(MatrixXd &measureMatrix)
     genHitTrajectory(measureMatrix, n);         // 타격 궤적 생성
     genPedalTrajectory(measureMatrix, n);       // 발모터 궤적 생성
 
+    //genDxlTrajectory ->DXLQueue
+
     ///////////////////////////////////////////////////////////// 읽은 줄 삭제
     MatrixXd tmpMatrix(measureMatrix.rows() - 1, measureMatrix.cols());
     tmpMatrix = measureMatrix.block(1, 0, tmpMatrix.rows(), tmpMatrix.cols());
@@ -588,7 +590,7 @@ void PathManager::solveIKandPushCommand()
         VectorXd q = getJointAngles(q0);                // 로봇 관절각
 
         pushCommandBuffer(q);                           // 명령 생성 후 push
-
+        //pushDxlBuffer ->dxlCommandBuffer 
         // 데이터 기록
         for (int i = 0; i < 9; i++)
         {
