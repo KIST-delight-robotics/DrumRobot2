@@ -401,7 +401,7 @@ bool DrumRobot::initializePos(const std::string &input)
         state.main = Main::AddStance;
         flagObj.setAddStanceFlag("isHome"); // 시작 자세는 Home 자세와 같음
 
-        sendDXLPath(0, 90);
+        SyncWriteDXL(0, 90);
 
         return true;
     }
@@ -771,6 +771,7 @@ void DrumRobot::sendLoopForThread()
     sleep(2);   // read thead에서 clear / initial pos Path 생성 할 때까지 기다림
 
     int cycleCounter = 0; // 주기 조절을 위한 변수 (Tmotor : 5ms, Maxon : 1ms)
+    int dxlCounter =0;
     sendLoopPeriod = std::chrono::steady_clock::now();
     while (state.main != Main::Shutdown)
     {
@@ -836,6 +837,37 @@ void DrumRobot::sendLoopForThread()
                 }
             }
         }
+
+        if (cycleCounter == 0)
+        {   
+            //50msec마다 실행
+
+            if (!pathManager.dxlCommandBuffer.empty())
+            {
+                // 맨 앞 원소 꺼내오기
+                std::pair<float, float> command = pathManager.dxlCommandBuffer.front();
+                pathManager.dxlCommandBuffer.pop();
+
+                if(dxlCounter == 10)
+                {
+                    float degree1 = command.first;
+                    float degree2 = command.second;
+
+                    // 꺼낸 값으로 SyncWrite 실행
+                    SyncWriteDXL(degree1, degree2);
+                    dxlCounter = 0;
+                }
+                else
+                {
+                    dxlCounter++;
+                }
+            }
+            else
+            {
+                dxlCounter =0;
+            }
+        }
+
 
         int n = virtualMaxonMotor.size();
         for(int i = 0; i < n; i++)
