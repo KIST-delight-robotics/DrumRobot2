@@ -129,6 +129,13 @@ private:
         double wristAngleL;  ///> IK를 풀기 위한 왼 손목 각도
     }TaskSpaceTrajectory;
 
+
+    //DXL 궤적
+    typedef struct {
+        float   dxl1;
+        float   dxl2;
+    }DXLTrajectory;    
+
     // 허리 파라미터
     typedef struct {
         int n;                  // 명령 개수
@@ -292,6 +299,10 @@ private:
     double getBassAngle(double t, BassTime bt, int bassState);
     double getHihatAngle(double t, HihatTime ht, int hihatState, int nextHihatClosed);
     double makeCosineProfile(double qi, double qf, double ti, double tf, double t);
+
+    //////////////////////////////////// DXL Trajectory
+
+    queue<DXLTrajectory> DXLQueue;
 
     //////////////////////////////////// Solve IK & Push Command Buffer
     double waistAngleT1;                    ///< 허리 시작 위치
