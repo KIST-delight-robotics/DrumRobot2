@@ -558,8 +558,7 @@ void PathManager::genTrajectory(MatrixXd &measureMatrix)
     genTaskSpaceTrajectory(measureMatrix, n);   // task space 궤적 생성
     genHitTrajectory(measureMatrix, n);         // 타격 궤적 생성
     genPedalTrajectory(measureMatrix, n);       // 발모터 궤적 생성
-
-    //genDxlTrajectory ->DXLQueue
+    genDxlTrajectory(measureMatrix, n);         // DXL모터 궤적 생성
 
     ///////////////////////////////////////////////////////////// 읽은 줄 삭제
     MatrixXd tmpMatrix(measureMatrix.rows() - 1, measureMatrix.cols());
@@ -588,9 +587,10 @@ void PathManager::solveIKandPushCommand()
         double q0 = getWaistAngle(waistCoefficient, i); // 허리 관절각
 
         VectorXd q = getJointAngles(q0);                // 로봇 관절각
-
+        
         pushCommandBuffer(q);                           // 명령 생성 후 push
-        //pushDxlBuffer ->dxlCommandBuffer 
+        pushDxlBuffer();
+
         // 데이터 기록
         for (int i = 0; i < 9; i++)
         {
@@ -2138,6 +2138,54 @@ double PathManager::makeCosineProfile(double qi, double qf, double ti, double tf
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/*                           Play : Trajectory (DXL)                          */
+////////////////////////////////////////////////////////////////////////////////
+
+void PathManager::genDxlTrajectory(MatrixXd &measureMatrix, int n)
+{
+    // double dt = canManager.DTSECOND;
+    // double t1 = measureMatrix(0, 8);
+    // double t2 = measureMatrix(1, 8);
+
+    // 악기 정보
+    int curInst = measureMatrix(0, 3);
+    int nextInst = measureMatrix(1, 3);
+
+    // 악기에 맞는 각도 계산
+    float curAngle  = getInstAngle(curInst);
+    float targetAngle = getInstAngle(nextInst);
+
+    // dt=0.005 마다 이동할 각도 계산
+    float dtheta = (targetAngle - curAngle) / n;
+
+    for (int i = 0; i < n; i++)
+    {
+        DXLTrajectory DXL;
+
+        // DXL
+        DXL.dxl1 = curAngle + i * dtheta;
+        DXL.dxl2 = 90.0;
+
+        DXLQueue.push(DXL);
+
+        // 데이터 저장
+        std::string fileName = "DXL_Angle";
+        fun.appendToCSV(fileName, false, DXL.dxl1, DXL.dxl2);
+    }
+}
+
+float PathManager::getInstAngle(int nextInst)
+{
+    // 저장된 좌표 가져오기(x, y)
+    double inst_x = drumCoordinateR(0,nextInst);
+    double inst_y = drumCoordinateR(1,nextInst);
+
+    double angle_rad = atan2(inst_y, inst_x);
+
+    return static_cast<float>(angle_rad * (180.0 / M_PI));
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /*                      Play : Solve IK and Push Command                      */
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2398,10 +2446,14 @@ VectorXd PathManager::getJointAngles(double q0)
     q(10) = PT.bass;
     q(11) = PT.hihat;
 
-    // DXL
-    pushDXLAngle();
-
     return q;
+}
+
+void PathManager::pushDxlBuffer()
+{
+    DXLTrajectory dxlQ = DXLQueue.front();
+    dxlCommandBuffer.push(make_pair(dxlQ.dxl1, dxlQ.dxl2));
+    DXLQueue.pop(); 
 }
 
 void PathManager::pushCommandBuffer(VectorXd &Qi)
@@ -3366,19 +3418,3 @@ double PathManager::getTheta(double l1, double theta)
 ////////////////////////////////////////////////////////////////////////////////
 /*                                  DXL                                       */
 ////////////////////////////////////////////////////////////////////////////////
-
-void PathManager::pushDXLAngle()
-{
-    float waistAngle = 30.0;
-    float x = 0.01;
-    float y = 0.01;
-    float t = 0.6;
-    float targetAngle = atan2(x, y);
-    float presentAngle = 0.0;
-
-    float dt = (targetAngle - presentAngle) / t;
-
-    float A = 0.0, B = 0.0;
-
-    dxlQueue.push(std::make_pair(A,B));
-}
