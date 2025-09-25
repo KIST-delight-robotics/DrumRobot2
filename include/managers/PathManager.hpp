@@ -75,6 +75,9 @@ public:
     void initPlayStateValue();
     void processLine(MatrixXd &measureMatrix);
 
+    // DXL
+    std::queue<std::pair<float,float>> dxlQueue;
+
 private:
     TMotorCommandParser TParser; ///< T 모터 명령어 파서.
     MaxonCommandParser MParser;  ///< Maxon 모터 명령어 파서
@@ -249,7 +252,7 @@ private:
     //////////////////////////////////// Task Space Trajectory
     double roundSum = 0.0;                  ///< 5ms 스텝 단위에서 누적되는 오차 보상
     VectorXd measureStateR, measureStateL;  ///< [이전 시간, 이전 악기, 상태] 0 : 0 <- 0 / 1 : 0 <- 1 / 2 : 1 <- 0 / 3 : 1 <- 1
-    queue<TaskSpaceTrajectory> TaskSpaceQueue;
+    queue<TaskSpaceTrajectory> taskSpaceQueue;
     queue<WaistParameter> waistParameterQueue;
 
     int getNumCommands(MatrixXd &measureMatrix);
@@ -348,4 +351,7 @@ private:
     VectorXd solveGeometricIK(VectorXd &pR, VectorXd &pL, double theta0, double theta7, double theta8, bool printError);
     double getLength(double theta);
     double getTheta(double l1, double theta);
+
+    //////////////////////////////////// DXL
+    void pushDXLAngle();
 };

@@ -40,7 +40,7 @@ GroupSyncRead::GroupSyncRead(PortHandler *port, PacketHandler *ph, uint16_t star
   clearParam();
 }
 
-void GroupSyncRead::makeParam()
+void GroupSyncRead::makeParam() 
 {
   if (ph_->getProtocolVersion() == 1.0 || id_list_.size() == 0)
     return;

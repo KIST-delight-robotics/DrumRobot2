@@ -659,7 +659,7 @@ void PathManager::genTaskSpaceTrajectory(MatrixXd &measureMatrix, int n)
         TT.wristAngleR = sR*(data.finalWristAngleR - data.initialWristAngleR) + data.initialWristAngleR;
         TT.wristAngleL = sL*(data.finalWristAngleL - data.initialWristAngleL) + data.initialWristAngleL;
 
-        TaskSpaceQueue.push(TT);
+        taskSpaceQueue.push(TT);
 
         // 데이터 저장
         std::string fileName;
@@ -2357,8 +2357,8 @@ VectorXd PathManager::getJointAngles(double q0)
 
     // x,y,z
     TaskSpaceTrajectory TT;
-    TT = TaskSpaceQueue.front();
-    TaskSpaceQueue.pop();
+    TT = taskSpaceQueue.front();
+    taskSpaceQueue.pop();
 
     // IK
     bool printError = true;
@@ -2395,6 +2395,9 @@ VectorXd PathManager::getJointAngles(double q0)
 
     q(10) = PT.bass;
     q(11) = PT.hihat;
+
+    // DXL
+    pushDXLAngle();
 
     return q;
 }
@@ -3356,4 +3359,24 @@ double PathManager::getTheta(double l1, double theta)
     double theta_m = acos(l2 / l1);
 
     return theta_m;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/*                                  DXL                                       */
+////////////////////////////////////////////////////////////////////////////////
+
+void PathManager::pushDXLAngle()
+{
+    float waistAngle = 30.0;
+    float x = 0.01;
+    float y = 0.01;
+    float t = 0.6;
+    float targetAngle = atan2(x, y);
+    float presentAngle = 0.0;
+
+    float dt = (targetAngle - presentAngle) / t;
+
+    float A = 0.0, B = 0.0;
+
+    dxlQueue.push(std::make_pair(A,B));
 }

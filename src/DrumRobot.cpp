@@ -401,7 +401,7 @@ bool DrumRobot::initializePos(const std::string &input)
         state.main = Main::AddStance;
         flagObj.setAddStanceFlag("isHome"); // 시작 자세는 Home 자세와 같음
 
-        sendDXLAddStancePath();
+        sendDXLPath(0, 90);
 
         return true;
     }
@@ -420,43 +420,6 @@ bool DrumRobot::initializePos(const std::string &input)
         std::cout << "Invalid command or not allowed in current state!\n";
         return false;
     }
-}
-
-void DrumRobot::sendDXLAddStancePath()
-{
-    sw = std::make_unique<dynamixel::GroupSyncWrite>(port, pkt, 108, 12);
-
-    // DXL 토크 ON
-    uint8_t err = 0;
-    pkt->write1ByteTxRx(port, 1, 64, 1, &err);
-    pkt->write1ByteTxRx(port, 2, 64, 1, &err);
-
-    // 모터별 목표 값 배열 정의
-    // 순서: {Profile Acceleration, Profile Velocity, Goal Position}
-    int32_t values_motor1[3] = {1000, 1000, AngleToTick(0)};
-    int32_t values_motor2[3] = {1000, 1000, AngleToTick(90)};
-
-    uint8_t param_motor1[12];
-    uint8_t param_motor2[12];
-
-    // memcpy를 사용해 정수 배열의 내용을 바이트 배열로 복사
-    memcpy(param_motor1, values_motor1, sizeof(values_motor1));
-    memcpy(param_motor2, values_motor2, sizeof(values_motor2));
-
-    bool result1 = sw->addParam(1, param_motor1);
-    bool result2 = sw->addParam(2, param_motor2);
-
-    sw->txPacket();
-    sw->clearParam();
-}
-
-int32_t DrumRobot::AngleToTick(float degree)
-{
-    degree = std::clamp(degree, -180.f, 180.f);
-    const double ticks_per_degree = 4096.0 / 360.0;
-    double ticks = 2048.0 - (degree * ticks_per_degree);
-
-    return static_cast<int32_t>(std::round(ticks));
 }
 
 void DrumRobot::initializeDrumRobot()
@@ -486,6 +449,11 @@ void DrumRobot::initializeDrumRobot()
         std::getline(std::cin, input);
     } while (!initializePos(input));
 }
+
+
+////////////////////////////////////////////////////////////////////////////////
+/*                                    DXL                                     */
+////////////////////////////////////////////////////////////////////////////////
 
 void DrumRobot::initializeDXL()
 {
@@ -521,6 +489,82 @@ void DrumRobot::initializeDXL()
             printf("[ID:%03d] Found! Model number: %d\n", id, dxl_model_number);
         }
     }
+}
+
+void DrumRobot::SyncWriteDXL(double degree1, double degree2)
+{
+    sw = std::make_unique<dynamixel::GroupSyncWrite>(port, pkt, 108, 12);
+
+    // DXL 토크 ON
+    uint8_t err = 0;
+    pkt->write1ByteTxRx(port, 1, 64, 1, &err);
+    pkt->write1ByteTxRx(port, 2, 64, 1, &err);
+
+    // 모터별 목표 값 배열 정의
+    // 순서: {Profile Acceleration, Profile Velocity, Goal Position}
+    int32_t values_motor1[3] = {1000, 1000, DXLAngleToTick(degree1)};
+    int32_t values_motor2[3] = {1000, 1000, DXLAngleToTick(degree2)};
+
+    uint8_t param_motor1[12];
+    uint8_t param_motor2[12];
+
+    // memcpy를 사용해 정수 배열의 내용을 바이트 배열로 복사
+    memcpy(param_motor1, values_motor1, sizeof(values_motor1));
+    memcpy(param_motor2, values_motor2, sizeof(values_motor2));
+
+    bool result1 = sw->addParam(1, param_motor1);
+    bool result2 = sw->addParam(2, param_motor2);
+
+    sw->txPacket();
+    sw->clearParam();
+}
+
+std::map<uint8_t, int32_t> SyncReadDXL(dynamixel::GroupSyncRead *groupSyncRead, dynamixel::PacketHandler *packetHandler)
+{
+    sw = std::make_unique<dynamixel::GroupSyncRead>(port, pkt, 132, 4);
+
+    std::map<uint8_t, int32_t> positions;
+    uint8_t dxl_ids[] = {1, 2};
+
+    // 1. 읽어올 모터 ID들을 파라미터에 추가합니다.
+    for (uint8_t id : dxl_ids) {
+        if (!groupSyncRead->addParam(id)) {
+            fprintf(stderr, "[ID:%03d] GroupSyncRead addParam failed\n", id);
+        }
+    }
+
+    // 2. 한 번의 통신으로 모든 모터에 데이터 요청 및 수신
+    int dxl_comm_result = groupSyncRead->txRxPacket();
+    if (dxl_comm_result != COMM_SUCCESS) {
+        fprintf(stderr, "GroupSyncRead txRxPacket failed: %s\n", packetHandler->getTxRxResult(dxl_comm_result));
+        groupSyncRead->clearParam();
+        return positions; // 실패 시 빈 맵 반환
+    }
+
+    // 3. 각 모터의 데이터를 가져옵니다.
+    for (uint8_t id : dxl_ids) {
+        // 해당 모터의 데이터 수신이 가능한지 확인
+        if (groupSyncRead->isAvailable(id, 132, 4)) {
+            uint32_t position = groupSyncRead->getData(id, 132, 4);
+            positions[id] = static_cast<int32_t>(position);
+        } else {
+            fprintf(stderr, "[ID:%03d] GroupSyncRead could not get data.\n", id);
+        }
+    }
+
+    // 4. 다음 사용을 위해 파라미터 목록을 비웁니다.
+    groupSyncRead->clearParam();
+
+    return positions;
+}
+
+int32_t DrumRobot::DXLAngleToTick(float degree)
+{
+    degree = std::clamp(degree, -180.f, 180.f);
+    const double ticks_per_degree = 4096.0 / 360.0;
+    double ticks = 2048.0 - (degree * ticks_per_degree);
+
+    return static_cast<int32_t>(std::round(ticks));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1768,31 +1812,6 @@ void DrumRobot::sendPlayProcess()
     }
     
     state.main = Main::AddStance;
-}
-
-int32_t getPresentPosition(dynamixel::PortHandler *portHandler, dynamixel::PacketHandler *packetHandler, uint8_t dxl_id)
-{
-    uint32_t present_position = 0; // SDK 함수가 uint32_t*를 요구하므로 부호 없는 정수로 선언
-    uint8_t dxl_error = 0;
-    int dxl_comm_result = COMM_TX_FAIL;
-
-    // 4바이트 길이의 현재 위치 데이터를 읽어옵니다.
-    dxl_comm_result = packetHandler->read4ByteTxRx(portHandler, dxl_id, ADDR_PRO_PRESENT_POSITION, &present_position, &dxl_error);
-
-    if (dxl_comm_result != COMM_SUCCESS)
-    {
-        // 통신 자체에 실패한 경우
-        fprintf(stderr, "[ID:%03d] TxRxPacket Failed: %s\n", dxl_id, packetHandler->getTxRxResult(dxl_comm_result));
-        return INT32_MAX; // 에러를 나타내는 특수 값 반환
-    }
-    else if (dxl_error != 0)
-    {
-        // 통신은 성공했으나 모터에서 에러 상태를 응답한 경우
-        fprintf(stderr, "[ID:%03d] Packet Error: %s\n", dxl_id, packetHandler->getRxPacketError(dxl_error));
-        return INT32_MAX;
-    }
-
-    return static_cast<int32_t>(present_position);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

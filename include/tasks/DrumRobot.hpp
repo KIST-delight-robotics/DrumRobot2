@@ -124,14 +124,17 @@ private:
     void motorSettingCmd();
     void initializeFolder();
     bool initializePos(const std::string &input);
+
+    //////////////////////////////////////////////////////////////// DXL
     void initializeDXL();
-    void sendDXLAddStancePath();
+    void SyncWriteDXL();
+    void SyncReadDXL();
     int32_t AngleToTick(float degree);
 
-    dynamixel::PortHandler   *port = dynamixel::PortHandler::getPortHandler("/dev/ttyUSB0");
+    dynamixel::PortHandler *port = dynamixel::PortHandler::getPortHandler("/dev/ttyUSB0");
     dynamixel::PacketHandler *pkt  = dynamixel::PacketHandler::getPacketHandler(2.0);
-    std::unique_ptr<dynamixel::GroupSyncWrite> sw; 
-
+    std::unique_ptr<dynamixel::GroupSyncWrite> sw;
+    std::unique_ptr<dynamixel::GroupSyncRead> sr;
 
 
     //////////////////////////////////////////////////////////////// Exit
