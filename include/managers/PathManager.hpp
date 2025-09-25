@@ -353,5 +353,8 @@ private:
     double getTheta(double l1, double theta);
 
     //////////////////////////////////// DXL
-    void pushDXLAngle();
+    float getInstAngle(int nextInst);
+    void genDxlTrajectory(MatrixXd &measureMatrix, int n);
+    void pushDxlBuffer();
+
 };

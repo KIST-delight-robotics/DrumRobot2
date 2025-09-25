@@ -401,7 +401,7 @@ bool DrumRobot::initializePos(const std::string &input)
         state.main = Main::AddStance;
         flagObj.setAddStanceFlag("isHome"); // 시작 자세는 Home 자세와 같음
 
-        sendDXLPath(0, 90);
+        SyncWriteDXL(0, 90);
 
         return true;
     }
