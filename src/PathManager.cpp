@@ -3367,6 +3367,15 @@ double PathManager::getTheta(double l1, double theta)
 
 void PathManager::pushDXLAngle()
 {
+    float waistAngle = 30.0;
+    float x = 0.01;
+    float y = 0.01;
+    float t = 0.6;
+    float targetAngle = atan2(x, y);
+    float presentAngle = 0.0;
+
+    float dt = (targetAngle - presentAngle) / t;
+
     float A = 0.0, B = 0.0;
 
     dxlQueue.push(std::make_pair(A,B));
