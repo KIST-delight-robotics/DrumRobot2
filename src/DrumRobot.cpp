@@ -401,7 +401,7 @@ bool DrumRobot::initializePos(const std::string &input)
         state.main = Main::AddStance;
         flagObj.setAddStanceFlag("isHome"); // 시작 자세는 Home 자세와 같음
 
-        SyncWriteDXL(0, 90);
+        SyncWriteDXL(0.0, 90.0);
 
         return true;
     }
@@ -477,7 +477,7 @@ void DrumRobot::initializeDXL()
     printf("Failed to change the baudrate!\n");
     }
 
-    for (int id = 0; id < 253; id++) // Dynamixel ID 범위: 0~252
+    for (int id = 0; id < 3; id++) // Dynamixel ID 범위: 0~252
     {
         uint16_t dxl_model_number = 0;
         uint8_t dxl_error = 0;
@@ -491,7 +491,7 @@ void DrumRobot::initializeDXL()
     }
 }
 
-void DrumRobot::SyncWriteDXL(double degree1, double degree2)
+void DrumRobot::SyncWriteDXL(float degree1, float degree2)
 {
     sw = std::make_unique<dynamixel::GroupSyncWrite>(port, pkt, 108, 12);
 
@@ -517,45 +517,6 @@ void DrumRobot::SyncWriteDXL(double degree1, double degree2)
 
     sw->txPacket();
     sw->clearParam();
-}
-
-std::map<uint8_t, int32_t> SyncReadDXL(dynamixel::GroupSyncRead *groupSyncRead, dynamixel::PacketHandler *packetHandler)
-{
-    sw = std::make_unique<dynamixel::GroupSyncRead>(port, pkt, 132, 4);
-
-    std::map<uint8_t, int32_t> positions;
-    uint8_t dxl_ids[] = {1, 2};
-
-    // 1. 읽어올 모터 ID들을 파라미터에 추가합니다.
-    for (uint8_t id : dxl_ids) {
-        if (!groupSyncRead->addParam(id)) {
-            fprintf(stderr, "[ID:%03d] GroupSyncRead addParam failed\n", id);
-        }
-    }
-
-    // 2. 한 번의 통신으로 모든 모터에 데이터 요청 및 수신
-    int dxl_comm_result = groupSyncRead->txRxPacket();
-    if (dxl_comm_result != COMM_SUCCESS) {
-        fprintf(stderr, "GroupSyncRead txRxPacket failed: %s\n", packetHandler->getTxRxResult(dxl_comm_result));
-        groupSyncRead->clearParam();
-        return positions; // 실패 시 빈 맵 반환
-    }
-
-    // 3. 각 모터의 데이터를 가져옵니다.
-    for (uint8_t id : dxl_ids) {
-        // 해당 모터의 데이터 수신이 가능한지 확인
-        if (groupSyncRead->isAvailable(id, 132, 4)) {
-            uint32_t position = groupSyncRead->getData(id, 132, 4);
-            positions[id] = static_cast<int32_t>(position);
-        } else {
-            fprintf(stderr, "[ID:%03d] GroupSyncRead could not get data.\n", id);
-        }
-    }
-
-    // 4. 다음 사용을 위해 파라미터 목록을 비웁니다.
-    groupSyncRead->clearParam();
-
-    return positions;
 }
 
 int32_t DrumRobot::DXLAngleToTick(float degree)

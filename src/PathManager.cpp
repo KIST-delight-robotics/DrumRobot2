@@ -2143,19 +2143,29 @@ double PathManager::makeCosineProfile(double qi, double qf, double ti, double tf
 
 void PathManager::genDxlTrajectory(MatrixXd &measureMatrix, int n)
 {
-    // double dt = canManager.DTSECOND;
-    // double t1 = measureMatrix(0, 8);
-    // double t2 = measureMatrix(1, 8);
+    double dt = canManager.DTSECOND;
+    double t1 = measureMatrix(0, 8);
+    double t2 = measureMatrix(1, 8);
 
     // 악기 정보
-    int curInst = measureMatrix(0, 3);
-    int nextInst = measureMatrix(1, 3);
+    static int curInst = 1;     //0
+    static int nextInst = 1;    //0
+    int codeInst = measureMatrix(1, 3);
+
+    if(codeInst !=0)
+    {
+        nextInst = codeInst;
+    }
+    else
+    {
+        curInst = nextInst;
+    }
 
     // 악기에 맞는 각도 계산
     float curAngle  = getInstAngle(curInst);
     float targetAngle = getInstAngle(nextInst);
 
-    // dt=0.005 마다 이동할 각도 계산
+// dt=0.005 마다 이동할 각도 계산
     float dtheta = (targetAngle - curAngle) / n;
 
     for (int i = 0; i < n; i++)
@@ -2164,6 +2174,7 @@ void PathManager::genDxlTrajectory(MatrixXd &measureMatrix, int n)
 
         // DXL
         DXL.dxl1 = curAngle + i * dtheta;
+        // DXL.dxl1 = makeCosineProfile(curAngle, targetAngle, t1, t2, i*dt);
         DXL.dxl2 = 90.0;
 
         DXLQueue.push(DXL);
@@ -2174,13 +2185,20 @@ void PathManager::genDxlTrajectory(MatrixXd &measureMatrix, int n)
     }
 }
 
-float PathManager::getInstAngle(int nextInst)
+float PathManager::getInstAngle(int Inst)
 {
-    // 저장된 좌표 가져오기(x, y)
-    double inst_x = drumCoordinateR(0,nextInst);
-    double inst_y = drumCoordinateR(1,nextInst);
+    if()
 
-    double angle_rad = atan2(inst_y, inst_x);
+    // 저장된 좌표 가져오기(x, y)
+    double inst_x = drumCoordinateR(0,Inst - 1);
+    double inst_y = drumCoordinateR(1,Inst - 1);
+
+    cout << inst_x << inst_y << "\n";
+
+    std::string fileName = "xyz";
+    fun.appendToCSV(fileName, false, inst_x, Inst);
+
+    double angle_rad = atan2(inst_x, inst_y);
 
     return static_cast<float>(angle_rad * (180.0 / M_PI));
 }

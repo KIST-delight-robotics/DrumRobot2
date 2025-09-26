@@ -127,9 +127,9 @@ private:
 
     //////////////////////////////////////////////////////////////// DXL
     void initializeDXL();
-    void SyncWriteDXL();
-    void SyncReadDXL();
-    int32_t AngleToTick(float degree);
+    void SyncWriteDXL(float degree1, float degree2);
+
+    int32_t DXLAngleToTick(float degree);
 
     dynamixel::PortHandler *port = dynamixel::PortHandler::getPortHandler("/dev/ttyUSB0");
     dynamixel::PacketHandler *pkt  = dynamixel::PacketHandler::getPacketHandler(2.0);
