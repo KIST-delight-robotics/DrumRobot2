@@ -2148,8 +2148,8 @@ void PathManager::genDxlTrajectory(MatrixXd &measureMatrix, int n)
     double t2 = measureMatrix(1, 8);
 
     // 악기 정보
-    static int curInst = 1;     //0
-    static int nextInst = 1;    //0
+    static int curInst = 0;
+    static int nextInst = 0;
     int codeInst = measureMatrix(1, 3);
 
     if(codeInst !=0)
@@ -2187,16 +2187,23 @@ void PathManager::genDxlTrajectory(MatrixXd &measureMatrix, int n)
 
 float PathManager::getInstAngle(int Inst)
 {
-    if()
+    double inst_x = 0.0;
+    double inst_y = 0.0;
 
-    // 저장된 좌표 가져오기(x, y)
-    double inst_x = drumCoordinateR(0,Inst - 1);
-    double inst_y = drumCoordinateR(1,Inst - 1);
-
-    cout << inst_x << inst_y << "\n";
+    if(Inst == 0)
+    {
+        inst_x = 0.0;
+        inst_y = 1.0;
+    }
+    else
+    {
+        // 저장된 좌표 가져오기(x, y)
+        inst_x = drumCoordinateR(0,Inst - 1);
+        inst_y = drumCoordinateR(1,Inst - 1);
+    }
 
     std::string fileName = "xyz";
-    fun.appendToCSV(fileName, false, inst_x, Inst);
+    fun.appendToCSV(fileName, false, inst_x, inst_y, Inst);
 
     double angle_rad = atan2(inst_x, inst_y);
 
