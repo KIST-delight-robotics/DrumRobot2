@@ -128,6 +128,7 @@ private:
     //////////////////////////////////////////////////////////////// DXL
     void initializeDXL();
     void SyncWriteDXL(float degree1, float degree2);
+    void SyncReadDXL();
 
     int32_t DXLAngleToTick(float degree);
 
