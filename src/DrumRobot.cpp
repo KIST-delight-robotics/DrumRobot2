@@ -519,6 +519,38 @@ void DrumRobot::SyncWriteDXL(float degree1, float degree2)
     sw->clearParam();
 }
 
+void DrumRobot::SyncReadDXL()
+{
+    // GroupSyncRead 생성 (주소 132 = Present Position, 길이 4byte)
+    dynamixel::GroupSyncRead groupSyncRead(port, pkt, 132, 4);
+
+    // 모터 ID 등록 (예: 1, 2)
+    groupSyncRead.addParam(1);
+    groupSyncRead.addParam(2);
+
+    // 데이터 요청
+    int dxl_comm_result = groupSyncRead.txRxPacket();
+    if (dxl_comm_result != COMM_SUCCESS) {
+        std::cerr << "SyncRead failed: "
+                  << pkt->getTxRxResult(dxl_comm_result) << std::endl;
+        return;
+    }
+
+    // 각 모터 값 읽어서 출력
+    for (int id : {1, 2}) {
+        if (groupSyncRead.isAvailable(id, 132, 4)) {
+            uint32_t pos = groupSyncRead.getData(id, 132, 4);
+            std::cout << "[ID:" << id << "] Present Position : "
+                      << static_cast<int32_t>(pos) << std::endl;
+        } else {
+            std::cerr << "[ID:" << id << "] data not available!" << std::endl;
+        }
+    }
+
+    // 다음 사용 위해 clear
+    groupSyncRead.clearParam();
+}
+
 int32_t DrumRobot::DXLAngleToTick(float degree)
 {
     degree = std::clamp(degree, -180.f, 180.f);
@@ -866,6 +898,8 @@ void DrumRobot::recvLoopForThread()
     {
         recvLoopPeriod = std::chrono::steady_clock::now();
         recvLoopPeriod += std::chrono::microseconds(100);  // 주기 : 100us
+
+        SyncReadDXL();
 
         canManager.readFramesFromAllSockets(); 
         bool isSafe = canManager.distributeFramesToMotors(true);
