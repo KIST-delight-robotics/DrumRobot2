@@ -745,7 +745,9 @@ void DrumRobot::sendLoopForThread()
                 // 꺼낸 값으로 SyncWrite 실행
                 vector<float> dxlCommand1 = {0.0, 0.0, degree1};
                 vector<float> dxlCommand2 = {0.0, 0.0, degree2};
-                dxl.syncWrite(dxlCommand1, dxlCommand2);
+
+                vector<vector<float>> dxlCommand = {dxlCommand1, dxlCommand2};
+                dxl.syncWrite(dxlCommand);
             }
         }
         
