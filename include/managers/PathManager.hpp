@@ -77,7 +77,6 @@ public:
 
     // DXL
     std::queue<std::pair<float,float>> dxlCommandBuffer;
-    // std::queue<DXLTrajectory> dxlCommandBuffer;
 
 private:
     TMotorCommandParser TParser; ///< T 모터 명령어 파서.
@@ -307,8 +306,11 @@ private:
     double makeCosineProfile(double qi, double qf, double ti, double tf, double t);
 
     //////////////////////////////////// DXL Trajectory
-
     queue<DXLTrajectory> DXLQueue;
+
+    void genDxlTrajectory(MatrixXd &measureMatrix, int n);
+    float getInstAngle(int nextInst);
+    double calDXL2(double beat);
 
     //////////////////////////////////// Solve IK & Push Command Buffer
     double waistAngleT1;                    ///< 허리 시작 위치
@@ -322,6 +324,7 @@ private:
     vector<double> cubicInterpolation(const vector<double>& q, const vector<double>& t);
     double getWaistAngle(MatrixXd &waistCoefficient, int index);
     VectorXd getJointAngles(double q0);
+    void pushDxlBuffer();
     void pushCommandBuffer(VectorXd &Qi);
 
     //////////////////////////////////// Detect Collision
@@ -354,10 +357,5 @@ private:
     VectorXd solveGeometricIK(VectorXd &pR, VectorXd &pL, double theta0, double theta7, double theta8, bool printError);
     double getLength(double theta);
     double getTheta(double l1, double theta);
-
-    //////////////////////////////////// DXL
-    float getInstAngle(int nextInst);
-    void genDxlTrajectory(MatrixXd &measureMatrix, int n);
-    void pushDxlBuffer();
 
 };

@@ -2161,67 +2161,25 @@ void PathManager::genDxlTrajectory(MatrixXd &measureMatrix, int n)
     double curAngle  = getInstAngle(curInst);
     double targetAngle = getInstAngle(nextInst);
 
+    double beatOfLine = measureMatrix(1, 1) / 0.6;;
+    static double beatSum = 0.0;
+
     for (int i = 0; i < n; i++)
     {
         DXLTrajectory DXL;
 
-        // DXL
-        // DXL.dxl1 = curAngle + i * dtheta;
-        // DXL.dxl1 = makeCosineProfile(curAngle, targetAngle, t1, t2, i*dt);
-
         double tau = (double)i / (n - 1); 
-
         DXL.dxl1 = curAngle + (targetAngle - curAngle) * (3.0 * pow(tau, 2) - 2.0 * pow(tau, 3));
-        DXL.dxl2 = 90.0;
 
-        // DXL.velocity = dt * 1000;       // dt = 0.005[sec] -> 5[ms]
-        // double tx = ((targetAngle - curAngle) / 90  - dt);      // velocity profile 중 등속(최대속도)구간의 시간
-        // DXL.acceleration = (dt - tx) / 2 * 1000;        // 가속 시간 t1을 msec으로 구함
+        beatSum += beatOfLine/n;
+        beatSum = beatSum>=1.0?beatSum-1.0:beatSum;
+        DXL.dxl2 = calDXL2(beatSum);
 
         DXLQueue.push(DXL);
 
         // 데이터 저장
         std::string fileName = "DXL_Angle";
         fun.appendToCSV(fileName, false, DXL.dxl1, DXL.dxl2);
-    }
-
-    double t_1beat = 60.0 / bpmOfScore;
-    double DTSECOND = 0.005;
-    int steps = floor(t_1beat / DTSECOND);
-
-    int n_down = floor(steps / 3.0);
-    int n_up = steps - n_down;
-
-    double upAngle = 90.0;
-    double downAngle = 120.0;
-
-    // 1. 하강 궤적 생성
-    for(int i = 0; i < n_down; i++)
-    {
-        DXLTrajectory DXL;
-
-        // 하강 구간 내에서의 tau (0.0 ~ 1.0) 계산
-        double tau = (double)i / (n_down - 1);
-        DXL.dxl2 = upAngle + (downAngle - upAngle) * (3.0 * pow(tau, 2) - 2.0 * pow(tau, 3));
-        
-        DXLQueue.push(DXL);
-        std::string fileName = "DXL_Angle2";
-        fun.appendToCSV(fileName, false, DXL.dxl2);
-    }
-
-    // 2. 상승 궤적 생성
-    for(int i = 0; i < n_up; i++)
-    {
-        DXLTrajectory DXL;
-
-        // 상승 구간 내에서의 tau (0.0 ~ 1.0) 계산
-        double tau = (double)i / (n_up - 1);
-        DXL.dxl2 = downAngle + (upAngle - downAngle) * (3.0 * pow(tau, 2) - 2.0 * pow(tau, 3));
-        
-        std::string fileName = "DXL_Angle2";
-        fun.appendToCSV(fileName, false, DXL.dxl2);
-
-        DXLQueue.push(DXL);
     }
 }
 
@@ -2248,6 +2206,26 @@ float PathManager::getInstAngle(int Inst)
     double angle_rad = atan2(inst_x, inst_y);
 
     return static_cast<float>(angle_rad * (180.0 / M_PI));
+}
+
+double PathManager::calDXL2(double beat)
+{
+    double upAngle = 90.0;
+    double downAngle = 120.0;
+
+    // beat 범위: [0 1)
+    if (s < 0.3)
+    {
+        // 1. 하강 궤적 생성
+        double tau = s / 0.3;
+        return upAngle + (downAngle - upAngle) * (3.0 * pow(tau, 2) - 2.0 * pow(tau, 3));
+    }
+    else
+    {
+        // 2. 상승 궤적 생성
+        double tau = (s - 0.3) / 0.7;
+        return downAngle + (upAngle - downAngle) * (3.0 * pow(tau, 2) - 2.0 * pow(tau, 3));
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2519,12 +2497,6 @@ void PathManager::pushDxlBuffer()
     DXLTrajectory dxlQ = DXLQueue.front();
     dxlCommandBuffer.push(make_pair(dxlQ.dxl1, dxlQ.dxl2));
     DXLQueue.pop();
-
-    // if (!DXLQueue.empty()) {
-    //     DXLTrajectory dxlQ = DXLQueue.front();
-    //     dxlCommandBuffer.push(dxlQ);  // 구조체 전체 push
-    //     DXLQueue.pop();
-    // }
 }
 
 void PathManager::pushCommandBuffer(VectorXd &Qi)
@@ -3485,7 +3457,3 @@ double PathManager::getTheta(double l1, double theta)
 
     return theta_m;
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/*                                  DXL                                       */
-////////////////////////////////////////////////////////////////////////////////
