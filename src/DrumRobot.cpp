@@ -843,11 +843,6 @@ void DrumRobot::sendLoopForThread()
 
         if (cycleCounter == 0)
         {   
-            // DXL_fun_start = std::chrono::steady_clock::now();
-
-            // SyncReadDXL();
-
-            //50msec마다 실행
 
             if (!pathManager.dxlCommandBuffer.empty())
             {
@@ -855,35 +850,13 @@ void DrumRobot::sendLoopForThread()
                 std::pair<float, float> command = pathManager.dxlCommandBuffer.front();
                 pathManager.dxlCommandBuffer.pop();
 
-                if(1)
-                {
-                    float degree1 = command.first;
-                    float degree2 = command.second;
+                float degree1 = command.first;
+                float degree2 = command.second;
 
-                    DXL_start = std::chrono::steady_clock::now();
-                    // 꺼낸 값으로 SyncWrite 실행
-                    SyncWriteDXL(degree1, degree2);
-                    DXL_finish = std::chrono::steady_clock::now();
-                    std::chrono::duration<double> elapsed_write = DXL_finish - DXL_start;
-                    float elapsed_write_float = elapsed_write.count();
-                    std::string fileName = "DXL_cycle_write";
-                    fun.appendToCSV(fileName, false, elapsed_write_float,0);
-                    dxlCounter = 0;
-                }
-                // else
-                // {
-                //     dxlCounter++;
-                // }
+                // 꺼낸 값으로 SyncWrite 실행
+                SyncWriteDXL(degree1, degree2);
+
             }
-            else
-            {
-                dxlCounter =0;
-            }
-            DXL_fun_end = std::chrono::steady_clock::now();
-            std::chrono::duration<double> elapsed_write = DXL_fun_end - DXL_fun_start;
-            float elapsed_fun_float = elapsed_write.count();
-            std::string fileName = "DXL_fun_write";
-            fun.appendToCSV(fileName, false, elapsed_fun_float,0);
 
         }
 
