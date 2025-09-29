@@ -401,7 +401,9 @@ bool DrumRobot::initializePos(const std::string &input)
         state.main = Main::AddStance;
         flagObj.setAddStanceFlag("isHome"); // 시작 자세는 Home 자세와 같음
 
-        SyncWriteDXL(0.0, 90.0);
+        vector<float> dxlCommand1 = {1.0, 1.0, 0,0};
+        vector<float> dxlCommand2 = {1.0, 1.0, 90.0};
+        dxl.syncWrite(dxlCommand1, dxlCommand2);
 
         return true;
     }
@@ -431,7 +433,7 @@ void DrumRobot::initializeDrumRobot()
     initializeCanManager();
     motorSettingCmd(); // Maxon
     canManager.setSocketNonBlock();
-    initializeDXL();
+    dxl.initialize();
 
     usbio.initUSBIO4761();
     fun.openCSVFile();
@@ -448,126 +450,6 @@ void DrumRobot::initializeDrumRobot()
         std::cout << "Enter command: ";
         std::getline(std::cin, input);
     } while (!initializePos(input));
-}
-
-
-////////////////////////////////////////////////////////////////////////////////
-/*                                    DXL                                     */
-////////////////////////////////////////////////////////////////////////////////
-
-void DrumRobot::initializeDXL()
-{
-    // Open port
-    if (port->openPort())
-    {
-    printf("[DXL] --open port");
-    }
-    else
-    {
-    printf("Failed to open the port!\n");
-    }
-
-    // Set port baudrate
-    if (port->setBaudRate(4500000))
-    {
-    printf(" --change the baudrate!\n");
-    }
-    else
-    {
-    printf("Failed to change the baudrate!\n");
-    }
-
-    for (int id = 0; id < 3; id++) // Dynamixel ID 범위: 0~252
-    {
-        uint16_t dxl_model_number = 0;
-        uint8_t dxl_error = 0;
-
-        int dxl_comm_result = pkt->ping(port, id, &dxl_model_number, &dxl_error);
-
-        if (dxl_comm_result == COMM_SUCCESS && dxl_error == 0)
-        {
-            printf("[ID:%03d] Found! Model number: %d\n", id, dxl_model_number);
-        }
-    }
-
-    // DXL 토크 ON
-    uint8_t err = 0;
-    pkt->write1ByteTxRx(port, 1, 64, 1, &err);
-    pkt->write1ByteTxRx(port, 2, 64, 1, &err);
-}
-
-void DrumRobot::SyncWriteDXL(float degree1, float degree2)
-{
-    sw = std::make_unique<dynamixel::GroupSyncWrite>(port, pkt, 108, 12);
-
-    // 모터별 목표 값 배열 정의
-    // 순서: {Profile Acceleration, Profile Velocity, Goal Position}
-    int32_t values_motor1[3] = {0, 0, DXLAngleToTick(degree1)};
-    int32_t values_motor2[3] = {0, 0, DXLAngleToTick(degree2)};
-
-    uint8_t param_motor1[12];
-    uint8_t param_motor2[12];
-
-    // memcpy를 사용해 정수 배열의 내용을 바이트 배열로 복사
-    memcpy(param_motor1, values_motor1, sizeof(values_motor1));
-    memcpy(param_motor2, values_motor2, sizeof(values_motor2));
-
-    bool result1 = sw->addParam(1, param_motor1);
-    bool result2 = sw->addParam(2, param_motor2);
-
-    sw->txPacket();
-    sw->clearParam();
-}
-
-void DrumRobot::SyncReadDXL()
-{
-    // GroupSyncRead 생성 (주소 132 = Present Position, 길이 4byte)
-    dynamixel::GroupSyncRead groupSyncRead(port, pkt, 132, 4);
-
-    // 모터 ID 등록 (예: 1, 2)
-    groupSyncRead.addParam(1);
-    groupSyncRead.addParam(2);
-
-    // 데이터 요청
-    int dxl_comm_result = groupSyncRead.txRxPacket();
-    if (dxl_comm_result != COMM_SUCCESS) {
-        std::cerr << "SyncRead failed: "
-                  << pkt->getTxRxResult(dxl_comm_result) << std::endl;
-        return;
-    }
-
-    // 각 모터 값 읽어서 출력
-    for (int id : {1, 2}) {
-        if (groupSyncRead.isAvailable(id, 132, 4))
-        {
-            uint32_t pos = groupSyncRead.getData(id, 132, 4);
-            
-            std::string fileName = "DXL_log";
-            fun.appendToCSV(fileName, false, id, DXLTickToAngle(pos));
-
-        } else {
-            std::cerr << "[ID:" << id << "] data not available!" << std::endl;
-        }
-    }
-
-    // 다음 사용 위해 clear
-    groupSyncRead.clearParam();
-}
-
-int32_t DrumRobot::DXLAngleToTick(float degree)
-{
-    degree = std::clamp(degree, -180.f, 180.f);
-    const float ticks_per_degree = 4096.0 / 360.0;
-    float ticks = 2048.0 - (degree * ticks_per_degree);
-
-    return static_cast<int32_t>(std::round(ticks));
-}
-
-float DrumRobot::DXLTickToAngle(int32_t ticks)
-{
-    const float degrees_per_tick = 360.0 / 4096.0;
-    float angle = (2048.0 - static_cast<double>(ticks)) * degrees_per_tick;
-    return angle;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -841,9 +723,20 @@ void DrumRobot::sendLoopForThread()
             }
         }
 
+        int n = virtualMaxonMotor.size();
+        for(int i = 0; i < n; i++)
+        {
+            maxoncmd.getSync(&virtualMaxonMotor[i]->sendFrame);
+
+            if (!canManager.sendMotorFrame(virtualMaxonMotor[i]))
+            {
+                isWriteError = true;
+            };
+        }
+
+        // DXL
         if (cycleCounter == 0)
         {   
-
             if (!pathManager.dxlCommandBuffer.empty())
             {
                 // 맨 앞 원소 꺼내오기
@@ -854,22 +747,10 @@ void DrumRobot::sendLoopForThread()
                 float degree2 = command.second;
 
                 // 꺼낸 값으로 SyncWrite 실행
-                SyncWriteDXL(degree1, degree2);
-
+                vector<float> dxlCommand1 = {0.0, 0.0, degree1};
+                vector<float> dxlCommand2 = {0.0, 0.0, degree2};
+                dxl.syncWrite(dxlCommand1, dxlCommand2);
             }
-
-        }
-
-
-        int n = virtualMaxonMotor.size();
-        for(int i = 0; i < n; i++)
-        {
-            maxoncmd.getSync(&virtualMaxonMotor[i]->sendFrame);
-
-            if (!canManager.sendMotorFrame(virtualMaxonMotor[i]))
-            {
-                isWriteError = true;
-            };
         }
         
         if (isWriteError)
@@ -897,8 +778,6 @@ void DrumRobot::recvLoopForThread()
     {
         recvLoopPeriod = std::chrono::steady_clock::now();
         recvLoopPeriod += std::chrono::microseconds(100);  // 주기 : 100us
-
-        
 
         canManager.readFramesFromAllSockets(); 
         bool isSafe = canManager.distributeFramesToMotors(true);
@@ -2013,4 +1892,158 @@ void FlagClass::setFixationFlag(string flagName)
 bool FlagClass::getFixationFlag()
 {
     return isFixed;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/*                                  DXL                                       */
+////////////////////////////////////////////////////////////////////////////////
+
+DXL::DXL()
+{
+    port = dynamixel::PortHandler::getPortHandler("/dev/ttyUSB0");
+    pkt = dynamixel::PacketHandler::getPacketHandler(2.0);
+}
+
+DXL::~DXL()
+{
+    
+}
+
+void DXL::initialize()
+{
+    // Open port
+    if (port->openPort())
+    {
+        printf("[DXL] ------ Open Port");
+    }
+    else
+    {
+        printf("[DXL] Failed to open the port!\n");
+        useDXL = false;
+        return;
+    }
+
+    // Set port baudrate
+    if (port->setBaudRate(4500000))
+    {
+        printf(" ------ change the baudrate!\n");
+    }
+    else
+    {
+        printf("\n[DXL] Failed to change the baudrate!\n");
+        useDXL = false;
+        return;
+    }
+
+    for (int id = 0; id < 3; id++) // Dynamixel ID 범위: 0~252
+    {
+        uint16_t dxl_model_number = 0;
+        uint8_t dxl_error = 0;
+
+        int dxl_comm_result = pkt->ping(port, id, &dxl_model_number, &dxl_error);
+
+        if (dxl_comm_result == COMM_SUCCESS && dxl_error == 0)
+        {
+            printf("[ID:%03d] Found! Model number: %d\n", id, dxl_model_number);
+        }
+    }
+
+    // DXL 토크 ON
+    uint8_t err = 0;
+    pkt->write1ByteTxRx(port, 1, 64, 1, &err);
+    pkt->write1ByteTxRx(port, 2, 64, 1, &err);
+}
+
+void DXL::syncWrite(vector<float> command1, vector<float> command2)
+{
+    if (useDXL)
+    {
+        sw = std::make_unique<dynamixel::GroupSyncWrite>(port, pkt, 108, 12);
+
+        // 모터별 목표 값 배열 정의
+        int32_t values_motor1[3];   
+        int32_t values_motor2[3];
+
+        commandToValues(values_motor1, command1);
+        commandToValues(values_motor2, command2);
+
+        uint8_t param_motor1[12];
+        uint8_t param_motor2[12];
+
+        // memcpy를 사용해 정수 배열의 내용을 바이트 배열로 복사
+        memcpy(param_motor1, values_motor1, sizeof(values_motor1));
+        memcpy(param_motor2, values_motor2, sizeof(values_motor2));
+
+        bool result1 = sw->addParam(1, param_motor1);
+        bool result2 = sw->addParam(2, param_motor2);
+
+        sw->txPacket();
+        sw->clearParam();
+    }
+}
+
+void DXL::syncRead()
+{
+    if (useDXL)
+    {
+        // GroupSyncRead 생성 (주소 132 = Present Position, 길이 4byte)
+        dynamixel::GroupSyncRead groupSyncRead(port, pkt, 132, 4);
+
+        // 모터 ID 등록 (예: 1, 2)
+        groupSyncRead.addParam(1);
+        groupSyncRead.addParam(2);
+
+        // 데이터 요청
+        int dxl_comm_result = groupSyncRead.txRxPacket();
+        if (dxl_comm_result != COMM_SUCCESS)
+        {
+            std::cerr << "SyncRead failed: "
+                    << pkt->getTxRxResult(dxl_comm_result) << std::endl;
+            return;
+        }
+
+        // 각 모터 값 읽어서 출력
+        for (int id : {1, 2})
+        {
+            if (groupSyncRead.isAvailable(id, 132, 4))
+            {
+                uint32_t pos = groupSyncRead.getData(id, 132, 4);
+            }
+            else
+            {
+                std::cerr << "[ID:" << id << "] data not available!" << std::endl;
+            }
+        }
+
+        // 다음 사용 위해 clear
+        groupSyncRead.clearParam();
+    }
+}
+
+int32_t DXL::angleToTick(float degree)
+{
+    degree = std::clamp(degree, -180.f, 180.f);
+    const float ticks_per_degree = 4096.0 / 360.0;
+    float ticks = 2048.0 - (degree * ticks_per_degree);
+
+    return static_cast<int32_t>(std::round(ticks));
+}
+
+float DXL::tickToAngle(int32_t ticks)
+{
+    const float degrees_per_tick = 360.0 / 4096.0;
+    float angle = (2048.0 - static_cast<double>(ticks)) * degrees_per_tick;
+    return angle;
+}
+
+void DXL::commandToValues(int32_t values[], vector<float> command)
+{
+    // Profile Acceleration
+    values[0] = static_cast<int32_t>(1000*command[0]);  // ms
+    
+    // Profile Velocity
+    values[1] = static_cast<int32_t>(1000*command[1]);  // ms
+
+    // Goal Position
+    values[2] = angleToTick(command[2]);
 }

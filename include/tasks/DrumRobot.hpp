@@ -61,6 +61,29 @@ private:
     bool isFixed = false;
 };
 
+class DXL
+{
+public:
+    DXL();
+    ~DXL();
+
+    void initialize();
+    void syncWrite(vector<float> command1, vector<float> command2);
+    void syncRead();
+
+private:
+    dynamixel::PortHandler *port;
+    dynamixel::PacketHandler *pkt;
+    std::unique_ptr<dynamixel::GroupSyncWrite> sw;
+    std::unique_ptr<dynamixel::GroupSyncRead> sr;
+
+    bool useDXL = true;
+
+    int32_t angleToTick(float degree);
+    float tickToAngle(int32_t ticks);
+    void commandToValues(int32_t values[], vector<float> command);
+};
+
 class DrumRobot
 {
 public:
@@ -120,6 +143,8 @@ private:
     FlagClass flagObj;
     bool allMotorsUnConected = true;    // 모든 모터 연결 안됨 - 모터 없이 테스트하는 경우
 
+    DXL dxl;
+
     //////////////////////////////////////////////////////////////// Initialize
     int maxonMotorSocketCount = 0;    // 1 이상이면 virtual Maxon Motor를 사용하기 위해
 
@@ -128,20 +153,6 @@ private:
     void motorSettingCmd();
     void initializeFolder();
     bool initializePos(const std::string &input);
-
-    //////////////////////////////////////////////////////////////// DXL
-    void initializeDXL();
-    void SyncWriteDXL(float degree1, float degree2);
-    void SyncReadDXL();
-
-    int32_t DXLAngleToTick(float degree);
-    float DXLTickToAngle(int32_t ticks);
-
-    dynamixel::PortHandler *port = dynamixel::PortHandler::getPortHandler("/dev/ttyUSB0");
-    dynamixel::PacketHandler *pkt  = dynamixel::PacketHandler::getPacketHandler(2.0);
-    std::unique_ptr<dynamixel::GroupSyncWrite> sw;
-    std::unique_ptr<dynamixel::GroupSyncRead> sr;
-
 
     //////////////////////////////////////////////////////////////// Exit
     void deactivateControlTask();
