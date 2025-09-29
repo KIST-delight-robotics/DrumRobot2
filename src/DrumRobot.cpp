@@ -1091,6 +1091,13 @@ void DrumRobot::applyAddStanceToDXL(string flagName)
 {
     float degree1, degree2;
 
+    if (!pathManager.dxlCommandBuffer.empty())
+    {
+        // 임시 조치 (이인우)
+        // 나중에 pathManager로 이동할 예정
+        return;
+    }
+
     if (flagName == "isHome")
     {
         degree1 = 0.0;

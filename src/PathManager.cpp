@@ -589,7 +589,7 @@ void PathManager::solveIKandPushCommand()
         VectorXd q = getJointAngles(q0);                // 로봇 관절각
         
         pushCommandBuffer(q);                           // 명령 생성 후 push
-        pushDxlBuffer();
+        pushDxlBuffer(q0);
 
         // 데이터 기록
         for (int i = 0; i < 9; i++)
@@ -2211,20 +2211,20 @@ float PathManager::getInstAngle(int Inst)
 double PathManager::calDXL2(double beat)
 {
     double upAngle = 90.0;
-    double downAngle = 120.0;
+    double downAngle = 110.0;
 
     // beat 범위: [0 1)
-    if (s < 0.3)
+    if (beat < 0.7)
     {
-        // 1. 하강 궤적 생성
-        double tau = s / 0.3;
-        return upAngle + (downAngle - upAngle) * (3.0 * pow(tau, 2) - 2.0 * pow(tau, 3));
+        // 1. 상승 궤적 생성
+        double tau = beat / 0.7;
+        return downAngle + (upAngle - downAngle) * (3.0 * pow(tau, 2) - 2.0 * pow(tau, 3));
     }
     else
-    {
-        // 2. 상승 궤적 생성
-        double tau = (s - 0.3) / 0.7;
-        return downAngle + (upAngle - downAngle) * (3.0 * pow(tau, 2) - 2.0 * pow(tau, 3));
+    {   
+        // 2. 하강 궤적 생성
+        double tau = (beat - 0.7) / 0.3;
+        return upAngle + (downAngle - upAngle) * (3.0 * pow(tau, 2) - 2.0 * pow(tau, 3));
     }
 }
 
@@ -2492,10 +2492,10 @@ VectorXd PathManager::getJointAngles(double q0)
     return q;
 }
 
-void PathManager::pushDxlBuffer()
+void PathManager::pushDxlBuffer(double q0)
 {
     DXLTrajectory dxlQ = DXLQueue.front();
-    dxlCommandBuffer.push(make_pair(dxlQ.dxl1, dxlQ.dxl2));
+    dxlCommandBuffer.push(make_pair(dxlQ.dxl1 + q0, dxlQ.dxl2));
     DXLQueue.pop();
 }
 

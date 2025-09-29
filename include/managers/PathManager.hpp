@@ -324,7 +324,7 @@ private:
     vector<double> cubicInterpolation(const vector<double>& q, const vector<double>& t);
     double getWaistAngle(MatrixXd &waistCoefficient, int index);
     VectorXd getJointAngles(double q0);
-    void pushDxlBuffer();
+    void pushDxlBuffer(double q0);
     void pushCommandBuffer(VectorXd &Qi);
 
     //////////////////////////////////// Detect Collision
