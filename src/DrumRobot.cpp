@@ -734,15 +734,9 @@ void DrumRobot::sendLoopForThread()
         {   
             if (!pathManager.dxlCommandBuffer.empty())
             {
-                // 맨 앞 원소 꺼내오기
-                std::pair<float, float> command = pathManager.dxlCommandBuffer.front();
+                // 맨 앞 원소 꺼낸 값으로 SyncWrite 실행
+                vector<vector<float>> dxlCommand = pathManager.dxlCommandBuffer.front();
                 pathManager.dxlCommandBuffer.pop();
-
-                float degree1 = command.first;
-                float degree2 = command.second;
-
-                // 꺼낸 값으로 SyncWrite 실행
-                vector<vector<float>> dxlCommand = {{0.0, 0.0, degree1}, {0.0, 0.0, degree2}};
                 dxl.syncWrite(dxlCommand);
             }
         }
@@ -1076,8 +1070,6 @@ void DrumRobot::sendAddStanceProcess()
 
     pathManager.pushAddStancePath(flag);
 
-    applyAddStanceToDXL(flag);
-
     state.main = Main::Ideal;
 
     // send thread에서 읽기 전까지 대기
@@ -1085,37 +1077,6 @@ void DrumRobot::sendAddStanceProcess()
     {
        usleep(100); 
     }
-}
-
-void DrumRobot::applyAddStanceToDXL(string flagName)
-{
-    float degree1, degree2;
-
-    if (!pathManager.dxlCommandBuffer.empty())
-    {
-        // 임시 조치 (이인우)
-        // 나중에 pathManager로 이동할 예정
-        return;
-    }
-
-    if (flagName == "isHome")
-    {
-        degree1 = 0.0;
-        degree2 = 90.0;
-    }
-    else if (flagName == "isReady")
-    {
-        degree1 = 0.0;
-        degree2 = 90.0;
-    }
-    else if (flagName == "isShutDown")
-    {
-        degree1 = 0.0;
-        degree2 = 90.0;
-    }
-
-    vector<vector<float>> dxlCommand = {{1.0, 1.0, degree1}, {1.0, 1.0, degree2}};
-    dxl.syncWrite(dxlCommand);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

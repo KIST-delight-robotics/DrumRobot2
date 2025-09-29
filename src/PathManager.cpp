@@ -143,6 +143,29 @@ void PathManager::pushAddStancePath(string flagName)
             }
         }
     }
+
+    // DXL
+    float totalTime = moveTime + waitTime;
+    float degree1, degree2;
+
+    if (flagName == "isHome")
+    {
+        degree1 = 0.0;
+        degree2 = 90.0;
+    }
+    else if (flagName == "isReady")
+    {
+        degree1 = 0.0;
+        degree2 = 90.0;
+    }
+    else if (flagName == "isShutDown")
+    {
+        degree1 = 0.0;
+        degree2 = 90.0;
+    }
+
+    vector<vector<float>> dxlCommand = {{totalTime/2, totalTime, degree1}, {totalTime/2, totalTime, degree2}};
+    dxlCommandBuffer.push(dxlCommand);
 }
 
 void PathManager::initPlayStateValue()
@@ -2495,8 +2518,10 @@ VectorXd PathManager::getJointAngles(double q0)
 void PathManager::pushDxlBuffer(double q0)
 {
     DXLTrajectory dxlQ = DXLQueue.front();
-    dxlCommandBuffer.push(make_pair(dxlQ.dxl1 + q0, dxlQ.dxl2));
     DXLQueue.pop();
+
+    vector<vector<float>> dxlCommand = {{0.0, 0.0, dxlQ.dxl1 + (float)q0}, {0.0, 0.0, dxlQ.dxl2}};
+    dxlCommandBuffer.push(dxlCommand);
 }
 
 void PathManager::pushCommandBuffer(VectorXd &Qi)

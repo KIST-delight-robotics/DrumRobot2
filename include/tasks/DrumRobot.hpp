@@ -165,7 +165,6 @@ private:
 
     //////////////////////////////////////////////////////////////// AddStance State
     void sendAddStanceProcess();
-    void applyAddStanceToDXL(string flagName);
     
     //////////////////////////////////////////////////////////////// Play State
     MatrixXd measureMatrix;     ///< 궤적을 생성하기 위해 읽은 악보 부분 (마디)

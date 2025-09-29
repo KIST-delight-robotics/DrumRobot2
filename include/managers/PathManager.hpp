@@ -76,7 +76,7 @@ public:
     void processLine(MatrixXd &measureMatrix);
 
     // DXL
-    std::queue<std::pair<float,float>> dxlCommandBuffer;
+    std::queue<vector<vector<float>>> dxlCommandBuffer;
 
 private:
     TMotorCommandParser TParser; ///< T 모터 명령어 파서.
@@ -135,10 +135,8 @@ private:
 
     //DXL 궤적
     typedef struct {
-        double   dxl1;
-        double   dxl2;
-        double   velocity;
-        double   acceleration;
+        float   dxl1;
+        float   dxl2;
     }DXLTrajectory;    
 
     // 허리 파라미터
