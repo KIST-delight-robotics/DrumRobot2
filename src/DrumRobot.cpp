@@ -652,7 +652,6 @@ void DrumRobot::sendLoopForThread()
     sleep(2);   // read thead에서 clear / initial pos Path 생성 할 때까지 기다림
 
     int cycleCounter = 0; // 주기 조절을 위한 변수 (Tmotor : 5ms, Maxon : 1ms)
-    int dxlCounter =0;
     sendLoopPeriod = std::chrono::steady_clock::now();
     while (state.main != Main::Shutdown)
     {
@@ -1995,7 +1994,8 @@ void DXL::syncWrite(vector<vector<float>> command)
     {
         sw = std::make_unique<dynamixel::GroupSyncWrite>(port, pkt, 108, 12);
 
-        for (int i = 0; i < motorIDs.size(); i++)
+        int numDxl = motorIDs.size();
+        for (int i = 0; i < numDxl; i++)
         {
             uint8_t id = motorIDs[i];
 
@@ -2007,7 +2007,7 @@ void DXL::syncWrite(vector<vector<float>> command)
             // memcpy를 사용해 정수 배열의 내용을 바이트 배열로 복사
             memcpy(param_motor, values_motor, sizeof(values_motor));
             
-            bool result = sw->addParam(id, param_motor);
+            sw->addParam(id, param_motor);
         }
 
         sw->txPacket();
@@ -2015,8 +2015,11 @@ void DXL::syncWrite(vector<vector<float>> command)
     }
 }
 
-void DXL::syncRead()
+vector<uint32_t> DXL::syncRead()
 {
+    vector<uint32_t> dxlPos;
+    uint32_t errCode = 99;
+
     if (useDXL)
     {
         // GroupSyncRead 생성 (주소 132 = Present Position, 길이 4byte)
@@ -2032,7 +2035,9 @@ void DXL::syncRead()
         {
             std::cerr << "SyncRead failed: "
                     << pkt->getTxRxResult(dxl_comm_result) << std::endl;
-            return;
+
+            dxlPos.push_back(errCode);
+            return dxlPos;
         }
 
         // 각 모터 값 읽어서 출력
@@ -2041,6 +2046,7 @@ void DXL::syncRead()
             if (groupSyncRead.isAvailable(id, 132, 4))
             {
                 uint32_t pos = groupSyncRead.getData(id, 132, 4);
+                dxlPos.push_back(pos);
             }
             else
             {
@@ -2051,6 +2057,8 @@ void DXL::syncRead()
         // 다음 사용 위해 clear
         groupSyncRead.clearParam();
     }
+
+    return dxlPos;
 }
 
 int32_t DXL::angleToTick(float degree)

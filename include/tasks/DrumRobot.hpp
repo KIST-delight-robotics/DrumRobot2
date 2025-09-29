@@ -69,7 +69,7 @@ public:
 
     void initialize();
     void syncWrite(vector<vector<float>> command);
-    void syncRead();
+    vector<uint32_t> syncRead();
 
 private:
     dynamixel::PortHandler *port;
