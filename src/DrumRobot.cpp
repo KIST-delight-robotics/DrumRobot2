@@ -401,10 +401,6 @@ bool DrumRobot::initializePos(const std::string &input)
         state.main = Main::AddStance;
         flagObj.setAddStanceFlag("isHome"); // 시작 자세는 Home 자세와 같음
 
-        vector<float> dxlCommand1 = {1.0, 1.0, 0,0};
-        vector<float> dxlCommand2 = {1.0, 1.0, 90.0};
-        dxl.syncWrite(dxlCommand1, dxlCommand2);
-
         return true;
     }
     else if (input == "i")
@@ -1082,6 +1078,9 @@ void DrumRobot::sendAddStanceProcess()
 
     pathManager.pushAddStancePath(flag);
 
+    applyAddStanceToDXL(flag);
+    dxl.syncWrite(dxlCommand);
+
     state.main = Main::Ideal;
 
     // send thread에서 읽기 전까지 대기
@@ -1089,6 +1088,11 @@ void DrumRobot::sendAddStanceProcess()
     {
        usleep(100); 
     }
+}
+
+void DrumRobot::applyAddStanceToDXL(string flagName)
+{
+
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1945,37 +1949,38 @@ void DXL::initialize()
         if (dxl_comm_result == COMM_SUCCESS && dxl_error == 0)
         {
             printf("[ID:%03d] Found! Model number: %d\n", id, dxl_model_number);
+            motorIDs.push_back(static_cast<uint8_t>(id));
         }
     }
 
     // DXL 토크 ON
     uint8_t err = 0;
-    pkt->write1ByteTxRx(port, 1, 64, 1, &err);
-    pkt->write1ByteTxRx(port, 2, 64, 1, &err);
+    for (uint8_t id : motorIDs)
+    {
+        pkt->write1ByteTxRx(port, id, 64, 1, &err);
+    }
 }
 
-void DXL::syncWrite(vector<float> command1, vector<float> command2)
+void DXL::syncWrite(vector<vector<float>> command)
 {
     if (useDXL)
     {
         sw = std::make_unique<dynamixel::GroupSyncWrite>(port, pkt, 108, 12);
 
-        // 모터별 목표 값 배열 정의
-        int32_t values_motor1[3];   
-        int32_t values_motor2[3];
+        for (int i = 0; i < motorIDs.size(); i++)
+        {
+            uint8_t id = motorIDs[i];
 
-        commandToValues(values_motor1, command1);
-        commandToValues(values_motor2, command2);
+            // 모터별 목표 값 배열 정의
+            int32_t values_motor[3];
+            uint8_t param_motor[12];
 
-        uint8_t param_motor1[12];
-        uint8_t param_motor2[12];
-
-        // memcpy를 사용해 정수 배열의 내용을 바이트 배열로 복사
-        memcpy(param_motor1, values_motor1, sizeof(values_motor1));
-        memcpy(param_motor2, values_motor2, sizeof(values_motor2));
-
-        bool result1 = sw->addParam(1, param_motor1);
-        bool result2 = sw->addParam(2, param_motor2);
+            commandToValues(values_motor, command[i]);
+            // memcpy를 사용해 정수 배열의 내용을 바이트 배열로 복사
+            memcpy(param_motor, values_motor, sizeof(values_motor));
+            
+            bool result = sw->addParam(id, param_motor);
+        }
 
         sw->txPacket();
         sw->clearParam();

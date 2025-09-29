@@ -68,7 +68,7 @@ public:
     ~DXL();
 
     void initialize();
-    void syncWrite(vector<float> command1, vector<float> command2);
+    void syncWrite(vector<vector<float>> command);
     void syncRead();
 
 private:
@@ -78,7 +78,8 @@ private:
     std::unique_ptr<dynamixel::GroupSyncRead> sr;
 
     bool useDXL = true;
-
+    vector<uint8_t> motorIDs; // 연결된 다이나믹셀 ID
+    
     int32_t angleToTick(float degree);
     float tickToAngle(int32_t ticks);
     void commandToValues(int32_t values[], vector<float> command);
@@ -126,10 +127,6 @@ private:
     // 쓰레드 루프 주기
     std::chrono::_V2::steady_clock::time_point sendLoopPeriod;
     std::chrono::_V2::steady_clock::time_point recvLoopPeriod;
-    std::chrono::_V2::steady_clock::time_point DXL_start;
-    std::chrono::_V2::steady_clock::time_point DXL_finish;
-    std::chrono::_V2::steady_clock::time_point DXL_fun_start;
-    std::chrono::_V2::steady_clock::time_point DXL_fun_end;
 
     // 로봇 고정했을 때 각 모터의 관절각      Waist   Rarm1   Larm1   Rarm2   Rarm3   Larm2   Larm3   Rwrist   Lwrist   maxonForTest   Rfoot   Lfoot   [deg]
     const float initialJointAngles[12] = {10.0,   90.0,   90.0,   0.0,     90.0,    0.0,    90.0,   90.0,    90.0,        0.0,        0.0,    0.0};
@@ -144,6 +141,7 @@ private:
     bool allMotorsUnConected = true;    // 모든 모터 연결 안됨 - 모터 없이 테스트하는 경우
 
     DXL dxl;
+    vector<vector<float>> dxlCommand;   // 다이나믹셀 AddStance를 위한 벡터
 
     //////////////////////////////////////////////////////////////// Initialize
     int maxonMotorSocketCount = 0;    // 1 이상이면 virtual Maxon Motor를 사용하기 위해
