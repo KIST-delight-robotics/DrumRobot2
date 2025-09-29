@@ -103,6 +103,10 @@ private:
     // 쓰레드 루프 주기
     std::chrono::_V2::steady_clock::time_point sendLoopPeriod;
     std::chrono::_V2::steady_clock::time_point recvLoopPeriod;
+    std::chrono::_V2::steady_clock::time_point DXL_start;
+    std::chrono::_V2::steady_clock::time_point DXL_finish;
+    std::chrono::_V2::steady_clock::time_point DXL_fun_start;
+    std::chrono::_V2::steady_clock::time_point DXL_fun_end;
 
     // 로봇 고정했을 때 각 모터의 관절각      Waist   Rarm1   Larm1   Rarm2   Rarm3   Larm2   Larm3   Rwrist   Lwrist   maxonForTest   Rfoot   Lfoot   [deg]
     const float initialJointAngles[12] = {10.0,   90.0,   90.0,   0.0,     90.0,    0.0,    90.0,   90.0,    90.0,        0.0,        0.0,    0.0};
@@ -131,6 +135,7 @@ private:
     void SyncReadDXL();
 
     int32_t DXLAngleToTick(float degree);
+    float DXLTickToAngle(int32_t ticks);
 
     dynamixel::PortHandler *port = dynamixel::PortHandler::getPortHandler("/dev/ttyUSB0");
     dynamixel::PacketHandler *pkt  = dynamixel::PacketHandler::getPacketHandler(2.0);

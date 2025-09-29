@@ -468,7 +468,7 @@ void DrumRobot::initializeDXL()
     }
 
     // Set port baudrate
-    if (port->setBaudRate(57600))
+    if (port->setBaudRate(4500000))
     {
     printf(" --change the baudrate!\n");
     }
@@ -489,21 +489,21 @@ void DrumRobot::initializeDXL()
             printf("[ID:%03d] Found! Model number: %d\n", id, dxl_model_number);
         }
     }
+
+    // DXL 토크 ON
+    uint8_t err = 0;
+    pkt->write1ByteTxRx(port, 1, 64, 1, &err);
+    pkt->write1ByteTxRx(port, 2, 64, 1, &err);
 }
 
 void DrumRobot::SyncWriteDXL(float degree1, float degree2)
 {
     sw = std::make_unique<dynamixel::GroupSyncWrite>(port, pkt, 108, 12);
 
-    // DXL 토크 ON
-    uint8_t err = 0;
-    pkt->write1ByteTxRx(port, 1, 64, 1, &err);
-    pkt->write1ByteTxRx(port, 2, 64, 1, &err);
-
     // 모터별 목표 값 배열 정의
     // 순서: {Profile Acceleration, Profile Velocity, Goal Position}
-    int32_t values_motor1[3] = {1000, 1000, DXLAngleToTick(degree1)};
-    int32_t values_motor2[3] = {1000, 1000, DXLAngleToTick(degree2)};
+    int32_t values_motor1[3] = {0, 0, DXLAngleToTick(degree1)};
+    int32_t values_motor2[3] = {0, 0, DXLAngleToTick(degree2)};
 
     uint8_t param_motor1[12];
     uint8_t param_motor2[12];
@@ -538,10 +538,13 @@ void DrumRobot::SyncReadDXL()
 
     // 각 모터 값 읽어서 출력
     for (int id : {1, 2}) {
-        if (groupSyncRead.isAvailable(id, 132, 4)) {
+        if (groupSyncRead.isAvailable(id, 132, 4))
+        {
             uint32_t pos = groupSyncRead.getData(id, 132, 4);
-            std::cout << "[ID:" << id << "] Present Position : "
-                      << static_cast<int32_t>(pos) << std::endl;
+            
+            std::string fileName = "DXL_log";
+            fun.appendToCSV(fileName, false, id, DXLTickToAngle(pos));
+
         } else {
             std::cerr << "[ID:" << id << "] data not available!" << std::endl;
         }
@@ -554,10 +557,17 @@ void DrumRobot::SyncReadDXL()
 int32_t DrumRobot::DXLAngleToTick(float degree)
 {
     degree = std::clamp(degree, -180.f, 180.f);
-    const double ticks_per_degree = 4096.0 / 360.0;
-    double ticks = 2048.0 - (degree * ticks_per_degree);
+    const float ticks_per_degree = 4096.0 / 360.0;
+    float ticks = 2048.0 - (degree * ticks_per_degree);
 
     return static_cast<int32_t>(std::round(ticks));
+}
+
+float DrumRobot::DXLTickToAngle(int32_t ticks)
+{
+    const float degrees_per_tick = 360.0 / 4096.0;
+    float angle = (2048.0 - static_cast<double>(ticks)) * degrees_per_tick;
+    return angle;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -833,6 +843,10 @@ void DrumRobot::sendLoopForThread()
 
         if (cycleCounter == 0)
         {   
+            // DXL_fun_start = std::chrono::steady_clock::now();
+
+            // SyncReadDXL();
+
             //50msec마다 실행
 
             if (!pathManager.dxlCommandBuffer.empty())
@@ -841,24 +855,36 @@ void DrumRobot::sendLoopForThread()
                 std::pair<float, float> command = pathManager.dxlCommandBuffer.front();
                 pathManager.dxlCommandBuffer.pop();
 
-                if(dxlCounter == 10)
+                if(1)
                 {
                     float degree1 = command.first;
                     float degree2 = command.second;
 
+                    DXL_start = std::chrono::steady_clock::now();
                     // 꺼낸 값으로 SyncWrite 실행
                     SyncWriteDXL(degree1, degree2);
+                    DXL_finish = std::chrono::steady_clock::now();
+                    std::chrono::duration<double> elapsed_write = DXL_finish - DXL_start;
+                    float elapsed_write_float = elapsed_write.count();
+                    std::string fileName = "DXL_cycle_write";
+                    fun.appendToCSV(fileName, false, elapsed_write_float,0);
                     dxlCounter = 0;
                 }
-                else
-                {
-                    dxlCounter++;
-                }
+                // else
+                // {
+                //     dxlCounter++;
+                // }
             }
             else
             {
                 dxlCounter =0;
             }
+            DXL_fun_end = std::chrono::steady_clock::now();
+            std::chrono::duration<double> elapsed_write = DXL_fun_end - DXL_fun_start;
+            float elapsed_fun_float = elapsed_write.count();
+            std::string fileName = "DXL_fun_write";
+            fun.appendToCSV(fileName, false, elapsed_fun_float,0);
+
         }
 
 
@@ -899,7 +925,7 @@ void DrumRobot::recvLoopForThread()
         recvLoopPeriod = std::chrono::steady_clock::now();
         recvLoopPeriod += std::chrono::microseconds(100);  // 주기 : 100us
 
-        SyncReadDXL();
+        
 
         canManager.readFramesFromAllSockets(); 
         bool isSafe = canManager.distributeFramesToMotors(true);

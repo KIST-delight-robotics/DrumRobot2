@@ -77,6 +77,7 @@ public:
 
     // DXL
     std::queue<std::pair<float,float>> dxlCommandBuffer;
+    // std::queue<DXLTrajectory> dxlCommandBuffer;
 
 private:
     TMotorCommandParser TParser; ///< T 모터 명령어 파서.
@@ -135,8 +136,10 @@ private:
 
     //DXL 궤적
     typedef struct {
-        float   dxl1;
-        float   dxl2;
+        double   dxl1;
+        double   dxl2;
+        double   velocity;
+        double   acceleration;
     }DXLTrajectory;    
 
     // 허리 파라미터

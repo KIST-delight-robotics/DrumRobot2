@@ -2162,20 +2162,28 @@ void PathManager::genDxlTrajectory(MatrixXd &measureMatrix, int n)
     }
 
     // 악기에 맞는 각도 계산
-    float curAngle  = getInstAngle(curInst);
-    float targetAngle = getInstAngle(nextInst);
+    double curAngle  = getInstAngle(curInst);
+    double targetAngle = getInstAngle(nextInst);
 
 // dt=0.005 마다 이동할 각도 계산
-    float dtheta = (targetAngle - curAngle) / n;
+    double dtheta = (targetAngle - curAngle) / n;
 
     for (int i = 0; i < n; i++)
     {
         DXLTrajectory DXL;
 
         // DXL
-        DXL.dxl1 = curAngle + i * dtheta;
+        // DXL.dxl1 = curAngle + i * dtheta;
         // DXL.dxl1 = makeCosineProfile(curAngle, targetAngle, t1, t2, i*dt);
+
+        double tau = (double)i / (n - 1); 
+
+        DXL.dxl1 = curAngle + (targetAngle - curAngle) * (3.0 * pow(tau, 2) - 2.0 * pow(tau, 3));
         DXL.dxl2 = 90.0;
+
+        // DXL.velocity = dt * 1000;       // dt = 0.005[sec] -> 5[ms]
+        // double tx = ((targetAngle - curAngle) / 90  - dt);      // velocity profile 중 등속(최대속도)구간의 시간
+        // DXL.acceleration = (dt - tx) / 2 * 1000;        // 가속 시간 t1을 msec으로 구함
 
         DXLQueue.push(DXL);
 
@@ -2478,7 +2486,13 @@ void PathManager::pushDxlBuffer()
 {
     DXLTrajectory dxlQ = DXLQueue.front();
     dxlCommandBuffer.push(make_pair(dxlQ.dxl1, dxlQ.dxl2));
-    DXLQueue.pop(); 
+    DXLQueue.pop();
+
+    // if (!DXLQueue.empty()) {
+    //     DXLTrajectory dxlQ = DXLQueue.front();
+    //     dxlCommandBuffer.push(dxlQ);  // 구조체 전체 push
+    //     DXLQueue.pop();
+    // }
 }
 
 void PathManager::pushCommandBuffer(VectorXd &Qi)
