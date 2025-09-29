@@ -742,10 +742,7 @@ void DrumRobot::sendLoopForThread()
                 float degree2 = command.second;
 
                 // 꺼낸 값으로 SyncWrite 실행
-                vector<float> dxlCommand1 = {0.0, 0.0, degree1};
-                vector<float> dxlCommand2 = {0.0, 0.0, degree2};
-
-                vector<vector<float>> dxlCommand = {dxlCommand1, dxlCommand2};
+                vector<vector<float>> dxlCommand = {{0.0, 0.0, degree1}, {0.0, 0.0, degree2}};
                 dxl.syncWrite(dxlCommand);
             }
         }
@@ -1092,33 +1089,25 @@ void DrumRobot::sendAddStanceProcess()
 
 void DrumRobot::applyAddStanceToDXL(string flagName)
 {
-    vector<vector<float>> dxlCommand;
+    float degree1, degree2;
 
     if (flagName == "isHome")
     {
-        vector<float> command1 = {1.0, 1.0, 0.0};
-        vector<float> command2 = {1.0, 1.0, 90.0};
-
-        dxlCommand.push_back(command1);
-        dxlCommand.push_back(command2);
+        degree1 = 0.0;
+        degree2 = 90.0;
     }
     else if (flagName == "isReady")
     {
-        vector<float> command1 = {1.0, 1.0, 0.0};
-        vector<float> command2 = {1.0, 1.0, 90.0};
-
-        dxlCommand.push_back(command1);
-        dxlCommand.push_back(command2);
+        degree1 = 0.0;
+        degree2 = 90.0;
     }
     else if (flagName == "isShutDown")
     {
-        vector<float> command1 = {1.0, 1.0, 0.0};
-        vector<float> command2 = {1.0, 1.0, 90.0};
-
-        dxlCommand.push_back(command1);
-        dxlCommand.push_back(command2);
+        degree1 = 0.0;
+        degree2 = 90.0;
     }
 
+    vector<vector<float>> dxlCommand = {{1.0, 1.0, degree1}, {1.0, 1.0, degree2}};
     dxl.syncWrite(dxlCommand);
 }
 
