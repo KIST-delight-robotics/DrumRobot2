@@ -1079,7 +1079,6 @@ void DrumRobot::sendAddStanceProcess()
     pathManager.pushAddStancePath(flag);
 
     applyAddStanceToDXL(flag);
-    dxl.syncWrite(dxlCommand);
 
     state.main = Main::Ideal;
 
@@ -1092,7 +1091,34 @@ void DrumRobot::sendAddStanceProcess()
 
 void DrumRobot::applyAddStanceToDXL(string flagName)
 {
+    vector<vector<float>> dxlCommand;
 
+    if (flagName == "isHome")
+    {
+        vector<float> command1 = {1.0, 1.0, 0.0};
+        vector<float> command2 = {1.0, 1.0, 90.0};
+
+        dxlCommand.push_back(command1);
+        dxlCommand.push_back(command2);
+    }
+    else if (flagName == "isReady")
+    {
+        vector<float> command1 = {1.0, 1.0, 0.0};
+        vector<float> command2 = {1.0, 1.0, 90.0};
+
+        dxlCommand.push_back(command1);
+        dxlCommand.push_back(command2);
+    }
+    else if (flagName == "isShutDown")
+    {
+        vector<float> command1 = {1.0, 1.0, 0.0};
+        vector<float> command2 = {1.0, 1.0, 90.0};
+
+        dxlCommand.push_back(command1);
+        dxlCommand.push_back(command2);
+    }
+
+    dxl.syncWrite(dxlCommand);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

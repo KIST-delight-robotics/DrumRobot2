@@ -141,7 +141,6 @@ private:
     bool allMotorsUnConected = true;    // 모든 모터 연결 안됨 - 모터 없이 테스트하는 경우
 
     DXL dxl;
-    vector<vector<float>> dxlCommand;   // 다이나믹셀 AddStance를 위한 벡터
 
     //////////////////////////////////////////////////////////////// Initialize
     int maxonMotorSocketCount = 0;    // 1 이상이면 virtual Maxon Motor를 사용하기 위해
@@ -166,6 +165,7 @@ private:
 
     //////////////////////////////////////////////////////////////// AddStance State
     void sendAddStanceProcess();
+    void applyAddStanceToDXL(string flagName);
     
     //////////////////////////////////////////////////////////////// Play State
     MatrixXd measureMatrix;     ///< 궤적을 생성하기 위해 읽은 악보 부분 (마디)
