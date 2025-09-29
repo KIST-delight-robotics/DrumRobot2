@@ -2191,6 +2191,24 @@ void PathManager::genDxlTrajectory(MatrixXd &measureMatrix, int n)
         std::string fileName = "DXL_Angle";
         fun.appendToCSV(fileName, false, DXL.dxl1, DXL.dxl2);
     }
+
+    // double t_1beat = 60 / bpmOfScore;
+    // double DTSECOND = 0.005;
+    // int steps = t_1beat / DTSECOND;
+
+    // double upAngle = 90.0;
+    // double downAngle = 30.0;
+
+    // for(int i = 0; i < steps; i++)
+    // {
+    //     if (i < steps/3)
+    //         DXL.dxl2 = upAngle + (downAngle - upAngle) * (3.0 * pow(tau, 2) - 2.0 * pow(tau, 3));
+    //     else
+    //         DXL.dxl2 = downAngle + (upAngle - downAngle) * (3.0 * pow(tau, 2) - 2.0 * pow(tau, 3));
+        
+    //     DXLQueue.push(DXL);
+    // }
+
 }
 
 float PathManager::getInstAngle(int Inst)
