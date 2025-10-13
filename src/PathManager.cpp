@@ -207,6 +207,8 @@ void PathManager::processLine(MatrixXd &measureMatrix)
     // std::cout << measureMatrix;
     // std::cout << "\n ////////////// \n";
 
+    fun.appendToCSV("debug", false, lineOfScore);
+
     if (measureMatrix.rows() > 1)
     {
         // avoidCollision(measureMatrix);  // 충돌 회피
@@ -373,7 +375,7 @@ void PathManager::setReadyAngle()
     MatrixXd defaultWristAngle = combined * instrumentVector;
 
     // 허리 각도 구하기
-    VectorXd waistParams = getWaistParams(pR, pL);
+    VectorXd waistParams = getWaistParams(pR, pL, defaultWristAngle(0), defaultWristAngle(1));
     
     // IK
     bool printError = false;
@@ -599,6 +601,11 @@ void PathManager::solveIKandPushCommand()
 
     MatrixXd waistCoefficient = makeWaistCoefficient(WP);   // 허리 궤적 생성
 
+    // for (int i = 0; i < WP.size(); i++)
+    // {
+    //     fun.appendToCSV("debug", false, WP[i].min_q0, WP[i].max_q0, WP[i].optimized_q0, WP[i].n);
+    // }
+
     // 여기서 첫 접근 때 정지하기
     while(!startOfPlay) // 시작 신호 받을 때까지 대기
     {
@@ -698,8 +705,12 @@ void PathManager::genTaskSpaceTrajectory(MatrixXd &measureMatrix, int n)
         if (i == 0)
         {
             // 명령 개수, 허리 범위, 최적화 각도 계산 및 저장
-            VectorXd waistParams = getWaistParams(TT.trajectoryR, TT.trajectoryL);
+            VectorXd waistParams = getWaistParams(TT.trajectoryR, TT.trajectoryL, TT.wristAngleR, TT.wristAngleL);
             storeWaistParams(n, waistParams);
+
+            fun.appendToCSV("debug", false, TT.trajectoryR[0], TT.trajectoryR[1], TT.trajectoryR[2]);
+            fun.appendToCSV("debug", false, TT.trajectoryL[0], TT.trajectoryL[1], TT.trajectoryL[2]);
+            fun.appendToCSV("debug", false, waistParams[0], waistParams[1], waistParams[2]);
         }
     }
 }
@@ -778,12 +789,13 @@ pair<VectorXd, VectorXd> PathManager::parseTrajectoryData(VectorXd &t, VectorXd 
     double detectTime = 0, initialT, finalT;
     int detectInst = 0, initialInstNum, finalInstNum;
     int preState, nextState;
+    const double e = 0.00001; 
     double hitDetectionThreshold = 1.2 * 100.0 / bpmOfScore;
 
     // 타격 감지
     for (int i = 1; i < t.rows(); i++)
     {
-        if (round(10000 * hitDetectionThreshold) < round(10000 * (t(i) - t(0))))
+        if (round(10000 * (hitDetectionThreshold + e)) < round(10000 * (t(i) - t(0))))
         {
             break;
         }
@@ -1008,7 +1020,7 @@ VectorXd PathManager::makeTaskSpacePath(VectorXd &Pi, VectorXd &Pf, double s)
     return Ps;
 }
 
-VectorXd PathManager::getWaistParams(VectorXd &pR, VectorXd &pL)
+VectorXd PathManager::getWaistParams(VectorXd &pR, VectorXd &pL, double theta7, double theta8)
 {
     std::vector<VectorXd> Qarr;
     int j = 0;      // 솔루션 개수
@@ -1023,8 +1035,6 @@ VectorXd PathManager::getWaistParams(VectorXd &pR, VectorXd &pL)
     for (int i = 0; i < 1801; i++)
     {
         double theta0 = -0.5 * M_PI + M_PI / 1800.0 * i; // the0 범위 : -90deg ~ 90deg
-        double theta7 = 0.0;
-        double theta8 = 0.0;
         bool printError = false;
 
         VectorXd sol = solveGeometricIK(pR, pL, theta0, theta7, theta8, printError);
@@ -3390,7 +3400,7 @@ VectorXd PathManager::solveGeometricIK(VectorXd &pR, VectorXd &pL, double theta0
     double theta34 = atan2(sqrt(r2), zeta);
     double theta3 = theta34 - atan2(R2 * sin(theta4), R1 + R2 * cos(theta4));
 
-    if (theta3 < -45.0 * M_PI / 180.0 || theta3 > 90) // the3 범위 : -45deg ~ 90deg
+    if (theta3 < -45.0 * M_PI / 180.0 || theta3 > 90 * M_PI / 180.0) // the3 범위 : -45deg ~ 90deg
     {
         if (printError)
         {
@@ -3437,7 +3447,7 @@ VectorXd PathManager::solveGeometricIK(VectorXd &pR, VectorXd &pL, double theta0
     double theta56 = atan2(sqrt(r2), zeta);
     double theta5 = theta56 - atan2(L2 * sin(theta6), L1 + L2 * cos(theta6));
 
-    if (theta5 < -45.0 * M_PI / 180.0 || theta5 > 90) // the5 범위 : -45deg ~ 90deg
+    if (theta5 < -45.0 * M_PI / 180.0 || theta5 > 90 * M_PI / 180.0) // the5 범위 : -45deg ~ 90deg
     {
         if (printError)
         {
