@@ -2211,9 +2211,6 @@ void PathManager::genDxlTrajectory(MatrixXd &measureMatrix, int n)
         curInst = nextInst;
     }
 
-    std::string fileName = "DXL";
-    fun.appendToCSV(fileName, false, curInst, nextInst, codeInst);
-
     // 악기에 맞는 각도 계산
     double curAngle  = getInstAngle(curInst);
     double targetAngle = getInstAngle(nextInst);
