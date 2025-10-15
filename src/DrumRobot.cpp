@@ -483,6 +483,8 @@ void DrumRobot::deactivateControlTask()
             std::cout << "Exiting for motor [" << name << "]" << std::endl;
         }
     }
+
+
 }
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -612,6 +614,7 @@ void DrumRobot::stateMachine()
             case Main::AddStance:
             {
                 runAddStanceProcess();
+                sendArduinoCommand(2);
                 break;
             }
             case Main::Play:
@@ -1002,6 +1005,7 @@ void DrumRobot::processInput(const std::string &input, string flagName)
     else if (input == "s" && flagName == "isHome")
     {
         flagObj.setAddStanceFlag("isShutDown");
+        sendArduinoCommand(4);
         state.main = Main::AddStance;
     }
     else if (input == "t")
@@ -1592,6 +1596,8 @@ void DrumRobot::runPlayProcess()
         waitTime.pop();
         setSyncTime((int)inputWaitMs);
     }
+
+    sendArduinoCommand(3);
 
     while (!endOfScore)
     {

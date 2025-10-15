@@ -2200,7 +2200,7 @@ void PathManager::genDxlTrajectory(MatrixXd &measureMatrix, int n)
     // 악기 정보
     static int curInst = 0;
     static int nextInst = 0;
-    int codeInst = measureMatrix(1, 3);
+    int codeInst = measureMatrix(1, 2);
 
     if(codeInst != 0)
     {
