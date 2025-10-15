@@ -2028,8 +2028,9 @@ vector<uint32_t> DXL::syncRead()
     return dxlPos;
 }
 
-int32_t DXL::angleToTick(float degree)
+int32_t DXL::angleToTick(float angle)
 {
+    float degree = angle * 180.0 / M_PI;
     degree = std::clamp(degree, -180.f, 180.f);
     const float ticks_per_degree = 4096.0 / 360.0;
     float ticks = 2048.0 - (degree * ticks_per_degree);
@@ -2041,7 +2042,7 @@ float DXL::tickToAngle(int32_t ticks)
 {
     const float degrees_per_tick = 360.0 / 4096.0;
     float angle = (2048.0 - static_cast<double>(ticks)) * degrees_per_tick;
-    return angle;
+    return angle * M_PI / 180.0;
 }
 
 void DXL::commandToValues(int32_t values[], vector<float> command)

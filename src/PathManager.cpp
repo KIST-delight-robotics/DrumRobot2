@@ -2211,12 +2211,17 @@ void PathManager::genDxlTrajectory(MatrixXd &measureMatrix, int n)
         curInst = nextInst;
     }
 
+    std::string fileName = "DXL";
+    fun.appendToCSV(fileName, false, curInst, nextInst, codeInst);
+
     // 악기에 맞는 각도 계산
     double curAngle  = getInstAngle(curInst);
     double targetAngle = getInstAngle(nextInst);
 
+    // 고개 세기
+    double nodIntensity = getNodIntensity(measureMatrix);
+
     double beatOfLine = measureMatrix(1, 1) / 0.6;
-    static double beatSum = 0.0;
 
     for (int i = 0; i < n; i++)
     {
@@ -2224,10 +2229,7 @@ void PathManager::genDxlTrajectory(MatrixXd &measureMatrix, int n)
 
         double tau = (double)i / (n - 1); 
         DXL.dxl1 = curAngle + (targetAngle - curAngle) * (3.0 * pow(tau, 2) - 2.0 * pow(tau, 3));
-
-        beatSum += beatOfLine/n;
-        beatSum = beatSum>=1.0?beatSum-1.0:beatSum;
-        DXL.dxl2 = calDXL2(beatSum);
+        DXL.dxl2 = makeNod(beatOfLine, nodIntensity, i, n);
 
         DXLQueue.push(DXL);
 
@@ -2257,56 +2259,75 @@ float PathManager::getInstAngle(int Inst)
     std::string fileName = "xyz";
     fun.appendToCSV(fileName, false, inst_x, inst_y, Inst);
 
-    double angle_rad = atan2(inst_x, inst_y);
-
-    return static_cast<float>(angle_rad * (180.0 / M_PI));
+    return static_cast<float>(atan2(inst_x, inst_y));
 }
 
-double PathManager::calDXL2(double beat)
+double PathManager::getNodIntensity(MatrixXd &measureMatrix)
 {
-    double upAngle = 90.0;
-    double downAngle = 110.0;
+    VectorXd beat = measureMatrix.col(1);
+    VectorXd intensityR = measureMatrix.col(4);
+    VectorXd intensityL = measureMatrix.col(5);
+    VectorXd bass = measureMatrix.col(6);
 
-    // beat 범위: [0 1)
-    if (beat < 0.7)
+    int rows = measureMatrix.rows();
+    double beatSum = 0.0;
+    double nodIntensity = 0.0;
+    int line = 0;
+
+    for (int i = 0; i < rows; i++)
     {
-        // 1. 상승 궤적 생성
-        double tau = beat / 0.7;
-        return downAngle + (upAngle - downAngle) * (3.0 * pow(tau, 2) - 2.0 * pow(tau, 3));
+        double lineIntensity = intensityR(i) + intensityL(i) + bass(i);
+        nodIntensity += lineIntensity;
+        line++;
+
+        beatSum += beat(i);
+        if (beatSum >= 0.6)
+        {
+            // 한 박 악보만 읽기
+            break;
+        }
+    }
+
+    return std::min(nodIntensity / line, 1.0);
+}
+
+float PathManager::makeNod(double beatOfLine, double nodIntensity, int i, int n)
+{
+    // Nod: 고개를 끄덕이다
+
+    // 각도
+    double nodMaxRange = 20*M_PI/180.0; // 고개가 움직이는 최대 각도
+    double nodAngle = 0.0;
+
+    // 세기
+    static double preNodIntensity = 0.0;
+    double alpha = (i * nodIntensity + (n - i) * preNodIntensity) / (double)n;
+
+    // beatSum 범위: [0 1)
+    static double beatSum = 0.0;
+    beatSum += beatOfLine/n;
+    beatSum = beatSum>=1.0?beatSum-1.0:beatSum;
+
+    if (beatSum < 0.7)
+    {
+        // 상승 궤적 생성
+        double tau = beatSum / 0.7;
+        nodAngle = alpha * nodMaxRange * (3.0 * pow(tau, 2) - 2.0 * pow(tau, 3));
     }
     else
     {   
-        // 2. 하강 궤적 생성
-        double tau = (beat - 0.7) / 0.3;
-        return upAngle + (downAngle - upAngle) * (3.0 * pow(tau, 2) - 2.0 * pow(tau, 3));
+        // 하강 궤적 생성
+        double tau = (beatSum - 0.7) / 0.3;
+        nodAngle = alpha * nodMaxRange * (1.0 - (3.0 * pow(tau, 2) - 2.0 * pow(tau, 3)));
     }
+
+    if (i == n - 1)
+    {
+        preNodIntensity = nodIntensity;
+    }
+
+    return static_cast<float>(readyAngle(13) - nodAngle);
 }
-
-// double PathManager::makeNod(double beatStep)
-// {
-//     // Nod: 고개를 끄덕이다
-
-//     // 각도
-//     double upAngle = 90.0;
-//     double downAngle = 110.0;
-//     // beat 범위: [0 1)
-//     static double beatSum = 0.0;
-//     beatSum += beatStep/n;
-//     beatSum = beatSum>=1.0?beatSum-1.0:beatSum;
-
-//     if (beatSum < 0.7)
-//     {
-//         // 1. 상승 궤적 생성
-//         double tau = beatSum / 0.7;
-//         return downAngle + (upAngle - downAngle) * (3.0 * pow(tau, 2) - 2.0 * pow(tau, 3));
-//     }
-//     else
-//     {   
-//         // 2. 하강 궤적 생성
-//         double tau = (beatSum - 0.7) / 0.3;
-//         return upAngle + (downAngle - upAngle) * (3.0 * pow(tau, 2) - 2.0 * pow(tau, 3));
-//     }
-// }
 
 ////////////////////////////////////////////////////////////////////////////////
 /*                      Play : Solve IK and Push Command                      */

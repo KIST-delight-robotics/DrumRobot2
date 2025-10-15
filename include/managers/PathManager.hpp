@@ -314,7 +314,8 @@ private:
 
     void genDxlTrajectory(MatrixXd &measureMatrix, int n);
     float getInstAngle(int nextInst);
-    double calDXL2(double beat);
+    double getNodIntensity(MatrixXd &measureMatrix);
+    float makeNod(double beatOfLine, double nodIntensity, int i, int n);
 
     //////////////////////////////////// Solve IK & Push Command Buffer
     double waistAngleT1;                    ///< 허리 시작 위치
