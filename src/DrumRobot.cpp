@@ -611,14 +611,12 @@ void DrumRobot::stateMachine()
             }
             case Main::AddStance:
             {
-                sendAddStanceProcess();
-                sendArduinoCommand(2);
+                runAddStanceProcess();
                 break;
             }
             case Main::Play:
             {
-                sendArduinoCommand(3);
-                sendPlayProcess();
+                runPlayProcess();
                 break;
             }
             case Main::Test:
@@ -1070,11 +1068,11 @@ void DrumRobot::idealStateRoutine()
 /*                            AddStance State                                 */
 ////////////////////////////////////////////////////////////////////////////////
 
-void DrumRobot::sendAddStanceProcess()
+void DrumRobot::runAddStanceProcess()
 {
     string flag = flagObj.getAddStanceFlag();
 
-    pathManager.pushAddStancePath(flag);
+    pathManager.genAndPushAddStance(flag);
 
     state.main = Main::Ideal;
 
@@ -1558,7 +1556,7 @@ bool DrumRobot::readMeasure(ifstream& inputFile)
     return false;
 }
 
-void DrumRobot::sendPlayProcess()
+void DrumRobot::runPlayProcess()
 {
     std::string txtPath;
     std::string txtIndexPath;

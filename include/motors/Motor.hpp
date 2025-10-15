@@ -136,7 +136,7 @@ public:
 
     int controlMode = CSP;    // 현재 제어 모드
 
-    // 1ms 궤적 만들기
+    // 1ms 궤적 만들기 위해 사용
     float pre_q;
 
     // 마찰 토크 보상 시 사용되는 값
