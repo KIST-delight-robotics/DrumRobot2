@@ -20,152 +20,28 @@ void PathManager::initPathManager()
     setAddStanceAngle();        // AddStance 에서 사용하는 pos 설정
 }
 
-void PathManager::pushAddStancePath(string flagName)
+void PathManager::genAndPushAddStance(string flagName)
 {
     VectorXd Q1 = VectorXd::Zero(12);
     VectorXd Q2 = VectorXd::Zero(12);
-    VectorXd Qt = VectorXd::Zero(12);
-    float dt = canManager.DTSECOND;     // 5ms
-    double moveTime = 2.0;              // 2초동안 이동
-    double waitTime = 1.0;              // 1초 대기 후 이동 시작
-    int moveN = (int)(moveTime / dt);   // 이동 명령 개수 (5ms)
-    int waitN = (int)(waitTime / dt);   // 대기 명령 개수 (5ms)
 
     // Q1 : finalMotorPosition -> 마지막 모터 명령값에서 이어서 생성
     Q1 = getFinalMotorPosition();
 
     // Q2 : flag 에 따라 정해진 위치
-    if (flagName == "isHome")
-    {
-        for (int i = 0; i < 12; i++)
-        {
-            Q2(i) = homeAngle(i);
-        }
-    }
-    else if (flagName == "isReady")
-    {
-        for (int i = 0; i < 12; i++)
-        {
-            Q2(i) = readyAngle(i);
-        }
-    }
-    else if (flagName == "isShutDown")
-    {
-        for (int i = 0; i < 12; i++)
-        {
-            Q2(i) = shutdownAngle(i);
-        }
-    }
-    else
-    {
-        std::cout << "AddStance Flag Error !\n";
-        return;
-    }
+    Q2 = getAddStanceAngle(flagName);
 
-    // 사다리꼴 속도 프로파일 생성을 위한 가속도
-    const float accMax = 100.0; // rad/s^2
-    
-    // 사다리꼴 속도 프로파일 생성을 위한 최고속도 계산
-    VectorXd Vmax = VectorXd::Zero(12);
-    Vmax = calVmax(Q1, Q2, accMax, moveTime);
-
-    // 출력
+    // 터미널 출력
     for (int k = 0; k < 12; k++)
     {
         std::cout << "Q1[" << k << "] : " << Q1[k] * 180.0 / M_PI << " [deg] -> Q2[" << k << "] : " << Q2[k] * 180.0 / M_PI << " [deg]\n";
     }
-
-    // 궤적 생성
-    for (int k = 1; k <= moveN + waitN; ++k)
-    {
-        if (k > waitN)  // 이동 궤적 생성
-        {
-            float t = (k - waitN) * moveTime / moveN;
-
-            Qt = makeProfile(Q1, Q2, Vmax, accMax, t, moveTime);
-
-            for (auto &entry : motors)
-            {
-                int can_id = canManager.motorMapping[entry.first];
-
-                if (std::shared_ptr<TMotor> tMotor = std::dynamic_pointer_cast<TMotor>(entry.second))
-                {
-                    TMotorData newData;
-                    newData.position = tMotor->jointAngleToMotorPosition(Qt[can_id]);
-                    newData.mode = tMotor->Position;
-                    newData.is_brake = 0;
-                    tMotor->commandBuffer.push(newData);
-
-                    tMotor->finalMotorPosition = newData.position;
-                }
-                else if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(entry.second))
-                {
-                    // Maxom 모터는 1ms 로 동작
-                    for (int i = 0; i < 5; i++)
-                    {
-                        MaxonData newData;
-                        newData.position = maxonMotor->jointAngleToMotorPosition(Qt[can_id]);
-                        newData.mode = maxonMotor->CSP;
-                        maxonMotor->commandBuffer.push(newData);
-
-                        maxonMotor->finalMotorPosition = newData.position;
-                    }
-                    maxonMotor->pre_q = Qt[can_id];
-                }
-            }
-        }
-        else    // 현재 위치 대기
-        {
-            for (auto &entry : motors)
-            {
-                int can_id = canManager.motorMapping[entry.first];
-
-                if (std::shared_ptr<TMotor> tMotor = std::dynamic_pointer_cast<TMotor>(entry.second))
-                {
-                    TMotorData newData;
-                    newData.position = tMotor->jointAngleToMotorPosition(Q1[can_id]);
-                    newData.mode = tMotor->Position;
-                    newData.is_brake = 0;
-                    tMotor->commandBuffer.push(newData);
-                }
-                else if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(entry.second))
-                {
-                    // Maxom 모터는 1ms 로 동작
-                    for (int i = 0; i < 5; i++)
-                    {
-                        MaxonData newData;
-                        newData.position = maxonMotor->jointAngleToMotorPosition(Q1[can_id]);
-                        newData.mode = maxonMotor->CSP;
-                        maxonMotor->commandBuffer.push(newData);
-                    }
-                    maxonMotor->pre_q = Qt[can_id];
-                }
-            }
-        }
-    }
+    
+    // push
+    pushAddStance(Q1, Q2);
 
     // DXL
-    float totalTime = moveTime + waitTime;
-    float degree1, degree2;
-
-    if (flagName == "isHome")
-    {
-        degree1 = 0.0;
-        degree2 = 90.0;
-    }
-    else if (flagName == "isReady")
-    {
-        degree1 = 0.0;
-        degree2 = 110.0;
-    }
-    else if (flagName == "isShutDown")
-    {
-        degree1 = 0.0;
-        degree2 = 90.0;
-    }
-
-    vector<vector<float>> dxlCommand = {{totalTime/2, totalTime, degree1}, {totalTime/2, totalTime, degree2}};
-    dxlCommandBuffer.push(dxlCommand);
+    pushAddStanceDXL(flagName);
 }
 
 void PathManager::initPlayStateValue()
@@ -322,7 +198,7 @@ void PathManager::setAddStanceAngle()
     setReadyAngle();
 
     //////////////////////////////////////// Home Angle
-    homeAngle.resize(12);
+    homeAngle.resize(14);
     //              waist          R_arm1         L_arm1
     homeAngle << 10*M_PI/180.0,  90*M_PI/180.0,  90*M_PI/180.0,
     //              R_arm2         R_arm3         L_arm2
@@ -330,10 +206,12 @@ void PathManager::setAddStanceAngle()
     //              L_arm3         R_wrist        L_wrist
                 90*M_PI/180.0, 75*M_PI/180.0, 75*M_PI/180.0,
     //          Test               R_foot         L_foot            
-                0*M_PI/180.0,   0*M_PI/180.0,   0*M_PI/180.0;
+                0*M_PI/180.0,   0*M_PI/180.0,   0*M_PI/180.0,
+    //          DXL1            DXL2
+                0*M_PI/180.0,   90*M_PI/180.0;
 
     //////////////////////////////////////// Shutdown Angle
-    shutdownAngle.resize(12);
+    shutdownAngle.resize(14);
         //              waist          R_arm1         L_arm1
     shutdownAngle << 0*M_PI/180.0, 135*M_PI/180.0, 45*M_PI/180.0,
     //                  R_arm2         R_arm3         L_arm2
@@ -341,12 +219,14 @@ void PathManager::setAddStanceAngle()
     //                  L_arm3         R_wrist        L_wrist
                     20*M_PI/180.0,  90*M_PI/180.0,  90*M_PI/180.0,
     //          Test               R_foot         L_foot            
-                    0,                 0,              0;
+                    0,                 0,              0,
+    //          DXL1            DXL2
+                0*M_PI/180.0,   120*M_PI/180.0;
 }
 
 void PathManager::setReadyAngle()
 {
-    readyAngle.resize(12);
+    readyAngle.resize(14);
 
     VectorXd defaultInstrumentR;    /// 오른팔 시작 위치 (ready 위치)
     VectorXd defaultInstrumentL;    /// 왼팔 시작 위치 (ready 위치)
@@ -397,64 +277,43 @@ void PathManager::setReadyAngle()
     readyAngle(7) += wA.stayAngle;
     readyAngle(8) += wA.stayAngle;
 
+    // foot
     readyAngle(9) = 0;
     readyAngle(10) = bA.stayAngle;
     readyAngle(11) = hA.openAngle;
+
+    // DXL
+    readyAngle(12) = 0*M_PI/180.0;
+    readyAngle(13) = 110*M_PI/180.0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /*                                 AddStance                                  */
 ////////////////////////////////////////////////////////////////////////////////
 
-VectorXd PathManager::calVmax(VectorXd &q1, VectorXd &q2, float acc, float t2)
+VectorXd PathManager::getFinalMotorPosition()
 {
-    VectorXd Vmax = VectorXd::Zero(12);
+    VectorXd Qf = VectorXd::Zero(12);
 
-    for (int i = 0; i < 12; i++)
+    // finalMotorPosition 가져오기 (마지막 명령값)
+    for (auto &entry : motors)
     {
-        double val;
-        double S = abs(q2(i) - q1(i)); // overflow방지
+        int can_id = canManager.motorMapping[entry.first];
 
-        if (S > t2 * t2 * acc / 4)
+        if (std::shared_ptr<TMotor> tMotor = std::dynamic_pointer_cast<TMotor>(entry.second))
         {
-            // 주어진 가속도로 도달 불가능
-            // -1 반환
-            val = -1;
+            Qf(can_id) = tMotor->motorPositionToJointAngle(tMotor->finalMotorPosition);
         }
-        else
+        if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(entry.second))
         {
-            // 2차 방정식 계수
-            double A = 1 / acc;
-            double B = -1 * t2;
-            double C = S;
-
-            // 2차 방정식 해
-            double sol1 = (-B + sqrt(B * B - 4 * A * C)) / 2 / A;
-            double sol2 = (-B - sqrt(B * B - 4 * A * C)) / 2 / A;
-
-            if (sol1 >= 0 && sol1 <= acc * t2 / 2)
-            {
-                val = sol1;
-            }
-            else if (sol2 >= 0 && sol2 <= acc * t2 / 2)
-            {
-                val = sol2;
-            }
-            else
-            {
-                // 해가 범위 안에 없음
-                // -2 반환
-                val = -2;
-            }
+            Qf(can_id) = maxonMotor->motorPositionToJointAngle(maxonMotor->finalMotorPosition);
         }
-
-        Vmax(i) = val;
     }
 
-    return Vmax;
+    return Qf;
 }
 
-VectorXd PathManager::makeProfile(VectorXd &q1, VectorXd &q2, VectorXd &Vmax, float acc, float t, float t2)
+VectorXd PathManager::makeProfile(VectorXd &q1, VectorXd &q2, VectorXd &Vmax, float t, float t2)
 {
     VectorXd Qi = VectorXd::Zero(12);
 
@@ -503,20 +362,20 @@ VectorXd PathManager::makeProfile(VectorXd &q1, VectorXd &q2, VectorXd &Vmax, fl
         else
         {
             // 사다리꼴 프로파일
-            if (t < Vmax(i) / acc)
+            if (t < Vmax(i) / accMax)
             {
                 // 가속
-                val = q1(i) + sign * 0.5 * acc * t * t;
+                val = q1(i) + sign * 0.5 * accMax * t * t;
             }
             else if (t < S / Vmax(i))
             {
                 // 등속
-                val = q1(i) + (sign * 0.5 * Vmax(i) * Vmax(i) / acc) + (sign * Vmax(i) * (t - Vmax(i) / acc));
+                val = q1(i) + (sign * 0.5 * Vmax(i) * Vmax(i) / accMax) + (sign * Vmax(i) * (t - Vmax(i) / accMax));
             }
-            else if (t < Vmax(i) / acc + S / Vmax(i))
+            else if (t < Vmax(i) / accMax + S / Vmax(i))
             {
                 // 감속
-                val = q2(i) - sign * 0.5 * acc * (S / Vmax(i) + Vmax(i) / acc - t) * (S / Vmax(i) + Vmax(i) / acc - t);
+                val = q2(i) - sign * 0.5 * accMax * (S / Vmax(i) + Vmax(i) / accMax - t) * (S / Vmax(i) + Vmax(i) / accMax - t);
             }
             else
             {
@@ -530,26 +389,193 @@ VectorXd PathManager::makeProfile(VectorXd &q1, VectorXd &q2, VectorXd &Vmax, fl
     return Qi;
 }
 
-VectorXd PathManager::getFinalMotorPosition()
+void PathManager::pushAddStance(VectorXd &Q1, VectorXd &Q2)
+{
+    VectorXd Qt = VectorXd::Zero(12);
+    float dt = canManager.DTSECOND;     // 5ms
+    double moveTime = 2.0;              // 2초동안 이동
+    double waitTime = 1.0;              // 1초 대기 후 이동 시작
+    int moveN = (int)(moveTime / dt);   // 이동 명령 개수 (5ms)
+    int waitN = (int)(waitTime / dt);   // 대기 명령 개수 (5ms)
+
+    // 사다리꼴 속도 프로파일 생성을 위한 최고속도 계산
+    VectorXd Vmax = VectorXd::Zero(12);
+    Vmax = calVmax(Q1, Q2, moveTime);
+
+    // 궤적 생성
+    for (int k = 1; k <= moveN + waitN; ++k)
+    {
+        if (k > waitN)  // 이동 궤적 생성
+        {
+            float t = (k - waitN) * moveTime / moveN;
+
+            Qt = makeProfile(Q1, Q2, Vmax, t, moveTime);
+
+            for (auto &entry : motors)
+            {
+                int can_id = canManager.motorMapping[entry.first];
+
+                if (std::shared_ptr<TMotor> tMotor = std::dynamic_pointer_cast<TMotor>(entry.second))
+                {
+                    TMotorData newData;
+                    newData.position = tMotor->jointAngleToMotorPosition(Qt[can_id]);
+                    newData.mode = tMotor->Position;
+                    newData.is_brake = 0;
+                    tMotor->commandBuffer.push(newData);
+
+                    tMotor->finalMotorPosition = newData.position;
+                }
+                else if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(entry.second))
+                {
+                    // Maxom 모터는 1ms 로 동작
+                    for (int i = 0; i < 5; i++)
+                    {
+                        MaxonData newData;
+                        newData.position = maxonMotor->jointAngleToMotorPosition(Qt[can_id]);
+                        newData.mode = maxonMotor->CSP;
+                        maxonMotor->commandBuffer.push(newData);
+
+                        maxonMotor->finalMotorPosition = newData.position;
+                    }
+                    maxonMotor->pre_q = Qt[can_id];
+                }
+            }
+        }
+        else    // 현재 위치 대기
+        {
+            for (auto &entry : motors)
+            {
+                int can_id = canManager.motorMapping[entry.first];
+
+                if (std::shared_ptr<TMotor> tMotor = std::dynamic_pointer_cast<TMotor>(entry.second))
+                {
+                    TMotorData newData;
+                    newData.position = tMotor->jointAngleToMotorPosition(Q1[can_id]);
+                    newData.mode = tMotor->Position;
+                    newData.is_brake = 0;
+                    tMotor->commandBuffer.push(newData);
+                }
+                else if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(entry.second))
+                {
+                    // Maxom 모터는 1ms 로 동작
+                    for (int i = 0; i < 5; i++)
+                    {
+                        MaxonData newData;
+                        newData.position = maxonMotor->jointAngleToMotorPosition(Q1[can_id]);
+                        newData.mode = maxonMotor->CSP;
+                        maxonMotor->commandBuffer.push(newData);
+                    }
+                    maxonMotor->pre_q = Qt[can_id];
+                }
+            }
+        }
+    }
+}
+
+VectorXd PathManager::getAddStanceAngle(string flagName)
 {
     VectorXd Qf = VectorXd::Zero(12);
 
-    // finalMotorPosition 가져오기 (마지막 명령값)
-    for (auto &entry : motors)
+    if (flagName == "isHome")
     {
-        int can_id = canManager.motorMapping[entry.first];
-
-        if (std::shared_ptr<TMotor> tMotor = std::dynamic_pointer_cast<TMotor>(entry.second))
+        for (int i = 0; i < 12; i++)
         {
-            Qf(can_id) = tMotor->motorPositionToJointAngle(tMotor->finalMotorPosition);
+            Qf(i) = homeAngle(i);
         }
-        if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(entry.second))
+    }
+    else if (flagName == "isReady")
+    {
+        for (int i = 0; i < 12; i++)
         {
-            Qf(can_id) = maxonMotor->motorPositionToJointAngle(maxonMotor->finalMotorPosition);
+            Qf(i) = readyAngle(i);
         }
+    }
+    else if (flagName == "isShutDown")
+    {
+        for (int i = 0; i < 12; i++)
+        {
+            Qf(i) = shutdownAngle(i);
+        }
+    }
+    else
+    {
+        std::cout << "AddStance Flag Error !\n";
     }
 
     return Qf;
+}
+
+VectorXd PathManager::calVmax(VectorXd &q1, VectorXd &q2, float t2)
+{
+    VectorXd Vmax = VectorXd::Zero(12);
+
+    for (int i = 0; i < 12; i++)
+    {
+        double val;
+        double S = abs(q2(i) - q1(i)); // overflow방지
+
+        if (S > t2 * t2 * accMax / 4)
+        {
+            // 주어진 가속도로 도달 불가능
+            // -1 반환
+            val = -1;
+        }
+        else
+        {
+            // 2차 방정식 계수
+            double A = 1 / accMax;
+            double B = -1 * t2;
+            double C = S;
+
+            // 2차 방정식 해
+            double sol1 = (-B + sqrt(B * B - 4 * A * C)) / 2 / A;
+            double sol2 = (-B - sqrt(B * B - 4 * A * C)) / 2 / A;
+
+            if (sol1 >= 0 && sol1 <= accMax * t2 / 2)
+            {
+                val = sol1;
+            }
+            else if (sol2 >= 0 && sol2 <= accMax * t2 / 2)
+            {
+                val = sol2;
+            }
+            else
+            {
+                // 해가 범위 안에 없음
+                // -2 반환
+                val = -2;
+            }
+        }
+
+        Vmax(i) = val;
+    }
+
+    return Vmax;
+}
+
+void PathManager::pushAddStanceDXL(string flagName)
+{
+    float totalTime = 3.0;  // moveTime + waitTime
+    float dxl1 = 0.0, dxl2 = 0.0; // [rad]
+
+    if (flagName == "isHome")
+    {
+        dxl1 = homeAngle(12);
+        dxl2 = homeAngle(13);
+    }
+    else if (flagName == "isReady")
+    {
+        dxl1 = readyAngle(12);
+        dxl2 = readyAngle(13);
+    }
+    else if (flagName == "isShutDown")
+    {
+        dxl1 = shutdownAngle(12);
+        dxl2 = shutdownAngle(13);
+    }
+
+    vector<vector<float>> dxlCommand = {{totalTime/2, totalTime, dxl1}, {totalTime/2, totalTime, dxl2}};
+    dxlCommandBuffer.push(dxlCommand);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -600,11 +626,6 @@ void PathManager::solveIKandPushCommand()
     int n = WP[0].n;   // 명령 개수
 
     MatrixXd waistCoefficient = makeWaistCoefficient(WP);   // 허리 궤적 생성
-
-    // for (int i = 0; i < WP.size(); i++)
-    // {
-    //     fun.appendToCSV("debug", false, WP[i].min_q0, WP[i].max_q0, WP[i].optimized_q0, WP[i].n);
-    // }
 
     // 여기서 첫 접근 때 정지하기
     while(!startOfPlay) // 시작 신호 받을 때까지 대기
@@ -2261,31 +2282,31 @@ double PathManager::calDXL2(double beat)
     }
 }
 
-double PathManager::makeNod(double beatStep)
-{
-    // Nod: 고개를 끄덕이다
+// double PathManager::makeNod(double beatStep)
+// {
+//     // Nod: 고개를 끄덕이다
 
-    // 각도
-    double upAngle = 90.0;
-    double downAngle = 110.0;
-    // beat 범위: [0 1)
-    static double beatSum = 0.0;
-    beatSum += beatStep/n;
-    beatSum = beatSum>=1.0?beatSum-1.0:beatSum;
+//     // 각도
+//     double upAngle = 90.0;
+//     double downAngle = 110.0;
+//     // beat 범위: [0 1)
+//     static double beatSum = 0.0;
+//     beatSum += beatStep/n;
+//     beatSum = beatSum>=1.0?beatSum-1.0:beatSum;
 
-    if (beatSum < 0.7)
-    {
-        // 1. 상승 궤적 생성
-        double tau = beatSum / 0.7;
-        return downAngle + (upAngle - downAngle) * (3.0 * pow(tau, 2) - 2.0 * pow(tau, 3));
-    }
-    else
-    {   
-        // 2. 하강 궤적 생성
-        double tau = (beatSum - 0.7) / 0.3;
-        return upAngle + (downAngle - upAngle) * (3.0 * pow(tau, 2) - 2.0 * pow(tau, 3));
-    }
-}
+//     if (beatSum < 0.7)
+//     {
+//         // 1. 상승 궤적 생성
+//         double tau = beatSum / 0.7;
+//         return downAngle + (upAngle - downAngle) * (3.0 * pow(tau, 2) - 2.0 * pow(tau, 3));
+//     }
+//     else
+//     {   
+//         // 2. 하강 궤적 생성
+//         double tau = (beatSum - 0.7) / 0.3;
+//         return upAngle + (downAngle - upAngle) * (3.0 * pow(tau, 2) - 2.0 * pow(tau, 3));
+//     }
+// }
 
 ////////////////////////////////////////////////////////////////////////////////
 /*                      Play : Solve IK and Push Command                      */

@@ -71,7 +71,7 @@ public:
     int Kp, Kd;
 
     void initPathManager();
-    void pushAddStancePath(string flagName);
+    void genAndPushAddStance(string flagName);
     void initPlayStateValue();
     void processLine(MatrixXd &measureMatrix);
 
@@ -237,9 +237,15 @@ private:
     VectorXd homeAngle;
     VectorXd shutdownAngle;
 
-    VectorXd calVmax(VectorXd &q1, VectorXd &q2, float acc, float t2);  // q1[rad], q2[rad], acc[rad/s^2], t2[s]
-    VectorXd makeProfile(VectorXd &q1, VectorXd &q2, VectorXd &Vmax, float acc, float t, float t2); // q1[rad], q2[rad], Vmax[rad/s], acc[rad/s^2], t[s], t2[s]
+    // 사다리꼴 속도 프로파일 생성을 위한 가속도
+    const float accMax = 100.0; // rad/s^2
+
     VectorXd getFinalMotorPosition();
+    VectorXd getAddStanceAngle(string flagName);
+    void pushAddStance(VectorXd &Q1, VectorXd &Q2);
+    VectorXd calVmax(VectorXd &q1, VectorXd &q2, float t2);  // q1[rad], q2[rad], t2[s]
+    VectorXd makeProfile(VectorXd &q1, VectorXd &q2, VectorXd &Vmax, float t, float t2); // q1[rad], q2[rad], Vmax[rad/s], t[s], t2[s]
+    void pushAddStanceDXL(string flagName);
 
     /////////////////////////////////////////////////////////////////////////// Play
     int lineOfScore = 0;                    ///< 현재 악보 읽은 줄.

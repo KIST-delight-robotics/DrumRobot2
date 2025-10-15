@@ -165,7 +165,7 @@ private:
     void idealStateRoutine();
 
     //////////////////////////////////////////////////////////////// AddStance State
-    void sendAddStanceProcess();
+    void runAddStanceProcess();
     
     //////////////////////////////////////////////////////////////// Play State
     MatrixXd measureMatrix;     ///< 궤적을 생성하기 위해 읽은 악보 부분 (마디)
@@ -203,7 +203,7 @@ private:
     std::string selectPlayMode();
     string trimWhitespace(const std::string &str);
     bool readMeasure(ifstream& inputFile);  // 한번에 읽을 악보의 크기(measureThreshold)만큼 읽으면 true 반환
-    void sendPlayProcess();
+    void runPlayProcess();
 
     //////////////////////////////////////////////////////////////// 
 
