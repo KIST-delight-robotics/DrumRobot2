@@ -72,7 +72,7 @@ void PathManager::pushAddStancePath(string flagName)
     // 출력
     for (int k = 0; k < 12; k++)
     {
-        std::cout << "Q1[" << k << "] : " << Q1[k] * 180.0 / M_PI << " [deg] -> Q2[" << k << "] : " << Q2[k] * 180.0 / M_PI << " [deg]" << endl;
+        std::cout << "Q1[" << k << "] : " << Q1[k] * 180.0 / M_PI << " [deg] -> Q2[" << k << "] : " << Q2[k] * 180.0 / M_PI << " [deg]\n";
     }
 
     // 궤적 생성
@@ -2181,7 +2181,7 @@ void PathManager::genDxlTrajectory(MatrixXd &measureMatrix, int n)
     static int nextInst = 0;
     int codeInst = measureMatrix(1, 3);
 
-    if(codeInst !=0)
+    if(codeInst != 0)
     {
         nextInst = codeInst;
     }
@@ -2257,6 +2257,32 @@ double PathManager::calDXL2(double beat)
     {   
         // 2. 하강 궤적 생성
         double tau = (beat - 0.7) / 0.3;
+        return upAngle + (downAngle - upAngle) * (3.0 * pow(tau, 2) - 2.0 * pow(tau, 3));
+    }
+}
+
+double PathManager::makeNod(double beatStep)
+{
+    // Nod: 고개를 끄덕이다
+
+    // 각도
+    double upAngle = 90.0;
+    double downAngle = 110.0;
+    // beat 범위: [0 1)
+    static double beatSum = 0.0;
+    beatSum += beatStep/n;
+    beatSum = beatSum>=1.0?beatSum-1.0:beatSum;
+
+    if (beatSum < 0.7)
+    {
+        // 1. 상승 궤적 생성
+        double tau = beatSum / 0.7;
+        return downAngle + (upAngle - downAngle) * (3.0 * pow(tau, 2) - 2.0 * pow(tau, 3));
+    }
+    else
+    {   
+        // 2. 하강 궤적 생성
+        double tau = (beatSum - 0.7) / 0.3;
         return upAngle + (downAngle - upAngle) * (3.0 * pow(tau, 2) - 2.0 * pow(tau, 3));
     }
 }
