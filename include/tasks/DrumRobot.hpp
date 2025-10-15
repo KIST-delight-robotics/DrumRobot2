@@ -23,6 +23,7 @@
 #include <chrono>
 #include <set>
 #include <SFML/Audio.hpp>
+#include <termios.h>
 
 #include "SystemState.hpp"
 #include "../include/managers/CanManager.hpp"
@@ -208,4 +209,12 @@ private:
 
     void generateCodeFromMIDI(std::string midPath, std::string veloPath, int recordingIndex, bool endFlag);
 
+    ///////////////Arduino///////////////
+
+    bool ArduinoConnect(const char* port_name);
+    void ArduinoDisconnect();
+    bool sendArduinoCommand(int command_num);
+
+    int arduino_port;
+    bool is_connected = false;
 };

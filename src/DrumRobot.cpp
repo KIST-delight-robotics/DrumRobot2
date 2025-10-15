@@ -372,6 +372,7 @@ bool DrumRobot::initializePos(const std::string &input)
     // set zero
     if (input == "o")
     {
+        sendArduinoCommand(1);
         for (const auto &motorPair : motors)
         {
             if (std::shared_ptr<TMotor> tMotor = std::dynamic_pointer_cast<TMotor>(motorPair.second))
@@ -433,6 +434,8 @@ void DrumRobot::initializeDrumRobot()
 
     usbio.initUSBIO4761();
     fun.openCSVFile();
+
+    ArduinoConnect("/dev/ttyACM0");
 
     // 폴더 비우기
     initializeFolder();
@@ -980,6 +983,7 @@ void DrumRobot::processInput(const std::string &input, string flagName)
     if (input == "r" && flagName == "isHome")
     {
         flagObj.setAddStanceFlag("isReady");
+        sendArduinoCommand(2);
         state.main = Main::AddStance;
     }
     else if (input == "p" && flagName == "isReady")
@@ -1589,6 +1593,9 @@ void DrumRobot::sendPlayProcess()
         setSyncTime((int)inputWaitMs);
     }
 
+
+    sendArduinoCommand(3);
+
     while (!endOfScore)
     {
         std::ifstream inputFile;
@@ -1696,12 +1703,14 @@ void DrumRobot::sendPlayProcess()
     if (repeatNum == currentIterations)
     {
         flagObj.setAddStanceFlag("isHome"); // 연주 종료 후 Home 으로 이동
+        sendArduinoCommand(2);
         repeatNum = 1;
         currentIterations = 1;
     }
     else
     {
         flagObj.setAddStanceFlag("isReady"); // Play 반복 시 Ready 으로 이동
+        sendArduinoCommand(2);
     }
     
     state.main = Main::AddStance;
@@ -2044,4 +2053,122 @@ void DXL::commandToValues(int32_t values[], vector<float> command)
 
     // Goal Position
     values[2] = angleToTick(command[2]);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/*                                  Arduino                                   */
+////////////////////////////////////////////////////////////////////////////////
+
+// 연결 함수
+bool DrumRobot::ArduinoConnect(const char* port_name) 
+{
+    // 이미 연결되어 있다면 아무것도 하지 않음
+    if (is_connected) {
+        std::cout << "이미 연결되어 있습니다." << std::endl;
+        return true;
+    }
+
+    // 1. 시리얼 포트 열기
+    arduino_port = open(port_name, O_RDWR);
+
+    if (arduino_port < 0) {
+        std::cerr << "에러: 시리얼 포트를 열 수 없습니다. (" << port_name << ")" << std::endl;
+        std::cerr << strerror(errno) << std::endl;
+        return false; // 실패
+    }
+    
+    // 2. 시리얼 포트 설정 (termios 구조체 사용)
+    struct termios tty;
+
+    // 현재 포트 설정을 읽어옴
+    if (tcgetattr(arduino_port, &tty) != 0) {
+        std::cerr << "에러: 포트 설정을 읽어오는 데 실패했습니다: " << strerror(errno) << std::endl;
+        close(arduino_port); // 포트를 열었으므로 닫아줘야 함
+        return false;
+    }
+
+    // --- 통신 설정 시작 ---
+    // (a) 통신 속도(Baud Rate) 설정: 9600 bps
+    cfsetispeed(&tty, B115200);
+    cfsetospeed(&tty, B115200);
+
+    // (b) 표준 설정 (8N1: 8 데이터 비트, 패리티 없음, 1 스톱 비트)
+    tty.c_cflag &= ~PARENB; // 패리티 비트 비활성화 (No Parity)
+    tty.c_cflag &= ~CSTOPB; // 스톱 비트 1개로 설정 (1 Stop bit)
+    tty.c_cflag &= ~CSIZE;  // 데이터 비트 크기 필드를 먼저 초기화
+    tty.c_cflag |= CS8;     // 데이터 비트 8개로 설정 (8 Data bits)
+
+    // (c) 하드웨어 흐름 제어(Flow Control) 비활성화
+    tty.c_cflag &= ~CRTSCTS;
+
+    // (d) 로컬 모드 및 수신 활성화 (필수)
+    tty.c_cflag |= CREAD | CLOCAL;
+
+    // (e) 로우(Raw) 모드 설정 (가장 중요)
+    // 아두이노와 통신할 때는 운영체제가 데이터를 가공하지 않도록 설정해야 함
+    tty.c_lflag &= ~ICANON; // Canonical 모드 비활성화
+    tty.c_lflag &= ~ECHO;   // 입력된 문자를 다시 보내지 않음 (Echo off)
+    tty.c_lflag &= ~ECHOE;
+    tty.c_lflag &= ~ECHONL;
+    tty.c_lflag &= ~ISIG;   // 제어 문자(Ctrl+C 등) 무시
+
+    // (f) 소프트웨어 흐름 제어 비활성화
+    tty.c_iflag &= ~(IXON | IXOFF | IXANY);
+
+    // (g) 출력 데이터 가공 비활성화
+    tty.c_oflag &= ~OPOST;
+
+    if (tcsetattr(arduino_port, TCSANOW, &tty) != 0) {
+        std::cerr << "에러: 포트 설정을 적용하는 데 실패했습니다." << std::endl;
+        close(arduino_port);
+        return false; // 실패
+    }
+
+    std::cout << "시리얼 포트(" << port_name << ") 연결 및 설정 완료." << std::endl;
+    is_connected = true;
+    return true; // 성공
+}
+
+// 연결 해제 함수
+void DrumRobot::ArduinoDisconnect() 
+{
+    if (is_connected) {
+        close(arduino_port);
+        is_connected = false;
+        arduino_port = -1;
+        std::cout << "시리얼 포트 연결을 해제했습니다." << std::endl;
+    }
+}
+
+// 명령 전송 함수
+bool DrumRobot::sendArduinoCommand(int command_num) 
+{
+    // 1 : yellow -> green / offset setting
+    // 2 : green / ready
+    // 3 : blue / play
+    // 연결이 안 되어있으면 에러
+    if (!is_connected) {
+        std::cerr << "에러: 아두이노가 연결되지 않아 명령을 보낼 수 없습니다." << std::endl;
+        return false;
+    }
+
+    // int를 char로 변환 (0~9 사이의 숫자만 가능)
+    // 예: 숫자 1 -> 문자 '1' (ASCII 49)
+    if (command_num < 0 || command_num > 9) {
+        std::cerr << "에러: 0-9 사이의 숫자만 보낼 수 있습니다." << std::endl;
+        return false;
+    }
+    char msg_to_send = command_num + '0';       // 문자 '0'은 숫자 48에 해당됨 
+
+    std::cout << arduino_port << std::endl;
+    // 변환된 문자를 아두이노로 전송
+    int bytes_written = write(arduino_port, &msg_to_send, 1);
+
+    if (bytes_written < 0) {
+        std::cerr << "에러: 데이터 쓰기에 실패했습니다." << std::endl;
+        return false;
+    }
+
+    // std::cout << "아두이노로 명령 '" << msg_to_send << "' 전송 완료." << std::endl;
+    return true;
 }

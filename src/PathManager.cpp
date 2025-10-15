@@ -156,7 +156,7 @@ void PathManager::pushAddStancePath(string flagName)
     else if (flagName == "isReady")
     {
         degree1 = 0.0;
-        degree2 = 90.0;
+        degree2 = 110.0;
     }
     else if (flagName == "isShutDown")
     {
@@ -2184,7 +2184,7 @@ void PathManager::genDxlTrajectory(MatrixXd &measureMatrix, int n)
     double curAngle  = getInstAngle(curInst);
     double targetAngle = getInstAngle(nextInst);
 
-    double beatOfLine = measureMatrix(1, 1) / 0.6;;
+    double beatOfLine = measureMatrix(1, 1) / 0.6;
     static double beatSum = 0.0;
 
     for (int i = 0; i < n; i++)
