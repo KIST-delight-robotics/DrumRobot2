@@ -612,10 +612,12 @@ void DrumRobot::stateMachine()
             case Main::AddStance:
             {
                 sendAddStanceProcess();
+                sendArduinoCommand(2);
                 break;
             }
             case Main::Play:
             {
+                sendArduinoCommand(3);
                 sendPlayProcess();
                 break;
             }
@@ -1593,9 +1595,6 @@ void DrumRobot::sendPlayProcess()
         setSyncTime((int)inputWaitMs);
     }
 
-
-    sendArduinoCommand(3);
-
     while (!endOfScore)
     {
         std::ifstream inputFile;
@@ -1703,14 +1702,12 @@ void DrumRobot::sendPlayProcess()
     if (repeatNum == currentIterations)
     {
         flagObj.setAddStanceFlag("isHome"); // 연주 종료 후 Home 으로 이동
-        sendArduinoCommand(2);
         repeatNum = 1;
         currentIterations = 1;
     }
     else
     {
         flagObj.setAddStanceFlag("isReady"); // Play 반복 시 Ready 으로 이동
-        sendArduinoCommand(2);
     }
     
     state.main = Main::AddStance;
