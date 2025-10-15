@@ -108,7 +108,7 @@ class MagentaManager:
 # output_path = 'test'
 
 # mgt = MagentaManager(config_name='cat-drums_2bar_small', checkpoint_path='/home/shy/DrumRobot/magenta/model/cat-drums_2bar_small.hikl.tar')
-# mgt.interpolate_music(input_midi1, input_midi2, output_path)
+# mgt.generate_music(output_path)
 
 # input_path = 'magenta/basic/basic_4beats_1.mid'
 # output_path = '/home/shy/output_based'

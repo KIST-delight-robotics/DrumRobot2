@@ -263,7 +263,7 @@ private:
     pair<VectorXd, double> getTargetPosition(VectorXd &inst, char RL);
     double calTimeScaling(double ti, double tf, double t);
     VectorXd makeTaskSpacePath(VectorXd &Pi, VectorXd &Pf, double s);
-    VectorXd getWaistParams(VectorXd &pR, VectorXd &pL);
+    VectorXd getWaistParams(VectorXd &pR, VectorXd &pL, double theta7, double theta8);
     void storeWaistParams(int n, VectorXd &waistParams);
 
     //////////////////////////////////// Hit Trajectory
