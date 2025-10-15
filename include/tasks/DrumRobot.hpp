@@ -81,7 +81,7 @@ private:
     bool useDXL = true;
     vector<uint8_t> motorIDs; // 연결된 다이나믹셀 ID
     
-    int32_t angleToTick(float degree);
+    int32_t angleToTick(float angle);
     float tickToAngle(int32_t ticks);
     void commandToValues(int32_t values[], vector<float> command);
 };
