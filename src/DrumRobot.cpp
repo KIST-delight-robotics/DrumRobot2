@@ -372,7 +372,7 @@ bool DrumRobot::initializePos(const std::string &input)
     // set zero
     if (input == "o")
     {
-        sendArduinoCommand(1);
+        // sendArduinoCommand(1);
         for (const auto &motorPair : motors)
         {
             if (std::shared_ptr<TMotor> tMotor = std::dynamic_pointer_cast<TMotor>(motorPair.second))
@@ -398,6 +398,8 @@ bool DrumRobot::initializePos(const std::string &input)
 
         maxonMotorEnable();
         setMaxonMotorMode("CSP");
+
+        sendArduinoCommand(1);
 
         state.main = Main::AddStance;
         flagObj.setAddStanceFlag("isHome"); // 시작 자세는 Home 자세와 같음

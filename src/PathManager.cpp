@@ -2234,6 +2234,8 @@ void PathManager::genDxlTrajectory(MatrixXd &measureMatrix, int n)
         std::string fileName = "DXL_Angle";
         fun.appendToCSV(fileName, false, DXL.dxl1, DXL.dxl2);
     }
+
+    curInst = nextInst;
 }
 
 float PathManager::getInstAngle(int Inst)
