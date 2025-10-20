@@ -400,8 +400,6 @@ bool DrumRobot::initializePos(const std::string &input)
         maxonMotorEnable();
         setMaxonMotorMode("CSP");
 
-        sendArduinoCommand(1);
-
         state.main = Main::AddStance;
         flagObj.setAddStanceFlag(FlagClass::HOME); // 시작 자세는 Home 자세와 같음
 
@@ -478,7 +476,7 @@ void DrumRobot::deactivateControlTask()
         }
     }
     dxl.DXLTorqueOff();
-    ArduinoDisconnect();
+    arduino.disconnect();
 }
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -1933,7 +1931,7 @@ void DXL::initialize()
     uint8_t err = 0;
     for (uint8_t id : motorIDs)
     {
-        pkt->write1ByteTxRx(port, id, 64, 0, &err);
+        pkt->write1ByteTxRx(port, id, 64, 1, &err);
     }
 }
 
@@ -2308,7 +2306,7 @@ bool Arduino::sendCommand(int command_num)
         return false;
     }
 
-    // std::cout << "아두이노로 명령 '" << msg_to_send << "' 전송 완료." << std::endl;
+    std::cout << "아두이노로 명령 '" << msg_to_send << "' 전송 완료." << std::endl;
     return true;
 }
 
