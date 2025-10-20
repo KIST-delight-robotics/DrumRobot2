@@ -391,7 +391,6 @@ bool DrumRobot::initializePos(const std::string &input)
             }
         }
 
-
         std::cout << "set zero and offset setting ~ ~ ~\n";
         sleep(2);   // Set Zero 명령이 확실히 실행된 후
 
