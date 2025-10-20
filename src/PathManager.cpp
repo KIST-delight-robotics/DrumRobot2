@@ -313,80 +313,37 @@ VectorXd PathManager::getFinalMotorPosition()
     return Qf;
 }
 
-VectorXd PathManager::makeProfile(VectorXd &q1, VectorXd &q2, VectorXd &Vmax, float t, float t2)
+VectorXd PathManager::getAddStanceAngle(string flagName)
 {
-    VectorXd Qi = VectorXd::Zero(12);
+    VectorXd Qf = VectorXd::Zero(12);
 
-    for (int i = 0; i < 12; i++)
+    if (flagName == "isHome")
     {
-        double val, S;
-        int sign;
-
-        S = q2(i) - q1(i);
-
-        // 부호 확인, 이동거리 양수로 변경
-        if (S < 0)
+        for (int i = 0; i < 12; i++)
         {
-            S = abs(S);
-            sign = -1;
+            Qf(i) = homeAngle(i);
         }
-        else
+    }
+    else if (flagName == "isReady")
+    {
+        for (int i = 0; i < 12; i++)
         {
-            sign = 1;
+            Qf(i) = readyAngle(i);
         }
-
-        // 궤적 생성
-        if (S == 0)
+    }
+    else if (flagName == "isShutDown")
+    {
+        for (int i = 0; i < 12; i++)
         {
-            // 정지
-            val = q1(i);
+            Qf(i) = shutdownAngle(i);
         }
-        else if (Vmax(i) < 0)
-        {
-            // Vmax 값을 구하지 못했을 때 삼각형 프로파일 생성
-            double acc_tri = 4 * S / t2 / t2;
-
-            if (t < t2 / 2)
-            {
-                val = q1(i) + sign * 0.5 * acc_tri * t * t;
-            }
-            else if (t < t2)
-            {
-                val = q2(i) - sign * 0.5 * acc_tri * (t2 - t) * (t2 - t);
-            }
-            else
-            {
-                val = q2(i);
-            }
-        }
-        else
-        {
-            // 사다리꼴 프로파일
-            if (t < Vmax(i) / accMax)
-            {
-                // 가속
-                val = q1(i) + sign * 0.5 * accMax * t * t;
-            }
-            else if (t < S / Vmax(i))
-            {
-                // 등속
-                val = q1(i) + (sign * 0.5 * Vmax(i) * Vmax(i) / accMax) + (sign * Vmax(i) * (t - Vmax(i) / accMax));
-            }
-            else if (t < Vmax(i) / accMax + S / Vmax(i))
-            {
-                // 감속
-                val = q2(i) - sign * 0.5 * accMax * (S / Vmax(i) + Vmax(i) / accMax - t) * (S / Vmax(i) + Vmax(i) / accMax - t);
-            }
-            else
-            {
-                val = q2(i);
-            }
-        }
-
-        Qi(i) = val;
+    }
+    else
+    {
+        std::cout << "AddStance Flag Error !\n";
     }
 
-    return Qi;
+    return Qf;
 }
 
 void PathManager::pushAddStance(VectorXd &Q1, VectorXd &Q2)
@@ -472,39 +429,6 @@ void PathManager::pushAddStance(VectorXd &Q1, VectorXd &Q2)
     }
 }
 
-VectorXd PathManager::getAddStanceAngle(string flagName)
-{
-    VectorXd Qf = VectorXd::Zero(12);
-
-    if (flagName == "isHome")
-    {
-        for (int i = 0; i < 12; i++)
-        {
-            Qf(i) = homeAngle(i);
-        }
-    }
-    else if (flagName == "isReady")
-    {
-        for (int i = 0; i < 12; i++)
-        {
-            Qf(i) = readyAngle(i);
-        }
-    }
-    else if (flagName == "isShutDown")
-    {
-        for (int i = 0; i < 12; i++)
-        {
-            Qf(i) = shutdownAngle(i);
-        }
-    }
-    else
-    {
-        std::cout << "AddStance Flag Error !\n";
-    }
-
-    return Qf;
-}
-
 VectorXd PathManager::calVmax(VectorXd &q1, VectorXd &q2, float t2)
 {
     VectorXd Vmax = VectorXd::Zero(12);
@@ -551,6 +475,82 @@ VectorXd PathManager::calVmax(VectorXd &q1, VectorXd &q2, float t2)
     }
 
     return Vmax;
+}
+
+VectorXd PathManager::makeProfile(VectorXd &q1, VectorXd &q2, VectorXd &Vmax, float t, float t2)
+{
+    VectorXd Qi = VectorXd::Zero(12);
+
+    for (int i = 0; i < 12; i++)
+    {
+        double val, S;
+        int sign;
+
+        S = q2(i) - q1(i);
+
+        // 부호 확인, 이동거리 양수로 변경
+        if (S < 0)
+        {
+            S = abs(S);
+            sign = -1;
+        }
+        else
+        {
+            sign = 1;
+        }
+
+        // 궤적 생성
+        if (S == 0)
+        {
+            // 정지
+            val = q1(i);
+        }
+        else if (Vmax(i) < 0)
+        {
+            // Vmax 값을 구하지 못했을 때 삼각형 프로파일 생성
+            double acc_tri = 4 * S / t2 / t2;
+
+            if (t < t2 / 2)
+            {
+                val = q1(i) + sign * 0.5 * acc_tri * t * t;
+            }
+            else if (t < t2)
+            {
+                val = q2(i) - sign * 0.5 * acc_tri * (t2 - t) * (t2 - t);
+            }
+            else
+            {
+                val = q2(i);
+            }
+        }
+        else
+        {
+            // 사다리꼴 프로파일
+            if (t < Vmax(i) / accMax)
+            {
+                // 가속
+                val = q1(i) + sign * 0.5 * accMax * t * t;
+            }
+            else if (t < S / Vmax(i))
+            {
+                // 등속
+                val = q1(i) + (sign * 0.5 * Vmax(i) * Vmax(i) / accMax) + (sign * Vmax(i) * (t - Vmax(i) / accMax));
+            }
+            else if (t < Vmax(i) / accMax + S / Vmax(i))
+            {
+                // 감속
+                val = q2(i) - sign * 0.5 * accMax * (S / Vmax(i) + Vmax(i) / accMax - t) * (S / Vmax(i) + Vmax(i) / accMax - t);
+            }
+            else
+            {
+                val = q2(i);
+            }
+        }
+
+        Qi(i) = val;
+    }
+
+    return Qi;
 }
 
 void PathManager::pushAddStanceDXL(string flagName)
@@ -2299,6 +2299,7 @@ float PathManager::makeNod(double beatOfLine, double nodIntensity, int i, int n)
     double nodAngle = 0.0;
 
     // 세기
+    // nodIntensity [0 1]
     static double preNodIntensity = 0.0;
     double alpha = (i * nodIntensity + (n - i) * preNodIntensity) / (double)n;
 
