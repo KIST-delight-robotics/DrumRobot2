@@ -372,7 +372,6 @@ bool DrumRobot::initializePos(const std::string &input)
     // set zero
     if (input == "o")
     {
-        sendArduinoCommand(1);
         for (const auto &motorPair : motors)
         {
             if (std::shared_ptr<TMotor> tMotor = std::dynamic_pointer_cast<TMotor>(motorPair.second))
@@ -395,6 +394,8 @@ bool DrumRobot::initializePos(const std::string &input)
 
         std::cout << "set zero and offset setting ~ ~ ~\n";
         sleep(2);   // Set Zero 명령이 확실히 실행된 후
+
+        setHeadLED("POWER_ON"); // led 로딩바 차는 모션 실행
 
         maxonMotorEnable();
         setMaxonMotorMode("CSP");
@@ -614,7 +615,6 @@ void DrumRobot::stateMachine()
             case Main::AddStance:
             {
                 runAddStanceProcess();
-                sendArduinoCommand(2);
                 break;
             }
             case Main::Play:
@@ -643,6 +643,8 @@ void DrumRobot::stateMachine()
             }
         }
     }
+
+    setHeadLED("POWER_OFF"); // LED 프로그램 종료시 점등 -> Chzzk
 
     // Exit
     if (usbio.useUSBIO)
@@ -986,7 +988,6 @@ void DrumRobot::processInput(const std::string &input, string flagName)
     if (input == "r" && flagName == "isHome")
     {
         flagObj.setAddStanceFlag("isReady");
-        sendArduinoCommand(2);
         state.main = Main::AddStance;
     }
     else if (input == "p" && flagName == "isReady")
@@ -1005,7 +1006,6 @@ void DrumRobot::processInput(const std::string &input, string flagName)
     else if (input == "s" && flagName == "isHome")
     {
         flagObj.setAddStanceFlag("isShutDown");
-        sendArduinoCommand(4);
         state.main = Main::AddStance;
     }
     else if (input == "t")
@@ -1050,6 +1050,8 @@ void DrumRobot::idealStateRoutine()
             state.main = Main::Play;
             return;
         }
+
+        setHeadLED("IDLE"); // led 연주전 대기상태 -> 빨간 점등
 
         int ret = system("clear");
         if (ret == -1)
@@ -1575,6 +1577,8 @@ void DrumRobot::runPlayProcess()
         currentIterations = 1;
         txtPath = selectPlayMode();
 
+        setHeadLED("PLAYING"); // led 연주중 점등 -> 아이보리 
+
         if (txtPath == "null")  // 잘못 입력한 경우 : Ideal 로 이동
         {
             repeatNum = 1;
@@ -1597,7 +1601,7 @@ void DrumRobot::runPlayProcess()
         setSyncTime((int)inputWaitMs);
     }
 
-    sendArduinoCommand(3);
+
 
     while (!endOfScore)
     {
@@ -2173,4 +2177,24 @@ bool DrumRobot::sendArduinoCommand(int command_num)
 
     // std::cout << "아두이노로 명령 '" << msg_to_send << "' 전송 완료." << std::endl;
     return true;
+}
+
+void DrumRobot::setHeadLED(std::string action)
+{
+    if (action == "POWER_ON")
+    {
+        sendArduinoCommand(1);
+    }
+    else if (action == "IDLE")
+    {
+        sendArduinoCommand(2);
+    }
+    else if (action == "PLAYING")
+    {
+        sendArduinoCommand(3);
+    }
+    else if (action == "POWER_OFF")
+    {
+        sendArduinoCommand(4);
+    }
 }

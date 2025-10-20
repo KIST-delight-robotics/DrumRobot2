@@ -214,6 +214,7 @@ private:
     bool ArduinoConnect(const char* port_name);
     void ArduinoDisconnect();
     bool sendArduinoCommand(int command_num);
+    void setHeadLED(std::string action);
 
     int arduino_port;
     bool is_connected = false;
