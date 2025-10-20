@@ -395,7 +395,7 @@ bool DrumRobot::initializePos(const std::string &input)
         std::cout << "set zero and offset setting ~ ~ ~\n";
         sleep(2);   // Set Zero 명령이 확실히 실행된 후
 
-        setHeadLED("POWER_ON"); // led 로딩바 차는 모션 실행
+        arduino.setHeadLED(Arduino::POWER_ON);  // led 로딩바 차는 모션 실행
 
         maxonMotorEnable();
         setMaxonMotorMode("CSP");
@@ -403,19 +403,9 @@ bool DrumRobot::initializePos(const std::string &input)
         sendArduinoCommand(1);
 
         state.main = Main::AddStance;
-        flagObj.setAddStanceFlag("isHome"); // 시작 자세는 Home 자세와 같음
+        flagObj.setAddStanceFlag(FlagClass::HOME); // 시작 자세는 Home 자세와 같음
 
         return true;
-    }
-    else if (input == "i")
-    {
-        // maxonMotorEnable();
-        // setMaxonMotorMode("CSP");
-
-        // state.main = Main::AddStance;
-        // flagObj.setAddStanceFlag("isHome");
-        
-        return false;
     }
     else
     {
@@ -438,7 +428,8 @@ void DrumRobot::initializeDrumRobot()
     usbio.initUSBIO4761();
     fun.openCSVFile();
 
-    ArduinoConnect("/dev/ttyACM0");
+    // ArduinoConnect("/dev/ttyACM0");
+    arduino.connect("/dev/ttyACM0");
 
     // 폴더 비우기
     initializeFolder();
@@ -646,7 +637,7 @@ void DrumRobot::stateMachine()
         }
     }
 
-    setHeadLED("POWER_OFF"); // LED 프로그램 종료시 점등 -> Chzzk
+    arduino.setHeadLED(Arduino::POWER_OFF);  // LED 프로그램 종료시 점등 -> Chzzk
 
     // Exit
     if (usbio.useUSBIO)
@@ -989,7 +980,7 @@ void DrumRobot::processInput(const std::string &input, string flagName)
 {
     if (input == "r" && flagName == "isHome")
     {
-        flagObj.setAddStanceFlag("isReady");
+        flagObj.setAddStanceFlag(FlagClass::READY);
         state.main = Main::AddStance;
     }
     else if (input == "p" && flagName == "isReady")
@@ -1002,12 +993,12 @@ void DrumRobot::processInput(const std::string &input, string flagName)
     // }
     else if (input == "h" && flagName == "isReady")
     {
-        flagObj.setAddStanceFlag("isHome");
+        flagObj.setAddStanceFlag(FlagClass::HOME);
         state.main = Main::AddStance;
     }
     else if (input == "s" && flagName == "isHome")
     {
-        flagObj.setAddStanceFlag("isShutDown");
+        flagObj.setAddStanceFlag(FlagClass::SHUTDOWN);
         state.main = Main::AddStance;
     }
     else if (input == "t")
@@ -1053,7 +1044,7 @@ void DrumRobot::idealStateRoutine()
             return;
         }
 
-        setHeadLED("IDLE"); // led 연주전 대기상태 -> 빨간 점등
+        arduino.setHeadLED(Arduino::IDLE);  // led 연주전 대기상태 -> 빨간 점등
 
         int ret = system("clear");
         if (ret == -1)
@@ -1579,14 +1570,14 @@ void DrumRobot::runPlayProcess()
         currentIterations = 1;
         txtPath = selectPlayMode();
 
-        setHeadLED("PLAYING"); // led 연주중 점등 -> 아이보리 
-
         if (txtPath == "null")  // 잘못 입력한 경우 : Ideal 로 이동
         {
             repeatNum = 1;
             state.main = Main::Ideal;
             return;
         }
+
+        arduino.setHeadLED(Arduino::PLAYING);  // led 연주중 점등 -> 아이보리 
     }
     else
     {
@@ -1711,13 +1702,13 @@ void DrumRobot::runPlayProcess()
     std::cout << "Play is Over\n";
     if (repeatNum == currentIterations)
     {
-        flagObj.setAddStanceFlag("isHome"); // 연주 종료 후 Home 으로 이동
+        flagObj.setAddStanceFlag(FlagClass::HOME); // 연주 종료 후 Home 으로 이동
         repeatNum = 1;
         currentIterations = 1;
     }
     else
     {
-        flagObj.setAddStanceFlag("isReady"); // Play 반복 시 Ready 으로 이동
+        flagObj.setAddStanceFlag(FlagClass::READY); // Play 반복 시 Ready 으로 이동
     }
     
     state.main = Main::AddStance;
@@ -1839,37 +1830,22 @@ FlagClass::~FlagClass()
 
 }
 
-void FlagClass::setAddStanceFlag(string flagName)
+void FlagClass::setAddStanceFlag(AddStanceFlag flag)
 {
-    if (flagName == "isHome")
-    {
-        addStanceFlag = ISHOME;
-    }
-    else if (flagName == "isReady")
-    {
-        addStanceFlag = ISREADY;
-    }
-    else if (flagName == "isShutDown")
-    {
-        addStanceFlag = ISSHUTDOWN;
-    }
-    else
-    {
-        cout << "Invalid Flag Name\n";
-    }
+    addStanceFlag = flag;
 }
 
 string FlagClass::getAddStanceFlag()
 {
-    if (addStanceFlag == ISHOME)
+    if (addStanceFlag == HOME)
     {
         return "isHome";
     }
-    else if (addStanceFlag == ISREADY)
+    else if (addStanceFlag == READY)
     {
         return "isReady";
     }
-    else if (addStanceFlag == ISSHUTDOWN)
+    else if (addStanceFlag == SHUTDOWN)
     {
         return "isShutDown";
     }
@@ -2077,8 +2053,156 @@ void DXL::commandToValues(int32_t values[], vector<float> command)
 /*                                  Arduino                                   */
 ////////////////////////////////////////////////////////////////////////////////
 
+// // 연결 함수
+// bool DrumRobot::ArduinoConnect(const char* port_name) 
+// {
+//     // 이미 연결되어 있다면 아무것도 하지 않음
+//     if (is_connected) {
+//         std::cout << "이미 연결되어 있습니다." << std::endl;
+//         return true;
+//     }
+
+//     // 1. 시리얼 포트 열기
+//     arduino_port = open(port_name, O_RDWR);
+
+//     if (arduino_port < 0) {
+//         std::cerr << "에러: 시리얼 포트를 열 수 없습니다. (" << port_name << ")" << std::endl;
+//         std::cerr << strerror(errno) << std::endl;
+//         return false; // 실패
+//     }
+    
+//     // 2. 시리얼 포트 설정 (termios 구조체 사용)
+//     struct termios tty;
+
+//     // 현재 포트 설정을 읽어옴
+//     if (tcgetattr(arduino_port, &tty) != 0) {
+//         std::cerr << "에러: 포트 설정을 읽어오는 데 실패했습니다: " << strerror(errno) << std::endl;
+//         close(arduino_port); // 포트를 열었으므로 닫아줘야 함
+//         return false;
+//     }
+
+//     // --- 통신 설정 시작 ---
+//     // (a) 통신 속도(Baud Rate) 설정: 9600 bps
+//     cfsetispeed(&tty, B115200);
+//     cfsetospeed(&tty, B115200);
+
+//     // (b) 표준 설정 (8N1: 8 데이터 비트, 패리티 없음, 1 스톱 비트)
+//     tty.c_cflag &= ~PARENB; // 패리티 비트 비활성화 (No Parity)
+//     tty.c_cflag &= ~CSTOPB; // 스톱 비트 1개로 설정 (1 Stop bit)
+//     tty.c_cflag &= ~CSIZE;  // 데이터 비트 크기 필드를 먼저 초기화
+//     tty.c_cflag |= CS8;     // 데이터 비트 8개로 설정 (8 Data bits)
+
+//     // (c) 하드웨어 흐름 제어(Flow Control) 비활성화
+//     tty.c_cflag &= ~CRTSCTS;
+
+//     // (d) 로컬 모드 및 수신 활성화 (필수)
+//     tty.c_cflag |= CREAD | CLOCAL;
+
+//     // (e) 로우(Raw) 모드 설정 (가장 중요)
+//     // 아두이노와 통신할 때는 운영체제가 데이터를 가공하지 않도록 설정해야 함
+//     tty.c_lflag &= ~ICANON; // Canonical 모드 비활성화
+//     tty.c_lflag &= ~ECHO;   // 입력된 문자를 다시 보내지 않음 (Echo off)
+//     tty.c_lflag &= ~ECHOE;
+//     tty.c_lflag &= ~ECHONL;
+//     tty.c_lflag &= ~ISIG;   // 제어 문자(Ctrl+C 등) 무시
+
+//     // (f) 소프트웨어 흐름 제어 비활성화
+//     tty.c_iflag &= ~(IXON | IXOFF | IXANY);
+
+//     // (g) 출력 데이터 가공 비활성화
+//     tty.c_oflag &= ~OPOST;
+
+//     if (tcsetattr(arduino_port, TCSANOW, &tty) != 0) {
+//         std::cerr << "에러: 포트 설정을 적용하는 데 실패했습니다." << std::endl;
+//         close(arduino_port);
+//         return false; // 실패
+//     }
+
+//     std::cout << "시리얼 포트(" << port_name << ") 연결 및 설정 완료." << std::endl;
+//     is_connected = true;
+//     return true; // 성공
+// }
+
+// // 연결 해제 함수
+// void DrumRobot::ArduinoDisconnect() 
+// {
+//     if (is_connected) {
+//         close(arduino_port);
+//         is_connected = false;
+//         arduino_port = -1;
+//         std::cout << "시리얼 포트 연결을 해제했습니다." << std::endl;
+//     }
+// }
+
+// // 명령 전송 함수
+// bool DrumRobot::sendArduinoCommand(int command_num) 
+// {
+//     // 1 : yellow -> green / offset setting
+//     // 2 : green / ready
+//     // 3 : blue / play
+//     // 연결이 안 되어있으면 에러
+//     if (!is_connected) {
+//         std::cerr << "에러: 아두이노가 연결되지 않아 명령을 보낼 수 없습니다." << std::endl;
+//         return false;
+//     }
+
+//     // int를 char로 변환 (0~9 사이의 숫자만 가능)
+//     // 예: 숫자 1 -> 문자 '1' (ASCII 49)
+//     if (command_num < 0 || command_num > 9) {
+//         std::cerr << "에러: 0-9 사이의 숫자만 보낼 수 있습니다." << std::endl;
+//         return false;
+//     }
+//     char msg_to_send = command_num + '0';       // 문자 '0'은 숫자 48에 해당됨 
+
+//     std::cout << arduino_port << std::endl;
+//     // 변환된 문자를 아두이노로 전송
+//     int bytes_written = write(arduino_port, &msg_to_send, 1);
+
+//     if (bytes_written < 0) {
+//         std::cerr << "에러: 데이터 쓰기에 실패했습니다." << std::endl;
+//         return false;
+//     }
+
+//     // std::cout << "아두이노로 명령 '" << msg_to_send << "' 전송 완료." << std::endl;
+//     return true;
+// }
+
+// void DrumRobot::setHeadLED(std::string action)
+// {
+//     if (action == "POWER_ON")
+//     {
+//         sendArduinoCommand(1);
+//     }
+//     else if (action == "IDLE")
+//     {
+//         sendArduinoCommand(2);
+//     }
+//     else if (action == "PLAYING")
+//     {
+//         sendArduinoCommand(3);
+//     }
+//     else if (action == "POWER_OFF")
+//     {
+//         sendArduinoCommand(4);
+//     }
+// }
+
+////////////////////////////////////////////////////////////////////////////////
+/*                                  Arduino                                   */
+////////////////////////////////////////////////////////////////////////////////
+
+Arduino::Arduino()
+{
+
+}
+
+Arduino::~Arduino()
+{
+
+}
+
 // 연결 함수
-bool DrumRobot::ArduinoConnect(const char* port_name) 
+bool Arduino::connect(const char* port_name) 
 {
     // 이미 연결되어 있다면 아무것도 하지 않음
     if (is_connected) {
@@ -2148,7 +2272,7 @@ bool DrumRobot::ArduinoConnect(const char* port_name)
 }
 
 // 연결 해제 함수
-void DrumRobot::ArduinoDisconnect() 
+void Arduino::disconnect()
 {
     if (is_connected) {
         close(arduino_port);
@@ -2159,11 +2283,8 @@ void DrumRobot::ArduinoDisconnect()
 }
 
 // 명령 전송 함수
-bool DrumRobot::sendArduinoCommand(int command_num) 
+bool Arduino::sendCommand(int command_num)
 {
-    // 1 : yellow -> green / offset setting
-    // 2 : green / ready
-    // 3 : blue / play
     // 연결이 안 되어있으면 에러
     if (!is_connected) {
         std::cerr << "에러: 아두이노가 연결되지 않아 명령을 보낼 수 없습니다." << std::endl;
@@ -2191,22 +2312,26 @@ bool DrumRobot::sendArduinoCommand(int command_num)
     return true;
 }
 
-void DrumRobot::setHeadLED(std::string action)
+void Arduino::setHeadLED(Action action)
 {
-    if (action == "POWER_ON")
+    if (action == POWER_ON && headLED != POWER_ON)
     {
-        sendArduinoCommand(1);
+        sendCommand(1);
+        headLED = POWER_ON;
     }
-    else if (action == "IDLE")
+    else if (action == IDLE && headLED != IDLE)
     {
-        sendArduinoCommand(2);
+        sendCommand(2);
+        headLED = IDLE;
     }
-    else if (action == "PLAYING")
+    else if (action == PLAYING && headLED != PLAYING)
     {
-        sendArduinoCommand(3);
+        sendCommand(3);
+        headLED = PLAYING;
     }
-    else if (action == "POWER_OFF")
+    else if (action == POWER_OFF && headLED != POWER_OFF)
     {
-        sendArduinoCommand(4);
+        sendCommand(4);
+        headLED = POWER_OFF;
     }
 }

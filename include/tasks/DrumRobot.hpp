@@ -44,12 +44,15 @@ public:
     ~FlagClass();
 
     // AddStance
-    const int ISSTART = 0;
-    const int ISHOME = 1;
-    const int ISREADY = 2;
-    const int ISSHUTDOWN = 3;
+    enum AddStanceFlag
+    {
+        START,
+        HOME,
+        READY,
+        SHUTDOWN
+    };
 
-    void setAddStanceFlag(string flagName);
+    void setAddStanceFlag(AddStanceFlag flag);
     string getAddStanceFlag();
 
     // fixed
@@ -58,7 +61,7 @@ public:
 
 private:
 
-    int addStanceFlag = ISSTART;
+    AddStanceFlag addStanceFlag = START;
     bool isFixed = false;
 };
 
@@ -85,6 +88,33 @@ private:
     int32_t angleToTick(float angle);
     float tickToAngle(int32_t ticks);
     void commandToValues(int32_t values[], vector<float> command);
+};
+
+class Arduino
+{
+public:
+    Arduino();
+    ~Arduino();
+
+    enum Action
+    {
+        POWER_ON,
+        IDLE,
+        PLAYING,
+        POWER_OFF
+    };
+
+    bool connect(const char* port_name);
+    void disconnect();
+    void setHeadLED(Action action);
+
+private:
+    int arduino_port;
+    bool is_connected = false;
+    Action headLED = POWER_OFF;
+
+    bool sendCommand(int command_num);
+
 };
 
 class DrumRobot
@@ -141,8 +171,8 @@ private:
 
     FlagClass flagObj;
     bool allMotorsUnConected = true;    // 모든 모터 연결 안됨 - 모터 없이 테스트하는 경우
-
     DXL dxl;
+    Arduino arduino;
 
     //////////////////////////////////////////////////////////////// Initialize
     int maxonMotorSocketCount = 0;    // 1 이상이면 virtual Maxon Motor를 사용하기 위해
@@ -212,11 +242,11 @@ private:
 
     ///////////////Arduino///////////////
 
-    bool ArduinoConnect(const char* port_name);
-    void ArduinoDisconnect();
-    bool sendArduinoCommand(int command_num);
-    void setHeadLED(std::string action);
+    // bool ArduinoConnect(const char* port_name);
+    // void ArduinoDisconnect();
+    // bool sendArduinoCommand(int command_num);
+    // void setHeadLED(std::string action);
 
-    int arduino_port;
-    bool is_connected = false;
+    // int arduino_port;
+    // bool is_connected = false;
 };
