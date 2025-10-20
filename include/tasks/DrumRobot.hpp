@@ -69,6 +69,7 @@ public:
     ~DXL();
 
     void initialize();
+    void DXLTorqueOff();
     void syncWrite(vector<vector<float>> command);
     vector<uint32_t> syncRead();
 

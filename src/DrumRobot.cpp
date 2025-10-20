@@ -486,8 +486,8 @@ void DrumRobot::deactivateControlTask()
             std::cout << "Exiting for motor [" << name << "]" << std::endl;
         }
     }
-
-
+    dxl.DXLTorqueOff();
+    ArduinoDisconnect();
 }
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -1957,7 +1957,17 @@ void DXL::initialize()
     uint8_t err = 0;
     for (uint8_t id : motorIDs)
     {
-        pkt->write1ByteTxRx(port, id, 64, 1, &err);
+        pkt->write1ByteTxRx(port, id, 64, 0, &err);
+    }
+}
+
+void DXL::DXLTorqueOff()
+{
+    // DXL 토크 Off
+    uint8_t err = 0;
+    for (uint8_t id : motorIDs)
+    {
+        pkt->write1ByteTxRx(port, id, 64, 0, &err);
     }
 }
 
