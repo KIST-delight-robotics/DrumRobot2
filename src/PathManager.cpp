@@ -2299,6 +2299,7 @@ float PathManager::makeNod(double beatOfLine, double nodIntensity, int i, int n)
     double nodAngle = 0.0;
 
     // 세기
+    // nodIntensity [0 1]
     static double preNodIntensity = 0.0;
     double alpha = (i * nodIntensity + (n - i) * preNodIntensity) / (double)n;
 
