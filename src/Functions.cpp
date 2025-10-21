@@ -856,121 +856,6 @@ std::pair<int, int> Functions::assignHandsByPosition(int inst1, int inst2) {
     }
 }
 
-
-// void Functions::assignHandsToEvents(const std::string& inputFilename, const std::string& outputFilename) {
-//     std::ifstream input(inputFilename);
-//     if (!input.is_open()) {
-//         std::cerr << "입력 파일 열기 실패: " << inputFilename << "\n";
-//         return;
-//     }
-//     std::ofstream output(outputFilename);
-//     if (!output.is_open()) {
-//         std::cerr << "출력 파일 생성 실패: " << outputFilename << "\n";
-//         return;
-//     }
-
-//     struct FullEvent {
-//         double time;
-//         int inst1 = 0, inst2 = 0, bassHit = 0, hihat = 1;
-//         int rightHand = 0, leftHand = 0;
-//     };
-
-//     std::string line;
-//     std::vector<FullEvent> events;
-//     int prevRight = 0, prevLeft = 0;
-//     int prevRightNote = 1, prevLeftNote = 1;
-//     double prevRightHit = 0, prevLeftHit = 0;
-
-//     while (std::getline(input, line)) {
-//         auto tokens = splitByWhitespace(line);
-//         if (tokens.size() != 7) continue;
-
-//         // inst1, inst2 가 칠 악기이며 그 전 단계에서 무조건 1부터 채운 후 2를 채우게 된다,
-//         FullEvent e;
-//         e.time = std::stod(tokens[0]);
-//         e.inst1 = std::stoi(tokens[1]);
-//         e.inst2 = std::stoi(tokens[2]);
-//         e.bassHit = std::stoi(tokens[5]);
-//         e.hihat = std::stoi(tokens[6]);
-
-//         int inst1 = e.inst1, inst2 = e.inst2;
-//         prevRightHit += e.time;
-//         prevLeftHit += e.time;
-
-//         //오른손으로 크러시 칠때 
-//         //양손 크로스 될때 
-//         //prevRight, prevLeft 전줄에 친 악기
-//         //prevRightHit, prevLefttHit
-//         //크러쉬 관련한 손 어사인
-//         if (inst1 == 8 || inst2 == 8) {
-//             if(prevLeft == 2 ||prevLeft == 3|| prevLeft == 6)
-//             {
-//                 e.rightHand = 7;
-//                 e.leftHand = (inst1 == 8) ? inst2 : inst1;
-//             }
-//             else
-//             {
-//                 if (inst1 == 2 || inst1 == 3 || inst1 == 6 || inst2 == 2 || inst2 == 3 || inst2 == 6) {
-//                     e.rightHand = 7;
-//                     e.leftHand = (inst1 == 8) ? inst2 : inst1;
-//                 }
-//                 else{
-//                     e.rightHand = 8;
-//                     e.leftHand = (inst1 == 8) ? inst2 : inst1;
-//                 }
-//             }
-//         } 
-//         // 양손 다 칠 때 스네어가 있으면 무조건 왼손 스네어 스네어 없으면 올느쪽악기면 오른손 왼손 악기면 왼손
-//         else if (inst1 != 0 && inst2 != 0) {
-//             if (inst1 == 1 || inst2 == 1) {
-//                 e.leftHand = (inst1 == 1) ? inst1 : inst2;
-//                 e.rightHand = (inst1 == 1) ? inst2 : inst1;
-//             } else {
-//                 e.rightHand = (inst1 == 2 || inst1 == 3 || inst1 == 6 || inst1 == 7) ? inst1 : inst2;
-//                 e.leftHand = (e.rightHand == inst1) ? inst2 : inst1;
-//             }
-//         } else if (inst1 != 0) {
-//             if (inst1 == prevRight || inst1 == prevLeft) {
-//                 if (e.time <= 0.1) {
-//                     e.rightHand = (inst1 == prevRight) ? inst1 : 0;
-//                     e.leftHand = (inst1 == prevLeft) ? inst1 : 0;
-//                 } else {
-//                     Hand preferred = Functions::getPreferredHandByDistance(inst1, prevRightNote, prevLeftNote, prevRightHit, prevLeftHit);
-//                     if (preferred == RIGHT) e.rightHand = inst1;
-//                     else if (preferred == LEFT) e.leftHand = inst1;
-//                     else e.rightHand = inst1;
-//                 }
-//             } else {
-//                 if (inst1 == 2 || inst1 == 3 || inst1 == 6 || inst1 == 7) e.rightHand = inst1;
-//                 else e.leftHand = inst1;
-//             }
-//         }
-//         prevRight = e.rightHand;
-//         prevLeft = e.leftHand;
-//         if (e.rightHand != 0) { prevRightNote = e.rightHand; prevRightHit = 0; }
-//         if (e.leftHand != 0) { prevLeftNote = e.leftHand; prevLeftHit = 0; }
-
-//         events.push_back(e);
-//     }
-
-//     for (const auto& e : events) {
-//         int rightFlag = 0;
-//         int leftFlag = 0;
-//         if(e.rightHand != 0)    rightFlag = 5;
-//         if(e.leftHand != 0)     leftFlag = 5;
-//         output << std::fixed << std::setprecision(3)
-//                << e.time
-//                << std::setw(6) << e.rightHand
-//                << std::setw(6) << e.leftHand
-//                << std::setw(6) << rightFlag
-//                << std::setw(6) << leftFlag
-//                << std::setw(6) << e.bassHit
-//                << std::setw(6) << e.hihat << "\n";
-//     }
-
-//     // std::cout << "손 어사인 포함 변환 완료! 저장 위치 → " << outputFilename << "\n";
-// }
-
 int Functions::zoneOf(int inst) {
     if (inst == 0) return 0;          // 비어있음
     if (inst == 5) return 1;          // 하이햇
@@ -1038,6 +923,233 @@ void Functions::checkCross(int& rightHand, int& leftHand, int prevRightNote, int
     //std::cout << "    [None] RH=0, LH=0 → skip\n";
 }
 
+/*핸드어사인 이전버전
+// void Functions::assignHandsToEvents(const std::string& inputFilename, const std::string& outputFilename) {
+//     std::ifstream input(inputFilename);
+//     if (!input.is_open()) {
+//         std::cerr << "입력 파일 열기 실패: " << inputFilename << "\n";
+//         return;
+//     }
+//     std::ofstream output(outputFilename);
+//     if (!output.is_open()) {
+//         std::cerr << "출력 파일 생성 실패: " << outputFilename << "\n";
+//         return;
+//     }
+
+//     struct FullEvent {
+//         double time;
+//         int inst1 = 0, inst2 = 0, bassHit = 0, hihat = 1;
+//         int rightHand = 0, leftHand = 0;
+//     };
+
+//     std::string line;
+//     std::vector<FullEvent> events;
+//     int prevRight = 1, prevLeft = 1;
+//     int prevRightNote = 1, prevLeftNote = 1;
+//     double prevRightHit = 0, prevLeftHit = 0;
+
+//     while (std::getline(input, line)) {
+//         auto tokens = splitByWhitespace(line);
+//         if (tokens.size() != 7) continue;
+
+//         FullEvent e;
+//         e.time = std::stod(tokens[0]);
+//         e.inst1 = std::stoi(tokens[1]);
+//         e.inst2 = std::stoi(tokens[2]);
+//         e.bassHit = std::stoi(tokens[5]);
+//         e.hihat = std::stoi(tokens[6]);
+
+//         int inst1 = e.inst1, inst2 = e.inst2;
+//         prevRightHit += e.time;
+//         prevLeftHit += e.time;
+
+//         // std::cout << "[Time: " << e.time << "] inst1: " << inst1 << ", inst2: " << inst2
+//         //           << " | PrevR: " << prevRight << ", PrevL: " << prevLeft
+//         //           << " | RHit: " << prevRightHit << ", LHit: " << prevLeftHit << "\n";
+        
+//         // //step 1 크러시가 있는지 확인 크러쉬가 있다면 
+//         // if (inst1 == 8 || inst2 == 8) {
+//         //     // std::cout << "→ 크러시 처리 진입\n";
+//         //     if(prevLeft == 2 || prevLeft == 3 || prevLeft == 6) {
+//         //         e.rightHand = 7;
+//         //         e.leftHand = (inst1 == 8) ? inst2 : inst1;
+//         //     } else {
+//         //         if (inst1 == 2 || inst1 == 3 || inst1 == 6 || inst2 == 2 || inst2 == 3 || inst2 == 6) {
+//         //             e.rightHand = 7;
+//         //             e.leftHand = (inst1 == 8) ? inst2 : inst1;
+//         //         } else {
+//         //             e.rightHand = 8;
+//         //             e.leftHand = (inst1 == 8) ? inst2 : inst1;
+//         //         }
+//         //     }
+//         // }
+//         //step 1-1 크러시를 주로 왼쪽 크러시만 사용하도록 변경 (양손으로 치는 경우를 제외하고)
+//         if(inst1 == 7 || inst1 == 8 || inst2 == 7 || inst2 == 8)
+//         {
+//             std::cout << "→ 크러시 처리 진입 1-1\n";
+//             //양손연주라면
+//             if (inst1 != 0 && inst2 != 0)
+//                 {
+//                     // 두 손 모두 크래시를 치는 경우 → 규칙적으로 inst1=7(오른 크래시), inst2=8(왼 크래시)로 고정
+//                     bool bothCrash = ((inst1 == 7 || inst1 == 8) && (inst2 == 7 || inst2 == 8));
+//                     if (bothCrash) {
+//                         e.rightHand = 7; 
+//                         e.leftHand  = 8;
+//                     }
+//                     else {
+//                         // 두 손이 동시에 치지만 "둘 다 크래시가 아님" → 기존 위치 기반 손 배분 사용
+//                         auto [left, right] = assignHandsByPosition(inst1, inst2);
+//                         e.leftHand  = left;
+//                         e.rightHand = right;
+//                     }
+//                 }
+//                 //한손 연주 라면
+//                 else
+//                 {
+//                     // 마지막으로 왼손으로 친게 3,2,7,6 중에 하나면 오른손으로 오른쪽 크러시 치기
+//                     if (prevLeftNote == 3 || prevLeftNote == 2 || prevLeftNote == 7 || prevLeftNote == 6) {
+//                         e.leftHand  = 0;
+//                         e.rightHand = 7;
+//                     } 
+//                     //아니라면 왼쪽 크러시를 사용할 예정
+//                     else {
+//                         if (prevRightNote == 3 || prevRightNote == 2 || prevRightNote == 7 || prevRightNote == 6)
+//                         {
+//                             e.rightHand = 0;
+//                             e.leftHand  = 8;
+//                         }
+//                         else
+//                         {
+//                             e.rightHand = 8;
+//                             e.leftHand  = 0;
+//                         }
+
+//                     }
+//                     // //이건 전에 친 악기 섹션 비고 하는거 위에 방법을 쓰던 밑에 섹션비교방법을쓰던 하나만쓰기
+//                     // auto [left, right] = assignHandsByPosition(prevRightNote, prevLeftNote);
+//                     // // leftInstOfPair가 prevLeftNote라면 '왼손 위치가 더 왼쪽'이라는 뜻
+//                     // bool chooseLeft = (left == prevLeftNote);
+
+
+//                     // // 실제 출력 반영: 어느 슬롯이 비어있든 상관없이 8을 선택 손에 할당
+//                     // if (chooseLeft) {
+//                     //     e.leftHand  = 8;
+//                     //     e.rightHand = 0;
+//                     // } else {
+//                     //     e.rightHand = 8;
+//                     //     e.leftHand  = 0;
+//                     // }
+//                 }
+//         }
+//         // step 2 양손 연주인지 한손인지 구분 
+//         else if (inst1 != 0 && inst2 != 0) {
+//             // std::cout << "→ 양손 처리 진입\n";
+//             // S와 H 을 같이 치는 경우 오른손으로 H 왼손으로 S 치도록 설정
+//             if ((inst1 == 5 && inst2 == 1) || (inst1 == 1 && inst2 == 5)) 
+//             {
+//                 e.leftHand = (inst1 == 5) ? inst2 : inst1;
+//                 e.rightHand = (inst1 == 5) ? inst1 : inst2;
+//             }
+//             // 위의 경우를 제외한 모든 경우 악기 위치 기반으로 손 분배 
+//             else 
+//             {
+//                 auto [left, right] = assignHandsByPosition(inst1,inst2);
+//                 e.leftHand = left;
+//                 e.rightHand = right;
+//             }
+//         }
+//         // step 3 한손 연주시 처리 
+//         else if (inst1 != 0) {
+//             // std::cout << "→ 한손 처리 진입\n";
+//             // 이전에 쳤던 악기와 같은 악기가 감지된다면 짧은 시간에 타격해야 할 시 같은 손 유지 시간차이가 크다면 거리 기반 판단
+//             if (inst1 == prevRight || inst1 == prevLeft) {
+//                 // std::cout << "    - 이전 손과 같은 악기 감지\n";
+//                 if (e.time <= 0.1) {
+//                     // std::cout << "    - 시간차 0.1 이하 → 같은 손 유지\n";
+//                     if(inst1 == prevRight)
+//                     {
+//                         e.rightHand = inst1;
+//                         e.leftHand = 0;
+//                     }
+//                     else
+//                     {
+//                         e.rightHand = 0;
+//                         e.leftHand = inst1;
+//                     }
+//                 } else {
+//                     // std::cout << "    - 시간차 큼 → 거리 기반 판단\n";
+//                     Hand preferred = getPreferredHandByDistance(inst1, prevRightNote, prevLeftNote, prevRightHit, prevLeftHit);
+//                     if (preferred == RIGHT) {
+//                         // std::cout << "    → RIGHT 선택\n";
+//                         e.rightHand = inst1;
+//                         e.leftHand = 0;
+//                     } else if (preferred == LEFT) {
+//                         // std::cout << "    → LEFT 선택\n";
+//                         e.leftHand = inst1;
+//                         e.rightHand = 0;
+//                     }    
+//                     else {
+//                         // std::cout << "    → 점수 같고 시간 널널 오른손 우선권 선택\n";
+//                         // 여기는 한손 연주이면서 전에 쳤던 악기를 치는 것이지만 시간과 거리에 대한 점수도 모두 동일함 일단 오른손에 우선권을 주겠다.
+//                         e.rightHand = inst1;
+//                         e.leftHand = 0;
+//                     }
+//                 }
+//             } else {
+//                 // std::cout << "    - 이전 손과 다른 악기 → 거리 기반 판단\n";
+//                 Hand preferred = getPreferredHandByDistance(inst1, prevRightNote, prevLeftNote, prevRightHit, prevLeftHit);
+//                     if (preferred == RIGHT) {
+//                         // std::cout << "    → RIGHT 선택\n";
+//                         e.rightHand = inst1;
+//                     } else if (preferred == LEFT) {
+//                         // std::cout << "    → LEFT 선택\n";
+//                         e.leftHand = inst1;
+//                     } 
+//                     //악기 위치 거리 기반으로 손 분배 이때 전에 친악기를 inst2로 사용해서 구함  
+//                     else {
+//                         // std::cout << "    → SAME 판단 → 섹션 기반 분배\n";
+                        
+//                         int inst2 = (prevRightNote != 0) ? prevRightNote : prevLeftNote;
+//                         auto [left, right] = assignHandsByPosition(inst1, inst2);
+//                         if(left  == inst1)
+//                             e.leftHand  = (left  == inst1) ? inst1 : 0;
+//                         else
+//                             e.rightHand = (right == inst1) ? inst1 : 0;
+                    
+//                         // std::cout << "      - inst1: " << inst1 << ", inst2: " << inst2
+//                         //             << " → 왼손 = " << e.leftHand << ", 오른손 = " << e.rightHand << "\n";
+//                     }
+//             }
+//         }
+
+//         // std::cout << "→ 결과: RH = " << e.rightHand << ", LH = " << e.leftHand << "\n\n";
+
+//         checkCross(e.rightHand, e.leftHand, prevRightNote, prevLeftNote);
+
+//         prevRight = e.rightHand;
+//         prevLeft = e.leftHand;
+//         if (e.rightHand != 0) { prevRightNote = e.rightHand; prevRightHit = 0; }
+//         if (e.leftHand != 0) { prevLeftNote = e.leftHand; prevLeftHit = 0; }
+
+//         events.push_back(e);
+//     }
+
+//     for (const auto& e : events) {
+//         int rightFlag = 0;
+//         int leftFlag = 0;
+//         if(e.rightHand != 0)    rightFlag = 5;
+//         if(e.leftHand != 0)     leftFlag = 5;
+//         output << std::fixed << std::setprecision(3)
+//                << e.time
+//                << std::setw(6) << e.rightHand
+//                << std::setw(6) << e.leftHand
+//                << std::setw(6) << rightFlag
+//                << std::setw(6) << leftFlag
+//                << std::setw(6) << e.bassHit
+//                << std::setw(6) << e.hihat << "\n";
+//     }
+// }
+*/
 
 void Functions::assignHandsToEvents(const std::string& inputFilename, const std::string& outputFilename) {
     std::ifstream input(inputFilename);
@@ -1059,8 +1171,11 @@ void Functions::assignHandsToEvents(const std::string& inputFilename, const std:
 
     std::string line;
     std::vector<FullEvent> events;
+    //직전 라인에 할당된 악기 0 포함
     int prevRight = 1, prevLeft = 1;
+    //실제 마지막으로 친 악기
     int prevRightNote = 1, prevLeftNote = 1;
+    //마지막 타격으로 부터의 시간
     double prevRightHit = 0, prevLeftHit = 0;
 
     while (std::getline(input, line)) {
@@ -1078,26 +1193,6 @@ void Functions::assignHandsToEvents(const std::string& inputFilename, const std:
         prevRightHit += e.time;
         prevLeftHit += e.time;
 
-        // std::cout << "[Time: " << e.time << "] inst1: " << inst1 << ", inst2: " << inst2
-        //           << " | PrevR: " << prevRight << ", PrevL: " << prevLeft
-        //           << " | RHit: " << prevRightHit << ", LHit: " << prevLeftHit << "\n";
-        
-        // //step 1 크러시가 있는지 확인 크러쉬가 있다면 
-        // if (inst1 == 8 || inst2 == 8) {
-        //     // std::cout << "→ 크러시 처리 진입\n";
-        //     if(prevLeft == 2 || prevLeft == 3 || prevLeft == 6) {
-        //         e.rightHand = 7;
-        //         e.leftHand = (inst1 == 8) ? inst2 : inst1;
-        //     } else {
-        //         if (inst1 == 2 || inst1 == 3 || inst1 == 6 || inst2 == 2 || inst2 == 3 || inst2 == 6) {
-        //             e.rightHand = 7;
-        //             e.leftHand = (inst1 == 8) ? inst2 : inst1;
-        //         } else {
-        //             e.rightHand = 8;
-        //             e.leftHand = (inst1 == 8) ? inst2 : inst1;
-        //         }
-        //     }
-        // }
         //step 1-1 크러시를 주로 왼쪽 크러시만 사용하도록 변경 (양손으로 치는 경우를 제외하고)
         if(inst1 == 7 || inst1 == 8 || inst2 == 7 || inst2 == 8)
         {
@@ -1127,33 +1222,15 @@ void Functions::assignHandsToEvents(const std::string& inputFilename, const std:
                         e.rightHand = 7;
                     } 
                     //아니라면 왼쪽 크러시를 사용할 예정
-                    else {
-                        if (prevRightNote == 3 || prevRightNote == 2 || prevRightNote == 7 || prevRightNote == 6)
-                        {
+                    else if (prevRightNote == 3 || prevRightNote == 2 || prevRightNote == 7 || prevRightNote == 6){
                             e.rightHand = 0;
                             e.leftHand  = 8;
-                        }
-                        else
-                        {
+                    }
+                    else{
                             e.rightHand = 8;
                             e.leftHand  = 0;
-                        }
-
                     }
-                    // //이건 전에 친 악기 섹션 비고 하는거 위에 방법을 쓰던 밑에 섹션비교방법을쓰던 하나만쓰기
-                    // auto [left, right] = assignHandsByPosition(prevRightNote, prevLeftNote);
-                    // // leftInstOfPair가 prevLeftNote라면 '왼손 위치가 더 왼쪽'이라는 뜻
-                    // bool chooseLeft = (left == prevLeftNote);
 
-
-                    // // 실제 출력 반영: 어느 슬롯이 비어있든 상관없이 8을 선택 손에 할당
-                    // if (chooseLeft) {
-                    //     e.leftHand  = 8;
-                    //     e.rightHand = 0;
-                    // } else {
-                    //     e.rightHand = 8;
-                    //     e.leftHand  = 0;
-                    // }
                 }
         }
         // step 2 양손 연주인지 한손인지 구분 
@@ -1205,9 +1282,12 @@ void Functions::assignHandsToEvents(const std::string& inputFilename, const std:
                     }    
                     else {
                         // std::cout << "    → 점수 같고 시간 널널 오른손 우선권 선택\n";
-                        // 여기는 한손 연주이면서 전에 쳤던 악기를 치는 것이지만 시간과 거리에 대한 점수도 모두 동일함 일단 오른손에 우선권을 주겠다.
-                        e.rightHand = inst1;
-                        e.leftHand = 0;
+                        int inst2 = (prevRightNote != 0) ? prevRightNote : prevLeftNote;
+                        auto [left, right] = assignHandsByPosition(inst1, inst2);
+                        if(left  == inst1)
+                            e.leftHand  = (left  == inst1) ? inst1 : 0;
+                        else
+                            e.rightHand = (right == inst1) ? inst1 : 0;
                     }
                 }
             } else {
@@ -1216,23 +1296,21 @@ void Functions::assignHandsToEvents(const std::string& inputFilename, const std:
                     if (preferred == RIGHT) {
                         // std::cout << "    → RIGHT 선택\n";
                         e.rightHand = inst1;
+                        e.leftHand = 0;
                     } else if (preferred == LEFT) {
                         // std::cout << "    → LEFT 선택\n";
                         e.leftHand = inst1;
+                        e.rightHand = 0;
                     } 
                     //악기 위치 거리 기반으로 손 분배 이때 전에 친악기를 inst2로 사용해서 구함  
                     else {
                         // std::cout << "    → SAME 판단 → 섹션 기반 분배\n";
-                        
                         int inst2 = (prevRightNote != 0) ? prevRightNote : prevLeftNote;
                         auto [left, right] = assignHandsByPosition(inst1, inst2);
                         if(left  == inst1)
                             e.leftHand  = (left  == inst1) ? inst1 : 0;
                         else
                             e.rightHand = (right == inst1) ? inst1 : 0;
-                    
-                        // std::cout << "      - inst1: " << inst1 << ", inst2: " << inst2
-                        //             << " → 왼손 = " << e.leftHand << ", 오른손 = " << e.rightHand << "\n";
                     }
             }
         }
