@@ -78,6 +78,9 @@ public:
     // DXL
     std::queue<vector<vector<float>>> dxlCommandBuffer;
 
+    /////////////////////////////////////////////////////////////////////////// Init
+    void setDrumCoordinate();   // 임시로 이동 private -> public
+
 private:
     TMotorCommandParser TParser; ///< T 모터 명령어 파서.
     MaxonCommandParser MParser;  ///< Maxon 모터 명령어 파서
@@ -227,7 +230,7 @@ private:
     MatrixXd wristAngleOnImpactR;           ///< 오른팔의 각 악기별 타격 시 손목 각도.
     MatrixXd wristAngleOnImpactL;           ///< 왼팔의 각 악기별 타격 시 손목 각도.
 
-    void setDrumCoordinate();
+    // void setDrumCoordinate();
     void setWristAngleOnImpact();
     void setAddStanceAngle();
     void setReadyAngle();

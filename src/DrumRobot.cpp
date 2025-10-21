@@ -964,7 +964,8 @@ void DrumRobot::displayAvailableCommands(string flagName) const
             std::cout << "- p : Play Drumming\n";
             std::cout << "- t : Start Test\n";
             std::cout << "- h : Move to Home Pos\n";
-            std::cout << "- m : Run Python (Magenta)\n";
+            // std::cout << "- m : Run Python (Magenta)\n";
+            std::cout << "- u : Update Drum Position\n";
         }
     }
     else
@@ -988,6 +989,13 @@ void DrumRobot::processInput(const std::string &input, string flagName)
     // {
         
     // }
+    else if (input == "u" && flagName == "isReady")
+    {
+        pathManager.setDrumCoordinate();
+
+        std::cout << "\nUpdate Drum Position!!!\n";
+        sleep(1);
+    }
     else if (input == "h" && flagName == "isReady")
     {
         flagObj.setAddStanceFlag(FlagClass::HOME);
