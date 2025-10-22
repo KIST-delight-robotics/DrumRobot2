@@ -80,6 +80,7 @@ public:
 
     /////////////////////////////////////////////////////////////////////////// Init
     void setDrumCoordinate();   // 임시로 이동 private -> public
+    void setAddStanceAngle();
 
 private:
     TMotorCommandParser TParser; ///< T 모터 명령어 파서.
@@ -232,7 +233,7 @@ private:
 
     // void setDrumCoordinate();
     void setWristAngleOnImpact();
-    void setAddStanceAngle();
+    // void setAddStanceAngle();
     void setReadyAngle();
 
     /////////////////////////////////////////////////////////////////////////// AddStance
