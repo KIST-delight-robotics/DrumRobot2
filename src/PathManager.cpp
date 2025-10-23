@@ -283,8 +283,8 @@ void PathManager::setReadyAngle()
     readyAngle(11) = hA.openAngle;
 
     // DXL
-    readyAngle(12) = 0*M_PI/180.0;
-    readyAngle(13) = 110*M_PI/180.0;
+    readyAngle(12) = 0.0*M_PI/180.0;
+    readyAngle(13) = 110.0*M_PI/180.0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1426,14 +1426,15 @@ PathManager::ElbowAngle PathManager::getElbowAngle(double t1, double t2, int int
 
     double intensityFactor;  // 1: 0%, 2: 0%, 3: 0%, 4: 90%, 5: 100%, 6: 110%, 7: 120%  
 
-    if (intensity <= 3)
-    {
-        intensityFactor = 0;
-    }
-    else
-    {
-        intensityFactor = 0.1 * intensity + 0.5;  
-    }
+    // if (intensity <= 3)
+    // {
+    //     intensityFactor = 0;
+    // }
+    // else
+    // {
+    //     intensityFactor = 0.1 * intensity + 0.5;  
+    // }
+    intensityFactor = 0.0;
 
     if (T < 0.2)
     {
@@ -1467,11 +1468,11 @@ PathManager::WristAngle PathManager::getWristAngle(double t1, double t2, int int
     }
     else
     {
-        intensityFactor = 0.1 * intensity + 0.5;  // 5: 100%, 6: 110%, 7: 120% 
+        intensityFactor = intensity / 3.0 - (2.0 / 3.0);  // 5: 100%, 6: 133%, 7: 167%
     }
 
     // Lift Angle (최고점 각도) 계산, 최대 40도 * 세기
-    T < 0.5 ? wristAngle.liftAngle = (80 * T) * M_PI / 180.0 : wristAngle.liftAngle = 40  * M_PI / 180.0;
+    T < 0.5 ? wristAngle.liftAngle = (60 * T) * M_PI / 180.0 : wristAngle.liftAngle = 30  * M_PI / 180.0;
 
     if (intensity == 1)
     {
@@ -2275,7 +2276,9 @@ double PathManager::getNodIntensity(MatrixXd &measureMatrix)
 
     for (int i = 0; i < rows; i++)
     {
-        double lineIntensity = intensityR(i) + intensityL(i) + bass(i);
+        if (i == 0) continue;   // 2번 줄부터 반영
+
+        double lineIntensity = 0.1 * intensityR(i) + 0.1 * intensityL(i) + 0.5 * bass(i);
         nodIntensity += lineIntensity;
         line++;
 

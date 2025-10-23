@@ -105,7 +105,7 @@ private:
         float waist = 0.520;            ///< 허리 길이. [m]
         float height = 1.020-0.0605;    ///< 바닥부터 허리까지의 높이. [m]
 
-        // TestManager.hpp 에서도 수정해줘야 함
+        // TestManager.hpp 에서도 수정해줘야 함.
 
     }PartLength;
 
