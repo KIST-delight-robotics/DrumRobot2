@@ -83,8 +83,6 @@ void PathManager::processLine(MatrixXd &measureMatrix)
     // std::cout << measureMatrix;
     // std::cout << "\n ////////////// \n";
 
-    fun.appendToCSV("debug", false, lineOfScore);
-
     if (measureMatrix.rows() > 1)
     {
         // avoidCollision(measureMatrix);  // 충돌 회피
@@ -639,15 +637,15 @@ void PathManager::solveIKandPushCommand()
 
         VectorXd q = getJointAngles(q0);                // 로봇 관절각
         
-        pushCommandBuffer(q);                           // 명령 생성 후 push
-        pushDxlBuffer(q0);
-
         // 데이터 기록
         for (int i = 0; i < 9; i++)
         {
             std::string fileName = "solveIK_q" + to_string(i);
             fun.appendToCSV(fileName, false, i, q(i));
         }
+
+        pushCommandBuffer(q);                           // 명령 생성 후 push
+        pushDxlBuffer(q0);
     }
 
     if (waistParameterQueue.empty())    // DrumRobot 에게 끝났음 알리기
@@ -728,10 +726,6 @@ void PathManager::genTaskSpaceTrajectory(MatrixXd &measureMatrix, int n)
             // 명령 개수, 허리 범위, 최적화 각도 계산 및 저장
             VectorXd waistParams = getWaistParams(TT.trajectoryR, TT.trajectoryL, TT.wristAngleR, TT.wristAngleL);
             storeWaistParams(n, waistParams);
-
-            fun.appendToCSV("debug", false, TT.trajectoryR[0], TT.trajectoryR[1], TT.trajectoryR[2]);
-            fun.appendToCSV("debug", false, TT.trajectoryL[0], TT.trajectoryL[1], TT.trajectoryL[2]);
-            fun.appendToCSV("debug", false, waistParams[0], waistParams[1], waistParams[2]);
         }
     }
 }
@@ -1426,15 +1420,14 @@ PathManager::ElbowAngle PathManager::getElbowAngle(double t1, double t2, int int
 
     double intensityFactor;  // 1: 0%, 2: 0%, 3: 0%, 4: 90%, 5: 100%, 6: 110%, 7: 120%  
 
-    // if (intensity <= 3)
-    // {
-    //     intensityFactor = 0;
-    // }
-    // else
-    // {
-    //     intensityFactor = 0.1 * intensity + 0.5;  
-    // }
-    intensityFactor = 0.0;
+    if (intensity <= 3)
+    {
+        intensityFactor = 0;
+    }
+    else
+    {
+        intensityFactor = 0.1 * intensity + 0.5;  
+    }
 
     if (T < 0.2)
     {
@@ -2256,9 +2249,6 @@ float PathManager::getInstAngle(int Inst)
         inst_y = drumCoordinateR(1,Inst - 1);
     }
 
-    std::string fileName = "xyz";
-    fun.appendToCSV(fileName, false, inst_x, inst_y, Inst);
-
     return static_cast<float>(atan2(inst_x, inst_y));
 }
 
@@ -2578,11 +2568,14 @@ VectorXd PathManager::getJointAngles(double q0)
     hitQueue.pop();
 
     q(3) += HT.elbowR / 3.0;
-    q(4) += HT.elbowR;
     q(5) += HT.elbowL / 3.0;
-    q(6) += HT.elbowL;
+
+    q(4) = (q(4)+HT.elbowR)>=(140.0*M_PI/180.0)?140.0*M_PI/180.0:q(4)+HT.elbowR;
+    q(6) = (q(6)+HT.elbowL)>=(140.0*M_PI/180.0)?140.0*M_PI/180.0:q(6)+HT.elbowL;
+    
     q(7) += HT.wristR;
     q(8) += HT.wristL;
+    
     q(9) = 0.0; // test maxon motor
 
     // 발 모터

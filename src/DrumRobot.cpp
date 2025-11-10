@@ -1600,8 +1600,6 @@ void DrumRobot::runPlayProcess()
         setSyncTime((int)inputWaitMs);
     }
 
-
-
     while (!endOfScore)
     {
         std::ifstream inputFile;
