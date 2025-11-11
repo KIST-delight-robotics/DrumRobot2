@@ -594,6 +594,10 @@ void CanManager::setTMotorCANFrame(std::shared_ptr<TMotor> tMotor, const TMotorD
 
         fun.appendToCSV(fun.file_name, false, (float)tMotor->nodeId + SEND_SIGN, tData.position, tData.position - tMotor->motorPosition);
     }
+    else if (tData.mode == tMotor->Velocity)
+    {
+        tservocmd.setVelocityCANFrame(*tMotor, &tMotor->sendFrame, tData.velocityERPM);
+    }
     else if (tData.mode == tMotor->Idle)
     {
         return;

@@ -66,6 +66,7 @@ public:
 struct TMotorData
 {
     float position;
+    float velocityERPM = 0.0;
     int mode;
     int is_brake;
 };
@@ -87,6 +88,7 @@ public:
     // 제어 모드
     const int Position = 0;
     const int Idle = 1;
+    const int Velocity = 2;
 
     int controlMode = Position; 
 

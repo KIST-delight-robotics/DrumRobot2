@@ -83,6 +83,9 @@ void PathManager::processLine(MatrixXd &measureMatrix)
     // std::cout << measureMatrix;
     // std::cout << "\n ////////////// \n";
 
+    // ***허리 브레이크 테스트용*** //
+    // sleep(1);
+
     if (measureMatrix.rows() > 1)
     {
         // avoidCollision(measureMatrix);  // 충돌 회피
@@ -283,6 +286,9 @@ void PathManager::setReadyAngle()
     // DXL
     readyAngle(12) = 0.0*M_PI/180.0;
     readyAngle(13) = 110.0*M_PI/180.0;
+
+    // ***허리 브레이크 테스트용*** //
+    // readyAngle(0) = 0.0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -634,6 +640,9 @@ void PathManager::solveIKandPushCommand()
     for (int i = 0; i < n; i++)
     {
         double q0 = getWaistAngle(waistCoefficient, i); // 허리 관절각
+
+        // ***허리 브레이크 테스트용*** //
+        // q0 = 0.0;
 
         VectorXd q = getJointAngles(q0);                // 로봇 관절각
         
