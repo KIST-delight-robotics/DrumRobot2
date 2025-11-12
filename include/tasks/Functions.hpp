@@ -39,7 +39,7 @@ public:
     // save csv file
     std::chrono::high_resolution_clock::time_point start;  
     const std::string basePath = "../../DrumRobot_data/";  // 기본 경로
-    std::string file_name = "data";
+    std::string log_file_name = "data";
     void openCSVFile();
     std::ostringstream getAbsTime();
     void appendToCSV(const std::string& filename, bool useAbsTime);

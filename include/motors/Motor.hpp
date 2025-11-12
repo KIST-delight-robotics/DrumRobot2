@@ -68,7 +68,7 @@ struct TMotorData
     float position;
     float velocityERPM = 0.0;
     int mode;
-    int is_brake;
+    int isBrake;
 };
 
 class TMotor : public GenericMotor
@@ -89,6 +89,8 @@ public:
     const int Position = 0;
     const int Idle = 1;
     const int Velocity = 2;
+    const int VelocityFB = 3;
+    const int VelocityFF = 4;
 
     int controlMode = Position; 
 

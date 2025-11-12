@@ -107,4 +107,8 @@ private:
     
     VectorXd IKFixedWaist(VectorXd pR, VectorXd pL, double theta0);
     VectorXd calWaistAngle(VectorXd pR, VectorXd pL);
+
+    void testTmotorVelocityMode();
+    void pushVelCmd(float arr[]);
+    vector<float> makeVelProfile(float q1[], float q2[], vector<float> &Vmax, float acc, float t, float t2);
 };

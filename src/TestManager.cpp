@@ -28,7 +28,7 @@ void TestManager::SendTestProcess()
             }
         FK(c_MotorAngle); // 현재 q값에 대한 FK 진행
     
-        std::cout << "\nSelect Method (1 - 관절각도값 조절, 2 - 좌표값 조절, 4 - 발 모터, -1 - 나가기) : ";
+        std::cout << "\nSelect Method (1 - 관절각도값 조절, 2 - 좌표값 조절, 4 - 발 모터, 5 - 속도 제어 실험, -1 - 나가기) : ";
         std::cin >> method;
 
         if(method == 1)
@@ -284,6 +284,10 @@ void TestManager::SendTestProcess()
                 }
             
             }
+        }
+        else if(method == 5)
+        {
+            testTmotorVelocityMode();
         }
         else
         {
@@ -870,3 +874,211 @@ VectorXd TestManager::calWaistAngle(VectorXd pR, VectorXd pL)
     return output;
 }
 
+void TestManager::testTmotorVelocityMode()
+{
+    while(true)
+    {
+        int userInput = 100;
+        int ret = system("clear");
+        if (ret == -1) std::cout << "system clear error" << endl;
+
+        float c_MotorAngle[10] = {0};
+        getMotorPos(c_MotorAngle);
+
+        std::cout << "[ Current Q Values (Radian / Degree) ]\n";
+        for (int i = 0; i < 10; i++)
+        {
+            std::cout << "Q[" << i << "] : " << c_MotorAngle[i] << "\t\t" << c_MotorAngle[i] * 180.0 / M_PI << "\t\t" <<q[i]/ M_PI * 180.0 << "\n";
+        }
+
+        std::cout << "\ntime : " << t << "s";
+        std::cout << "\nnumber of repeat : " << n_repeat << std::endl << std::endl;
+
+
+        std::cout << "\nSelect Motor to Change Value (0-8) / Run (9) / Time (10) / Extra Time (11) / Repeat(12) / Exit (-1): ";
+        std::cin >> userInput;
+
+        if (userInput == -1)
+        {
+            break;
+        }
+        else if (userInput < 9)
+        {
+            float degree_angle;
+
+            std::cout << "\nRange : " << jointRangeMin[userInput] << "~" << jointRangeMax[userInput] << "(Degree)\n";
+            std::cout << "Enter q[" << userInput << "] Values (Degree) : ";
+            std::cin >> degree_angle;
+            q[userInput] = degree_angle * M_PI / 180.0;
+        }
+        else if (userInput == 9)
+        {
+            for (auto &motor_pair : motors)
+            {
+                if (std::shared_ptr<TMotor> tMotor = std::dynamic_pointer_cast<TMotor>(motor_pair.second))
+                {
+                    tMotor->clearCommandBuffer();
+                    tMotor->clearReceiveBuffer();
+                }
+                else if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motor_pair.second))
+                {
+                    maxonMotor->clearCommandBuffer();
+                    maxonMotor->clearReceiveBuffer();
+                }
+            }
+            pushVelCmd(q);
+        }
+        else if (userInput == 10)
+        {
+            std::cout << "time : ";
+            std::cin >> t;
+        }
+        else if (userInput == 11)
+        {
+            std::cout << "extra time : ";
+            std::cin >> extra_time;
+        }
+        else if (userInput == 12)
+        {
+            std::cout << "number of repeat : ";
+            std::cin >> n_repeat;
+        }
+    }
+}
+
+void TestManager::pushVelCmd(float arr[])
+{
+    const float acc_max = 100.0;    // rad/s^2
+    vector<float> Qi;
+    vector<float> Vi;
+    vector<float> Vmax;
+    float Q1[12] = {0.0};
+    float Q2[12] = {0.0};
+    int n;
+    int n_p;    // 목표위치까지 가기 위한 추가 시간
+
+    n = (int)(t/canManager.DTSECOND);    // t초동안 이동
+    n_p = (int)(extra_time/canManager.DTSECOND);  // 추가 시간
+    
+    std::cout << "Get Array...\n";
+
+    getMotorPos(Q1);
+
+    for (int i = 0; i < 12; i++)
+    {
+        Q2[i] = arr[i];
+    }
+
+    Vmax = cal_Vmax(Q1, Q2, acc_max, t);
+    
+    for (int i = 0; i < n_repeat; i++)
+    {
+        for (int k = 1; k <= n + n_p; ++k)
+        {
+            // Make Vector
+            if ((i%2) == 0)
+            {
+                Qi = makeProfile(Q1, Q2, Vmax, acc_max, t*k/n, t);
+                Vi = makeVelProfile(Q1, Q2, Vmax, acc_max, t*k/n, t);
+            }
+            else
+            {
+                Qi = makeProfile(Q2, Q1, Vmax, acc_max, t*k/n, t);
+                Vi = makeVelProfile(Q2, Q1, Vmax, acc_max, t*k/n, t);
+            }
+
+            // Send to Buffer
+            for (auto &entry : motors)
+            {
+                if (std::shared_ptr<TMotor> tMotor = std::dynamic_pointer_cast<TMotor>(entry.second))
+                {
+                    TMotorData newData;
+                    newData.position = tMotor->jointAngleToMotorPosition(Qi[canManager.motorMapping[entry.first]]);
+                    newData.mode = tMotor->Velocity;
+                    newData.velocityERPM = Vi[canManager.motorMapping[entry.first]] * 60.0 * 21.0 * 10 / 2.0 / M_PI;;
+                    tMotor->commandBuffer.push(newData);
+                    
+                    tMotor->finalMotorPosition = newData.position;
+                }
+                else if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(entry.second))
+                {
+                    MaxonData newData;
+                    newData.position = maxonMotor->jointAngleToMotorPosition(Qi[canManager.motorMapping[entry.first]]);
+                    newData.mode = maxonMotor->CSP;
+                    maxonMotor->commandBuffer.push(newData);
+
+                    maxonMotor->finalMotorPosition = newData.position;
+                }
+            }
+        }
+    }
+}
+
+vector<float> TestManager::makeVelProfile(float q1[], float q2[], vector<float> &Vmax, float acc, float t, float t2)
+{
+    vector<float> Qi;
+    for(long unsigned int i = 0; i < 12; i++)
+    {
+        float val, S;
+        int sign;
+        S = q2[i] - q1[i];   
+        // 부호 확인
+        if (S < 0)
+        {
+            S = -1 * S;
+            sign = -1;
+        }
+        else
+        {
+            sign = 1;
+        }
+        // 궤적 생성
+        if (S == 0)
+        {
+            // 정지
+            val = 0;
+        }
+        else if (Vmax[i] < 0)
+        {
+            // Vmax 값을 구하지 못했을 때 삼각형 프로파일 생성
+            float acc_tri = 4 * S / t2 / t2;
+            if (t < t2/2)
+            {
+                val = sign * acc_tri * t;
+            }
+            else if (t < t2)
+            {
+                val = sign * acc_tri * (t2 - t);
+            }
+            else
+            {
+                val = 0;
+            }
+        }
+        else
+        {
+            // 사다리꼴 프로파일
+            if (t < Vmax[i] / acc)
+            {
+                // 가속
+                val = sign * acc * t;
+            }
+            else if (t < S / Vmax[i])
+            {
+                // 등속
+                val = sign * Vmax[i];          
+            }
+            else if (t < Vmax[i] / acc + S / Vmax[i])
+            {
+                // 감속
+                val = sign * acc * (S / Vmax[i] + Vmax[i] / acc - t);          
+            }
+            else 
+            {
+                val = 0;
+            }
+        }
+        Qi.push_back(val);
+    }
+    return Qi;
+}
