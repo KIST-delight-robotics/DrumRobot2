@@ -124,7 +124,7 @@ void Functions::openCSVFile()
     for (int i = 1; i < 100; i++)
     {
         // 기본 경로와 파일 이름을 결합
-        std::string fullPath = basePath + file_name + to_string(i) + ".txt";
+        std::string fullPath = basePath + log_file_name + to_string(i) + ".txt";
 
         // 파일이 이미 존재하는지 확인
         bool fileExists = std::ifstream(fullPath).good();
@@ -132,19 +132,19 @@ void Functions::openCSVFile()
         if(!fileExists)
         {
             // 처음 실행 시
-            file_name = file_name + to_string(i);
-            std::cout << "Start Logging of Log Data : " << file_name << ".txt\n";
+            log_file_name = log_file_name + to_string(i);
+            std::cout << "Start Logging of Log Data : " << log_file_name << ".txt\n";
 
             for (auto &motor_pair : motors)
             {
                 std::shared_ptr<GenericMotor> motor = motor_pair.second;
                 if (std::shared_ptr<TMotor> tMotor = std::dynamic_pointer_cast<TMotor>(motor_pair.second))
                 {
-                    appendToCSV(file_name, false, (float)motor->nodeId, tMotor->initialJointAngle, INIT_SIGN);
+                    appendToCSV(log_file_name, false, (float)motor->nodeId, tMotor->initialJointAngle, INIT_SIGN);
                 }
                 else if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motor_pair.second))
                 {
-                    appendToCSV(file_name, false, (float)motor->nodeId, maxonMotor->initialJointAngle, INIT_SIGN);
+                    appendToCSV(log_file_name, false, (float)motor->nodeId, maxonMotor->initialJointAngle, INIT_SIGN);
                 }
             }
 

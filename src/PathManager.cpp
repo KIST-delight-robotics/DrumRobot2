@@ -83,7 +83,7 @@ void PathManager::processLine(MatrixXd &measureMatrix)
     // std::cout << measureMatrix;
     // std::cout << "\n ////////////// \n";
 
-    // ***허리 브레이크 테스트용*** //
+    // ***허리 브레이크 테스트용*** // (이인우)
     // sleep(1);
 
     if (measureMatrix.rows() > 1)
@@ -287,7 +287,7 @@ void PathManager::setReadyAngle()
     readyAngle(12) = 0.0*M_PI/180.0;
     readyAngle(13) = 110.0*M_PI/180.0;
 
-    // ***허리 브레이크 테스트용*** //
+    // ***허리 브레이크 테스트용*** // (이인우)
     // readyAngle(0) = 0.0;
 }
 
@@ -381,7 +381,7 @@ void PathManager::pushAddStance(VectorXd &Q1, VectorXd &Q2)
                     TMotorData newData;
                     newData.position = tMotor->jointAngleToMotorPosition(Qt[can_id]);
                     newData.mode = tMotor->Position;
-                    newData.is_brake = 0;
+                    newData.isBrake = 0;
                     tMotor->commandBuffer.push(newData);
 
                     tMotor->finalMotorPosition = newData.position;
@@ -413,7 +413,7 @@ void PathManager::pushAddStance(VectorXd &Q1, VectorXd &Q2)
                     TMotorData newData;
                     newData.position = tMotor->jointAngleToMotorPosition(Q1[can_id]);
                     newData.mode = tMotor->Position;
-                    newData.is_brake = 0;
+                    newData.isBrake = 0;
                     tMotor->commandBuffer.push(newData);
                 }
                 else if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(entry.second))
@@ -641,7 +641,7 @@ void PathManager::solveIKandPushCommand()
     {
         double q0 = getWaistAngle(waistCoefficient, i); // 허리 관절각
 
-        // ***허리 브레이크 테스트용*** //
+        // ***허리 브레이크 테스트용*** // (이인우)
         // q0 = 0.0;
 
         VectorXd q = getJointAngles(q0);                // 로봇 관절각
@@ -2624,14 +2624,14 @@ void PathManager::pushCommandBuffer(VectorXd &Qi)
                 float alpha = 0.7;
                 float diff = alpha*preDiff + (1 - alpha)*std::abs(newData.position - prevWaistPos);
                 prevWaistPos = newData.position; 
-                newData.is_brake = (diff < 0.01 * M_PI / 180.0) ? 1 : 0;
+                newData.isBrake = (diff < 0.01 * M_PI / 180.0) ? 1 : 0;
                 preDiff = diff;
 
-                // fun.appendToCSV("brake input", false, newData.position, newData.is_brake, diff);
+                // fun.appendToCSV("brake input", false, newData.position, newData.isBrake, diff);
             }
             else
             {
-                newData.is_brake = 0;
+                newData.isBrake = 0;
             }
 
             tMotor->commandBuffer.push(newData);
