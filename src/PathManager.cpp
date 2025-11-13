@@ -392,7 +392,7 @@ void PathManager::pushAddStance(VectorXd &Q1, VectorXd &Q2)
                     else if (tmotorMode == "velocityFF")
                     {
                         newData.mode = tMotor->VelocityFF;
-                        newData.velocityERPM = Vt[can_id] * tMotor->pole * tMotor->gearRatio * 60.0 / 2.0 / M_PI;
+                        newData.velocityERPM = tMotor->cwDir * Vt[can_id] * tMotor->pole * tMotor->gearRatio * 60.0 / 2.0 / M_PI;
                     }
                     else if (tmotorMode == "velocityFB")
                     {
@@ -402,7 +402,7 @@ void PathManager::pushAddStance(VectorXd &Q1, VectorXd &Q2)
                     else if (tmotorMode == "velocity")
                     {
                         newData.mode = tMotor->Velocity;
-                        newData.velocityERPM = Vt[can_id] * tMotor->pole * tMotor->gearRatio * 60.0 / 2.0 / M_PI;
+                        newData.velocityERPM = tMotor->cwDir * Vt[can_id] * tMotor->pole * tMotor->gearRatio * 60.0 / 2.0 / M_PI;
                     }
                     newData.isBrake = 0;
                     tMotor->commandBuffer.push(newData);
@@ -2755,7 +2755,7 @@ void PathManager::pushCommandBuffer(VectorXd &Qi)
             else if (tmotorMode == "velocityFF")
             {
                 newData.mode = tMotor->VelocityFF;
-                newData.velocityERPM = getVelocityRadps(false, Qi[can_id], can_id) * tMotor->pole * tMotor->gearRatio * 60.0 / 2.0 / M_PI;
+                newData.velocityERPM = tMotor->cwDir * getVelocityRadps(false, Qi[can_id], can_id) * tMotor->pole * tMotor->gearRatio * 60.0 / 2.0 / M_PI;
             }
             else if (tmotorMode == "velocityFB")
             {
@@ -2765,7 +2765,7 @@ void PathManager::pushCommandBuffer(VectorXd &Qi)
             else if (tmotorMode == "velocity")
             {
                 newData.mode = tMotor->Velocity;
-                newData.velocityERPM = getVelocityRadps(false, Qi[can_id], can_id) * tMotor->pole * tMotor->gearRatio * 60.0 / 2.0 / M_PI;
+                newData.velocityERPM = tMotor->cwDir * getVelocityRadps(false, Qi[can_id], can_id) * tMotor->pole * tMotor->gearRatio * 60.0 / 2.0 / M_PI;
             }
 
             if (can_id == 0)
