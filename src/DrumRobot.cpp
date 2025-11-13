@@ -1232,7 +1232,7 @@ void DrumRobot::displayPlayCommands(bool useMagenta, bool useDrumPad, float inpu
         std::cout << "args, ";
     else
         std::cout << "code, trigger, ";
-    std::cout << "bpm, modeM, modeT music, run, exit): ";
+    std::cout << "bpm, modeM, modeT, music, run, exit): ";
 }
 
 void DrumRobot::setPythonArgs()

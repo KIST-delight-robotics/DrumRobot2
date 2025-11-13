@@ -775,6 +775,13 @@ void PathManager::solveIKandPushCommand()
             fun.appendToCSV(fileName, false, i, q(i));
         }
 
+        // //* 테스트용 *// 모터 연결하면 지워야 함 (이인우)
+        // for (int i = 0; i < 7; i++)
+        // {
+        //     std::string fileName = "solveIK_v" + to_string(i);
+        //     fun.appendToCSV(fileName, false, i, getVelocityRadps(false, q[i], i));
+        // }
+
         pushCommandBuffer(q);                           // 명령 생성 후 push
         pushDxlBuffer(q0);
     }
@@ -2820,6 +2827,8 @@ void PathManager::pushCommandBuffer(VectorXd &Qi)
 float PathManager::getVelocityRadps(bool restart, double q, int can_id)
 {
     static double pre_q[7] = {0};
+    static double pre_v[7] = {0};
+    const double alpha = 0.5;
     const double dt = 0.005;
 
     if (restart)
@@ -2828,14 +2837,20 @@ float PathManager::getVelocityRadps(bool restart, double q, int can_id)
         for (int i = 0; i < 7; i++)
         {
             pre_q[i] = readyAngle(i);
+            pre_v[i] = 0.0;
         }
         return 0.0;
     }
     else
     {
-        double v_radps = (q - pre_q[can_id]) / dt;
+        double v = (q - pre_q[can_id]) / dt;
+        double v_f = alpha * pre_v[can_id] + (1.0 - alpha) * v; // 필터링
+        
         pre_q[can_id] = q;
-        return v_radps;
+        pre_v[can_id] = v_f;
+
+        return v;
+        // return v_f;
     }
 }
 
