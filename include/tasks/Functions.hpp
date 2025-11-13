@@ -47,6 +47,9 @@ public:
     void appendToCSV(const std::string& filename, bool useAbsTime, float A_DATA, float B_DATA);
     void appendToCSV(const std::string& filename, bool useAbsTime, float A_DATA, float B_DATA, float C_DATA);
     void appendToCSV(const std::string& filename, bool useAbsTime, float A_DATA, float B_DATA, float C_DATA, float D_DATA);
+    void appendToCSV(const std::string& filename, bool useAbsTime, float A_DATA, float B_DATA, float C_DATA, float D_DATA, float E_DATA);
+    void appendToCSV(const std::string& filename, bool useAbsTime, float A_DATA, float B_DATA, float C_DATA, float D_DATA, float E_DATA, float F_DATA);
+    void appendToCSV(const std::string& filename, bool useAbsTime, float A_DATA, float B_DATA, float C_DATA, float D_DATA, float E_DATA, float F_DATA, float G_DATA);
     void appendToCSV(const std::string& filename, bool useAbsTime, can_frame& c_frame);
     void appendToCSV(const std::string& filename, bool useAbsTime, std::chrono::_V2::system_clock::time_point &__t);
     void appendToCSV(const std::string& filename, bool useAbsTime, std::vector<double> &__v);
