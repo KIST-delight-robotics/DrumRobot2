@@ -768,12 +768,12 @@ void PathManager::solveIKandPushCommand()
 
         VectorXd q = getJointAngles(q0);                // 로봇 관절각
         
-        // 데이터 기록
-        for (int i = 0; i < 9; i++)
-        {
-            std::string fileName = "solveIK_q" + to_string(i);
-            fun.appendToCSV(fileName, false, i, q(i));
-        }
+        // // 데이터 기록
+        // for (int i = 0; i < 9; i++)
+        // {
+        //     std::string fileName = "solveIK_q" + to_string(i);
+        //     fun.appendToCSV(fileName, false, i, q(i));
+        // }
 
         // //* 테스트용 *// 모터 연결하면 지워야 함 (이인우)
         // for (int i = 0; i < 7; i++)
@@ -850,12 +850,12 @@ void PathManager::genTaskSpaceTrajectory(MatrixXd &measureMatrix, int n)
 
         taskSpaceQueue.push(TT);
 
-        // 데이터 저장
-        std::string fileName;
-        fileName = "Trajectory_R";
-        fun.appendToCSV(fileName, false, TT.trajectoryR[0], TT.trajectoryR[1], TT.trajectoryR[2]);
-        fileName = "Trajectory_L";
-        fun.appendToCSV(fileName, false, TT.trajectoryL[0], TT.trajectoryL[1], TT.trajectoryL[2]);
+        // // 데이터 저장
+        // std::string fileName;
+        // fileName = "Trajectory_R";
+        // fun.appendToCSV(fileName, false, TT.trajectoryR[0], TT.trajectoryR[1], TT.trajectoryR[2]);
+        // fileName = "Trajectory_L";
+        // fun.appendToCSV(fileName, false, TT.trajectoryL[0], TT.trajectoryL[1], TT.trajectoryL[2]);
         // fileName = "S";
         // fun.appendToCSV(fileName, false, sR, sL);
 
@@ -2362,9 +2362,9 @@ void PathManager::genDxlTrajectory(MatrixXd &measureMatrix, int n)
 
         DXLQueue.push(DXL);
 
-        // 데이터 저장
-        std::string fileName = "DXL_Angle";
-        fun.appendToCSV(fileName, false, DXL.dxl1, DXL.dxl2);
+        // // 데이터 저장
+        // std::string fileName = "DXL_Angle";
+        // fun.appendToCSV(fileName, false, DXL.dxl1, DXL.dxl2);
     }
 
     curInst = nextInst;
