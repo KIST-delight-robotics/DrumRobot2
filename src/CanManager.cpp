@@ -594,7 +594,7 @@ void CanManager::setTMotorCANFrame(std::shared_ptr<TMotor> &tMotor, const TMotor
         tservocmd.setPositionCANFrame(*tMotor, &tMotor->sendFrame, tData.position);
 
         fun.appendToCSV(fun.log_file_name, false, (float)tMotor->nodeId + SEND_SIGN, tData.position, tData.position - tMotor->motorPosition);
-        fun.appendToCSV("pos", false, tData.position, tMotor->motorPosition, tData.position - tMotor->motorPosition);
+        fun.appendToCSV("pos", false, (float)tMotor->nodeId, tData.position, tMotor->motorPosition, tData.position - tMotor->motorPosition);
     }
     else if (tData.mode == tMotor->VelocityFB)
     {
@@ -610,7 +610,7 @@ void CanManager::setTMotorCANFrame(std::shared_ptr<TMotor> &tMotor, const TMotor
         tservocmd.setVelocityCANFrame(*tMotor, &tMotor->sendFrame, erpm);
 
         fun.appendToCSV(fun.log_file_name, false, (float)tMotor->nodeId + SEND_SIGN, tData.position, tData.position - tMotor->motorPosition);
-        fun.appendToCSV("vel_fb", false, tData.position, tMotor->motorPosition, tData.position - tMotor->motorPosition, erpm);
+        fun.appendToCSV("vel_fb", false, (float)tMotor->nodeId, tData.position, tMotor->motorPosition, tData.position - tMotor->motorPosition, erpm);
     }
     else if (tData.mode == tMotor->VelocityFF)
     {
@@ -624,7 +624,7 @@ void CanManager::setTMotorCANFrame(std::shared_ptr<TMotor> &tMotor, const TMotor
         tservocmd.setVelocityCANFrame(*tMotor, &tMotor->sendFrame, erpm);
 
         fun.appendToCSV(fun.log_file_name, false, (float)tMotor->nodeId + SEND_SIGN, tData.position, tData.position - tMotor->motorPosition);
-        fun.appendToCSV("vel_ff", false, tData.position, tMotor->motorPosition, tData.position - tMotor->motorPosition, erpm);
+        fun.appendToCSV("vel_ff", false, (float)tMotor->nodeId, tData.position, tMotor->motorPosition, tData.position - tMotor->motorPosition, erpm);
     }
     else if (tData.mode == tMotor->Velocity)
     {
@@ -640,7 +640,7 @@ void CanManager::setTMotorCANFrame(std::shared_ptr<TMotor> &tMotor, const TMotor
         tservocmd.setVelocityCANFrame(*tMotor, &tMotor->sendFrame, erpm);
 
         fun.appendToCSV(fun.log_file_name, false, (float)tMotor->nodeId + SEND_SIGN, tData.position, tData.position - tMotor->motorPosition);
-        fun.appendToCSV("vel", false, tData.position, tMotor->motorPosition, tData.position - tMotor->motorPosition, erpm);
+        fun.appendToCSV("vel", false, (float)tMotor->nodeId, tData.position, tMotor->motorPosition, tData.position - tMotor->motorPosition, erpm);
     }
     else if (tData.mode == tMotor->Idle)
     {
