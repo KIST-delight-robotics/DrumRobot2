@@ -536,8 +536,7 @@ void CanManager::setMaxonCANFrame(std::shared_ptr<MaxonMotor> &maxonMotor, const
 }
 
 float CanManager::calTorque(std::shared_ptr<MaxonMotor> &maxonMotor, const MaxonData &mData)
-{       
-
+{
         double err = mData.position - maxonMotor->motorPosition;
         double err_dot = (err - maxonMotor-> pre_err)/DTSECOND;
         double alpha = 0.2;  // 적절한 필터 계수
