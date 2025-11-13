@@ -249,11 +249,6 @@ void TestManager::SendTestProcess()
                         {
                             Qi[i] = A * sin (2 * M_PI * t_now / t) * M_PI / 180.0 + c_MotorAngle[i];
                             //Qi[i] = A * (1 - cos(2 * M_PI * t_now / t)) / 2.0 * M_PI / 180.0 + c_MotorAngle[i];
-
-                            if (i == 11)
-                            {
-                                fun.appendToCSV("test", false, Qi[i]);
-                            }
                         }
                         // Send to Buffer
                         for (auto &entry : motors)

@@ -392,7 +392,7 @@ void PathManager::pushAddStance(VectorXd &Q1, VectorXd &Q2)
                     else if (tmotorMode == "velocityFF")
                     {
                         newData.mode = tMotor->VelocityFF;
-                        newData.velocityERPM = Vt[can_id] * tMotor->pole * tMotor->gearRatio * 60.0 / 2.0 / M_PI;
+                        newData.velocityERPM = tMotor->cwDir * Vt[can_id] * tMotor->pole * tMotor->gearRatio * 60.0 / 2.0 / M_PI;
                     }
                     else if (tmotorMode == "velocityFB")
                     {
@@ -402,7 +402,7 @@ void PathManager::pushAddStance(VectorXd &Q1, VectorXd &Q2)
                     else if (tmotorMode == "velocity")
                     {
                         newData.mode = tMotor->Velocity;
-                        newData.velocityERPM = Vt[can_id] * tMotor->pole * tMotor->gearRatio * 60.0 / 2.0 / M_PI;
+                        newData.velocityERPM = tMotor->cwDir * Vt[can_id] * tMotor->pole * tMotor->gearRatio * 60.0 / 2.0 / M_PI;
                     }
                     newData.isBrake = 0;
                     tMotor->commandBuffer.push(newData);
@@ -768,12 +768,12 @@ void PathManager::solveIKandPushCommand()
 
         VectorXd q = getJointAngles(q0);                // 로봇 관절각
         
-        // 데이터 기록
-        for (int i = 0; i < 9; i++)
-        {
-            std::string fileName = "solveIK_q" + to_string(i);
-            fun.appendToCSV(fileName, false, i, q(i));
-        }
+        // // 데이터 기록
+        // for (int i = 0; i < 9; i++)
+        // {
+        //     std::string fileName = "solveIK_q" + to_string(i);
+        //     fun.appendToCSV(fileName, false, i, q(i));
+        // }
 
         // //* 테스트용 *// 모터 연결하면 지워야 함 (이인우)
         // for (int i = 0; i < 7; i++)
@@ -850,12 +850,12 @@ void PathManager::genTaskSpaceTrajectory(MatrixXd &measureMatrix, int n)
 
         taskSpaceQueue.push(TT);
 
-        // 데이터 저장
-        std::string fileName;
-        fileName = "Trajectory_R";
-        fun.appendToCSV(fileName, false, TT.trajectoryR[0], TT.trajectoryR[1], TT.trajectoryR[2]);
-        fileName = "Trajectory_L";
-        fun.appendToCSV(fileName, false, TT.trajectoryL[0], TT.trajectoryL[1], TT.trajectoryL[2]);
+        // // 데이터 저장
+        // std::string fileName;
+        // fileName = "Trajectory_R";
+        // fun.appendToCSV(fileName, false, TT.trajectoryR[0], TT.trajectoryR[1], TT.trajectoryR[2]);
+        // fileName = "Trajectory_L";
+        // fun.appendToCSV(fileName, false, TT.trajectoryL[0], TT.trajectoryL[1], TT.trajectoryL[2]);
         // fileName = "S";
         // fun.appendToCSV(fileName, false, sR, sL);
 
@@ -2362,9 +2362,9 @@ void PathManager::genDxlTrajectory(MatrixXd &measureMatrix, int n)
 
         DXLQueue.push(DXL);
 
-        // 데이터 저장
-        std::string fileName = "DXL_Angle";
-        fun.appendToCSV(fileName, false, DXL.dxl1, DXL.dxl2);
+        // // 데이터 저장
+        // std::string fileName = "DXL_Angle";
+        // fun.appendToCSV(fileName, false, DXL.dxl1, DXL.dxl2);
     }
 
     curInst = nextInst;
@@ -2755,7 +2755,7 @@ void PathManager::pushCommandBuffer(VectorXd &Qi)
             else if (tmotorMode == "velocityFF")
             {
                 newData.mode = tMotor->VelocityFF;
-                newData.velocityERPM = getVelocityRadps(false, Qi[can_id], can_id) * tMotor->pole * tMotor->gearRatio * 60.0 / 2.0 / M_PI;
+                newData.velocityERPM = tMotor->cwDir * getVelocityRadps(false, Qi[can_id], can_id) * tMotor->pole * tMotor->gearRatio * 60.0 / 2.0 / M_PI;
             }
             else if (tmotorMode == "velocityFB")
             {
@@ -2765,7 +2765,7 @@ void PathManager::pushCommandBuffer(VectorXd &Qi)
             else if (tmotorMode == "velocity")
             {
                 newData.mode = tMotor->Velocity;
-                newData.velocityERPM = getVelocityRadps(false, Qi[can_id], can_id) * tMotor->pole * tMotor->gearRatio * 60.0 / 2.0 / M_PI;
+                newData.velocityERPM = tMotor->cwDir * getVelocityRadps(false, Qi[can_id], can_id) * tMotor->pole * tMotor->gearRatio * 60.0 / 2.0 / M_PI;
             }
 
             if (can_id == 0)
