@@ -344,7 +344,7 @@ void CanManager::setSocketsTimeout(int sec, int usec)
     }
 }
 
-//NONBLOCK 일때는 써봐짜 의미없음
+//NONBLOCK 일때는 써봐야 의미없음
 int CanManager::setSocketTimeout(int socket, int sec, int usec)
 {
     struct timeval timeout;
@@ -482,11 +482,12 @@ bool CanManager::recvToBuff(std::shared_ptr<GenericMotor> &motor, int readCount)
     }
     return true;
 }
+
 ////////////////////////////////////////////////////////////////////////////////
 /*                             Send Functions                                 */
 ////////////////////////////////////////////////////////////////////////////////
 
-void CanManager::setMaxonCANFrame(std::shared_ptr<MaxonMotor> maxonMotor, const MaxonData &mData)
+void CanManager::setMaxonCANFrame(std::shared_ptr<MaxonMotor> &maxonMotor, const MaxonData &mData)
 {
     if (mData.mode == maxonMotor->CSP)
     {
@@ -534,7 +535,7 @@ void CanManager::setMaxonCANFrame(std::shared_ptr<MaxonMotor> maxonMotor, const 
     }
 }
 
-float CanManager::calTorque(std::shared_ptr<MaxonMotor> maxonMotor, const MaxonData &mData)
+float CanManager::calTorque(std::shared_ptr<MaxonMotor> &maxonMotor, const MaxonData &mData)
 {       
 
         double err = mData.position - maxonMotor->motorPosition;
@@ -586,14 +587,14 @@ float CanManager::calTorque(std::shared_ptr<MaxonMotor> maxonMotor, const MaxonD
         return torquemNm;
 }
 
-void CanManager::setTMotorCANFrame(std::shared_ptr<TMotor> tMotor, const TMotorData &tData)
+void CanManager::setTMotorCANFrame(std::shared_ptr<TMotor> &tMotor, const TMotorData &tData)
 {
     if (tData.mode == tMotor->Position)
     {
         tservocmd.setPositionCANFrame(*tMotor, &tMotor->sendFrame, tData.position);
 
         fun.appendToCSV(fun.log_file_name, false, (float)tMotor->nodeId + SEND_SIGN, tData.position, tData.position - tMotor->motorPosition);
-        // fun.appendToCSV("pos", false, tData.position, tMotor->motorPosition, tData.position - tMotor->motorPosition);
+        fun.appendToCSV("pos", false, tData.position, tMotor->motorPosition, tData.position - tMotor->motorPosition);
     }
     else if (tData.mode == tMotor->VelocityFB)
     {
@@ -609,7 +610,7 @@ void CanManager::setTMotorCANFrame(std::shared_ptr<TMotor> tMotor, const TMotorD
         tservocmd.setVelocityCANFrame(*tMotor, &tMotor->sendFrame, erpm);
 
         fun.appendToCSV(fun.log_file_name, false, (float)tMotor->nodeId + SEND_SIGN, tData.position, tData.position - tMotor->motorPosition);
-        fun.appendToCSV("vel_cal", false, tData.position, tMotor->motorPosition, tData.position - tMotor->motorPosition, erpm);
+        fun.appendToCSV("vel_fb", false, tData.position, tMotor->motorPosition, tData.position - tMotor->motorPosition, erpm);
     }
     else if (tData.mode == tMotor->VelocityFF)
     {
@@ -647,7 +648,7 @@ void CanManager::setTMotorCANFrame(std::shared_ptr<TMotor> tMotor, const TMotorD
     }
 }
 
-bool CanManager::safetyCheckSendT(std::shared_ptr<TMotor> tMotor, TMotorData tData)
+bool CanManager::safetyCheckSendT(std::shared_ptr<TMotor> &tMotor, TMotorData &tData)
 {
     bool isSafe = true;
     float desiredJointAngle = tMotor->motorPositionToJointAngle(tData.position);
@@ -708,7 +709,7 @@ bool CanManager::setCANFrame(std::map<std::string, bool>& fixFlags, int cycleCou
                 }
                 
                 setTMotorCANFrame(tMotor, tData);
-                // *** 속도 제어 실험으로 인한 주석 처리 *** // (이인우)
+
                 if(!safetyCheckSendT(tMotor, tData))
                 {
                     return false;
@@ -789,7 +790,7 @@ void CanManager::deactivateAllCanPorts()
     pclose(fp);
 }
 
-bool CanManager::sendMotorFrame(std::shared_ptr<GenericMotor> motor)
+bool CanManager::sendMotorFrame(const std::shared_ptr<GenericMotor> &motor)
 {
     ssize_t written = write(motor->socket, &motor->sendFrame, sizeof(motor->sendFrame));
     if (written != sizeof(motor->sendFrame))
@@ -952,7 +953,6 @@ bool CanManager::distributeFramesToMotors(bool setlimit)
 
                     fun.appendToCSV(fun.log_file_name, false, (float)tMotor->nodeId, tMotor->motorPosition, tMotor->motorCurrent);
                     
-                    // *** 속도 제어 실험으로 인한 주석 처리 *** // (이인우)
                     if (setlimit)
                     {
                         bool isSafe = safetyCheckRecvT(motor);
@@ -1019,68 +1019,3 @@ bool CanManager::distributeFramesToMotors(bool setlimit)
 
     return true;
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/*                              Hit Detection                                 */
-////////////////////////////////////////////////////////////////////////////////
-
-// bool CanManager::dct_fun(shared_ptr<MaxonMotor> maxonMotor)
-// {
-//     queue<double> positions = maxonMotor->positionValues;
-//     float hittingDrumAngle = maxonMotor->hittingDrumAngle;
-
-//     double the_k_3; // 가장 오래된 값
-//     double the_k_2;
-//     double the_k_1;
-//     double the_k;
-//     double threshold = hittingDrumAngle + wristStayAngle - maxonMotor->initialJointAngle; // 90 deg + 드럼 별 타격 각도 + 준비 각도
-
-//     if (positions.size() < 4)
-//     {
-//         return false;
-//     }
-//     else
-//     {
-//         the_k_3 = positions.front(); // 가장 오래된 값
-//         positions.pop();
-//         the_k_2 = positions.front();
-//         positions.pop();
-//         the_k_1 = positions.front();
-//         positions.pop();
-//         the_k = positions.front();
-//     }
-
-//     double vel_k = the_k - the_k_1;
-//     double vel_k_1 = the_k_1 - the_k_2;
-
-//     // if (((vel_k > 0 && vel_k_1 < 0) || (abs(vel_k) * 2 < abs(vel_k_1))) && abs(vel_k_1) >= 0.01 && the_k <= threshold)
-//     // {
-//     //     return true;
-//     // }
-//     // else
-//     //     return false;
-
-//     if ((vel_k > 0 && vel_k_1 < 0) && the_k <= threshold)
-//     {
-//         return true;
-//     }
-//     else
-//         return false;
-// }
-
-// void CanManager::detectHitting(shared_ptr<MaxonMotor> maxonMotor, float &desiredPosition)
-// {
-//     if(dct_fun(maxonMotor) && isHitL && maxonMotor->hitting == false)
-//     {
-//         fun.appendToCSV("hittingDetectL", false, 1);
-        
-//         maxonMotor->hitting = true;
-//         if (isHitL) isHitL = false;
-//         maxonMotor->hittingPos = maxonMotor->positionValues.back() + maxonMotor->initialJointAngle - maxonMotor->hittingDrumAngle;
-//         desiredPosition = maxonMotor->positionValues.back();
-//     }
-//     else
-//     {
-//         fun.appendToCSV("hittingDetectL", false, 0);
-//     }
-// }

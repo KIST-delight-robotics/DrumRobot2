@@ -92,7 +92,13 @@ public:
     const int VelocityFB = 3;
     const int VelocityFF = 4;
 
-    int controlMode = Position; 
+    int controlMode = Position;
+
+    // 극수
+    const float pole = 21.0;
+
+    // 기어비
+    float gearRatio;
 
     // commandBuffer
     std::queue<TMotorData> commandBuffer;
