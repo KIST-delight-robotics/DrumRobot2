@@ -69,6 +69,7 @@ public:
     double bpmOfScore = 100.0;      ///< 악보의 BPM 정보.
     string maxonMode = "unknown";
     int Kp, Kd;
+    string tmotorMode = "position";
 
     void initPathManager();
     void genAndPushAddStance(string flagName);
@@ -249,6 +250,7 @@ private:
     void pushAddStance(VectorXd &Q1, VectorXd &Q2);
     VectorXd calVmax(VectorXd &q1, VectorXd &q2, float t2);  // q1[rad], q2[rad], t2[s]
     VectorXd makeProfile(VectorXd &q1, VectorXd &q2, VectorXd &Vmax, float t, float t2); // q1[rad], q2[rad], Vmax[rad/s], t[s], t2[s]
+    VectorXd makeVelocityProfile(VectorXd &q1, VectorXd &q2, VectorXd &Vmax, float t, float t2);
     void pushAddStanceDXL(string flagName);
 
     /////////////////////////////////////////////////////////////////////////// Play
@@ -335,6 +337,7 @@ private:
     VectorXd getJointAngles(double q0);
     void pushDxlBuffer(double q0);
     void pushCommandBuffer(VectorXd &Qi);
+    float getVelocityRadps(bool restart, double q, int can_id);
 
     //////////////////////////////////// Detect Collision
     std::string tablePath = "../include/table/TABLE.bin";    // 테이블 위치

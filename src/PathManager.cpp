@@ -74,6 +74,8 @@ void PathManager::initPlayStateValue()
 
     prevWaistPos = 0.0;         // 브레이크 판단에 사용될 허리 전 값
     preDiff = 0.0;              // 브레이크 판단(필터)에 사용될 전 허리 차이값
+
+    getVelocityRadps(true, 0.0, 0);     // 속도 계산을 위한 초기값
 }
 
 void PathManager::processLine(MatrixXd &measureMatrix)
@@ -353,6 +355,7 @@ VectorXd PathManager::getAddStanceAngle(string flagName)
 void PathManager::pushAddStance(VectorXd &Q1, VectorXd &Q2)
 {
     VectorXd Qt = VectorXd::Zero(12);
+    VectorXd Vt = VectorXd::Zero(12);
     float dt = canManager.DTSECOND;     // 5ms
     double moveTime = 2.0;              // 2초동안 이동
     double waitTime = 1.0;              // 1초 대기 후 이동 시작
@@ -371,6 +374,7 @@ void PathManager::pushAddStance(VectorXd &Q1, VectorXd &Q2)
             float t = (k - waitN) * moveTime / moveN;
 
             Qt = makeProfile(Q1, Q2, Vmax, t, moveTime);
+            Vt = makeVelocityProfile(Q1, Q2, Vmax, t, moveTime);
 
             for (auto &entry : motors)
             {
@@ -380,7 +384,26 @@ void PathManager::pushAddStance(VectorXd &Q1, VectorXd &Q2)
                 {
                     TMotorData newData;
                     newData.position = tMotor->jointAngleToMotorPosition(Qt[can_id]);
-                    newData.mode = tMotor->Position;
+                    if (tmotorMode == "position")
+                    {
+                        newData.mode = tMotor->Position;
+                        newData.velocityERPM = 0.0;
+                    }
+                    else if (tmotorMode == "velocityFF")
+                    {
+                        newData.mode = tMotor->VelocityFF;
+                        newData.velocityERPM = Vt[can_id] * tMotor->pole * tMotor->gearRatio * 60.0 / 2.0 / M_PI;
+                    }
+                    else if (tmotorMode == "velocityFB")
+                    {
+                        newData.mode = tMotor->VelocityFB;
+                        newData.velocityERPM = 0.0;
+                    }
+                    else if (tmotorMode == "velocity")
+                    {
+                        newData.mode = tMotor->Velocity;
+                        newData.velocityERPM = Vt[can_id] * tMotor->pole * tMotor->gearRatio * 60.0 / 2.0 / M_PI;
+                    }
                     newData.isBrake = 0;
                     tMotor->commandBuffer.push(newData);
 
@@ -394,6 +417,8 @@ void PathManager::pushAddStance(VectorXd &Q1, VectorXd &Q2)
                         MaxonData newData;
                         newData.position = maxonMotor->jointAngleToMotorPosition(Qt[can_id]);
                         newData.mode = maxonMotor->CSP;
+                        newData.kp = 0.0;
+                        newData.kd = 0.0;
                         maxonMotor->commandBuffer.push(newData);
 
                         maxonMotor->finalMotorPosition = newData.position;
@@ -412,7 +437,26 @@ void PathManager::pushAddStance(VectorXd &Q1, VectorXd &Q2)
                 {
                     TMotorData newData;
                     newData.position = tMotor->jointAngleToMotorPosition(Q1[can_id]);
-                    newData.mode = tMotor->Position;
+                    if (tmotorMode == "position")
+                    {
+                        newData.mode = tMotor->Position;
+                        newData.velocityERPM = 0.0;
+                    }
+                    else if (tmotorMode == "velocityFF")
+                    {
+                        newData.mode = tMotor->VelocityFF;
+                        newData.velocityERPM = 0.0;
+                    }
+                    else if (tmotorMode == "velocityFB")
+                    {
+                        newData.mode = tMotor->VelocityFB;
+                        newData.velocityERPM = 0.0;
+                    }
+                    else if (tmotorMode == "velocity")
+                    {
+                        newData.mode = tMotor->Velocity;
+                        newData.velocityERPM = 0.0;
+                    }
                     newData.isBrake = 0;
                     tMotor->commandBuffer.push(newData);
                 }
@@ -424,6 +468,8 @@ void PathManager::pushAddStance(VectorXd &Q1, VectorXd &Q2)
                         MaxonData newData;
                         newData.position = maxonMotor->jointAngleToMotorPosition(Q1[can_id]);
                         newData.mode = maxonMotor->CSP;
+                        newData.kp = 0.0;
+                        newData.kd = 0.0;
                         maxonMotor->commandBuffer.push(newData);
                     }
                     maxonMotor->pre_q = Qt[can_id];
@@ -555,6 +601,82 @@ VectorXd PathManager::makeProfile(VectorXd &q1, VectorXd &q2, VectorXd &Vmax, fl
     }
 
     return Qi;
+}
+
+VectorXd PathManager::makeVelocityProfile(VectorXd &q1, VectorXd &q2, VectorXd &Vmax, float t, float t2)
+{
+    VectorXd Vi = VectorXd::Zero(12);
+
+    for (int i = 0; i < 12; i++)
+    {
+        double val, S;
+        int sign;
+
+        S = q2(i) - q1(i);
+
+        // 부호 확인, 이동거리 양수로 변경
+        if (S < 0)
+        {
+            S = abs(S);
+            sign = -1;
+        }
+        else
+        {
+            sign = 1;
+        }
+
+        // 궤적 생성
+        if (S == 0)
+        {
+            // 정지
+            val = 0.0;
+        }
+        else if (Vmax(i) < 0)
+        {
+            // Vmax 값을 구하지 못했을 때 삼각형 프로파일 생성
+            double acc_tri = 4 * S / t2 / t2;
+
+            if (t < t2 / 2)
+            {
+                val = sign * acc_tri * t;
+            }
+            else if (t < t2)
+            {
+                val = sign * acc_tri * (t2 - t);
+            }
+            else
+            {
+                val = 0.0;
+            }
+        }
+        else
+        {
+            // 사다리꼴 프로파일
+            if (t < Vmax(i) / accMax)
+            {
+                // 가속
+                val = sign * accMax * t;
+            }
+            else if (t < S / Vmax(i))
+            {
+                // 등속
+                val = sign * Vmax(i);
+            }
+            else if (t < Vmax(i) / accMax + S / Vmax(i))
+            {
+                // 감속
+                val = sign * accMax * (S / Vmax(i) + Vmax(i) / accMax - t);
+            }
+            else
+            {
+                val = 0.0;
+            }
+        }
+
+        Vi(i) = val;
+    }
+
+    return Vi;
 }
 
 void PathManager::pushAddStanceDXL(string flagName)
@@ -2617,13 +2739,33 @@ void PathManager::pushCommandBuffer(VectorXd &Qi)
         {
             TMotorData newData;
             newData.position = tMotor->jointAngleToMotorPosition(Qi[can_id]);
-            newData.mode = tMotor->Position;
+
+            if (tmotorMode == "position")
+            {
+                newData.mode = tMotor->Position;
+                newData.velocityERPM = 0.0;
+            }
+            else if (tmotorMode == "velocityFF")
+            {
+                newData.mode = tMotor->VelocityFF;
+                newData.velocityERPM = getVelocityRadps(false, Qi[can_id], can_id) * tMotor->pole * tMotor->gearRatio * 60.0 / 2.0 / M_PI;
+            }
+            else if (tmotorMode == "velocityFB")
+            {
+                newData.mode = tMotor->VelocityFB;
+                newData.velocityERPM = 0.0;
+            }
+            else if (tmotorMode == "velocity")
+            {
+                newData.mode = tMotor->Velocity;
+                newData.velocityERPM = getVelocityRadps(false, Qi[can_id], can_id) * tMotor->pole * tMotor->gearRatio * 60.0 / 2.0 / M_PI;
+            }
 
             if (can_id == 0)
             {
                 float alpha = 0.7;
                 float diff = alpha*preDiff + (1 - alpha)*std::abs(newData.position - prevWaistPos);
-                prevWaistPos = newData.position; 
+                prevWaistPos = newData.position;
                 newData.isBrake = (diff < 0.01 * M_PI / 180.0) ? 1 : 0;
                 preDiff = diff;
 
@@ -2672,6 +2814,28 @@ void PathManager::pushCommandBuffer(VectorXd &Qi)
             }
             maxonMotor->pre_q = Qi[can_id];
         }
+    }
+}
+
+float PathManager::getVelocityRadps(bool restart, double q, int can_id)
+{
+    static double pre_q[7] = {0};
+    const double dt = 0.005;
+
+    if (restart)
+    {
+        // 연주 시작할 때마다 초기 위치로 초기화
+        for (int i = 0; i < 7; i++)
+        {
+            pre_q[i] = readyAngle(i);
+        }
+        return 0.0;
+    }
+    else
+    {
+        double v_radps = (q - pre_q[can_id]) / dt;
+        pre_q[can_id] = q;
+        return v_radps;
     }
 }
 

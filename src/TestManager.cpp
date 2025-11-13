@@ -995,7 +995,7 @@ void TestManager::pushVelCmd(float arr[])
                     TMotorData newData;
                     newData.position = tMotor->jointAngleToMotorPosition(Qi[canManager.motorMapping[entry.first]]);
                     newData.mode = tMotor->Velocity;
-                    newData.velocityERPM = Vi[canManager.motorMapping[entry.first]] * 60.0 * 21.0 * 10 / 2.0 / M_PI;;
+                    newData.velocityERPM = Vi[canManager.motorMapping[entry.first]] * 60.0 * 21.0 * 10 / 2.0 / M_PI;
                     tMotor->commandBuffer.push(newData);
                     
                     tMotor->finalMotorPosition = newData.position;
@@ -1016,7 +1016,7 @@ void TestManager::pushVelCmd(float arr[])
 
 vector<float> TestManager::makeVelProfile(float q1[], float q2[], vector<float> &Vmax, float acc, float t, float t2)
 {
-    vector<float> Qi;
+    vector<float> Vi;
     for(long unsigned int i = 0; i < 12; i++)
     {
         float val, S;
@@ -1078,7 +1078,7 @@ vector<float> TestManager::makeVelProfile(float q1[], float q2[], vector<float> 
                 val = 0;
             }
         }
-        Qi.push_back(val);
+        Vi.push_back(val);
     }
-    return Qi;
+    return Vi;
 }

@@ -96,7 +96,7 @@ public:
     //////////////////////////////////////// Send
     int errorCnt = 0;   // 수신 에러 카운트
 
-    bool sendMotorFrame(std::shared_ptr<GenericMotor> motor);
+    bool sendMotorFrame(const std::shared_ptr<GenericMotor> &motor);
     bool setCANFrame(std::map<std::string, bool>& fixFlags, int cycleCounter);
 
     //////////////////////////////////////// Receive
@@ -117,9 +117,6 @@ public:
 
     // SDO communication으로 받아오는 현재 위치 값
     float currentPosition = 0.0;
-
-    bool dct_fun(shared_ptr<MaxonMotor> maxonMotor);
-    void detectHitting(shared_ptr<MaxonMotor> maxonMotor, float &desiredPosition);
 
 private:
 
@@ -147,10 +144,10 @@ private:
     int setSocketTimeout(int socket, int sec, int usec);
 
     //////////////////////////////////////// Send
-    void setMaxonCANFrame(std::shared_ptr<MaxonMotor> maxonMotor, const MaxonData &mData);
-    float calTorque(std::shared_ptr<MaxonMotor> maxonMotor, const MaxonData &mData);
-    void setTMotorCANFrame(std::shared_ptr<TMotor> tMotor, const TMotorData &tData);
-    bool safetyCheckSendT(std::shared_ptr<TMotor> tMotor, TMotorData tData);
+    void setMaxonCANFrame(std::shared_ptr<MaxonMotor> &maxonMotor, const MaxonData &mData);
+    float calTorque(std::shared_ptr<MaxonMotor> &maxonMotor, const MaxonData &mData);
+    void setTMotorCANFrame(std::shared_ptr<TMotor> &tMotor, const TMotorData &tData);
+    bool safetyCheckSendT(std::shared_ptr<TMotor> &tMotor, TMotorData &tData);
 
     void deactivateCanPort(const char *port);
     void deactivateAllCanPorts();

@@ -60,6 +60,7 @@ void DrumRobot::initializeMotors()
                 tMotor->initialJointAngle = initialJointAngles[can_id] * M_PI / 180.0f;
                 tMotor->currentLimit = 29.8;  // [A]    // ak10-9
                 tMotor->useFourBarLinkage = false;
+                tMotor->gearRatio = 9.0;
             }
             else if (motor_pair.first == "R_arm1")
             {
@@ -70,6 +71,7 @@ void DrumRobot::initializeMotors()
                 tMotor->initialJointAngle = initialJointAngles[can_id] * M_PI / 180.0f;
                 tMotor->currentLimit = 23.2;  // [A]    // ak70-10
                 tMotor->useFourBarLinkage = false;
+                tMotor->gearRatio = 10.0;
             }
             else if (motor_pair.first == "L_arm1")
             {
@@ -80,6 +82,7 @@ void DrumRobot::initializeMotors()
                 tMotor->initialJointAngle = initialJointAngles[can_id] * M_PI / 180.0f;
                 tMotor->currentLimit = 23.2;  // [A]    // ak70-10
                 tMotor->useFourBarLinkage = false;
+                tMotor->gearRatio = 10.0;
             }
             else if (motor_pair.first == "R_arm2")
             {
@@ -90,6 +93,7 @@ void DrumRobot::initializeMotors()
                 tMotor->initialJointAngle = initialJointAngles[can_id] * M_PI / 180.0f;
                 tMotor->currentLimit = 23.2;  // [A]    // ak70-10
                 tMotor->useFourBarLinkage = false;
+                tMotor->gearRatio = 10.0;
             }
             else if (motor_pair.first == "R_arm3")
             {
@@ -101,6 +105,7 @@ void DrumRobot::initializeMotors()
                 tMotor->currentLimit = 23.2;  // [A]    // ak70-10
                 tMotor->useFourBarLinkage = false;
                 // tMotor->setInitialMotorAngle(tMotor->initialJointAngle);     // 4-bar-linkage 사용하면 쓰는 함수
+                tMotor->gearRatio = 10.0;
             }
             else if (motor_pair.first == "L_arm2")
             {
@@ -111,6 +116,7 @@ void DrumRobot::initializeMotors()
                 tMotor->initialJointAngle = initialJointAngles[can_id] * M_PI / 180.0f;
                 tMotor->currentLimit = 23.2;  // [A]    // ak70-10
                 tMotor->useFourBarLinkage = false;
+                tMotor->gearRatio = 10.0;
             }
             else if (motor_pair.first == "L_arm3")
             {
@@ -122,6 +128,7 @@ void DrumRobot::initializeMotors()
                 tMotor->currentLimit = 23.2;  // [A]    // ak70-10
                 tMotor->useFourBarLinkage = false;
                 // tMotor->setInitialMotorAngle(tMotor->initialJointAngle);     // 4-bar-linkage 사용하면 쓰는 함수
+                tMotor->gearRatio = 10.0;
             }
         }
         else if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motor))
@@ -729,7 +736,7 @@ void DrumRobot::sendLoopForThread()
 
         // DXL
         if (cycleCounter == 0)
-        {   
+        {
             if (!pathManager.dxlCommandBuffer.empty())
             {
                 // 맨 앞 원소 꺼낸 값으로 SyncWrite 실행
@@ -1146,14 +1153,14 @@ void DrumRobot::displayPlayCommands(bool useMagenta, bool useDrumPad, float inpu
     // magenta or code name
     if(useMagenta)
     {
-        std::cout << "magenta : On \n";
-        std::cout << "trigger : Play When The Drum Pad is Struck. \n";
-        std::cout << "args :\n";
+        std::cout << "magenta: On \n";
+        std::cout << "trigger: Play When The Drum Pad is Struck. \n";
+        std::cout << "args:\n";
         
         int argsSize = delayTime.size();
         if (repeatNum == argsSize)
         {
-            std::cout << "\t- Repeat Num :" << repeatNum << "\n";
+            std::cout << "\t- Repeat Num:" << repeatNum << "\n";
             for (int i = 0; i < repeatNum; i++)
             {
                 float a, b, c, d;
@@ -1171,39 +1178,53 @@ void DrumRobot::displayPlayCommands(bool useMagenta, bool useDrumPad, float inpu
     }
     else
     {
-        std::cout << "magenta : Off \n";
-        std::cout << "code : " << txtFileName << "\n";
+        std::cout << "magenta: Off \n";
+        std::cout << "code: " << txtFileName << "\n";
 
         if (useDrumPad)
         {
-            std::cout << "trigger : Play When The Drum Pad is Struck (" << inputWaitMs/1000.0 << "s)\n";
+            std::cout << "trigger: Play When The Drum Pad is Struck (" << inputWaitMs/1000.0 << "s)\n";
         }
         else
         {
-            std::cout << "trigger : Play After a Set Time Delay (" << inputWaitMs/1000.0 << "s)\n";
+            std::cout << "trigger: Play After a Set Time Delay (" << inputWaitMs/1000.0 << "s)\n";
         }
     }
 
     // bpm
-    std::cout << "bpm : " << pathManager.bpmOfScore << "\n";
+    std::cout << "bpm: " << pathManager.bpmOfScore << "\n";
     
     // maxon motor mode
+    std::cout << "Maxon Motor Mode: ";
     if (pathManager.maxonMode == "unknown")
-        std::cout << "mode : unknown \n";
+        std::cout << "unknown \n";
     else if (pathManager.maxonMode == "CST")
-        std::cout << "mode : Maxon Motor Mode CST \n";
+        std::cout << "CST mode \n";
     else
-        std::cout << "mode : Maxon Motor Mode CSP \n";
+        std::cout << "CSP mode \n";
+
+    // Tmotor mode
+    std::cout << "Tmotor Mode: ";
+    if (pathManager.tmotorMode == "unknown")
+        std::cout << "unknown \n";
+    else if (pathManager.tmotorMode == "velocityFF")
+        std::cout << "velocity control mode (Feedforward) \n";
+    else if (pathManager.tmotorMode == "velocityFB")
+        std::cout << "velocity control mode (Feedback) \n";
+    else if (pathManager.tmotorMode == "velocity")
+        std::cout << "velocity control mode (Feedback+Feedforward) \n";
+    else
+        std::cout << "position control mode \n";
     
     // music
     if (playMusic)
     {
-        std::cout << "music : Drumming With Music \n";
-        std::cout << "\t- path :" << wavPath << "\n";
+        std::cout << "music: Drumming With Music \n";
+        std::cout << "\t- path:" << wavPath << "\n";
     }
     else
     {
-        std::cout << "music : Just Drumming \n";
+        std::cout << "music: Just Drumming \n";
     }
     
     std::cout << "\nEnter Commad (magenta, ";
@@ -1211,12 +1232,12 @@ void DrumRobot::displayPlayCommands(bool useMagenta, bool useDrumPad, float inpu
         std::cout << "args, ";
     else
         std::cout << "code, trigger, ";
-    std::cout << "bpm, mode, music, run, exit): ";
+    std::cout << "bpm, modeM, modeT music, run, exit): ";
 }
 
 void DrumRobot::setPythonArgs()
 {
-    std::cout << "\n반복 횟수 : ";
+    std::cout << "\n반복 횟수: ";
     cin >> repeatNum;
 
     // 큐 초기화 (모든 요소 삭제)
@@ -1239,18 +1260,18 @@ void DrumRobot::setPythonArgs()
         int dT, rT, mT;
         float wT;
         
-        std::cout << "\n" << i + 1 << "번째 delay time : ";
+        std::cout << "\n" << i + 1 << "번째 delay time: ";
         cin >> dT;
         
         do{ 
-            std::cout << i + 1 << "번째 record bar number : ";
+            std::cout << i + 1 << "번째 record bar number: ";
             cin >> rT;
             if (rT % 2 == 1)
                 std::cout << "녹음 마디 갯수는 2의 배수여야 합니다.\n";
         }while(rT % 2 == 1);
         
         do{
-            std::cout << i + 1 << "번째 make bar number : ";
+            std::cout << i + 1 << "번째 make bar number: ";
             cin >> mT;
             if(mT % 2 == 1)
                 std::cout << "생성 마디 갯수는 2의 배수여야 합니다.\n";
@@ -1258,7 +1279,7 @@ void DrumRobot::setPythonArgs()
                 std::cout << "생성 마디 갯수는 녹음 마디의 3배 이하여하 합니다.\n";
         }while(mT % 2 == 1 || mT > 3*rT);
 
-        std::cout << i + 1 << "번째 wait time : ";
+        std::cout << i + 1 << "번째 wait time: ";
         cin >> wT;
 
         delayTime.push(dT);
@@ -1279,7 +1300,8 @@ bool DrumRobot::checkPreconditions(bool useMagenta, std::string txtPath)
             return false;
         }
 
-        if (pathManager.maxonMode == "unknown")
+        // mode 확인
+        if (pathManager.maxonMode == "unknown" || pathManager.tmotorMode == "unknown")
         {
             return false;
         }
@@ -1292,7 +1314,8 @@ bool DrumRobot::checkPreconditions(bool useMagenta, std::string txtPath)
             return false;
         }
 
-        if (pathManager.maxonMode == "unknown")
+        // mode 확인
+        if (pathManager.maxonMode == "unknown" || pathManager.tmotorMode == "unknown")
         {
             return false;
         }
@@ -1369,11 +1392,11 @@ std::string DrumRobot::selectPlayMode()
                 }
             } while (pathManager.bpmOfScore <= 0);
         }
-        else if (userInput == "mode")
+        else if (userInput == "modeM")
         {
             do
             {
-                std::cout << "\nEnter Maxon Control Mode (CSP : 1 / CST : 0): ";
+                std::cout << "\nEnter Maxon Control Mode (CSP: 1 / CST: 0): ";
                 std::cin >> mode;
 
                 if (mode == 0)
@@ -1392,6 +1415,36 @@ std::string DrumRobot::selectPlayMode()
                     pathManager.maxonMode = "unknown";
                 }
             } while (pathManager.maxonMode == "unknown");
+        }
+        else if (userInput == "modeT")
+        {
+            do
+            {
+                std::cout << "\nEnter Tmotor Control Mode (position: 1 / velocity FF: 2 / velocity FB: 3 / velocity FF+FB: 4): ";
+                std::cin >> mode;
+
+                if (mode == 1)
+                {
+                    pathManager.tmotorMode = "position";
+                }
+                else if (mode == 2)
+                {
+                    pathManager.tmotorMode = "velocityFF";
+                }
+                else if (mode == 3)
+                {
+                    pathManager.tmotorMode = "velocityFB";
+                }
+                else if (mode == 4)
+                {
+                    pathManager.tmotorMode = "velocity";
+                }
+                else
+                {
+                    std::cout << "\nInvalid Input\n";
+                    pathManager.tmotorMode = "unknown";
+                }
+            } while (pathManager.tmotorMode == "unknown");
         }
         else if (userInput == "music")
         {
