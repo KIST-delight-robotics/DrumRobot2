@@ -2828,7 +2828,7 @@ float PathManager::getVelocityRadps(bool restart, double q, int can_id)
 {
     static double pre_q[7] = {0};
     static double pre_v[7] = {0};
-    const double alpha = 0.5;
+    const double alpha = 0.1;
     const double dt = 0.005;
 
     if (restart)
@@ -2844,7 +2844,7 @@ float PathManager::getVelocityRadps(bool restart, double q, int can_id)
     else
     {
         double v = (q - pre_q[can_id]) / dt;
-        double v_f = alpha * pre_v[can_id] + (1.0 - alpha) * v; // 필터링
+        double v_f = alpha * pre_v[can_id] + (1.0 - alpha) * v; // 1차 필터
         
         pre_q[can_id] = q;
         pre_v[can_id] = v_f;
