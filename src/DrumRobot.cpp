@@ -1208,11 +1208,11 @@ void DrumRobot::displayPlayCommands(bool useMagenta, bool useDrumPad, float inpu
     if (pathManager.tmotorMode == "unknown")
         std::cout << "unknown \n";
     else if (pathManager.tmotorMode == "velocityFF")
-        std::cout << "velocity control mode (Feedforward) \n";
+        std::cout << "velocity control mode (only Feedforward) \n";
     else if (pathManager.tmotorMode == "velocityFB")
-        std::cout << "velocity control mode (Feedback) \n";
+        std::cout << "velocity control mode (only Feedback) \n";
     else if (pathManager.tmotorMode == "velocity")
-        std::cout << "velocity control mode (Feedback+Feedforward) \n";
+        std::cout << "velocity control mode \n";
     else
         std::cout << "position control mode \n";
     
@@ -1420,7 +1420,7 @@ std::string DrumRobot::selectPlayMode()
         {
             do
             {
-                std::cout << "\nEnter Tmotor Control Mode (position: 1 / velocity FF: 2 / velocity FB: 3 / velocity FF+FB: 4): ";
+                std::cout << "\nEnter Tmotor Control Mode (position: 1 / velocity: 2 / velocity (only FB): 3): ";
                 std::cin >> mode;
 
                 if (mode == 1)
@@ -1429,7 +1429,7 @@ std::string DrumRobot::selectPlayMode()
                 }
                 else if (mode == 2)
                 {
-                    pathManager.tmotorMode = "velocityFF";
+                    pathManager.tmotorMode = "velocity";
                 }
                 else if (mode == 3)
                 {
@@ -1437,7 +1437,7 @@ std::string DrumRobot::selectPlayMode()
                 }
                 else if (mode == 4)
                 {
-                    pathManager.tmotorMode = "velocity";
+                    pathManager.tmotorMode = "velocityFF";
                 }
                 else
                 {

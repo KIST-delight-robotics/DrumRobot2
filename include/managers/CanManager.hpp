@@ -36,10 +36,6 @@
 // position loop mode 에서 step input 각도 제한
 #define POS_DIFF_LIMIT 30.0*M_PI/180.0
 
-// csv 저장
-#define SEND_SIGN 100
-#define INIT_SIGN 99.9
-
 using namespace std;
 using namespace Eigen;
 
