@@ -16,7 +16,7 @@
 #include "Motor.hpp"
 
 #define SEND_SIGN 100
-#define INIT_SIGN 99.9
+#define INIT_SIGN 99
 
 using namespace std;
 

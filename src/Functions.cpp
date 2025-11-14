@@ -140,11 +140,11 @@ void Functions::openCSVFile()
                 std::shared_ptr<GenericMotor> motor = motor_pair.second;
                 if (std::shared_ptr<TMotor> tMotor = std::dynamic_pointer_cast<TMotor>(motor_pair.second))
                 {
-                    appendToCSV(log_file_name, false, (float)motor->nodeId, tMotor->initialJointAngle, INIT_SIGN);
+                    appendToCSV(log_file_name, false, (float)motor->nodeId, INIT_SIGN, tMotor->initialJointAngle, tMotor->cwDir, tMotor->useFourBarLinkage?1:0);
                 }
                 else if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motor_pair.second))
                 {
-                    appendToCSV(log_file_name, false, (float)motor->nodeId, maxonMotor->initialJointAngle, INIT_SIGN);
+                    appendToCSV(log_file_name, false, (float)motor->nodeId, INIT_SIGN, maxonMotor->initialJointAngle, maxonMotor->cwDir, 0);
                 }
             }
 
