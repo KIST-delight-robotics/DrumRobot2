@@ -766,7 +766,8 @@ void PathManager::solveIKandPushCommand()
         // ***허리 브레이크 테스트용*** // (이인우)
         // q0 = 0.0;
 
-        VectorXd q = getJointAngles(q0);                // 로봇 관절각
+        double KpRatioR, KpRatioL;
+        VectorXd q = getJointAngles(q0, KpRatioR, KpRatioL);                // 로봇 관절각
         
         // // 데이터 기록
         // for (int i = 0; i < 9; i++)
@@ -782,7 +783,7 @@ void PathManager::solveIKandPushCommand()
         //     fun.appendToCSV(fileName, false, i, getVelocityRadps(false, q[i], i));
         // }
 
-        pushCommandBuffer(q);                           // 명령 생성 후 push
+        pushCommandBuffer(q, KpRatioR, KpRatioL);                           // 명령 생성 후 push
         pushDxlBuffer(q0);
     }
 
@@ -1264,7 +1265,7 @@ void PathManager::genHitTrajectory(MatrixXd &measureMatrix, int n)
     double timeStep = 0.05;                 // 악보를 쪼개는 단위
     double lineTime = measureMatrix(1,1);   // 궤적 생성하기 위한 한 줄의 시간
     int samplesPerLine = static_cast<int>(round(lineTime / timeStep)); // 한 줄을 쪼갠 개수
-
+    
     // divide
     dividedMatrix = divideMatrix(measureMatrix);
 
@@ -1306,6 +1307,9 @@ void PathManager::genHitTrajectory(MatrixXd &measureMatrix, int n)
         HT.elbowL = getElbowAngle(tHitL, elbowTimeL, elbowCoefficientL);
         HT.wristR = getWristAngle(tHitR, wristTimeR, wristCoefficientR);
         HT.wristL = getWristAngle(tHitL, wristTimeL, wristCoefficientL);
+
+        HT.kpRatioR = getKpRatio(tHitR, wristTimeR);
+        HT.kpRatioL = getKpRatio(tHitL, wristTimeL);
 
         hitQueue.push(HT);
 
@@ -1960,6 +1964,20 @@ double PathManager::getWristAngle(double t, WristTime wT, MatrixXd &coefficientM
     {
         return wristAngle(3);
     }
+}
+
+double PathManager::getKpRatio(double t, WristTime wT)
+{
+
+    if (t > wT.liftTime && t <= wT.hitTime)
+    {
+        double duration = wT.hitTime - wT.liftTime;
+        double progress = (t - wT.liftTime) / duration;
+
+        return 1.0 + (kpMin - 1.0) * progress;
+    }
+
+    return 1.0
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2676,7 +2694,7 @@ double PathManager::getWaistAngle(MatrixXd &waistCoefficient, int index)
     return waistCoefficient(0, 0) + waistCoefficient(1, 0) * t + waistCoefficient(2, 0) * t * t + waistCoefficient(3, 0) * t * t * t;
 }
 
-VectorXd PathManager::getJointAngles(double q0)
+VectorXd PathManager::getJointAngles(double q0, double &KpRatioR, double &KpRatioL)
 {
     VectorXd q(12);
 
@@ -2724,6 +2742,9 @@ VectorXd PathManager::getJointAngles(double q0)
     q(10) = PT.bass;
     q(11) = PT.hihat;
 
+    KpRatioR = HT.kpRatioR;
+    KpRatioL = HT.kpRatioL;
+
     return q;
 }
 
@@ -2736,7 +2757,7 @@ void PathManager::pushDxlBuffer(double q0)
     dxlCommandBuffer.push(dxlCommand);
 }
 
-void PathManager::pushCommandBuffer(VectorXd &Qi)
+void PathManager::pushCommandBuffer(VectorXd &Qi, double KpRatioR, double KpRatioL)
 {
     for (auto &entry : motors)
     {
@@ -2805,7 +2826,7 @@ void PathManager::pushCommandBuffer(VectorXd &Qi)
                 else if (maxonMode == "CST")
                 {
                     newData.mode = maxonMotor->CST;
-                    newData.kp = Kp;
+                    newData.kp = Kp * (can_id==7?KpRatioR:KpRatioL);
                     newData.kd = Kd;
                 }
                 else

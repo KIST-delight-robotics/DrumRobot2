@@ -1404,6 +1404,9 @@ std::string DrumRobot::selectPlayMode()
                     pathManager.maxonMode = "CST";
                     pathManager.Kp = 60;
                     pathManager.Kd = 7;
+                    double min =0;
+                    std::cin >> min;
+                    pathManager.kpMin = min;
                 }
                 else if (mode == 1)
                 {

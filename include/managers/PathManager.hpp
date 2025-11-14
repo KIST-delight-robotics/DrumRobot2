@@ -69,6 +69,7 @@ public:
     double bpmOfScore = 100.0;      ///< 악보의 BPM 정보.
     string maxonMode = "unknown";
     int Kp, Kd;
+    double kpMin;
     string tmotorMode = "position";
 
     void initPathManager();
@@ -169,6 +170,9 @@ private:
         double elbowL;  ///> 왼팔 팔꿈치 관절에 더해줄 각도
         double wristR;  ///> 오른팔 손목 관절에 더해줄 각도
         double wristL;  ///> 왼팔 손목 관절에 더해줄 각도
+
+        double kpRatioR = 1.0;
+        double kpRatioL = 1.0;
     }HitTrajectory;
 
     // 페달 궤적
@@ -302,6 +306,7 @@ private:
     MatrixXd makeWristCoefficient(int state, WristTime wT, WristAngle wA);
     double getElbowAngle(double t, ElbowTime eT, MatrixXd &coefficientMatrix);
     double getWristAngle(double t, WristTime wT, MatrixXd &coefficientMatrix);
+    double getKpRatio(double t, WristTime wT);
 
     //////////////////////////////////// Pedal Trajectory
     queue<PedalTrajectory> pedalQueue;
@@ -334,9 +339,9 @@ private:
     std::pair<double, vector<double>> getWaistAngleT2(std::vector<WaistParameter> &waistParams);
     vector<double> cubicInterpolation(const vector<double>& q, const vector<double>& t);
     double getWaistAngle(MatrixXd &waistCoefficient, int index);
-    VectorXd getJointAngles(double q0);
+    VectorXd getJointAngles(double q0, double &KpRatioR, double &KpRatioL);
     void pushDxlBuffer(double q0);
-    void pushCommandBuffer(VectorXd &Qi);
+    void pushCommandBuffer(VectorXd &Qi, double KpRatioR, double KpRatioL);
     float getVelocityRadps(bool restart, double q, int can_id);
 
     //////////////////////////////////// Detect Collision
