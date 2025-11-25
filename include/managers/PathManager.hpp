@@ -70,7 +70,9 @@ public:
     string maxonMode = "unknown";
     int Kp, Kd;
     double kpMin;
-    string tmotorMode = "position";
+    double kpMax;
+    int KdDrop;
+    string tmotorMode = "velocity";
 
     void initPathManager();
     void genAndPushAddStance(string flagName);

@@ -68,7 +68,7 @@ struct TMotorData
     float position;
     float velocityERPM = 0.0;
     int mode;
-    int isBrake;
+    int useBrake;
 };
 
 class TMotor : public GenericMotor

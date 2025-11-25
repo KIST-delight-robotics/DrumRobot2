@@ -28,7 +28,7 @@ void TestManager::SendTestProcess()
             }
         FK(c_MotorAngle); // 현재 q값에 대한 FK 진행
     
-        std::cout << "\nSelect Method (1 - 관절각도값 조절, 2 - 좌표값 조절, 4 - 발 모터, 5 - 속도 제어 실험, -1 - 나가기) : ";
+        std::cout << "\nSelect Method (1 - 관절각도값 조절, 2 - 좌표값 조절, 4 - 발 모터, 5 - 속도 제어 실험, 6 - 브레이크 -1 - 나가기) : ";
         std::cin >> method;
 
         if(method == 1)
@@ -283,6 +283,14 @@ void TestManager::SendTestProcess()
         else if(method == 5)
         {
             testTmotorVelocityMode();
+        }
+        else if(method == 6)
+        {
+            int state_brake;
+            cin >> state_brake;
+            //useBrake가 1이면 브레이크 켜줌 0이면 꺼줌
+            usbio.setUSBIO4761(0, state_brake); //세팅
+            usbio.outputUSBIO4761();                    //실행
         }
         else
         {

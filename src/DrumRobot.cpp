@@ -1402,11 +1402,27 @@ std::string DrumRobot::selectPlayMode()
                 if (mode == 0)
                 {
                     pathManager.maxonMode = "CST";
-                    pathManager.Kp = 60;
-                    pathManager.Kd = 7;
-                    double min =0;
-                    std::cin >> min;
-                    pathManager.kpMin = min;
+
+                    // Kp 값 입력받기
+                    std::cout << "Kp: ";
+                    std::cin >> pathManager.Kp;
+
+                    // Kd 값 입력받기
+                    std::cout << "Kd: ";
+                    std::cin >> pathManager.Kd;
+
+                    // Kd 값 입력받기
+                    std::cout << "KdDrop: ";
+                    std::cin >> pathManager.KdDrop;
+
+                    // KpMin 값 입력받기
+                    std::cout << "KpMin (0~1): ";
+                    std::cin >> pathManager.kpMin;
+
+                    // KpMax 값 입력받기
+                    std::cout << "KpMax: ";
+                    std::cin >> pathManager.kpMax;
+
                 }
                 else if (mode == 1)
                 {

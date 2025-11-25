@@ -404,7 +404,7 @@ void PathManager::pushAddStance(VectorXd &Q1, VectorXd &Q2)
                         newData.mode = tMotor->Velocity;
                         newData.velocityERPM = tMotor->cwDir * Vt[can_id] * tMotor->pole * tMotor->gearRatio * 60.0 / 2.0 / M_PI;
                     }
-                    newData.isBrake = 0;
+                    newData.useBrake = 0;
                     tMotor->commandBuffer.push(newData);
 
                     tMotor->finalMotorPosition = newData.position;
@@ -457,7 +457,7 @@ void PathManager::pushAddStance(VectorXd &Q1, VectorXd &Q2)
                         newData.mode = tMotor->Velocity;
                         newData.velocityERPM = 0.0;
                     }
-                    newData.isBrake = 0;
+                    newData.useBrake = 0;
                     tMotor->commandBuffer.push(newData);
                 }
                 else if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(entry.second))
@@ -769,12 +769,12 @@ void PathManager::solveIKandPushCommand()
         double KpRatioR, KpRatioL;
         VectorXd q = getJointAngles(q0, KpRatioR, KpRatioL);                // 로봇 관절각
         
-        // // 데이터 기록
-        // for (int i = 0; i < 9; i++)
-        // {
-        //     std::string fileName = "solveIK_q" + to_string(i);
-        //     fun.appendToCSV(fileName, false, i, q(i));
-        // }
+        // 데이터 기록
+        for (int i = 0; i < 9; i++)
+        {
+            std::string fileName = "solveIK_q" + to_string(i);
+            fun.appendToCSV(fileName, false, i, q(i));
+        }
 
         // //* 테스트용 *// 모터 연결하면 지워야 함 (이인우)
         // for (int i = 0; i < 7; i++)
@@ -1528,24 +1528,25 @@ PathManager::WristTime PathManager::getWristTime(double t1, double t2, int inten
     float T = t2 - t1;  // 전체 타격 시간
 
     // 타격 후 복귀 시간
-    wristTime.releaseTime = std::min(0.2 * (T), 0.1);
+    wristTime.releaseTime = std::min(0.2 * (T), 0.1);   // 이제 의미 없음
 
     if (state == 2)
     {
-        wristTime.liftTime = std::max(0.6 * (T), T - 0.2);      // 최고점에 도달하는 시간 
-        wristTime.stayTime = 0.45 * T;                          // 상승하기 시작하는 시간
+        wristTime.liftTime = std::max(0.7 * (T), T - 0.2);      // 최고점에 도달하는 시간
+        wristTime.stayTime = 0.4 * T;                          // 상승하기 시작하는 시간
     }
     else
     {
         // state 1 or 3일 때 (복귀 모션 필요)
         // state 3일 때 시간이 0.3초 이하이면 전체 타격 시간의 절반을 기준으로 들고 내리는 궤적(stay 없음)
-        if (T <= 0.3)
+        if (T <= 0.5)
         {
             wristTime.liftTime = 0.5 * (T);
         }
         else
         {
-            wristTime.liftTime = std::max(0.6 * (T), T - 0.2);
+            // wristTime.liftTime = std::max(0.6 * (T), T - 0.2);
+            wristTime.liftTime = T - 0.25;
         }
         wristTime.stayTime = 0.5 * (T);
     }
@@ -1968,16 +1969,37 @@ double PathManager::getWristAngle(double t, WristTime wT, MatrixXd &coefficientM
 
 double PathManager::getKpRatio(double t, WristTime wT)
 {
-
+    // 1. Kp 값을 조절할 전체 시간 구간인지 확인합니다.
     if (t > wT.liftTime && t <= wT.hitTime)
     {
+        // 2. 전체 구간의 지속 시간(duration)과 
+        //    그 절반이 되는 시점(midPointTime)을 계산합니다.
         double duration = wT.hitTime - wT.liftTime;
-        double progress = (t - wT.liftTime) / duration;
+        double midPointTime = wT.liftTime + (duration / 2.0);
 
-        return 1.0 + (kpMin - 1.0) * progress;
+        // 3. 아직 구간의 전반부일 경우 (절반 시점 포함)
+        if (t <= midPointTime)
+        {
+            // Kp 비율을 1.0으로 유지합니다.
+            return 1.0;
+        }
+        // 4. 구간의 후반부일 경우
+        else
+        {
+            // "후반부"만의 지속 시간 (전체 duration의 절반)
+            double decreaseDuration = wT.hitTime - midPointTime;
+            
+            // "후반부" 내에서의 진행도 (0.0 ~ 1.0)
+            // (t가 midPointTime일 때 0.0, t가 hitTime일 때 1.0이 됨)
+            double decreaseProgress = (t - midPointTime) / decreaseDuration;
+
+            // 1.0에서 kpMin 값까지 선형적으로 감소시킵니다.
+            return 1.0 + (kpMin - 1.0) * decreaseProgress;
+        }
     }
 
-    return 1.0
+    // 5. Kp 값을 조절하는 구간이 아니면 1.0을 반환합니다.
+    return 1.0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2757,7 +2779,7 @@ void PathManager::pushDxlBuffer(double q0)
     dxlCommandBuffer.push(dxlCommand);
 }
 
-void PathManager::pushCommandBuffer(VectorXd &Qi, double KpRatioR, double KpRatioL)
+void PathManager::pushCommandBuffer(VectorXd &Qi, double kpRatioR, double kpRatioL)
 {
     for (auto &entry : motors)
     {
@@ -2794,14 +2816,14 @@ void PathManager::pushCommandBuffer(VectorXd &Qi, double KpRatioR, double KpRati
                 float alpha = 0.7;
                 float diff = alpha*preDiff + (1 - alpha)*std::abs(newData.position - prevWaistPos);
                 prevWaistPos = newData.position;
-                newData.isBrake = (diff < 0.01 * M_PI / 180.0) ? 1 : 0;
+                newData.useBrake = (diff < 0.01 * M_PI / 180.0) ? 1 : 0;
                 preDiff = diff;
 
-                // fun.appendToCSV("brake input", false, newData.position, newData.isBrake, diff);
+                // fun.appendToCSV("brake input", false, newData.position, newData.useBrake, diff);
             }
             else
             {
-                newData.isBrake = 0;
+                newData.useBrake = 0;
             }
 
             tMotor->commandBuffer.push(newData);
@@ -2826,8 +2848,14 @@ void PathManager::pushCommandBuffer(VectorXd &Qi, double KpRatioR, double KpRati
                 else if (maxonMode == "CST")
                 {
                     newData.mode = maxonMotor->CST;
-                    newData.kp = Kp * (can_id==7?KpRatioR:KpRatioL);
+                    newData.kp = Kp * (can_id==7?kpRatioR:kpRatioL);
                     newData.kd = Kd;
+                    if(kpRatioR != 1.0 || kpRatioL != 1.0)
+                    {
+                        newData.kd = KdDrop;
+                        newData.kp = kpMax * (can_id==7?kpRatioR:kpRatioL);
+                    }
+
                 }
                 else
                 {
@@ -3656,20 +3684,6 @@ VectorXd PathManager::solveGeometricIK(VectorXd &pR, VectorXd &pL, double theta0
     }
     
     double theta4 = atan2(y, x);
-
-    if (theta4 < 0 || theta4 > 140.0 * M_PI / 180.0) // the4 범위 : 0deg ~ 120deg
-    {
-        if (printError)
-        {
-            std::cout << "PR \n" << pR << "\n";
-            std::cout << "PL \n" << pL << "\n";
-            std::cout << "theta0 : " << theta0 * 180.0 / M_PI << "\n theta7 : " << theta7 * 180.0 / M_PI << "\n theta8 : " << theta8 * 180.0 / M_PI << "\n";
-            std::cout << "IKFUN (q4) is not solved!!\n";
-            std::cout << "theta4 : " << theta4 * 180.0 / M_PI << "\n";
-        }
-        err = 1.0;  // IK 안풀림
-    }
-
     double theta34 = atan2(sqrt(r2), zeta);
     double theta3 = theta34 - atan2(R2 * sin(theta4), R1 + R2 * cos(theta4));
 
@@ -3703,20 +3717,6 @@ VectorXd PathManager::solveGeometricIK(VectorXd &pR, VectorXd &pL, double theta0
     }
 
     double theta6 = atan2(y, x);
-
-    if (theta6 < 0 || theta6 > 140.0 * M_PI / 180.0) // the6 범위 : 0deg ~ 120deg
-    {
-        if (printError)
-        {
-            std::cout << "PR \n" << pR << "\n";
-            std::cout << "PL \n" << pL << "\n";
-            std::cout << "theta0 : " << theta0 * 180.0 / M_PI << "\n theta7 : " << theta7 * 180.0 / M_PI << "\n theta8 : " << theta8 * 180.0 / M_PI << "\n";
-            std::cout << "IKFUN (q6) is not solved!!\n";
-            std::cout << "theta6 : " << theta6 * 180.0 / M_PI << "\n";
-        }
-        err = 1.0;  // IK 안풀림
-    }
-
     double theta56 = atan2(sqrt(r2), zeta);
     double theta5 = theta56 - atan2(L2 * sin(theta6), L1 + L2 * cos(theta6));
 
@@ -3735,6 +3735,32 @@ VectorXd PathManager::solveGeometricIK(VectorXd &pR, VectorXd &pL, double theta0
 
     theta4 -= getTheta(R2, theta7);
     theta6 -= getTheta(L2, theta8);
+
+    if (theta4 < 0 || theta4 > 140.0 * M_PI / 180.0) // the4 범위 : 0deg ~ 120deg
+    {
+        if (printError)
+        {
+            std::cout << "PR \n" << pR << "\n";
+            std::cout << "PL \n" << pL << "\n";
+            std::cout << "theta0 : " << theta0 * 180.0 / M_PI << "\n theta7 : " << theta7 * 180.0 / M_PI << "\n theta8 : " << theta8 * 180.0 / M_PI << "\n";
+            std::cout << "IKFUN (q4) is not solved!!\n";
+            std::cout << "theta4 : " << theta4 * 180.0 / M_PI << "\n";
+        }
+        err = 1.0;  // IK 안풀림
+    }
+
+    if (theta6 < 0 || theta6 > 140.0 * M_PI / 180.0) // the6 범위 : 0deg ~ 120deg
+    {
+        if (printError)
+        {
+            std::cout << "PR \n" << pR << "\n";
+            std::cout << "PL \n" << pL << "\n";
+            std::cout << "theta0 : " << theta0 * 180.0 / M_PI << "\n theta7 : " << theta7 * 180.0 / M_PI << "\n theta8 : " << theta8 * 180.0 / M_PI << "\n";
+            std::cout << "IKFUN (q6) is not solved!!\n";
+            std::cout << "theta6 : " << theta6 * 180.0 / M_PI << "\n";
+        }
+        err = 1.0;  // IK 안풀림
+    }
 
     output.resize(10);
     output << theta0, theta1, theta2, theta3, theta4, theta5, theta6, theta7, theta8, err;
