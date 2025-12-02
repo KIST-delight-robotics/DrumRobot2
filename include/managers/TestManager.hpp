@@ -1,5 +1,20 @@
 #pragma once
 
+// 추가 1202
+#include <cstdint>
+namespace cv {
+    using int64 = std::int64_t;
+    using uint64 = std::uint64_t;
+}
+// // 혹은 전역 네임스페이스 문제라면 아래 줄을 활성화하세요 (보통 위 cv 네임스페이스 안에서 해결되지만, 전역 문제일 경우 아래 사용)
+// using int64 = std::int64_t;
+// using uint64 = std::uint64_t;
+
+// 추가 1202
+#include <librealsense2/rs.hpp>
+#include <opencv2/opencv.hpp>
+#include <opencv2/aruco.hpp>
+
 #include <stdio.h>
 #include "../include/managers/CanManager.hpp"
 #include "../include/managers/PathManager.hpp"
@@ -111,4 +126,20 @@ private:
     void testTmotorVelocityMode();
     void pushVelCmd(float arr[]);
     vector<float> makeVelProfile(float q1[], float q2[], vector<float> &Vmax, float acc, float t, float t2);
+
+    // Drum Scanner /////////////////////////////////////////////////////////////////////////////////////////
+    const float ROBOT_WAIST_ANGLE = 10.0f;  // 1. 로봇 허리 각도 (왼쪽(ccw) +, 오른쪽(cw) -)
+    const float CAMERA_TILT_ANGLE = -47.0f; // 2. 카메라 틸트 각도 (아래를 볼 때 음수 -)
+    const float CAMERA_HEIGHT = 1.055f;     // 3. 지면에서 카메라까지 높이 (m)
+    const float CAMERA_OFFSET_FWD = 0.20f;  // 4. 허리 회전축에서 카메라 돌출 거리 (m)
+
+    const float HAND_OFFSET_X = 0.03f;
+    const float HAND_OFFSET_Y = 0.03f;
+    const int TOTAL_DRUMS = 11;
+
+    // 3D 좌표 구조체
+    struct Point3D { float x, y, z; };
+
+    void DrumScan(float Waist_angle);
+    Point3D transform_to_world(Point3D cam_pt, float waist_deg, float tilt_deg);
 };

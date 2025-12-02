@@ -743,6 +743,15 @@ void DrumRobot::sendLoopForThread()
                 vector<vector<float>> dxlCommand = pathManager.dxlCommandBuffer.front();
                 pathManager.dxlCommandBuffer.pop();
                 dxl.syncWrite(dxlCommand);
+
+                float des1 = (float)dxlCommand[0][2];
+                float des2 = (float)dxlCommand[1][2];
+
+                std::map<int, float> pos_act = dxl.syncRead();
+                float act1 = pos_act[1];
+                float act2 = pos_act[2];
+
+                fun.appendToCSV("dxl_log.txt", false, des1, des2, act1, act2);
             }
         }
         
@@ -1956,7 +1965,7 @@ bool FlagClass::getFixationFlag()
 
 DXL::DXL()
 {
-    port = dynamixel::PortHandler::getPortHandler("/dev/ttyUSB0");
+    port = dynamixel::PortHandler::getPortHandler("/dev/ttyUSB1");
     pkt = dynamixel::PacketHandler::getPacketHandler(2.0);
 }
 
@@ -2050,10 +2059,9 @@ void DXL::syncWrite(vector<vector<float>> command)
     }
 }
 
-vector<uint32_t> DXL::syncRead()
+std::map<int, float> DXL::syncRead()
 {
-    vector<uint32_t> dxlPos;
-    uint32_t errCode = 99;
+    std::map<int, float> dxlData;
 
     if (useDXL)
     {
@@ -2066,22 +2074,18 @@ vector<uint32_t> DXL::syncRead()
 
         // 데이터 요청
         int dxl_comm_result = groupSyncRead.txRxPacket();
-        if (dxl_comm_result != COMM_SUCCESS)
-        {
-            std::cerr << "SyncRead failed: "
-                    << pkt->getTxRxResult(dxl_comm_result) << std::endl;
-
-            dxlPos.push_back(errCode);
-            return dxlPos;
+        if (dxl_comm_result != COMM_SUCCESS) {
+            std::cerr << "SyncRead failed" << std::endl;
+            return dxlData; // 빈 map 반환
         }
 
-        // 각 모터 값 읽어서 출력
+        // 각 모터 값 읽기
         for (int id : {1, 2})
         {
             if (groupSyncRead.isAvailable(id, 132, 4))
             {
-                uint32_t pos = groupSyncRead.getData(id, 132, 4);
-                dxlPos.push_back(pos);
+                float pos = tickToAngle(groupSyncRead.getData(id, 132, 4));
+                dxlData[id] = pos; // ID를 키값으로 저장 (예: dxlData[1] = 2048)
             }
             else
             {
@@ -2093,7 +2097,7 @@ vector<uint32_t> DXL::syncRead()
         groupSyncRead.clearParam();
     }
 
-    return dxlPos;
+    return dxlData;
 }
 
 int32_t DXL::angleToTick(float angle)

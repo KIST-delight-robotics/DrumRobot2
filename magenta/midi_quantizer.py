@@ -29,7 +29,7 @@ def quantize_drum_midi(input_path: str) -> str:
         raise FileNotFoundError(f"Input MIDI not found: {input_path}")
 
     # 내부 파라미터
-    GRID_SEC = 0.125      # 120 BPM 기준 16분음표 길이(초)
+    GRID_SEC = 0.05      # 120 BPM 기준 16분음표 길이(초)
     MIN_DUR_SEC = 0.001   # 최소 길이 1ms
 
     def to_idx_nearest(t: float) -> int:

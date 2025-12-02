@@ -5,9 +5,6 @@
 #include "../USBIO_advantech/compatibility.h"
 #include "../USBIO_advantech/bdaqctrl.h"
 
-
-using namespace Automation::BDaq;
-
 typedef unsigned char byte;
 
 #define  deviceDescription  L"USB-4761,BID#0"
@@ -29,9 +26,9 @@ public:
 private:
     const wchar_t* profilePath = L"../../../profile/DemoDevice.xml";
 
-    ErrorCode ret;// = Success;
-    InstantDoCtrl *instantDoCtrl = InstantDoCtrl::Create();
+    Automation::BDaq::ErrorCode ret;// = Success;
+    Automation::BDaq::InstantDoCtrl *instantDoCtrl = Automation::BDaq::InstantDoCtrl::Create();
 
-    uint8 bufferForWriting[1] = {0x00};
+    Automation::BDaq::uint8 bufferForWriting[1] = {0x00};
 };
 

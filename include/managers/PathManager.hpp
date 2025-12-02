@@ -300,10 +300,10 @@ private:
     PathManager::HitData getHitData(MatrixXd &measureMatrix, VectorXd &stateR, VectorXd &stateL);
     VectorXd parseHitData(VectorXd &t, VectorXd &hit, double preT, double preStatem, double hitDetectionThreshold);
     void makeHitCoefficient(HitData hitData, VectorXd &stateR, VectorXd &stateL);
-    PathManager::ElbowTime getElbowTime(double t1, double t2, int intensity);
-    PathManager::WristTime getWristTime(double t1, double t2, int intensity, int state);
-    PathManager::ElbowAngle getElbowAngle(double t1, double t2, int intensity);
-    PathManager::WristAngle getWristAngle(double t1, double t2, int intensity);
+    PathManager::ElbowTime getElbowTimeParam(double t1, double t2, int intensity);
+    PathManager::WristTime getWristTimeParam(double t1, double t2, int intensity, int state);
+    PathManager::ElbowAngle getElbowAngleParam(double t1, double t2, int intensity);
+    PathManager::WristAngle getWristAngleParam(double t1, double t2, int intensity);
     MatrixXd makeElbowCoefficient(int state, ElbowTime eT, ElbowAngle eA);
     MatrixXd makeWristCoefficient(int state, WristTime wT, WristAngle wA);
     double getElbowAngle(double t, ElbowTime eT, MatrixXd &coefficientMatrix);

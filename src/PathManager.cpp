@@ -290,7 +290,7 @@ void PathManager::setReadyAngle()
     readyAngle(13) = 110.0*M_PI/180.0;
 
     // ***허리 브레이크 테스트용*** // (이인우)
-    // readyAngle(0) = 0.0;
+    // readyAngle(0) = 0.2;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -764,7 +764,7 @@ void PathManager::solveIKandPushCommand()
         double q0 = getWaistAngle(waistCoefficient, i); // 허리 관절각
 
         // ***허리 브레이크 테스트용*** // (이인우)
-        // q0 = 0.0;
+        // q0 = 0.2;
 
         double KpRatioR, KpRatioL;
         VectorXd q = getJointAngles(q0, KpRatioR, KpRatioL);                // 로봇 관절각
@@ -1491,17 +1491,17 @@ void PathManager::makeHitCoefficient(HitData hitData, VectorXd &stateR, VectorXd
     ElbowAngle elbowAngleR, elbowAngleL;
     WristAngle wristAngleR, wristAngleL;
 
-    elbowTimeR = getElbowTime(hitData.initialTimeR, hitData.finalTimeR, intensityR);
-    elbowTimeL = getElbowTime(hitData.initialTimeL, hitData.finalTimeL, intensityL);
+    elbowTimeR = getElbowTimeParam(hitData.initialTimeR, hitData.finalTimeR, intensityR);
+    elbowTimeL = getElbowTimeParam(hitData.initialTimeL, hitData.finalTimeL, intensityL);
 
-    wristTimeR = getWristTime(hitData.initialTimeR, hitData.finalTimeR, intensityR, stateR(1));
-    wristTimeL = getWristTime(hitData.initialTimeL, hitData.finalTimeL, intensityL, stateL(1));
+    wristTimeR = getWristTimeParam(hitData.initialTimeR, hitData.finalTimeR, intensityR, stateR(1));
+    wristTimeL = getWristTimeParam(hitData.initialTimeL, hitData.finalTimeL, intensityL, stateL(1));
 
-    elbowAngleR = getElbowAngle(hitData.initialTimeR, hitData.finalTimeR, intensityR);
-    elbowAngleL = getElbowAngle(hitData.initialTimeL, hitData.finalTimeL, intensityL);
+    elbowAngleR = getElbowAngleParam(hitData.initialTimeR, hitData.finalTimeR, intensityR);
+    elbowAngleL = getElbowAngleParam(hitData.initialTimeL, hitData.finalTimeL, intensityL);
 
-    wristAngleR = getWristAngle(hitData.initialTimeR, hitData.finalTimeR, intensityR);
-    wristAngleL = getWristAngle(hitData.initialTimeL, hitData.finalTimeL, intensityL);
+    wristAngleR = getWristAngleParam(hitData.initialTimeR, hitData.finalTimeR, intensityR);
+    wristAngleL = getWristAngleParam(hitData.initialTimeL, hitData.finalTimeL, intensityL);
 
     // 계수 행렬 구하기
     elbowCoefficientR = makeElbowCoefficient(stateR(1), elbowTimeR, elbowAngleR);
@@ -1511,7 +1511,7 @@ void PathManager::makeHitCoefficient(HitData hitData, VectorXd &stateR, VectorXd
     wristCoefficientL = makeWristCoefficient(stateL(1), wristTimeL, wristAngleL);
 }
 
-PathManager::ElbowTime PathManager::getElbowTime(double t1, double t2, int intensity)
+PathManager::ElbowTime PathManager::getElbowTimeParam(double t1, double t2, int intensity)
 {
     ElbowTime elbowTime;
     float T = t2 - t1; // 전체 타격 시간
@@ -1522,7 +1522,7 @@ PathManager::ElbowTime PathManager::getElbowTime(double t1, double t2, int inten
     return elbowTime;
 }
 
-PathManager::WristTime PathManager::getWristTime(double t1, double t2, int intensity, int state)
+PathManager::WristTime PathManager::getWristTimeParam(double t1, double t2, int intensity, int state)
 {
     WristTime wristTime;
     float T = t2 - t1;  // 전체 타격 시간
@@ -1556,7 +1556,7 @@ PathManager::WristTime PathManager::getWristTime(double t1, double t2, int inten
     return wristTime;
 }
 
-PathManager::ElbowAngle PathManager::getElbowAngle(double t1, double t2, int intensity)
+PathManager::ElbowAngle PathManager::getElbowAngleParam(double t1, double t2, int intensity)
 {
     ElbowAngle elbowAngle;
     float T = (t2 - t1);        // 전체 타격 시간
@@ -1592,7 +1592,7 @@ PathManager::ElbowAngle PathManager::getElbowAngle(double t1, double t2, int int
     return elbowAngle;
 }
 
-PathManager::WristAngle PathManager::getWristAngle(double t1, double t2, int intensity)
+PathManager::WristAngle PathManager::getWristAngleParam(double t1, double t2, int intensity)
 {
     WristAngle wristAngle;
     float T = (t2 - t1);        // 타격 전체 시간
@@ -2401,10 +2401,6 @@ void PathManager::genDxlTrajectory(MatrixXd &measureMatrix, int n)
         DXL.dxl2 = makeNod(beatOfLine, nodIntensity, i, n);
 
         DXLQueue.push(DXL);
-
-        // // 데이터 저장
-        // std::string fileName = "DXL_Angle";
-        // fun.appendToCSV(fileName, false, DXL.dxl1, DXL.dxl2);
     }
 
     curInst = nextInst;
@@ -2745,11 +2741,11 @@ VectorXd PathManager::getJointAngles(double q0, double &KpRatioR, double &KpRati
     HT = hitQueue.front();
     hitQueue.pop();
 
-    q(3) += HT.elbowR / 3.0;
-    q(5) += HT.elbowL / 3.0;
+    // q(3) += HT.elbowR / 3.0;
+    // q(5) += HT.elbowL / 3.0;
 
-    q(4) = (q(4)+HT.elbowR)>=(140.0*M_PI/180.0)?140.0*M_PI/180.0:q(4)+HT.elbowR;
-    q(6) = (q(6)+HT.elbowL)>=(140.0*M_PI/180.0)?140.0*M_PI/180.0:q(6)+HT.elbowL;
+    // q(4) = (q(4)+HT.elbowR)>=(140.0*M_PI/180.0)?140.0*M_PI/180.0:q(4)+HT.elbowR;
+    // q(6) = (q(6)+HT.elbowL)>=(140.0*M_PI/180.0)?140.0*M_PI/180.0:q(6)+HT.elbowL;
     
     q(7) += HT.wristR;
     q(8) += HT.wristL;

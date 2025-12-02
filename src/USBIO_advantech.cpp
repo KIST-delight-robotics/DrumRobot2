@@ -8,6 +8,8 @@ USBIO::~USBIO()
 {
 }
 
+using namespace Automation::BDaq;
+
 void USBIO::initUSBIO4761()
 {
     useUSBIO = true;

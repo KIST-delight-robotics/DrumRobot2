@@ -1,8 +1,10 @@
 #include "../include/managers/TestManager.hpp" // 적절한 경로로 변경하세요.
+#include "TestManager.hpp"
 
 // For  Qt
 // #include "../managers/TestManager.hpp"
 using namespace std;
+using namespace cv;
 
 TestManager::TestManager(State &stateRef, CanManager &canManagerRef, std::map<std::string, std::shared_ptr<GenericMotor>> &motorsRef, USBIO &usbioRef, Functions &funRef)
     : state(stateRef), canManager(canManagerRef), motors(motorsRef), usbio(usbioRef), fun(funRef)
@@ -28,7 +30,7 @@ void TestManager::SendTestProcess()
             }
         FK(c_MotorAngle); // 현재 q값에 대한 FK 진행
     
-        std::cout << "\nSelect Method (1 - 관절각도값 조절, 2 - 좌표값 조절, 4 - 발 모터, 5 - 속도 제어 실험, 6 - 브레이크 -1 - 나가기) : ";
+        std::cout << "\nSelect Method (1 - 관절각도값 조절, 2 - 좌표값 조절, 4 - 발 모터, 5 - 속도 제어 실험, 6 - 브레이크, 7 - 허리 모터, -1 - 나가기) : ";
         std::cin >> method;
 
         if(method == 1)
@@ -183,7 +185,7 @@ void TestManager::SendTestProcess()
                 std::cout << "\nnumber of repeat : " << n_repeat << std::endl << std::endl;
 
 
-                std::cout << "\nSelect Motor to Change Value (R: 10, L: 11) / Run (1) / Time (2) / Extra Time (3) / Repeat(4) / 강시우(5) / Exit (-1): ";
+                std::cout << "\nSelect Motor to Change Value (R: 10, L: 11) / Run (1) / Time (2) / Extra Time (3) / Repeat (4) / sine traj (5) / Exit (-1): ";
                 std::cin >> userInput;
 
                 if (userInput == -1)
@@ -291,6 +293,72 @@ void TestManager::SendTestProcess()
             //useBrake가 1이면 브레이크 켜줌 0이면 꺼줌
             usbio.setUSBIO4761(0, state_brake); //세팅
             usbio.outputUSBIO4761();                    //실행
+        }
+        else if(method == 7)
+        {
+            float t_now = 0.0f;
+            float dt = 0.005f;
+
+            float target_deg;
+            float move_time;
+            int wait_time = move_time;
+            
+            float c_MotorAngle[12] = {0};
+            getMotorPos(c_MotorAngle);
+            
+            float start_rad = c_MotorAngle[0]; 
+
+            std::cout << "========================================" << std::endl;
+            std::cout << " [Waist Moving mode] " << std::endl;
+            std::cout << " Current Waist Angle: " << start_rad * 180.0 / M_PI << " [deg]" << std::endl;
+            std::cout << "----------------------------------------" << std::endl;
+            std::cout << " Enter Goal Angle (deg): ";
+            std::cin >> target_deg;
+            std::cout << " Enter Moving Time (sec): ";
+            std::cin >> move_time;
+
+            // 예외 처리: 시간이 0 이하이면 실행 방지
+            if (move_time <= 0) {
+                std::cout << " [Error] Time must be > 0." << std::endl;
+                return; 
+            }
+
+            float target_rad = target_deg * M_PI / 180.0f;
+
+            std::cout << " Moving Start..." << std::endl;
+
+            // 4. 제어 루프 시작
+            while(t_now <= move_time)
+            {   
+                float Q = ((target_rad - start_rad) / 2.0f) * cos(M_PI * (t_now / move_time + 1.0f)) + ((target_rad + start_rad) / 2.0f);
+                fun.appendToCSV("waist_angle", false, Q);
+
+                for (auto &entry : motors)
+                {
+                    if (entry.first == "waist") 
+                    {
+                        if (std::shared_ptr<TMotor> tMotor = std::dynamic_pointer_cast<TMotor>(entry.second))
+                        {
+                            TMotorData newData;
+                            
+                            newData.position = tMotor->jointAngleToMotorPosition(Q);
+                            newData.mode = tMotor->Position; 
+                            tMotor->commandBuffer.push(newData);
+                            tMotor->finalMotorPosition = newData.position;
+                        }
+                    }
+                }
+                
+                t_now += dt; 
+            }
+            
+            std::this_thread::sleep_for(std::chrono::seconds(wait_time));
+            std::cout << " Moving Complete." << std::endl;
+            std::cout << " Moving Complete." << std::endl;
+
+            DrumScan(target_deg);
+
+            std::cout << " Scanning Complete." << std::endl;
         }
         else
         {
@@ -1084,4 +1152,225 @@ vector<float> TestManager::makeVelProfile(float q1[], float q2[], vector<float> 
         Vi.push_back(val);
     }
     return Vi;
+}
+
+ /////////////////////////////////////////////////////////////////////////////////
+/*                                  Drum Scan                                  */
+/////////////////////////////////////////////////////////////////////////////////
+
+void TestManager::DrumScan(float Waist_angle)
+{
+    try {
+        // --- 초기 설정 ---
+        auto dictionary_name = aruco::DICT_4X4_50;
+        
+        rs2::pipeline pipe;
+        rs2::config cfg;
+
+        ofstream outFile;
+
+        int rgb_width = 1280;
+        int rgb_height = 720;
+
+        // USB3.0 사용 시 부활!
+        // int rgb_fps = 30;
+        // int depth_width = 848;
+        // int depth_height = 480;
+        // int depth_fps = 30;
+
+        cfg.enable_stream(RS2_STREAM_COLOR, rgb_width, rgb_height, RS2_FORMAT_BGR8, 15);
+        cfg.enable_stream(RS2_STREAM_DEPTH, 480, 270, RS2_FORMAT_Z16, 6);
+        
+        rs2::pipeline_profile profile = pipe.start(cfg);
+        
+        // Depth를 Color 시점으로 정렬
+        rs2::align align_to_color(RS2_STREAM_COLOR);
+
+        // [중요] Color 스트림의 내부 파라미터 가져오기 (영점 보정용)
+        rs2_intrinsics intrin = profile.get_stream(RS2_STREAM_COLOR).as<rs2::video_stream_profile>().get_intrinsics();
+
+        // ArUco 설정
+        Ptr<aruco::Dictionary> dictionary = aruco::getPredefinedDictionary(dictionary_name);
+        Ptr<aruco::DetectorParameters> parameters = aruco::DetectorParameters::create();
+
+        struct DrumTarget { Point3D left_hand; Point3D right_hand; };
+        map<int, DrumTarget> drum_map;
+
+        cout << "========== 드럼 스캔 (허리 각도: " << Waist_angle << ") ==========" << endl;
+        cout << "종료하려면 창을 클릭하고 'q'를 누르세요." << endl;
+
+        int frame_count = 0;
+
+        while (true) {
+            // 프레임 대기 (5초 타임아웃으로 멈춤 방지)
+            rs2::frameset frames;
+            try {
+                frames = pipe.wait_for_frames(5000);
+            } catch (...) {
+                continue;
+            }
+            
+            frames = align_to_color.process(frames);
+
+            rs2::video_frame color_frame = frames.get_color_frame();
+            rs2::depth_frame depth_frame = frames.get_depth_frame();
+            if (!color_frame || !depth_frame) continue;
+
+            Mat color_image(Size(rgb_width, rgb_height), CV_8UC3, (void*)color_frame.get_data());
+
+            // 마커 감지
+            vector<int> ids;
+            vector<vector<Point2f>> corners;
+            aruco::detectMarkers(color_image, dictionary, corners, ids, parameters);
+
+            // [시각화 1] 화면 중앙 십자가 그리기
+            float center_x = rgb_width / 2.0f;
+            float center_y = rgb_height / 2.0f;
+            line(color_image, Point(center_x, 0), Point(center_x, rgb_height), Scalar(0, 0, 255), 1);
+            line(color_image, Point(0, center_y), Point(rgb_width, center_y), Scalar(0, 0, 255), 1);
+
+            // [시각화 2] 중앙점 좌표 디버깅
+            float center_dist = depth_frame.get_distance((int)center_x, (int)center_y);
+            if (center_dist > 0) {
+                float c_pixel[2] = { center_x, center_y };
+                float c_point[3];
+                rs2_deproject_pixel_to_point(c_point, &intrin, c_pixel, center_dist);
+
+                string c_text = format("Center: (%.3f, %.3f, %.3f)", c_point[0], c_point[1], c_point[2]);
+                putText(color_image, c_text, Point(center_x + 10, center_y + 30), FONT_HERSHEY_SIMPLEX, 0.6, Scalar(0, 255, 0), 2);
+            }
+
+            // [마커 처리]
+            if (ids.size() > 0) {
+                aruco::drawDetectedMarkers(color_image, corners, ids);
+
+                for (size_t i = 0; i < ids.size(); ++i) {
+                    // 마커 중심 계산
+                    Point2f center(0, 0);
+                    for (int j = 0; j < 4; j++) center += corners[i][j];
+                    center *= 0.25f;
+
+                    float dist = depth_frame.get_distance((int)center.x, (int)center.y);
+                    if (dist > 0) {
+                        float pixel[2] = { center.x, center.y };
+                        float marker_cam[3];
+                        rs2_deproject_pixel_to_point(marker_cam, &intrin, pixel, dist);
+
+                        // [시각화 3] 마커 좌표 출력
+                        string label = format("X:%.2f Y:%.2f Z:%.2f", marker_cam[0], marker_cam[1], marker_cam[2]);
+                        putText(color_image, label, center, FONT_HERSHEY_SIMPLEX, 0.5, Scalar(255, 255, 0), 2);
+
+                        // 손 오프셋 계산
+                        Point3D left_cam_pt = { marker_cam[0] - HAND_OFFSET_X, marker_cam[1] + HAND_OFFSET_Y, marker_cam[2] };
+                        Point3D right_cam_pt = { marker_cam[0] + HAND_OFFSET_X, marker_cam[1] + HAND_OFFSET_Y, marker_cam[2] };
+
+                        // 월드 좌표 변환 및 저장
+                        drum_map[ids[i]] = { 
+                            transform_to_world(left_cam_pt, ROBOT_WAIST_ANGLE, CAMERA_TILT_ANGLE),
+                            transform_to_world(right_cam_pt, ROBOT_WAIST_ANGLE, CAMERA_TILT_ANGLE)
+                        };
+                    }
+                }
+            }
+
+            // 매 {frame_count}개의 프레임마다 저장
+            frame_count++;
+            if (frame_count % 15 == 0) {
+                outFile.open("../drum_coordinates.txt");
+                if (outFile.is_open()) {
+                    outFile << fixed << setprecision(6); // 소수점 6자리 고정
+                    // 1. 오른손 X
+                    for (int id = 1; id < TOTAL_DRUMS; ++id) {
+                        if (drum_map.count(id)) outFile << drum_map[id].right_hand.x << "\t";
+                        else outFile << 0.0f << "\t";
+                    }
+                    outFile << endl;
+
+                    // 2. 오른손 Y
+                    for (int id = 1; id < TOTAL_DRUMS; ++id) {
+                        if (drum_map.count(id)) outFile << drum_map[id].right_hand.y << "\t";
+                        else outFile << 0.0f << "\t";
+                    }
+                    outFile << endl;
+
+                    // 3. 오른손 Z
+                    for (int id = 1; id < TOTAL_DRUMS; ++id) {
+                        if (drum_map.count(id)) outFile << drum_map[id].right_hand.z << "\t";
+                        else outFile << 0.0f << "\t";
+                    }
+                    outFile << endl;
+
+                    // 4. 왼손 X
+                    for (int id = 1; id < TOTAL_DRUMS; ++id) {
+                        if (drum_map.count(id)) outFile << drum_map[id].left_hand.x << "\t";
+                        else outFile << 0.0f << "\t";
+                    }
+                    outFile << endl;
+
+                    // 5. 왼손 Y
+                    for (int id = 1; id < TOTAL_DRUMS; ++id) {
+                        if (drum_map.count(id)) outFile << drum_map[id].left_hand.y << "\t";
+                        else outFile << 0.0f << "\t";
+                    }
+                    outFile << endl;
+
+                    // 6. 왼손 Z
+                    for (int id = 1; id < TOTAL_DRUMS; ++id) {
+                        if (drum_map.count(id)) outFile << drum_map[id].left_hand.z << "\t";
+                        else outFile << 0.0f << "\t";
+                    }
+                    outFile << endl;
+                }
+                else{ std::cout << " file isn't open " << endl;cerr << "\n[에러] 파일 생성 실패! 경로 권한을 확인하세요." << endl;}
+                cout << "\r[저장완료] 감지된 드럼 수: " << drum_map.size() << " / " << TOTAL_DRUMS << "   " << flush;
+            }
+
+            imshow("Robot Eye View", color_image);
+            if (waitKey(1) == 'q') break;
+        }
+        cv::destroyAllWindows(); // 열린 창 닫기
+        pipe.stop();             // 카메라 스트리밍 중지
+        return;
+    }
+    catch (const rs2::error & e) {
+        cerr << "RealSense Error: " << e.what() << endl;
+        return;
+    }
+    catch (const exception & e) {
+        cerr << "Error: " << e.what() << endl;
+        return;
+    }
+}
+
+TestManager::Point3D TestManager::transform_to_world(Point3D cam_pt, float waist_deg, float tilt_deg)
+{
+    const float PI = 3.14159265f;
+    float theta = tilt_deg * PI / 180.0f;
+    float psi = waist_deg * PI / 180.0f;
+
+    // 0. cam_pt: 카메라 좌표축 기준 좌표값
+
+    // 1. 아래로 숙인 카메라 각도 보정
+    float y_untilted = cam_pt.y * cos(theta) - cam_pt.z * sin(theta);
+    float z_untilted = cam_pt.y * sin(theta) + cam_pt.z * cos(theta);
+    float x_untilted = cam_pt.x;
+
+    // 2. world 좌표로 변환하기 위해 좌표축 변환(카메라 좌표는 화면 좌상단이 원점, 오른쪽 가로방향: +x, 아래 세로방향: +y, 깊이: +z)
+    float x_body = x_untilted;
+    float y_body = z_untilted;
+    float z_body = -y_untilted;
+
+    // 3. 허리 회전 각도 보정
+    float x_world = x_body * cos(psi) - (y_body + CAMERA_OFFSET_FWD) * sin(psi);
+    float y_world = x_body * sin(psi) + (y_body + CAMERA_OFFSET_FWD) * cos(psi);
+    float z_world = z_body + CAMERA_HEIGHT;
+
+    // cout << "------------------------------------------------" << endl;
+    // cout << "[1.Input Cam] X:" << cam_pt.x << "\t Y:" << cam_pt.y << "\t Z:" << cam_pt.z << endl;
+    // cout << "[2.Untilted] X:" << x_untilted << "\t Y:" << y_untilted << "\t Z:" << z_untilted << endl;
+    // cout << "[3.Body Frame] X:" << x_body << "\t Y:" << y_body << "\t Z:" << z_body << endl;
+    // cout << "[4.Final World] X:" << x_world << "\t Y:" << y_world << "\t Z:" << z_world << endl;
+    // cout << "------------------------------------------------" << endl;
+
+    return {x_world, y_world, z_world};
 }

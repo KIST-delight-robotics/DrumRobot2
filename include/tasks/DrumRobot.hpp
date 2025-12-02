@@ -74,7 +74,7 @@ public:
     void initialize();
     void DXLTorqueOff();
     void syncWrite(vector<vector<float>> command);
-    vector<uint32_t> syncRead();
+    std::map<int, float> syncRead();
 
 private:
     dynamixel::PortHandler *port;
