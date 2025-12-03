@@ -851,12 +851,12 @@ void PathManager::genTaskSpaceTrajectory(MatrixXd &measureMatrix, int n)
 
         taskSpaceQueue.push(TT);
 
-        // // 데이터 저장
-        // std::string fileName;
-        // fileName = "Trajectory_R";
-        // fun.appendToCSV(fileName, false, TT.trajectoryR[0], TT.trajectoryR[1], TT.trajectoryR[2]);
-        // fileName = "Trajectory_L";
-        // fun.appendToCSV(fileName, false, TT.trajectoryL[0], TT.trajectoryL[1], TT.trajectoryL[2]);
+        // 데이터 저장
+        std::string fileName;
+        fileName = "Trajectory_R";
+        fun.appendToCSV(fileName, false, TT.trajectoryR[0], TT.trajectoryR[1], TT.trajectoryR[2]);
+        fileName = "Trajectory_L";
+        fun.appendToCSV(fileName, false, TT.trajectoryL[0], TT.trajectoryL[1], TT.trajectoryL[2]);
         // fileName = "S";
         // fun.appendToCSV(fileName, false, sR, sL);
 
@@ -864,6 +864,10 @@ void PathManager::genTaskSpaceTrajectory(MatrixXd &measureMatrix, int n)
         {
             // 명령 개수, 허리 범위, 최적화 각도 계산 및 저장
             VectorXd waistParams = getWaistParams(TT.trajectoryR, TT.trajectoryL, TT.wristAngleR, TT.wristAngleL);
+            fun.appendToCSV("waist inputR", false, TT.trajectoryR[0], TT.trajectoryR[1], TT.trajectoryR[2], TT.wristAngleR);
+            fun.appendToCSV("waist inputL", false, TT.trajectoryL[0], TT.trajectoryL[1], TT.trajectoryL[2], TT.wristAngleL);
+            fun.appendToCSV("waist param", false, waistParams[0], waistParams[1], waistParams[2]);
+            fun.appendToCSV("waist t", false, tR, tL, sR, sL);
             storeWaistParams(n, waistParams);
         }
     }
@@ -1199,6 +1203,8 @@ VectorXd PathManager::getWaistParams(VectorXd &pR, VectorXd &pL, double theta7, 
             j++;
         }
     }
+
+    fun.appendToCSV("waist J", false, j);
 
     if (j == 0)
     {
@@ -2741,11 +2747,11 @@ VectorXd PathManager::getJointAngles(double q0, double &KpRatioR, double &KpRati
     HT = hitQueue.front();
     hitQueue.pop();
 
-    // q(3) += HT.elbowR / 3.0;
-    // q(5) += HT.elbowL / 3.0;
+    q(3) += HT.elbowR / 3.0;
+    q(5) += HT.elbowL / 3.0;
 
-    // q(4) = (q(4)+HT.elbowR)>=(140.0*M_PI/180.0)?140.0*M_PI/180.0:q(4)+HT.elbowR;
-    // q(6) = (q(6)+HT.elbowL)>=(140.0*M_PI/180.0)?140.0*M_PI/180.0:q(6)+HT.elbowL;
+    q(4) = (q(4)+HT.elbowR)>=(140.0*M_PI/180.0)?140.0*M_PI/180.0:q(4)+HT.elbowR;
+    q(6) = (q(6)+HT.elbowL)>=(140.0*M_PI/180.0)?140.0*M_PI/180.0:q(6)+HT.elbowL;
     
     q(7) += HT.wristR;
     q(8) += HT.wristL;

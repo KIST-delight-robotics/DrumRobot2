@@ -351,9 +351,11 @@ void TestManager::SendTestProcess()
                 
                 t_now += dt; 
             }
-            
-            std::this_thread::sleep_for(std::chrono::seconds(wait_time));
-            std::cout << " Moving Complete." << std::endl;
+            for(int i = 0; i<wait_time; i++)
+            {
+                std::cout << i << "\t";
+                std::this_thread::sleep_for(std::chrono::seconds(1));
+            }
             std::cout << " Moving Complete." << std::endl;
 
             DrumScan(target_deg);
@@ -364,7 +366,7 @@ void TestManager::SendTestProcess()
         {
             break;
         }
-    }    
+    }
 }
 
 void TestManager::FK(float theta[])
