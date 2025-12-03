@@ -1189,6 +1189,9 @@ VectorXd PathManager::getWaistParams(VectorXd &pR, VectorXd &pL, double theta7, 
     double minCost = W.sum();
     double w = 0, cost = 0;
     int minIndex = 0;
+
+    bool isSol = false;
+    double e = 0.0, s = 0.0;
     
     for (int i = 0; i < 1801; i++)
     {
@@ -1203,8 +1206,6 @@ VectorXd PathManager::getWaistParams(VectorXd &pR, VectorXd &pL, double theta7, 
             j++;
         }
     }
-
-    fun.appendToCSV("waist J", false, j);
 
     if (j == 0)
     {
@@ -3644,11 +3645,11 @@ VectorXd PathManager::solveGeometricIK(VectorXd &pR, VectorXd &pL, double theta0
     {
         if (printError)
         {
-            std::cout << "PR \n" << pR << "\n";
-            std::cout << "PL \n" << pL << "\n";
-            std::cout << "theta0 : " << theta0 * 180.0 / M_PI << "\n theta7 : " << theta7 * 180.0 / M_PI << "\n theta8 : " << theta8 * 180.0 / M_PI << "\n";
+            // std::cout << "PR: " << pR.transpose() << "\n";
+            // std::cout << "PL: " << pL.transpose() << "\n";
+            // std::cout << "theta0: " << theta0 * 180.0 / M_PI << ", theta7: " << theta7 * 180.0 / M_PI << ", theta8: " << theta8 * 180.0 / M_PI << "\n";
             std::cout << "IKFUN (q1) is not solved!!\n";
-            std::cout << "theta1 : " << theta1 * 180.0 / M_PI << "\n";
+            std::cout << "theta1: " << theta1 * 180.0 / M_PI << "\n";
         }
         err = 1.0;  // IK 안풀림
     }
@@ -3660,11 +3661,11 @@ VectorXd PathManager::solveGeometricIK(VectorXd &pR, VectorXd &pL, double theta0
     {
         if (printError)
         {
-            std::cout << "PR \n" << pR << "\n";
-            std::cout << "PL \n" << pL << "\n";
-            std::cout << "theta0 : " << theta0 * 180.0 / M_PI << "\n theta7 : " << theta7 * 180.0 / M_PI << "\n theta8 : " << theta8 * 180.0 / M_PI << "\n";
+            // std::cout << "PR: " << pR.transpose() << "\n";
+            // std::cout << "PL: " << pL.transpose() << "\n";
+            // std::cout << "theta0: " << theta0 * 180.0 / M_PI << ", theta7: " << theta7 * 180.0 / M_PI << ", theta8: " << theta8 * 180.0 / M_PI << "\n";
             std::cout << "IKFUN (q2) is not solved!!\n";
-            std::cout << "theta2 : " << theta2 * 180.0 / M_PI << "\n";
+            std::cout << "theta2: " << theta2 * 180.0 / M_PI << "\n";
         }
         err = 1.0;  // IK 안풀림
     }
@@ -3693,11 +3694,11 @@ VectorXd PathManager::solveGeometricIK(VectorXd &pR, VectorXd &pL, double theta0
     {
         if (printError)
         {
-            std::cout << "PR \n" << pR << "\n";
-            std::cout << "PL \n" << pL << "\n";
-            std::cout << "theta0 : " << theta0 * 180.0 / M_PI << "\n theta7 : " << theta7 * 180.0 / M_PI << "\n theta8 : " << theta8 * 180.0 / M_PI << "\n";
+            // std::cout << "PR: " << pR.transpose() << "\n";
+            // std::cout << "PL: " << pL.transpose() << "\n";
+            // std::cout << "theta0: " << theta0 * 180.0 / M_PI << ", theta7: " << theta7 * 180.0 / M_PI << ", theta8: " << theta8 * 180.0 / M_PI << "\n";
             std::cout << "IKFUN (q3) is not solved!!\n";
-            std::cout << "theta3 : " << theta3 * 180.0 / M_PI << "\n";
+            std::cout << "theta3: " << theta3 * 180.0 / M_PI << "\n";
         }
         err = 1.0;  // IK 안풀림
     }
@@ -3726,11 +3727,11 @@ VectorXd PathManager::solveGeometricIK(VectorXd &pR, VectorXd &pL, double theta0
     {
         if (printError)
         {
-            std::cout << "PR \n" << pR << "\n";
-            std::cout << "PL \n" << pL << "\n";
-            std::cout << "theta0 : " << theta0 * 180.0 / M_PI << "\n theta7 : " << theta7 * 180.0 / M_PI << "\n theta8 : " << theta8 * 180.0 / M_PI << "\n";
+            // std::cout << "PR: " << pR.transpose() << "\n";
+            // std::cout << "PL: " << pL.transpose() << "\n";
+            // std::cout << "theta0: " << theta0 * 180.0 / M_PI << ", theta7: " << theta7 * 180.0 / M_PI << ", theta8: " << theta8 * 180.0 / M_PI << "\n";
             std::cout << "IKFUN (q5) is not solved!!\n";
-            std::cout << "theta5 : " << theta5 * 180.0 / M_PI << "\n";
+            std::cout << "theta5: " << theta5 * 180.0 / M_PI << "\n";
         }
         err = 1.0;  // IK 안풀림
     }
@@ -3742,11 +3743,11 @@ VectorXd PathManager::solveGeometricIK(VectorXd &pR, VectorXd &pL, double theta0
     {
         if (printError)
         {
-            std::cout << "PR \n" << pR << "\n";
-            std::cout << "PL \n" << pL << "\n";
-            std::cout << "theta0 : " << theta0 * 180.0 / M_PI << "\n theta7 : " << theta7 * 180.0 / M_PI << "\n theta8 : " << theta8 * 180.0 / M_PI << "\n";
+            // std::cout << "PR: " << pR.transpose() << "\n";
+            // std::cout << "PL: " << pL.transpose() << "\n";
+            // std::cout << "theta0: " << theta0 * 180.0 / M_PI << ", theta7: " << theta7 * 180.0 / M_PI << ", theta8: " << theta8 * 180.0 / M_PI << "\n";
             std::cout << "IKFUN (q4) is not solved!!\n";
-            std::cout << "theta4 : " << theta4 * 180.0 / M_PI << "\n";
+            std::cout << "theta4: " << theta4 * 180.0 / M_PI << "\n";
         }
         err = 1.0;  // IK 안풀림
     }
@@ -3755,11 +3756,11 @@ VectorXd PathManager::solveGeometricIK(VectorXd &pR, VectorXd &pL, double theta0
     {
         if (printError)
         {
-            std::cout << "PR \n" << pR << "\n";
-            std::cout << "PL \n" << pL << "\n";
-            std::cout << "theta0 : " << theta0 * 180.0 / M_PI << "\n theta7 : " << theta7 * 180.0 / M_PI << "\n theta8 : " << theta8 * 180.0 / M_PI << "\n";
+            // std::cout << "PR: " << pR.transpose() << "\n";
+            // std::cout << "PL: " << pL.transpose() << "\n";
+            // std::cout << "theta0: " << theta0 * 180.0 / M_PI << ", theta7: " << theta7 * 180.0 / M_PI << ", theta8: " << theta8 * 180.0 / M_PI << "\n";
             std::cout << "IKFUN (q6) is not solved!!\n";
-            std::cout << "theta6 : " << theta6 * 180.0 / M_PI << "\n";
+            std::cout << "theta6: " << theta6 * 180.0 / M_PI << "\n";
         }
         err = 1.0;  // IK 안풀림
     }
