@@ -864,10 +864,6 @@ void PathManager::genTaskSpaceTrajectory(MatrixXd &measureMatrix, int n)
         {
             // 명령 개수, 허리 범위, 최적화 각도 계산 및 저장
             VectorXd waistParams = getWaistParams(TT.trajectoryR, TT.trajectoryL, TT.wristAngleR, TT.wristAngleL);
-            fun.appendToCSV("waist inputR", false, TT.trajectoryR[0], TT.trajectoryR[1], TT.trajectoryR[2], TT.wristAngleR);
-            fun.appendToCSV("waist inputL", false, TT.trajectoryL[0], TT.trajectoryL[1], TT.trajectoryL[2], TT.wristAngleL);
-            fun.appendToCSV("waist param", false, waistParams[0], waistParams[1], waistParams[2]);
-            fun.appendToCSV("waist t", false, tR, tL, sR, sL);
             storeWaistParams(n, waistParams);
         }
     }
@@ -3683,6 +3679,11 @@ VectorXd PathManager::solveGeometricIK(VectorXd &pR, VectorXd &pL, double theta0
         output.resize(10);
         output << 99.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, err;    // theta 0을 90도로 설정 -> Error State로 이동
 
+        if (printError)
+        {
+            std::cout << "IKFUN is not solved!! (sqrt)\n";
+        }
+
         return output;
     }
     
@@ -3715,6 +3716,11 @@ VectorXd PathManager::solveGeometricIK(VectorXd &pR, VectorXd &pL, double theta0
         
         output.resize(10);
         output << 99.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, err;    // theta 0을 90도로 설정 -> Error State로 이동
+
+        if (printError)
+        {
+            std::cout << "IKFUN is not solved!! (sqrt)\n";
+        }
 
         return output;
     }
@@ -3767,6 +3773,21 @@ VectorXd PathManager::solveGeometricIK(VectorXd &pR, VectorXd &pL, double theta0
 
     output.resize(10);
     output << theta0, theta1, theta2, theta3, theta4, theta5, theta6, theta7, theta8, err;
+
+    for (int i = 0; i < 9; i++)
+    {
+        if (std::isnan(output(i)))
+        {
+            output(9) = 1.0;   // IK 안풀림
+
+            if (printError)
+            {
+                std::cout << "IKFUN is not solved!! (nan)\n";
+            }
+
+            break;
+        }
+    }
 
     return output;
 }
