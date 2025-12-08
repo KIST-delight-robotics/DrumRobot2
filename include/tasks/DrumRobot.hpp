@@ -82,7 +82,7 @@ private:
     std::unique_ptr<dynamixel::GroupSyncWrite> sw;
     std::unique_ptr<dynamixel::GroupSyncRead> sr;
 
-    bool useDXL = true;
+    bool useDXL = false;
     vector<uint8_t> motorIDs; // 연결된 다이나믹셀 ID
     
     int32_t angleToTick(float angle);
@@ -126,7 +126,7 @@ public:
               TestManager &testManagerRef,
               std::map<std::string, std::shared_ptr<GenericMotor>> &motorsRef,
               USBIO &usbioRef,
-              Functions &funRef);
+              Functions &funcRef);
 
     // thread
     void stateMachine();
@@ -145,7 +145,7 @@ private:
     TestManager &testManager;
     std::map<std::string, std::shared_ptr<GenericMotor>> &motors;
     USBIO &usbio;
-    Functions &fun;
+    Functions &func;
 
     // Parsing
     TMotorServoCommandParser tservocmd;

@@ -17,7 +17,7 @@ DrumRobot::DrumRobot(State &stateRef,
       testManager(testManagerRef),
       motors(motorsRef),
       usbio(usbioRef),
-      fun(funRef)
+      func(funRef)
 {
     sendLoopPeriod = std::chrono::steady_clock::now();
     recvLoopPeriod = std::chrono::steady_clock::now();
@@ -61,6 +61,7 @@ void DrumRobot::initializeMotors()
                 tMotor->currentLimit = 29.8;  // [A]    // ak10-9
                 tMotor->useFourBarLinkage = false;
                 tMotor->gearRatio = 9.0;
+                tMotor->positionGain = 1000.0;
             }
             else if (motor_pair.first == "R_arm1")
             {
@@ -72,6 +73,7 @@ void DrumRobot::initializeMotors()
                 tMotor->currentLimit = 23.2;  // [A]    // ak70-10
                 tMotor->useFourBarLinkage = false;
                 tMotor->gearRatio = 10.0;
+                tMotor->positionGain = 1000.0;
             }
             else if (motor_pair.first == "L_arm1")
             {
@@ -83,6 +85,7 @@ void DrumRobot::initializeMotors()
                 tMotor->currentLimit = 23.2;  // [A]    // ak70-10
                 tMotor->useFourBarLinkage = false;
                 tMotor->gearRatio = 10.0;
+                tMotor->positionGain = 1000.0;
             }
             else if (motor_pair.first == "R_arm2")
             {
@@ -94,6 +97,7 @@ void DrumRobot::initializeMotors()
                 tMotor->currentLimit = 23.2;  // [A]    // ak70-10
                 tMotor->useFourBarLinkage = false;
                 tMotor->gearRatio = 10.0;
+                tMotor->positionGain = 4000.0;
             }
             else if (motor_pair.first == "R_arm3")
             {
@@ -106,6 +110,7 @@ void DrumRobot::initializeMotors()
                 tMotor->useFourBarLinkage = false;
                 // tMotor->setInitialMotorAngle(tMotor->initialJointAngle);     // 4-bar-linkage 사용하면 쓰는 함수
                 tMotor->gearRatio = 10.0;
+                tMotor->positionGain = 4000.0;
             }
             else if (motor_pair.first == "L_arm2")
             {
@@ -117,6 +122,7 @@ void DrumRobot::initializeMotors()
                 tMotor->currentLimit = 23.2;  // [A]    // ak70-10
                 tMotor->useFourBarLinkage = false;
                 tMotor->gearRatio = 10.0;
+                tMotor->positionGain = 1000.0;
             }
             else if (motor_pair.first == "L_arm3")
             {
@@ -129,6 +135,7 @@ void DrumRobot::initializeMotors()
                 tMotor->useFourBarLinkage = false;
                 // tMotor->setInitialMotorAngle(tMotor->initialJointAngle);     // 4-bar-linkage 사용하면 쓰는 함수
                 tMotor->gearRatio = 10.0;
+                tMotor->positionGain = 4000.0;
             }
         }
         else if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motor))
@@ -367,11 +374,11 @@ void DrumRobot::initializeFolder()
     std::string outputVelDir = "../magenta/velocity";
     std::string outputCode = "../include/magenta";
 
-    fun.clear_directory(syncDir);
-    fun.clear_directory(recordDir);
-    fun.clear_directory(outputMidDir);
-    fun.clear_directory(outputVelDir);
-    fun.clear_directory(outputCode);
+    func.clear_directory(syncDir);
+    func.clear_directory(recordDir);
+    func.clear_directory(outputMidDir);
+    func.clear_directory(outputVelDir);
+    func.clear_directory(outputCode);
 }
 
 bool DrumRobot::initializePos(const std::string &input)
@@ -430,7 +437,7 @@ void DrumRobot::initializeDrumRobot()
     dxl.initialize();
 
     usbio.initUSBIO4761();
-    fun.openCSVFile();
+    func.openCSVFile();
 
     // ArduinoConnect("/dev/ttyACM0");
     arduino.connect("/dev/ttyACM0");
@@ -744,14 +751,14 @@ void DrumRobot::sendLoopForThread()
                 pathManager.dxlCommandBuffer.pop();
                 dxl.syncWrite(dxlCommand);
 
-                float des1 = (float)dxlCommand[0][2];
-                float des2 = (float)dxlCommand[1][2];
+                // float des1 = (float)dxlCommand[0][2];
+                // float des2 = (float)dxlCommand[1][2];
 
                 std::map<int, float> pos_act = dxl.syncRead();
-                float act1 = pos_act[1];
-                float act2 = pos_act[2];
+                // float act1 = pos_act[1];
+                // float act2 = pos_act[2];
 
-                fun.appendToCSV("dxl_log.txt", false, des1, des2, act1, act2);
+                // func.appendToCSV("dxl_log", false, des1, des2, act1, act2);
             }
         }
         
@@ -947,9 +954,9 @@ void DrumRobot::runPythonInThread()
                 std::string outputMidDir = "../magenta/generated";
                 std::string outputVelDir = "../magenta/velocity";
             
-                fun.clear_directory(recordDir);
-                fun.clear_directory(outputMidDir);
-                fun.clear_directory(outputVelDir);
+                func.clear_directory(recordDir);
+                func.clear_directory(outputMidDir);
+                func.clear_directory(outputVelDir);
             }
 
             runPython = false;
@@ -1216,10 +1223,10 @@ void DrumRobot::displayPlayCommands(bool useMagenta, bool useDrumPad, float inpu
     std::cout << "Tmotor Mode: ";
     if (pathManager.tmotorMode == "unknown")
         std::cout << "unknown \n";
-    else if (pathManager.tmotorMode == "velocityFF")
-        std::cout << "velocity control mode (only Feedforward) \n";
-    else if (pathManager.tmotorMode == "velocityFB")
-        std::cout << "velocity control mode (only Feedback) \n";
+    // else if (pathManager.tmotorMode == "velocityFF")
+    //     std::cout << "velocity control mode (only Feedforward) \n";
+    // else if (pathManager.tmotorMode == "velocityFB")
+    //     std::cout << "velocity control mode (only Feedback) \n";
     else if (pathManager.tmotorMode == "velocity")
         std::cout << "velocity control mode \n";
     else
@@ -1448,7 +1455,7 @@ std::string DrumRobot::selectPlayMode()
         {
             do
             {
-                std::cout << "\nEnter Tmotor Control Mode (position: 1 / velocity: 2 / velocity (only FB): 3): ";
+                std::cout << "\nEnter Tmotor Control Mode (position: 1 / velocity: 2): ";
                 std::cin >> mode;
 
                 if (mode == 1)
@@ -1459,14 +1466,14 @@ std::string DrumRobot::selectPlayMode()
                 {
                     pathManager.tmotorMode = "velocity";
                 }
-                else if (mode == 3)
-                {
-                    pathManager.tmotorMode = "velocityFB";
-                }
-                else if (mode == 4)
-                {
-                    pathManager.tmotorMode = "velocityFF";
-                }
+                // else if (mode == 3)
+                // {
+                //     pathManager.tmotorMode = "velocityFB";
+                // }
+                // else if (mode == 4)
+                // {
+                //     pathManager.tmotorMode = "velocityFF";
+                // }
                 else
                 {
                     std::cout << "\nInvalid Input\n";
@@ -1828,9 +1835,9 @@ void DrumRobot::generateCodeFromMIDI(std::string midPath, std::string veloPath, 
 
     if (filesystem::exists(midPath) && flagObj.getAddStanceFlag() == "isReady")
     {
-        if (!fun.readMidiFile(midPath, midiData)) cout << "mid file error\n";
+        if (!func.readMidiFile(midPath, midiData)) cout << "mid file error\n";
     } 
-    // if (!fun.readMidiFile(targetPath, midiData)) cout << "mid file error\n";
+    // if (!func.readMidiFile(targetPath, midiData)) cout << "mid file error\n";
 
     pos = 14;
     int tpqn = (midiData[12] << 8) | midiData[13];
@@ -1850,9 +1857,9 @@ void DrumRobot::generateCodeFromMIDI(std::string midPath, std::string veloPath, 
 
         note_on_time = 0;
         while (pos < trackEnd) {
-            size_t delta = fun.readTime(midiData, pos);
+            size_t delta = func.readTime(midiData, pos);
             note_on_time += delta;
-            fun.analyzeMidiEvent(midiData, pos, runningStatus, note_on_time, tpqn, bpm, outputPath1);
+            func.analyzeMidiEvent(midiData, pos, runningStatus, note_on_time, tpqn, bpm, outputPath1);
         }
         pos = trackEnd;
     }
@@ -1861,25 +1868,25 @@ void DrumRobot::generateCodeFromMIDI(std::string midPath, std::string veloPath, 
     bool mapTo357 = false;
     vector<Functions::Seg> segs;
 
-    fun.roundDurationsToStep(bpm, outputPath1, outputPath2); 
-    fun.convertMcToC(outputPath2, outputPath3);
-    fun.assignHandsToEvents(outputPath3, outputPath4);
+    func.roundDurationsToStep(bpm, outputPath1, outputPath2); 
+    func.convertMcToC(outputPath2, outputPath3);
+    func.assignHandsToEvents(outputPath3, outputPath4);
 
     if (veloPath != "null")
     {
         // veloPath 세기 파일 outputFile 우리가 쓸 아웃풋 파일
-        fun.analyzeVelocityWithLowPassFilter(veloPath, outputVel, bpm);
+        func.analyzeVelocityWithLowPassFilter(veloPath, outputVel, bpm);
 
         // 위에서 만든 아웃풋 파일 넣어주기 그럼 segs 에 필터씌운 정보 저장댐
-        fun.loadSegments(outputVel, segs);
+        func.loadSegments(outputVel, segs);
 
         // 수정전 악보 scoreIn 최종 출력 파일 scoreOut
-        fun.applyIntensityToScore(segs, outputPath4, outputPath5, mapTo357);
+        func.applyIntensityToScore(segs, outputPath4, outputPath5, mapTo357);
 
         // 그루브 추가 
-        fun.addGroove(bpm, outputPath5, outputPath6);
+        func.addGroove(bpm, outputPath5, outputPath6);
         
-        fun.convertToMeasureFile(outputPath6, outputPath, endFlag);
+        func.convertToMeasureFile(outputPath6, outputPath, endFlag);
 
         std::remove(outputPath1.c_str());      // 중간 단계 txt 파일 삭제
         std::remove(outputPath2.c_str());
@@ -1892,7 +1899,7 @@ void DrumRobot::generateCodeFromMIDI(std::string midPath, std::string veloPath, 
     }
     else
     {
-        fun.convertToMeasureFile(outputPath4, outputPath, endFlag);
+        func.convertToMeasureFile(outputPath4, outputPath, endFlag);
 
         std::remove(outputPath1.c_str());      // 중간 단계 txt 파일 삭제
         std::remove(outputPath2.c_str());
@@ -1965,7 +1972,7 @@ bool FlagClass::getFixationFlag()
 
 DXL::DXL()
 {
-    port = dynamixel::PortHandler::getPortHandler("/dev/ttyUSB1");
+    port = dynamixel::PortHandler::getPortHandler("/dev/ttyUSB0");
     pkt = dynamixel::PacketHandler::getPacketHandler(2.0);
 }
 
@@ -2011,6 +2018,7 @@ void DXL::initialize()
         {
             printf("[ID:%03d] Found! Model number: %d\n", id, dxl_model_number);
             motorIDs.push_back(static_cast<uint8_t>(id));
+            useDXL = true;
         }
     }
 

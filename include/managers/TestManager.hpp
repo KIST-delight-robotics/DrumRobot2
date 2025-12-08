@@ -50,7 +50,7 @@ using namespace std;
 class TestManager
 {
 public:
-    TestManager(State &stateRef, CanManager &canManagerRef, std::map<std::string, std::shared_ptr<GenericMotor>> &motorsRef, USBIO &usbioRef, Functions &funRef);
+    TestManager(State &stateRef, CanManager &canManagerRef, std::map<std::string, std::shared_ptr<GenericMotor>> &motorsRef, USBIO &usbioRef, Functions &funcRef);
 
     void SendTestProcess();
 
@@ -64,7 +64,7 @@ private:
     CanManager &canManager;
     std::map<std::string, std::shared_ptr<GenericMotor>> &motors;
     USBIO &usbio;
-    Functions &fun;
+    Functions &func;
 
 
     TMotorCommandParser tmotorcmd;

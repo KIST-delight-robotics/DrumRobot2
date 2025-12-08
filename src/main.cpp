@@ -39,18 +39,18 @@ int main(int argc, char *argv[])
     std::map<std::string, std::shared_ptr<GenericMotor>> motors;
     USBIO usbio;
 
-    Functions fun(motors);
-    CanManager canManager(motors, fun, usbio);
-    PathManager pathManager(state, canManager, motors, usbio, fun);
-    TestManager testManager(state, canManager, motors, usbio, fun);
-    DrumRobot drumRobot(state, canManager, pathManager, testManager, motors, usbio, fun);
+    Functions func(motors);
+    CanManager canManager(motors, func, usbio);
+    PathManager pathManager(state, canManager, motors, usbio, func);
+    TestManager testManager(state, canManager, motors, usbio, func);
+    DrumRobot drumRobot(state, canManager, pathManager, testManager, motors, usbio, func);
     GuiManager guiManager(state, canManager, motors);
     
     // sf::Music warmup;
     // warmup.setVolume(50);
     
     // 포트를 비활성화하고 다시 활성화
-    fun.restCanPort();
+    func.restCanPort();
     // 드럼 로봇 초기화
     drumRobot.initializeDrumRobot();
 
