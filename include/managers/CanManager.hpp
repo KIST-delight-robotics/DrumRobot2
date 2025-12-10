@@ -48,7 +48,7 @@ public:
     static const int ERR_SOCKET_CREATE_FAILURE = -1;
     static const int ERR_SOCKET_CONFIGURE_FAILURE = -2;
 
-    CanManager(std::map<std::string, std::shared_ptr<GenericMotor>> &motorsRef, Functions &funRef, USBIO &usbioRef);
+    CanManager(std::map<std::string, std::shared_ptr<GenericMotor>> &motorsRef, Functions &funcRef, USBIO &usbioRef);
 
     ~CanManager();
 
@@ -120,7 +120,7 @@ public:
 private:
 
     std::map<std::string, std::shared_ptr<GenericMotor>> &motors;
-    Functions &fun;
+    Functions &func;
     USBIO &usbio;
     
     TMotorCommandParser tmotorcmd;

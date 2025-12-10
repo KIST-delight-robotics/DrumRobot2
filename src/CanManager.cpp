@@ -3,7 +3,7 @@
 // For Qt
 // #include "../managers/CanManager.hpp"
 CanManager::CanManager(std::map<std::string, std::shared_ptr<GenericMotor>> &motorsRef, Functions &funRef, USBIO &usbioRef)
-    : motors(motorsRef), fun(funRef), usbio(usbioRef)
+    : motors(motorsRef), func(funRef), usbio(usbioRef)
 {
 }
 
@@ -505,7 +505,7 @@ void CanManager::setMaxonCANFrame(std::shared_ptr<MaxonMotor> &maxonMotor, const
         }
         maxoncmd.setPositionCANFrame(*maxonMotor, &maxonMotor->sendFrame, mData.position);
 
-        fun.appendToCSV(fun.log_file_name, false, (float)maxonMotor->nodeId, 1.0, mData.position, maxonMotor->motorPosition, mData.position - maxonMotor->motorPosition, maxonMotor->motorTorque);
+        func.appendToCSV(func.log_file_name, false, (float)maxonMotor->nodeId, 1.0, mData.position, maxonMotor->motorPosition, mData.position - maxonMotor->motorPosition, maxonMotor->motorTorque);
     }
     else if (mData.mode == maxonMotor->CST)
     {
@@ -525,7 +525,7 @@ void CanManager::setMaxonCANFrame(std::shared_ptr<MaxonMotor> &maxonMotor, const
         float targetTorquemNm = calTorque(maxonMotor, mData);
         int targetTorque = maxoncmd.setTorqueCANFrame(*maxonMotor, &maxonMotor->sendFrame, targetTorquemNm);
 
-        fun.appendToCSV(fun.log_file_name, false, (float)maxonMotor->nodeId, 0.0, mData.position, maxonMotor->motorPosition, mData.position - maxonMotor->motorPosition, maxonMotor->motorTorque, targetTorque);
+        func.appendToCSV(func.log_file_name, false, (float)maxonMotor->nodeId, 0.0, mData.position, maxonMotor->motorPosition, mData.position - maxonMotor->motorPosition, maxonMotor->motorTorque, targetTorque);
     }
     else if (mData.mode == maxonMotor->CSV)
     {
@@ -590,45 +590,44 @@ void CanManager::setTMotorCANFrame(std::shared_ptr<TMotor> &tMotor, const TMotor
     {
         tservocmd.setPositionCANFrame(*tMotor, &tMotor->sendFrame, tData.position);
 
-        // fun.appendToCSV(fun.log_file_name, false, (float)tMotor->nodeId + SEND_SIGN, tData.position, tData.position - tMotor->motorPosition);
-        // fun.appendToCSV("pos", false, (float)tMotor->nodeId, tData.position, tMotor->motorPosition, tData.position - tMotor->motorPosition);
-        fun.appendToCSV(fun.log_file_name, false, (float)tMotor->nodeId, 1.0, tData.position, tMotor->motorPosition, tData.position - tMotor->motorPosition, tMotor->motorCurrent);
+        // func.appendToCSV(func.log_file_name, false, (float)tMotor->nodeId + SEND_SIGN, tData.position, tData.position - tMotor->motorPosition);
+        // func.appendToCSV("pos", false, (float)tMotor->nodeId, tData.position, tMotor->motorPosition, tData.position - tMotor->motorPosition);
+        func.appendToCSV(func.log_file_name, false, (float)tMotor->nodeId, 1.0, tData.position, tMotor->motorPosition, tData.position - tMotor->motorPosition, tMotor->motorCurrent);
     }
-    else if (tData.mode == tMotor->VelocityFB)
-    {
-        float err = tData.position - tMotor->motorPosition;
-        float Kp = 0.3;
-        float erpm = Kp * err/DTSECOND * 60.0 * 21.0 * 10 / 2.0 / M_PI;
+    // else if (tData.mode == tMotor->VelocityFB)   // Only Feedback
+    // {
+    //     float err = tData.position - tMotor->motorPosition;
+    //     float Kp = 0.3;
+    //     float erpm = Kp * err/DTSECOND * 60.0 * 21.0 * 10 / 2.0 / M_PI;
 
-        if (erpm > 100000)
-            erpm = 100000;
-        else if (erpm < -100000)
-            erpm = -100000;
+    //     if (erpm > 100000)
+    //         erpm = 100000;
+    //     else if (erpm < -100000)
+    //         erpm = -100000;
 
-        tservocmd.setVelocityCANFrame(*tMotor, &tMotor->sendFrame, erpm);
+    //     tservocmd.setVelocityCANFrame(*tMotor, &tMotor->sendFrame, erpm);
 
-        // fun.appendToCSV(fun.log_file_name, false, (float)tMotor->nodeId + SEND_SIGN, tData.position, tData.position - tMotor->motorPosition);
-        fun.appendToCSV("vel_fb", false, (float)tMotor->nodeId, tData.position, tMotor->motorPosition, tData.position - tMotor->motorPosition, erpm);
-    }
-    else if (tData.mode == tMotor->VelocityFF)
-    {
-        float erpm = tData.velocityERPM;
+    //     // func.appendToCSV(func.log_file_name, false, (float)tMotor->nodeId + SEND_SIGN, tData.position, tData.position - tMotor->motorPosition);
+    //     func.appendToCSV("vel_fb", false, (float)tMotor->nodeId, tData.position, tMotor->motorPosition, tData.position - tMotor->motorPosition, erpm);
+    // }
+    // else if (tData.mode == tMotor->VelocityFF)   // Only Feedforward
+    // {
+    //     float erpm = tData.velocityERPM;
 
-        if (erpm > 100000)
-            erpm = 100000;
-        else if (erpm < -100000)
-            erpm = -100000;
+    //     if (erpm > 100000)
+    //         erpm = 100000;
+    //     else if (erpm < -100000)
+    //         erpm = -100000;
         
-        tservocmd.setVelocityCANFrame(*tMotor, &tMotor->sendFrame, erpm);
+    //     tservocmd.setVelocityCANFrame(*tMotor, &tMotor->sendFrame, erpm);
 
-        // fun.appendToCSV(fun.log_file_name, false, (float)tMotor->nodeId + SEND_SIGN, tData.position, tData.position - tMotor->motorPosition);
-        // fun.appendToCSV("vel_ff", false, (float)tMotor->nodeId, tData.position, tMotor->motorPosition, tData.position - tMotor->motorPosition, erpm);
-    }
+    //     // func.appendToCSV(func.log_file_name, false, (float)tMotor->nodeId + SEND_SIGN, tData.position, tData.position - tMotor->motorPosition);
+    //     // func.appendToCSV("vel_ff", false, (float)tMotor->nodeId, tData.position, tMotor->motorPosition, tData.position - tMotor->motorPosition, erpm);
+    // }
     else if (tData.mode == tMotor->Velocity)
     {
         float err = tData.position - tMotor->motorPosition;
-        float Kp = 1000.0;
-        float erpm = tData.velocityERPM + Kp * err;
+        float erpm = tData.velocityERPM + tMotor->positionGain * err;
 
         if (erpm > 100000)
             erpm = 100000;
@@ -637,11 +636,11 @@ void CanManager::setTMotorCANFrame(std::shared_ptr<TMotor> &tMotor, const TMotor
 
         tservocmd.setVelocityCANFrame(*tMotor, &tMotor->sendFrame, erpm);
 
-        // fun.appendToCSV(fun.log_file_name, false, (float)tMotor->nodeId + SEND_SIGN, tData.position, tData.position - tMotor->motorPosition);
-        // fun.appendToCSV("vel", false, (float)tMotor->nodeId, tData.position, tMotor->motorPosition, tData.position - tMotor->motorPosition, erpm);
-        fun.appendToCSV(fun.log_file_name, false, (float)tMotor->nodeId, 2.0, tData.position, tMotor->motorPosition, tData.position - tMotor->motorPosition, tMotor->motorCurrent, erpm);
+        // func.appendToCSV(func.log_file_name, false, (float)tMotor->nodeId + SEND_SIGN, tData.position, tData.position - tMotor->motorPosition);
+        // func.appendToCSV("vel", false, (float)tMotor->nodeId, tData.position, tMotor->motorPosition, tData.position - tMotor->motorPosition, erpm);
+        func.appendToCSV(func.log_file_name, false, (float)tMotor->nodeId, 2.0, tData.position, tMotor->motorPosition, tData.position - tMotor->motorPosition, tMotor->motorCurrent, erpm);
     }
-    else if (tData.mode == tMotor->Idle)
+    else
     {
         return;
     }
@@ -814,7 +813,7 @@ bool CanManager::sendMotorFrame(const std::shared_ptr<GenericMotor> &motor)
 /*                            Receive Functions                               */
 ////////////////////////////////////////////////////////////////////////////////
 
-    bool CanManager::safetyCheckRecvT(std::shared_ptr<GenericMotor> &motor)
+bool CanManager::safetyCheckRecvT(std::shared_ptr<GenericMotor> &motor)
 {
     bool isSafe = true;
 
@@ -950,7 +949,7 @@ bool CanManager::distributeFramesToMotors(bool setlimit)
                     // std::cout << tMotor->jointAngle << std::endl;
                     tMotor->recieveBuffer.push(frame);
                     
-                    // fun.appendToCSV(fun.log_file_name, false, (float)tMotor->nodeId, tMotor->motorPosition, tMotor->motorCurrent);
+                    // func.appendToCSV(func.log_file_name, false, (float)tMotor->nodeId, tMotor->motorPosition, tMotor->motorCurrent);
                     
                     if (setlimit)
                     {
@@ -977,7 +976,7 @@ bool CanManager::distributeFramesToMotors(bool setlimit)
                 //         float pos_radians = pos_degrees * (M_PI / 180.0f);  
                 //         maxonMotor->motorPosition = pos_radians;
 
-                //         fun.appendToCSV("q8손목", false, (float)maxonMotor->nodeId, maxonMotor->motorPosition);
+                //         func.appendToCSV("q8손목", false, (float)maxonMotor->nodeId, maxonMotor->motorPosition);
                 //         currentPosition = maxonMotor->motorPosition; // 현재 위치 값 해당 변수에 덮어쓰기
                 //     }
                 // }
@@ -1000,7 +999,7 @@ bool CanManager::distributeFramesToMotors(bool setlimit)
                     maxonMotor->jointAngle = maxonMotor->motorPositionToJointAngle(std::get<1>(parsedData));
                     maxonMotor->recieveBuffer.push(frame);
 
-                    // fun.appendToCSV(fun.log_file_name, false, (float)maxonMotor->nodeId, maxonMotor->motorPosition, maxonMotor->motorTorque);
+                    // func.appendToCSV(func.log_file_name, false, (float)maxonMotor->nodeId, maxonMotor->motorPosition, maxonMotor->motorTorque);
 
                     if (setlimit)
                     {

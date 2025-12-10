@@ -87,10 +87,9 @@ public:
 
     // 제어 모드
     const int Position = 0;
-    const int Idle = 1;
     const int Velocity = 2;
-    const int VelocityFB = 3;
-    const int VelocityFF = 4;
+    // const int VelocityFB = 3;    // 사용 안함
+    // const int VelocityFF = 4;    // 사용 안함
 
     int controlMode = Position;
 
@@ -99,6 +98,9 @@ public:
 
     // 기어비
     float gearRatio;
+
+    // 속도 제어 시 위치 오차 게인
+    float positionGain = 1000.0;  
 
     // commandBuffer
     std::queue<TMotorData> commandBuffer;

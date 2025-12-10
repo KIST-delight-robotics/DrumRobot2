@@ -37,7 +37,7 @@ public:
     void restCanPort();
 
     // save csv file
-    std::chrono::high_resolution_clock::time_point start;  
+    std::chrono::steady_clock::time_point start;
     const std::string basePath = "../../DrumRobot_data/";  // 기본 경로
     std::string log_file_name = "data";
     void openCSVFile();

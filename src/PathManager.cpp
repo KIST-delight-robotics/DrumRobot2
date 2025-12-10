@@ -7,7 +7,7 @@ PathManager::PathManager(State &stateRef,
                          std::map<std::string, std::shared_ptr<GenericMotor>> &motorsRef,
                          USBIO &usbioRef,
                          Functions &funRef)
-    : state(stateRef), canManager(canManagerRef), motors(motorsRef), usbio(usbioRef), fun(funRef)
+    : state(stateRef), canManager(canManagerRef), motors(motorsRef), usbio(usbioRef), func(funRef)
 {
 }
 
@@ -389,16 +389,16 @@ void PathManager::pushAddStance(VectorXd &Q1, VectorXd &Q2)
                         newData.mode = tMotor->Position;
                         newData.velocityERPM = 0.0;
                     }
-                    else if (tmotorMode == "velocityFF")
-                    {
-                        newData.mode = tMotor->VelocityFF;
-                        newData.velocityERPM = tMotor->cwDir * Vt[can_id] * tMotor->pole * tMotor->gearRatio * 60.0 / 2.0 / M_PI;
-                    }
-                    else if (tmotorMode == "velocityFB")
-                    {
-                        newData.mode = tMotor->VelocityFB;
-                        newData.velocityERPM = 0.0;
-                    }
+                    // else if (tmotorMode == "velocityFF")
+                    // {
+                    //     newData.mode = tMotor->VelocityFF;
+                    //     newData.velocityERPM = tMotor->cwDir * Vt[can_id] * tMotor->pole * tMotor->gearRatio * 60.0 / 2.0 / M_PI;
+                    // }
+                    // else if (tmotorMode == "velocityFB")
+                    // {
+                    //     newData.mode = tMotor->VelocityFB;
+                    //     newData.velocityERPM = 0.0;
+                    // }
                     else if (tmotorMode == "velocity")
                     {
                         newData.mode = tMotor->Velocity;
@@ -442,16 +442,16 @@ void PathManager::pushAddStance(VectorXd &Q1, VectorXd &Q2)
                         newData.mode = tMotor->Position;
                         newData.velocityERPM = 0.0;
                     }
-                    else if (tmotorMode == "velocityFF")
-                    {
-                        newData.mode = tMotor->VelocityFF;
-                        newData.velocityERPM = 0.0;
-                    }
-                    else if (tmotorMode == "velocityFB")
-                    {
-                        newData.mode = tMotor->VelocityFB;
-                        newData.velocityERPM = 0.0;
-                    }
+                    // else if (tmotorMode == "velocityFF")
+                    // {
+                    //     newData.mode = tMotor->VelocityFF;
+                    //     newData.velocityERPM = 0.0;
+                    // }
+                    // else if (tmotorMode == "velocityFB")
+                    // {
+                    //     newData.mode = tMotor->VelocityFB;
+                    //     newData.velocityERPM = 0.0;
+                    // }
                     else if (tmotorMode == "velocity")
                     {
                         newData.mode = tMotor->Velocity;
@@ -769,18 +769,18 @@ void PathManager::solveIKandPushCommand()
         double KpRatioR, KpRatioL;
         VectorXd q = getJointAngles(q0, KpRatioR, KpRatioL);                // 로봇 관절각
         
-        // 데이터 기록
-        for (int i = 0; i < 9; i++)
-        {
-            std::string fileName = "solveIK_q" + to_string(i);
-            fun.appendToCSV(fileName, false, i, q(i));
-        }
+        // // 데이터 기록
+        // for (int i = 0; i < 9; i++)
+        // {
+        //     std::string fileName = "solveIK_q" + to_string(i);
+        //     func.appendToCSV(fileName, false, i, q(i));
+        // }
 
         // //* 테스트용 *// 모터 연결하면 지워야 함 (이인우)
         // for (int i = 0; i < 7; i++)
         // {
         //     std::string fileName = "solveIK_v" + to_string(i);
-        //     fun.appendToCSV(fileName, false, i, getVelocityRadps(false, q[i], i));
+        //     func.appendToCSV(fileName, false, i, getVelocityRadps(false, q[i], i));
         // }
 
         pushCommandBuffer(q, KpRatioR, KpRatioL);                           // 명령 생성 후 push
@@ -851,14 +851,14 @@ void PathManager::genTaskSpaceTrajectory(MatrixXd &measureMatrix, int n)
 
         taskSpaceQueue.push(TT);
 
-        // 데이터 저장
-        std::string fileName;
-        fileName = "Trajectory_R";
-        fun.appendToCSV(fileName, false, TT.trajectoryR[0], TT.trajectoryR[1], TT.trajectoryR[2]);
-        fileName = "Trajectory_L";
-        fun.appendToCSV(fileName, false, TT.trajectoryL[0], TT.trajectoryL[1], TT.trajectoryL[2]);
+        // // 데이터 저장
+        // std::string fileName;
+        // fileName = "Trajectory_R";
+        // func.appendToCSV(fileName, false, TT.trajectoryR[0], TT.trajectoryR[1], TT.trajectoryR[2]);
+        // fileName = "Trajectory_L";
+        // func.appendToCSV(fileName, false, TT.trajectoryL[0], TT.trajectoryL[1], TT.trajectoryL[2]);
         // fileName = "S";
-        // fun.appendToCSV(fileName, false, sR, sL);
+        // func.appendToCSV(fileName, false, sR, sL);
 
         if (i == 0)
         {
@@ -1185,9 +1185,6 @@ VectorXd PathManager::getWaistParams(VectorXd &pR, VectorXd &pL, double theta7, 
     double minCost = W.sum();
     double w = 0, cost = 0;
     int minIndex = 0;
-
-    bool isSol = false;
-    double e = 0.0, s = 0.0;
     
     for (int i = 0; i < 1801; i++)
     {
@@ -1319,9 +1316,9 @@ void PathManager::genHitTrajectory(MatrixXd &measureMatrix, int n)
         // // 데이터 저장
         // std::string fileName;
         // fileName = "hit_angle";
-        // fun.appendToCSV(fileName, false, HT.elbowR, HT.elbowL, HT.wristR, HT.wristL);
+        // func.appendToCSV(fileName, false, HT.elbowR, HT.elbowL, HT.wristR, HT.wristL);
         // fileName = "hit_time";
-        // fun.appendToCSV(fileName, false, tHitR, tHitL);
+        // func.appendToCSV(fileName, false, tHitR, tHitL);
     }
 }
 
@@ -1611,7 +1608,7 @@ PathManager::WristAngle PathManager::getWristAngleParam(double t1, double t2, in
     }
 
     // Lift Angle (최고점 각도) 계산, 최대 40도 * 세기
-    T < 0.5 ? wristAngle.liftAngle = (60 * T) * M_PI / 180.0 : wristAngle.liftAngle = 30  * M_PI / 180.0;
+    T < 0.5 ? wristAngle.liftAngle = (40.0 * T + 10.0) * M_PI / 180.0 : wristAngle.liftAngle = 30.0 * M_PI / 180.0;
 
     if (intensity == 1)
     {
@@ -2040,7 +2037,7 @@ void PathManager::genPedalTrajectory(MatrixXd &measureMatrix, int n)
         // // 데이터 저장
         // std::string fileName;
         // fileName = "pedal_angle";
-        // fun.appendToCSV(fileName, false, PT.bass, PT.hihat);
+        // func.appendToCSV(fileName, false, PT.bass, PT.hihat);
     }
 }
 
@@ -2794,16 +2791,16 @@ void PathManager::pushCommandBuffer(VectorXd &Qi, double kpRatioR, double kpRati
                 newData.mode = tMotor->Position;
                 newData.velocityERPM = 0.0;
             }
-            else if (tmotorMode == "velocityFF")
-            {
-                newData.mode = tMotor->VelocityFF;
-                newData.velocityERPM = tMotor->cwDir * getVelocityRadps(false, Qi[can_id], can_id) * tMotor->pole * tMotor->gearRatio * 60.0 / 2.0 / M_PI;
-            }
-            else if (tmotorMode == "velocityFB")
-            {
-                newData.mode = tMotor->VelocityFB;
-                newData.velocityERPM = 0.0;
-            }
+            // else if (tmotorMode == "velocityFF")
+            // {
+            //     newData.mode = tMotor->VelocityFF;
+            //     newData.velocityERPM = tMotor->cwDir * getVelocityRadps(false, Qi[can_id], can_id) * tMotor->pole * tMotor->gearRatio * 60.0 / 2.0 / M_PI;
+            // }
+            // else if (tmotorMode == "velocityFB")
+            // {
+            //     newData.mode = tMotor->VelocityFB;
+            //     newData.velocityERPM = 0.0;
+            // }
             else if (tmotorMode == "velocity")
             {
                 newData.mode = tMotor->Velocity;
@@ -2818,7 +2815,7 @@ void PathManager::pushCommandBuffer(VectorXd &Qi, double kpRatioR, double kpRati
                 newData.useBrake = (diff < 0.01 * M_PI / 180.0) ? 1 : 0;
                 preDiff = diff;
 
-                // fun.appendToCSV("brake input", false, newData.position, newData.useBrake, diff);
+                // func.appendToCSV("brake input", false, newData.position, newData.useBrake, diff);
             }
             else
             {
@@ -3089,16 +3086,16 @@ bool PathManager::checkTable(VectorXd PR, VectorXd PL, double hitR, double hitL)
 
         if (value == 0b00)
         {
-            // fun.appendToCSV("CC1", false, targetIndex[0], targetIndex[1], targetIndex[2]);
-            // fun.appendToCSV("CC2", false, targetIndex[3], targetIndex[4], targetIndex[5]);
-            // fun.appendToCSV("CC3", false, targetIndex[6], targetIndex[7], 0);
+            // func.appendToCSV("CC1", false, targetIndex[0], targetIndex[1], targetIndex[2]);
+            // func.appendToCSV("CC2", false, targetIndex[3], targetIndex[4], targetIndex[5]);
+            // func.appendToCSV("CC3", false, targetIndex[6], targetIndex[7], 0);
             return false;   // 충돌 안함
         }
         else
         {
-            // fun.appendToCSV("CC1", false, targetIndex[0], targetIndex[1], targetIndex[2]);
-            // fun.appendToCSV("CC2", false, targetIndex[3], targetIndex[4], targetIndex[5]);
-            // fun.appendToCSV("CC3", false, targetIndex[6], targetIndex[7], 1);
+            // func.appendToCSV("CC1", false, targetIndex[0], targetIndex[1], targetIndex[2]);
+            // func.appendToCSV("CC2", false, targetIndex[3], targetIndex[4], targetIndex[5]);
+            // func.appendToCSV("CC3", false, targetIndex[6], targetIndex[7], 1);
             return true;    // 충돌 위험 or IK 안풀림
         }
     }

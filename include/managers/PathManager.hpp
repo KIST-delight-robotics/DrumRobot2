@@ -61,7 +61,7 @@ public:
                 CanManager &canManagerRef,
                 std::map<std::string, std::shared_ptr<GenericMotor>> &motorsRef,
                 USBIO &usbioRef,
-                Functions &funRef);
+                Functions &funcRef);
     
     bool endOfPlayCommand = false;
     bool startOfPlay = false;
@@ -94,7 +94,7 @@ private:
     CanManager &canManager;                                       ///< CAN 통신을 통한 모터 제어를 담당합니다.
     std::map<std::string, std::shared_ptr<GenericMotor>> &motors; ///< 연결된 모터들의 정보입니다.
     USBIO &usbio;
-    Functions &fun;
+    Functions &func;
 
     /////////////////////////////////////////////////////////////////////////// struct def
     // 로봇 링크 길이
@@ -210,13 +210,12 @@ private:
     }HihatTime;
 
     typedef struct {
-        // double stayAngle = 5*M_PI/180.0;
         double stayAngle = 0.0;
         double liftAngle = 15*M_PI/180.0;
     }ElbowAngle;
 
     typedef struct {
-        double stayAngle = 10*M_PI/180.0;
+        double stayAngle = 20*M_PI/180.0;
         double pressAngle = -5*M_PI/180.0;
         double liftAngle = 40*M_PI/180.0;
     }WristAngle;

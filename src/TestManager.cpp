@@ -7,7 +7,7 @@ using namespace std;
 using namespace cv;
 
 TestManager::TestManager(State &stateRef, CanManager &canManagerRef, std::map<std::string, std::shared_ptr<GenericMotor>> &motorsRef, USBIO &usbioRef, Functions &funRef)
-    : state(stateRef), canManager(canManagerRef), motors(motorsRef), usbio(usbioRef), fun(funRef)
+    : state(stateRef), canManager(canManagerRef), motors(motorsRef), usbio(usbioRef), func(funRef)
 {
     standardTime = chrono::system_clock::now();
 }
@@ -331,7 +331,7 @@ void TestManager::SendTestProcess()
             while(t_now <= move_time)
             {   
                 float Q = ((target_rad - start_rad) / 2.0f) * cos(M_PI * (t_now / move_time + 1.0f)) + ((target_rad + start_rad) / 2.0f);
-                fun.appendToCSV("waist_angle", false, Q);
+                func.appendToCSV("waist_angle", false, Q);
 
                 for (auto &entry : motors)
                 {
