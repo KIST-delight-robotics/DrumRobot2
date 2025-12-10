@@ -667,6 +667,8 @@ void DrumRobot::sendLoopForThread()
     sendLoopPeriod = std::chrono::steady_clock::now();
     while (state.main != Main::Shutdown)
     {
+        auto start = std::chrono::steady_clock::now();
+
         sendLoopPeriod += std::chrono::microseconds(1000);  // 주기 : 1msec
         
         std::map<std::string, bool> fixFlags; // 각 모터의 고정 상태 저장
@@ -776,6 +778,10 @@ void DrumRobot::sendLoopForThread()
         cycleCounter = (cycleCounter + 1) % 5;
 
         std::this_thread::sleep_until(sendLoopPeriod);
+
+        auto end = std::chrono::steady_clock::now();
+        double elapsed = std::chrono::duration<double>(end - start).count();
+        func.appendToCSV("send time",false,(float)elapsed);
     }
 }
 
@@ -1570,6 +1576,8 @@ string DrumRobot::trimWhitespace(const std::string &str)
 
 bool DrumRobot::readMeasure(ifstream& inputFile)
 {
+    // 이인우: stod 예외처리 해줘야 함
+
     string row;
     double timeSum = 0.0;
 

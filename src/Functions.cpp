@@ -4,7 +4,7 @@ Functions::Functions(std::map<std::string, std::shared_ptr<GenericMotor>> &motor
     : motors(motorsRef)
 {
     // 파일 저장 시각 계산
-    start = std::chrono::high_resolution_clock::now(); 
+    start = std::chrono::steady_clock::now(); 
 }
 
 Functions::~Functions()
@@ -170,7 +170,7 @@ std::ostringstream Functions::getAbsTime()
 
 void Functions::appendToCSV(const std::string& filename, bool useAbsTime) {
     std::ostringstream timestamp;
-    std::chrono::duration<float> elapsed;
+    std::chrono::duration<double> elapsed;
     std::ofstream file;
     std::string fullPath = basePath + filename + ".txt";    // 기본 경로와 파일 이름을 결합
 
@@ -178,8 +178,8 @@ void Functions::appendToCSV(const std::string& filename, bool useAbsTime) {
         timestamp = getAbsTime();
     }
     else {
-        auto now = std::chrono::high_resolution_clock::now();
-        elapsed = now - start;
+        auto now = std::chrono::steady_clock::now();
+        elapsed =  std::chrono::duration<double>(now - start);
     }
 
     // 파일을 열 때 새로 덮어쓰기 모드로 열거나, 이미 존재할 경우 append 모드로 열기
@@ -197,7 +197,7 @@ void Functions::appendToCSV(const std::string& filename, bool useAbsTime) {
             file << timestamp.str();
         }
         else {
-            file << elapsed.count();
+            file << std::fixed << std::setprecision(4) << elapsed.count();
         }
         file << "\n";
         // 파일 닫기
@@ -209,7 +209,7 @@ void Functions::appendToCSV(const std::string& filename, bool useAbsTime) {
 
 void Functions::appendToCSV(const std::string& filename, bool useAbsTime, float A_DATA) {
     std::ostringstream timestamp;
-    std::chrono::duration<float> elapsed;
+    std::chrono::duration<double> elapsed;
     std::ofstream file;
     std::string fullPath = basePath + filename + ".txt";    // 기본 경로와 파일 이름을 결합
 
@@ -217,8 +217,8 @@ void Functions::appendToCSV(const std::string& filename, bool useAbsTime, float 
         timestamp = getAbsTime();
     }
     else {
-        auto now = std::chrono::high_resolution_clock::now();
-        elapsed = now - start;
+        auto now = std::chrono::steady_clock::now();
+        elapsed =  std::chrono::duration<double>(now - start);
     }
 
     // 파일을 열 때 새로 덮어쓰기 모드로 열거나, 이미 존재할 경우 append 모드로 열기
@@ -236,7 +236,7 @@ void Functions::appendToCSV(const std::string& filename, bool useAbsTime, float 
             file << timestamp.str();
         }
         else {
-            file << elapsed.count();
+            file << std::fixed << std::setprecision(4) << elapsed.count();
         }
         file << "," << A_DATA << "\n";
         // 파일 닫기
@@ -248,7 +248,7 @@ void Functions::appendToCSV(const std::string& filename, bool useAbsTime, float 
 
 void Functions::appendToCSV(const std::string& filename, bool useAbsTime, float A_DATA, float B_DATA) {
     std::ostringstream timestamp;
-    std::chrono::duration<float> elapsed;
+    std::chrono::duration<double> elapsed;
     std::ofstream file;
     std::string fullPath = basePath + filename + ".txt";    // 기본 경로와 파일 이름을 결합
 
@@ -256,8 +256,8 @@ void Functions::appendToCSV(const std::string& filename, bool useAbsTime, float 
         timestamp = getAbsTime();
     }
     else {
-        auto now = std::chrono::high_resolution_clock::now();
-        elapsed = now - start;
+        auto now = std::chrono::steady_clock::now();
+        elapsed =  std::chrono::duration<double>(now - start);
     }
 
     // 파일을 열 때 새로 덮어쓰기 모드로 열거나, 이미 존재할 경우 append 모드로 열기
@@ -275,7 +275,7 @@ void Functions::appendToCSV(const std::string& filename, bool useAbsTime, float 
             file << timestamp.str();
         }
         else {
-            file << elapsed.count();
+            file << std::fixed << std::setprecision(4) << elapsed.count();
         }
         file << "," << A_DATA << "," << B_DATA << "\n";
         // 파일 닫기
@@ -287,7 +287,7 @@ void Functions::appendToCSV(const std::string& filename, bool useAbsTime, float 
 
 void Functions::appendToCSV(const std::string& filename, bool useAbsTime, float A_DATA, float B_DATA, float C_DATA) {
     std::ostringstream timestamp;
-    std::chrono::duration<float> elapsed;
+    std::chrono::duration<double> elapsed;
     std::ofstream file;
     std::string fullPath = basePath + filename + ".txt";    // 기본 경로와 파일 이름을 결합
 
@@ -295,8 +295,8 @@ void Functions::appendToCSV(const std::string& filename, bool useAbsTime, float 
         timestamp = getAbsTime();
     }
     else {
-        auto now = std::chrono::high_resolution_clock::now();
-        elapsed = now - start;
+        auto now = std::chrono::steady_clock::now();
+        elapsed =  std::chrono::duration<double>(now - start);
     }
 
     // 파일을 열 때 새로 덮어쓰기 모드로 열거나, 이미 존재할 경우 append 모드로 열기
@@ -314,7 +314,7 @@ void Functions::appendToCSV(const std::string& filename, bool useAbsTime, float 
             file << timestamp.str();
         }
         else {
-            file << elapsed.count();
+            file << std::fixed << std::setprecision(4) << elapsed.count();
         }
         file << "," << A_DATA << "," << B_DATA << "," << C_DATA << "\n";
         // 파일 닫기
@@ -326,7 +326,7 @@ void Functions::appendToCSV(const std::string& filename, bool useAbsTime, float 
 
 void Functions::appendToCSV(const std::string& filename, bool useAbsTime, float A_DATA, float B_DATA, float C_DATA, float D_DATA) {
     std::ostringstream timestamp;
-    std::chrono::duration<float> elapsed;
+    std::chrono::duration<double> elapsed;
     std::ofstream file;
     std::string fullPath = basePath + filename + ".txt";    // 기본 경로와 파일 이름을 결합
 
@@ -334,8 +334,8 @@ void Functions::appendToCSV(const std::string& filename, bool useAbsTime, float 
         timestamp = getAbsTime();
     }
     else {
-        auto now = std::chrono::high_resolution_clock::now();
-        elapsed = now - start;
+        auto now = std::chrono::steady_clock::now();
+        elapsed =  std::chrono::duration<double>(now - start);
     }
 
     // 파일을 열 때 새로 덮어쓰기 모드로 열거나, 이미 존재할 경우 append 모드로 열기
@@ -353,7 +353,7 @@ void Functions::appendToCSV(const std::string& filename, bool useAbsTime, float 
             file << timestamp.str();
         }
         else {
-            file << elapsed.count();
+            file << std::fixed << std::setprecision(4) << elapsed.count();
         }
         file << "," << A_DATA << "," << B_DATA << "," << C_DATA << "," << D_DATA << "\n";
         // 파일 닫기
@@ -365,7 +365,7 @@ void Functions::appendToCSV(const std::string& filename, bool useAbsTime, float 
 
 void Functions::appendToCSV(const std::string& filename, bool useAbsTime, float A_DATA, float B_DATA, float C_DATA, float D_DATA, float E_DATA) {
     std::ostringstream timestamp;
-    std::chrono::duration<float> elapsed;
+    std::chrono::duration<double> elapsed;
     std::ofstream file;
     std::string fullPath = basePath + filename + ".txt";    // 기본 경로와 파일 이름을 결합
 
@@ -373,8 +373,8 @@ void Functions::appendToCSV(const std::string& filename, bool useAbsTime, float 
         timestamp = getAbsTime();
     }
     else {
-        auto now = std::chrono::high_resolution_clock::now();
-        elapsed = now - start;
+        auto now = std::chrono::steady_clock::now();
+        elapsed =  std::chrono::duration<double>(now - start);
     }
 
     // 파일을 열 때 새로 덮어쓰기 모드로 열거나, 이미 존재할 경우 append 모드로 열기
@@ -392,7 +392,7 @@ void Functions::appendToCSV(const std::string& filename, bool useAbsTime, float 
             file << timestamp.str();
         }
         else {
-            file << elapsed.count();
+            file << std::fixed << std::setprecision(4) << elapsed.count();
         }
         file << "," << A_DATA << "," << B_DATA << "," << C_DATA << "," << D_DATA << "," << E_DATA << "\n";
         // 파일 닫기
@@ -404,7 +404,7 @@ void Functions::appendToCSV(const std::string& filename, bool useAbsTime, float 
 
 void Functions::appendToCSV(const std::string& filename, bool useAbsTime, float A_DATA, float B_DATA, float C_DATA, float D_DATA, float E_DATA, float F_DATA) {
     std::ostringstream timestamp;
-    std::chrono::duration<float> elapsed;
+    std::chrono::duration<double> elapsed;
     std::ofstream file;
     std::string fullPath = basePath + filename + ".txt";    // 기본 경로와 파일 이름을 결합
 
@@ -412,8 +412,8 @@ void Functions::appendToCSV(const std::string& filename, bool useAbsTime, float 
         timestamp = getAbsTime();
     }
     else {
-        auto now = std::chrono::high_resolution_clock::now();
-        elapsed = now - start;
+        auto now = std::chrono::steady_clock::now();
+        elapsed =  std::chrono::duration<double>(now - start);
     }
 
     // 파일을 열 때 새로 덮어쓰기 모드로 열거나, 이미 존재할 경우 append 모드로 열기
@@ -431,7 +431,7 @@ void Functions::appendToCSV(const std::string& filename, bool useAbsTime, float 
             file << timestamp.str();
         }
         else {
-            file << elapsed.count();
+            file << std::fixed << std::setprecision(4) << elapsed.count();
         }
         file << "," << A_DATA << "," << B_DATA << "," << C_DATA << "," << D_DATA << "," << E_DATA << "," << F_DATA << "\n";
         // 파일 닫기
@@ -443,7 +443,7 @@ void Functions::appendToCSV(const std::string& filename, bool useAbsTime, float 
 
 void Functions::appendToCSV(const std::string& filename, bool useAbsTime, float A_DATA, float B_DATA, float C_DATA, float D_DATA, float E_DATA, float F_DATA, float G_DATA) {
     std::ostringstream timestamp;
-    std::chrono::duration<float> elapsed;
+    std::chrono::duration<double> elapsed;
     std::ofstream file;
     std::string fullPath = basePath + filename + ".txt";    // 기본 경로와 파일 이름을 결합
 
@@ -451,8 +451,8 @@ void Functions::appendToCSV(const std::string& filename, bool useAbsTime, float 
         timestamp = getAbsTime();
     }
     else {
-        auto now = std::chrono::high_resolution_clock::now();
-        elapsed = now - start;
+        auto now = std::chrono::steady_clock::now();
+        elapsed =  std::chrono::duration<double>(now - start);
     }
 
     // 파일을 열 때 새로 덮어쓰기 모드로 열거나, 이미 존재할 경우 append 모드로 열기
@@ -470,7 +470,7 @@ void Functions::appendToCSV(const std::string& filename, bool useAbsTime, float 
             file << timestamp.str();
         }
         else {
-            file << elapsed.count();
+            file << std::fixed << std::setprecision(4) << elapsed.count();
         }
         file << "," << A_DATA << "," << B_DATA << "," << C_DATA << "," << D_DATA << "," << E_DATA << "," << F_DATA << "," << G_DATA << "\n";
         // 파일 닫기
@@ -482,7 +482,7 @@ void Functions::appendToCSV(const std::string& filename, bool useAbsTime, float 
 
 void Functions::appendToCSV(const std::string& filename, bool useAbsTime, can_frame& c_frame) {
     std::ostringstream timestamp;
-    std::chrono::duration<float> elapsed;
+    std::chrono::duration<double> elapsed;
     std::ofstream file;
     std::string fullPath = basePath + filename + ".txt";    // 기본 경로와 파일 이름을 결합
 
@@ -490,8 +490,8 @@ void Functions::appendToCSV(const std::string& filename, bool useAbsTime, can_fr
         timestamp = getAbsTime();
     }
     else {
-        auto now = std::chrono::high_resolution_clock::now();
-        elapsed = now - start;
+        auto now = std::chrono::steady_clock::now();
+        elapsed =  std::chrono::duration<double>(now - start);
     }
 
     // 파일을 열 때 새로 덮어쓰기 모드로 열거나, 이미 존재할 경우 append 모드로 열기
@@ -509,7 +509,7 @@ void Functions::appendToCSV(const std::string& filename, bool useAbsTime, can_fr
             file << timestamp.str();
         }
         else {
-            file << elapsed.count();
+            file << std::fixed << std::setprecision(4) << elapsed.count();
         }
         // can_frame의 data 배열을 CSV 형식으로 저장
         for (int i = 0; i < 8; ++i) {
@@ -523,50 +523,9 @@ void Functions::appendToCSV(const std::string& filename, bool useAbsTime, can_fr
     }
 }
 
-void Functions::appendToCSV(const std::string& filename, bool useAbsTime, std::chrono::_V2::system_clock::time_point &__t) {
-    std::ostringstream timestamp;
-    std::chrono::duration<float> elapsed;
-    std::ofstream file;
-    std::string fullPath = basePath + filename + ".txt";    // 기본 경로와 파일 이름을 결합
-
-    std::chrono::duration<float> elapsed2 = __t - start;
-
-    if (useAbsTime) {
-        timestamp = getAbsTime();
-    }
-    else {
-        auto now = std::chrono::high_resolution_clock::now();
-        elapsed = now - start;
-    }
-
-    // 파일을 열 때 새로 덮어쓰기 모드로 열거나, 이미 존재할 경우 append 모드로 열기
-    bool fileExists = std::ifstream(fullPath).good();
-    if (!fileExists) {
-        file.open(fullPath, std::ios::out | std::ios::trunc);   // 처음 실행 시 덮어쓰기 모드로 열기
-    } else {
-        file.open(fullPath, std::ios::app); // 이미 파일이 존재하면 append 모드로 열기
-    }
-
-    // 파일이 제대로 열렸는지 확인
-    if (file.is_open()) {
-        // 데이터 추가
-        if (useAbsTime) {
-            file << timestamp.str();
-        }
-        else {
-            file << elapsed.count();
-        }
-        file << "," << elapsed2.count() << "\n";
-        // 파일 닫기
-        file.close();
-    } else {
-        std::cerr << "Unable to open file: " << fullPath << std::endl;
-    }
-}
-
 void Functions::appendToCSV(const std::string& filename, bool useAbsTime, std::vector<double> &__v) {
     std::ostringstream timestamp;
-    std::chrono::duration<float> elapsed;
+    std::chrono::duration<double> elapsed;
     std::ofstream file;
     std::string fullPath = basePath + filename + ".txt";    // 기본 경로와 파일 이름을 결합
 
@@ -574,8 +533,8 @@ void Functions::appendToCSV(const std::string& filename, bool useAbsTime, std::v
         timestamp = getAbsTime();
     }
     else {
-        auto now = std::chrono::high_resolution_clock::now();
-        elapsed = now - start;
+        auto now = std::chrono::steady_clock::now();
+        elapsed =  std::chrono::duration<double>(now - start);
     }
 
     // 파일을 열 때 새로 덮어쓰기 모드로 열거나, 이미 존재할 경우 append 모드로 열기
@@ -593,7 +552,7 @@ void Functions::appendToCSV(const std::string& filename, bool useAbsTime, std::v
             file << timestamp.str();
         }
         else {
-            file << elapsed.count();
+            file << std::fixed << std::setprecision(4) << elapsed.count();
         }
         // vector의 data 배열을 CSV 형식으로 저장
         int n = __v.size();

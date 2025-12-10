@@ -769,12 +769,12 @@ void PathManager::solveIKandPushCommand()
         double KpRatioR, KpRatioL;
         VectorXd q = getJointAngles(q0, KpRatioR, KpRatioL);                // 로봇 관절각
         
-        // 데이터 기록
-        for (int i = 0; i < 9; i++)
-        {
-            std::string fileName = "solveIK_q" + to_string(i);
-            func.appendToCSV(fileName, false, i, q(i));
-        }
+        // // 데이터 기록
+        // for (int i = 0; i < 9; i++)
+        // {
+        //     std::string fileName = "solveIK_q" + to_string(i);
+        //     func.appendToCSV(fileName, false, i, q(i));
+        // }
 
         // //* 테스트용 *// 모터 연결하면 지워야 함 (이인우)
         // for (int i = 0; i < 7; i++)
