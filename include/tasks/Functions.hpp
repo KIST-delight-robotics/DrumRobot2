@@ -91,7 +91,7 @@ public:
     
     void assignHandsToEvents(const std::string& inputFilename, const std::string& outputFilename);
     void addGroove(int bpm, const std::string& inputFilename, const std::string& outputFilename);
-    void convertToMeasureFile(const std::string& inputFilename, const std::string& outputFilename, bool endFlag);
+    void convertToMeasureFile(const std::string& inputFilename, const std::string& outputFilename, bool startFlag, bool endFlag);
 
     Hand distanceTimeBasedHandSelection(int instCurrent, int prevRightNote, int prevLeftNote, double prevRightHit, double prevLeftHit);
     void save_to_csv(const std::string& outputCsvPath, double& note_on_time, int drumNote);

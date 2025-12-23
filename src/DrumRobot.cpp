@@ -439,7 +439,6 @@ void DrumRobot::initializeDrumRobot()
     usbio.initUSBIO4761();
     func.openCSVFile();
 
-    // ArduinoConnect("/dev/ttyACM0");
     arduino.connect("/dev/ttyACM0");
 
     // 폴더 비우기
@@ -667,8 +666,6 @@ void DrumRobot::sendLoopForThread()
     sendLoopPeriod = std::chrono::steady_clock::now();
     while (state.main != Main::Shutdown)
     {
-        auto start = std::chrono::steady_clock::now();
-
         sendLoopPeriod += std::chrono::microseconds(1000);  // 주기 : 1msec
         
         std::map<std::string, bool> fixFlags; // 각 모터의 고정 상태 저장
@@ -778,10 +775,6 @@ void DrumRobot::sendLoopForThread()
         cycleCounter = (cycleCounter + 1) % 5;
 
         std::this_thread::sleep_until(sendLoopPeriod);
-
-        auto end = std::chrono::steady_clock::now();
-        double elapsed = std::chrono::duration<double>(end - start).count();
-        func.appendToCSV("send time",false,(float)elapsed);
     }
 }
 
@@ -931,38 +924,41 @@ void DrumRobot::runPythonInThread()
                     {
                         std::string outputMid;
                         std::string outputVel = "null";
+                        bool startFlag = (j == 0);
                         bool endFlag = (j == creationNum[i] - 1);
-
-                        if (j < recordNum[i])
-                        {
-                            outputMid = "../magenta/generated/output" + std::to_string(i) + "_" + std::to_string(j + 1) + "3.mid";
-                        }
-                        else if (j < 2 * recordNum[i])
-                        {
-                            outputMid = "../magenta/generated/output" + std::to_string(i) + "_" + std::to_string(j - recordNum[i] + 1) + "4.mid";
-                        }
-                        else
-                        {
-                            outputMid = "../magenta/generated/output" + std::to_string(i) + "_" + std::to_string(j - 2 * recordNum[i] + 1) + "2.mid";
-                        }
+                        
+                        // 디스이즈미용
+                        outputMid = "../magenta/generated/output" + std::to_string(i) + "_" + std::to_string(j + 1) + "3.mid";
+                        // if (j < recordNum[i])
+                        // {
+                        //     outputMid = "../magenta/generated/output" + std::to_string(i) + "_" + std::to_string(j + 1) + "3.mid";
+                        // }
+                        // else if (j < 2 * recordNum[i])
+                        // {
+                        //     outputMid = "../magenta/generated/output" + std::to_string(i) + "_" + std::to_string(j - recordNum[i] + 1) + "4.mid";
+                        // }
+                        // else
+                        // {
+                        //     outputMid = "../magenta/generated/output" + std::to_string(i) + "_" + std::to_string(j - 2 * recordNum[i] + 1) + "2.mid";
+                        // }
 
                         // 해당 미디 파일 생성될 때까지 대기
                         while(!std::filesystem::exists(outputMid))
                             std::this_thread::sleep_for(std::chrono::milliseconds(1));
 
                         usleep(100*1000);
-                        generateCodeFromMIDI(outputMid, outputVel, j, endFlag);
+                        generateCodeFromMIDI(outputMid, outputVel, j, startFlag, endFlag);
                     }
                 }
 
                 // 폴더 비우기
-                std::string recordDir = "../magenta/record";
-                std::string outputMidDir = "../magenta/generated";
-                std::string outputVelDir = "../magenta/velocity";
+                // std::string recordDir = "../magenta/record";
+                // std::string outputMidDir = "../magenta/generated";
+                // std::string outputVelDir = "../magenta/velocity";
             
-                func.clear_directory(recordDir);
-                func.clear_directory(outputMidDir);
-                func.clear_directory(outputVelDir);
+                // func.clear_directory(recordDir);
+                // func.clear_directory(outputMidDir);
+                // func.clear_directory(outputVelDir);
             }
 
             runPython = false;
@@ -1707,8 +1703,8 @@ void DrumRobot::runPlayProcess()
             if (inputFile.peek() == std::ifstream::traits_type::eof())
             {
                 std::cout << "\n - The file exists, but it is empty.\n";
-                inputFile.clear();          // 상태 비트 초기화
-                usleep(100);                // 대기 : 다음 악보 작성 중 
+                inputFile.close();          // 파일 닫기
+                usleep(100);                // 대기 : 악보 작성 중 
             }
             else
             {
@@ -1818,7 +1814,7 @@ void DrumRobot::runPlayProcess()
 /*                                                                            */
 ////////////////////////////////////////////////////////////////////////////////
 
-void DrumRobot::generateCodeFromMIDI(std::string midPath, std::string veloPath, int recordingIndex, bool endFlag)
+void DrumRobot::generateCodeFromMIDI(std::string midPath, std::string veloPath, int recordingIndex, bool startFlag, bool endFlag)
 {
     // 경로 설정
     filesystem::path outputPath1 = "../include/magenta/output1_drum_hits_time.csv"; 
@@ -1894,7 +1890,7 @@ void DrumRobot::generateCodeFromMIDI(std::string midPath, std::string veloPath, 
         // 그루브 추가 
         func.addGroove(bpm, outputPath5, outputPath6);
         
-        func.convertToMeasureFile(outputPath6, outputPath, endFlag);
+        func.convertToMeasureFile(outputPath6, outputPath, startFlag, endFlag);
 
         std::remove(outputPath1.c_str());      // 중간 단계 txt 파일 삭제
         std::remove(outputPath2.c_str());
@@ -1907,7 +1903,7 @@ void DrumRobot::generateCodeFromMIDI(std::string midPath, std::string veloPath, 
     }
     else
     {
-        func.convertToMeasureFile(outputPath4, outputPath, endFlag);
+        func.convertToMeasureFile(outputPath4, outputPath, startFlag, endFlag);
 
         std::remove(outputPath1.c_str());      // 중간 단계 txt 파일 삭제
         std::remove(outputPath2.c_str());

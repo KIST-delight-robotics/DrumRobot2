@@ -238,6 +238,6 @@ private:
 
     //////////////////////////////////////////////////////////////// 
 
-    void generateCodeFromMIDI(std::string midPath, std::string veloPath, int recordingIndex, bool endFlag);
+    void generateCodeFromMIDI(std::string midPath, std::string veloPath, int recordingIndex, bool startFlag, bool endFlag);
 
 };

@@ -1748,7 +1748,7 @@ void Functions::analyzeVelocityWithLowPassFilter(const std::string& velocityFile
 }
 
 // 박자 단위 분할 및 마디 번호 부여 함수
-void Functions::convertToMeasureFile(const std::string& inputFilename, const std::string& outputFilename, bool endFlag) {
+void Functions::convertToMeasureFile(const std::string& inputFilename, const std::string& outputFilename, bool startFlag, bool endFlag) {
     struct DrumEvent {
         double time;
         int rightInstrument;
@@ -1828,10 +1828,11 @@ void Functions::convertToMeasureFile(const std::string& inputFilename, const std
 
     output << std::fixed << std::setprecision(3);
 
-    if (!endFlag)
+    if (startFlag)
     {
         //선두 더미 라인
-        output << 1 << "\t " << 0.600 << "\t 0\t 0\t 0\t 0\t 0\t 0\n";
+        output << 0 << "\t " << 0.600 << "\t 0\t 0\t 0\t 0\t 0\t 0\n";
+        output << 0 << "\t " << 0.600 << "\t 0\t 0\t 0\t 0\t 0\t 0\n";
     }
 
     int measureNum = 1;
@@ -1863,7 +1864,8 @@ void Functions::convertToMeasureFile(const std::string& inputFilename, const std
     if (endFlag)
     {
         output << measureNum+1 << "\t 0.600\t 0\t 0\t 0\t 0\t 0\t 0\n";
-        output << "-1" << "\t 0.600\t 1\t 1\t 1\t 1\t 1\t 1\n";
+        output << measureNum+1 << "\t 0.600\t 0\t 0\t 0\t 0\t 0\t 0\n";
+        output << "end" << "\t100\n";
     }
 }
 

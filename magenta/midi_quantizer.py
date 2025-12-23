@@ -125,7 +125,7 @@ def quantize_drum_midi(input_path: str) -> str:
         raise FileNotFoundError(f"Input MIDI not found: {input_path}")
 
     # --- [Step 1] MIDI 양자화 로직 ---
-    GRID_SEC = 0.05
+    GRID_SEC = 0.15625
     MIN_DUR_SEC = 0.001
     
     # 그리드 계산 함수
