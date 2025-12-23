@@ -306,7 +306,7 @@ void TestManager::SendTestProcess()
             float c_MotorAngle[12] = {0};
             getMotorPos(c_MotorAngle);
             
-            float start_rad = c_MotorAngle[0]; 
+            float start_rad = c_MotorAngle[0];
 
             std::cout << "========================================" << std::endl;
             std::cout << " [Waist Moving mode] " << std::endl;
@@ -331,7 +331,6 @@ void TestManager::SendTestProcess()
             while(t_now <= move_time)
             {   
                 float Q = ((target_rad - start_rad) / 2.0f) * cos(M_PI * (t_now / move_time + 1.0f)) + ((target_rad + start_rad) / 2.0f);
-                func.appendToCSV("waist_angle", false, Q);
 
                 for (auto &entry : motors)
                 {
@@ -348,8 +347,7 @@ void TestManager::SendTestProcess()
                         }
                     }
                 }
-                
-                t_now += dt; 
+                t_now += dt;
             }
             for(int i = 0; i<wait_time; i++)
             {
@@ -358,7 +356,7 @@ void TestManager::SendTestProcess()
             }
             std::cout << " Moving Complete." << std::endl;
 
-            DrumScan(target_deg);
+            camera_calibration(target_deg);
 
             std::cout << " Scanning Complete." << std::endl;
         }
@@ -1375,4 +1373,237 @@ TestManager::Point3D TestManager::transform_to_world(Point3D cam_pt, float waist
     // cout << "------------------------------------------------" << endl;
 
     return {x_world, y_world, z_world};
+}
+
+cv::Mat TestManager::getIdentity() 
+{
+    return cv::Mat::eye(4, 4, CV_64F);
+}
+
+// rvec, tvec를 4x4 변환 행렬로 변환
+cv::Mat TestManager::getTransformMatrix(const cv::Vec3d& rvec, const cv::Vec3d& tvec) 
+{
+    cv::Mat R;
+    cv::Rodrigues(rvec, R);
+    
+    cv::Mat T = cv::Mat::eye(4, 4, CV_64F);
+    R.copyTo(T(cv::Rect(0, 0, 3, 3)));
+    T.at<double>(0, 3) = tvec[0];
+    T.at<double>(1, 3) = tvec[1];
+    T.at<double>(2, 3) = tvec[2];
+    
+    return T;
+}
+
+// 마커의 월드 기준 포즈 행렬 생성 (지면에 평평, Y축 방향 정렬 가정)
+cv::Mat TestManager::getMarkerWorldPose(double x, double y, double z) 
+{
+    // 마커 좌표계: 빨간색(x) 오른쪽, 초록색(y) 앞쪽, 파란색(z) 위쪽
+    // 월드 좌표계와 방향이 일치한다고 가정 (Identity Rotation)
+    cv::Mat T = cv::Mat::eye(4, 4, CV_64F);
+    T.at<double>(0, 3) = x;
+    T.at<double>(1, 3) = y;
+    T.at<double>(2, 3) = z;
+    return T;
+}
+
+// 행렬 출력용 헬퍼
+void TestManager::printMatrix(const std::string& name, const cv::Mat& M) 
+{
+    std::cout << "[" << name << "]" << std::endl;
+    for (int i = 0; i < 4; i++) {
+        std::cout << "  ";
+        for (int j = 0; j < 4; j++) {
+            printf("%7.3f ", M.at<double>(i, j));
+        }
+        std::cout << std::endl;
+    }
+}
+
+cv::Vec3d TestManager::getEulerAngles(cv::Mat R_in) 
+{
+    // 3x3 행렬이 아니면 예외 처리 필요하지만 여기선 생략
+    cv::Mat mtxR, mtxQ;
+    // RQ 분해를 이용해 Euler Angle (x, y, z 축 회전) 추출
+    cv::Vec3d angles = cv::RQDecomp3x3(R_in, mtxR, mtxQ);
+    return angles;
+}
+
+void TestManager::camera_calibration(float CURRENT_WAIST_ANGLE_DEG)
+{
+    try {
+
+        struct MarkerPos { float x, y, z; };
+        std::map<int, MarkerPos> KNOWN_MARKERS = {
+            // {ID, {x, y, z}}
+            {0, {-0.783, 0.00, 0.08}},  // ID 0번 마커 위치
+            {1, {-0.693, 0.00, 0.08}},  // ID 1번 마커 위치
+            {2, {-0.603, 0.00, 0.08}}   // ID 2번 마커 위치
+        };
+
+        // --- 1. RealSense 초기화 ---
+        rs2::pipeline pipe;
+        rs2::config cfg;
+        cfg.enable_stream(RS2_STREAM_COLOR, 848, 480, RS2_FORMAT_BGR8, 30);
+        rs2::pipeline_profile profile = pipe.start(cfg);
+
+        // Intrinsic 가져오기
+        auto stream = profile.get_stream(RS2_STREAM_COLOR).as<rs2::video_stream_profile>();
+        rs2_intrinsics intr = stream.get_intrinsics();
+
+        cv::Mat cameraMatrix = cv::Mat::eye(3, 3, CV_64F);
+        cameraMatrix.at<float>(0, 0) = intr.fx;    // x축 초점거리
+        cameraMatrix.at<float>(1, 1) = intr.fy;    // y축 초점거리
+        cameraMatrix.at<float>(0, 2) = intr.ppx;   // 주점의 x좌표
+        cameraMatrix.at<float>(1, 2) = intr.ppy;   // 주점의 y좌표
+
+        cv::Mat distCoeffs = cv::Mat::zeros(5, 1, CV_64F);
+        for(int i=0; i<5; i++) distCoeffs.at<float>(i) = intr.coeffs[i];   // 왜곡 계수 배열
+
+        // --- 2. Aruco 설정 (OpenCV 4.2.0 호환) ---
+        cv::Ptr<cv::aruco::Dictionary> dictionary = cv::aruco::getPredefinedDictionary(cv::aruco::DICT_4X4_50);
+        cv::Ptr<cv::aruco::DetectorParameters> parameters = cv::aruco::DetectorParameters::create();
+
+        std::cout << "=== Camera Calibration Started ===" << std::endl;
+        std::cout << "Current Waist Angle: " << CURRENT_WAIST_ANGLE_DEG << " deg" << std::endl;
+        std::cout << "Press 'ESC' to exit." << std::endl;
+
+        auto last_print_time = std::chrono::steady_clock::now();
+
+        while (true) {
+            rs2::frameset frames = pipe.wait_for_frames();
+            rs2::frame color_frame = frames.get_color_frame();
+            if (!color_frame) continue;
+
+            cv::Mat image(cv::Size(848, 480), CV_8UC3, (void*)color_frame.get_data(), cv::Mat::AUTO_STEP);
+            
+            std::vector<int> ids;
+            std::vector<std::vector<cv::Point2f>> corners;
+            cv::aruco::detectMarkers(image, dictionary, corners, ids, parameters);
+
+            std::vector<cv::Vec3d> rvecs, tvecs;
+            if (ids.size() > 0) {
+                cv::aruco::estimatePoseSingleMarkers(corners, 0.08, cameraMatrix, distCoeffs, rvecs, tvecs);
+                
+                auto current_time = std::chrono::steady_clock::now();
+                std::chrono::duration<float> elapsed_seconds = current_time - last_print_time;
+
+                // 다중 마커를 이용한 카메라 위치 누적 계산용
+                cv::Mat T_World_Camera_Sum = cv::Mat::zeros(4, 4, CV_64F);
+                int valid_marker_count = 0;
+
+                for (size_t i = 0; i < ids.size(); ++i) {
+                    int id = ids[i];
+                    
+                    // 1. 우리가 아는 마커인지 확인
+                    if (KNOWN_MARKERS.find(id) != KNOWN_MARKERS.end()) {
+                        cv::aruco::drawAxis(image, cameraMatrix, distCoeffs, rvecs[i], tvecs[i], 0.03);
+
+                        // A. 카메라 기준 마커 포즈 (T_Camera_Marker)
+                        cv::Mat T_Camera_Marker = getTransformMatrix(rvecs[i], tvecs[i]);
+
+                        // B. 월드 기준 마커 포즈 (T_World_Marker) - 정의된 값
+                        MarkerPos pos = KNOWN_MARKERS[id];
+                        cv::Mat T_World_Marker = getMarkerWorldPose(pos.x, pos.y, pos.z);
+
+                        // C. 월드 기준 카메라 포즈 계산 (T_World_Camera)
+                        // 수식: T_World_Camera = T_World_Marker * (T_Camera_Marker)^-1
+                        cv::Mat T_World_Camera = T_World_Marker * T_Camera_Marker.inv();
+
+                        T_World_Camera_Sum += T_World_Camera;
+                        valid_marker_count++;
+                    }
+                }
+
+                // 2. 평균 내서 최종 카메라 위치 도출
+                if (valid_marker_count > 0) {
+                    cv::Mat T_Final = T_World_Camera_Sum / valid_marker_count;
+                    
+                    // 1. 회전 행렬 추출 (4x4 행렬의 좌상단 3x3)
+                    cv::Mat RotationMatrix = T_Final(cv::Rect(0, 0, 3, 3));
+                    
+                    // 2. 각도 계산 함수 호출
+                    cv::Vec3d angles = getEulerAngles(RotationMatrix);
+
+                    // 3. 화면에 각도 출력 (X:Pitch, Y:Yaw, Z:Roll)
+                    std::string angle_text = cv::format("Angle(deg): X=%.2f Y=%.2f Z=%.2f", 
+                        angles[0], angles[1], angles[2]);
+                    
+                    // 회전된 뷰에 텍스트 출력 (위치: y=90 지점)
+                    cv::putText(image, angle_text, cv::Point(10, 90), 
+                    cv::FONT_HERSHEY_SIMPLEX, 0.6, cv::Scalar(255, 255, 0), 2); // 노란색
+
+                    // 화면 출력 (Overlays)
+                    std::string pos_text = cv::format("Cam Pos(m): x=%.2f y=%.2f z=%.2f", 
+                        T_Final.at<float>(0,3), T_Final.at<float>(1,3), T_Final.at<float>(2,3));
+                    cv::putText(image, pos_text, cv::Point(10, 30), cv::FONT_HERSHEY_SIMPLEX, 0.7, cv::Scalar(0, 255, 0), 2);
+                    
+                    std::string count_text = cv::format("Markers used: %d", valid_marker_count);
+                    cv::putText(image, count_text, cv::Point(10, 60), cv::FONT_HERSHEY_SIMPLEX, 0.7, cv::Scalar(0, 255, 0), 2);
+
+                    // 콘솔에 상세 출력 (가독성을 위해 1초에 한 번만 출력하거나 필요시 주석 해제)
+                    // printMatrix("Calculated Camera Pose in WORLD", T_Final);
+
+                    // --- [추가] 허리 회전 고려한 고정 오프셋 계산 (Reference용) ---
+                    // 허리 회전 행렬 (Z축 회전)
+                    float rad = CURRENT_WAIST_ANGLE_DEG * CV_PI / 180.0;
+                    cv::Mat T_Waist_Rot = cv::Mat::eye(4, 4, CV_64F);
+                    T_Waist_Rot.at<float>(0, 0) = cos(rad);
+                    T_Waist_Rot.at<float>(0, 1) = -sin(rad);
+                    T_Waist_Rot.at<float>(1, 0) = sin(rad);
+                    T_Waist_Rot.at<float>(1, 1) = cos(rad);
+
+                    // T_World_Camera = T_Waist_Rotation * T_Offset
+                    // 따라서 T_Offset = (T_Waist_Rotation)^-1 * T_World_Camera
+                    cv::Mat T_Offset = T_Waist_Rot.inv() * T_Final;
+
+                    cv::Mat RotationMatrix_Offset = T_Offset(cv::Rect(0, 0, 3, 3));
+                    cv::Vec3d angles_offset = getEulerAngles(RotationMatrix_Offset);
+                    
+                    if (elapsed_seconds.count() > 0.5) { 
+                        std::cout << "\n================ [Status Update] ================" << std::endl;
+                        
+                        // 1. 월드(마커) 기준 카메라의 절대 회전 (로봇 움직이면 변함)
+                        std::cout << "[World  ] Pitch: " << angles[0] 
+                                << " / Yaw: " << angles[1] 
+                                << " / Roll: " << angles[2] << std::endl;
+                        
+                        // 2. 로봇(허리) 기준 카메라의 장착 각도 (고정값, 우리가 원하는 것)
+                        std::cout << "[ Offset] Pitch: " << angles_offset[0] 
+                                << " / Yaw: " << angles_offset[1] 
+                                << " / Roll: " << angles_offset[2] << std::endl;
+
+                        // 3. 로봇(허리) 기준 카메라의 장착 위치 (고정값)
+                        std::cout << "[ Offset] Pos(m): X=" << T_Offset.at<float>(0,3) 
+                                << " Y=" << T_Offset.at<float>(1,3) 
+                                << " Z=" << T_Offset.at<float>(2,3) << std::endl;
+                        
+                        std::cout << "=================================================\n" << std::endl;
+
+                        // [중요] 마지막 출력 시간을 현재 시간으로 갱신
+                        last_print_time = current_time;
+                    }
+                }
+            }
+
+            cv::Mat rotated_view;
+
+            cv::rotate(image, rotated_view, cv::ROTATE_90_COUNTERCLOCKWISE);
+            cv::imshow("Rotated eye view", rotated_view); // 원본 대신 회전된 이미지 출력
+
+
+            cv::imshow("Robot Camera Calibration", image);
+            if (cv::waitKey(1) == 27) break; // ESC to exit
+        }
+
+    } catch (const rs2::error & e) {
+        std::cerr << "RealSense Error: " << e.what() << std::endl;
+    } catch (const std::exception& e) {
+        std::cerr << "Error: " << e.what() << std::endl;
+    }
+
+    cv::destroyAllWindows(); 
+    cv::waitKey(1);
+
+    // return 0;
 }

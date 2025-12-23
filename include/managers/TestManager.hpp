@@ -45,6 +45,9 @@ namespace cv {
 #include <chrono>
 #include <set>
 
+#include <numeric>
+#include <unistd.h>
+
 using namespace std;
 
 class TestManager
@@ -142,4 +145,11 @@ private:
 
     void DrumScan(float Waist_angle);
     Point3D transform_to_world(Point3D cam_pt, float waist_deg, float tilt_deg);
+
+    cv::Mat getIdentity();
+    cv::Mat getTransformMatrix(const cv::Vec3d& rvec, const cv::Vec3d& tvec);
+    cv::Mat getMarkerWorldPose(double x, double y, double z);
+    void printMatrix(const std::string& name, const cv::Mat& M);
+    cv::Vec3d getEulerAngles(cv::Mat R_in);
+    void camera_calibration(float CURRENT_WAIST_ANGLE_DEG);
 };

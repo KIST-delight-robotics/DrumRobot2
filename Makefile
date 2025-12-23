@@ -5,7 +5,7 @@ INCLUDE = -I./include -I./lib -I./include/USBIO_advantech -I./include/managers -
 LDFLAGS = -lm -lpthread -lstdc++fs -lbiodaq -L./lib -lUSBIO_64 -ldxl_x64_cpp -Wl,-rpath,'$$ORIGIN/../lib'
 LDFLAGS += -lsfml-audio -lsfml-system
 LDFLAGS += -lrealsense2
-LDFLAGS += -lopencv_core -lopencv_imgproc -lopencv_highgui -lopencv_imgcodecs -lopencv_videoio -lopencv_aruco
+LDFLAGS += -lopencv_core -lopencv_imgproc -lopencv_highgui -lopencv_imgcodecs -lopencv_videoio -lopencv_aruco -lopencv_calib3d
 # LDFLAGS = -lm -lpthread -lstdc++fs -L./lib -lUSBIO_64 -Wl,-rpath,/home/shy/DrumRobot_v1.0/lib -lbiodaq
 
 SRCDIR = ./src
