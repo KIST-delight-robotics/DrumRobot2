@@ -628,6 +628,7 @@ void Functions::handleMetaEvent(const std::vector<unsigned char>& data, size_t& 
 
 void Functions::handleChannel10(const std::vector<unsigned char>& data, size_t& pos, unsigned char eventType) {
     // unsigned char control = data[pos++];
+    pos++;
     if (eventType == 0xB9) pos++;
 }
 
@@ -1419,6 +1420,85 @@ void Functions::assignHandsToEvents(const std::string& inputFilename, const std:
     }
 }
 
+
+void Functions::compensateTotalTimeTo4p8(const std::string& inputPath, const std::string& outputPath) {
+
+    struct DrumEvent {
+        double time;
+        int rightInstrument;
+        int leftInstrument;
+        int rightPower;
+        int leftPower;
+        int isBass;
+        int hihatOpen;
+    };
+
+    std::ifstream input(inputPath);
+    if (!input.is_open()) {
+        std::cerr << "입력 파일 열기 실패: " << inputPath << "\n";
+        return;
+    }
+
+    std::ofstream output(outputPath);
+    if (!output.is_open()) {
+        std::cerr << "출력 파일 생성 실패: " << outputPath << "\n";
+        return;
+    }
+
+    std::vector<DrumEvent> events;
+    std::string line;
+    double totalTime = 0.0;
+
+    // 입력 읽기
+    while (std::getline(input, line)) {
+        if (line.empty()) continue;
+
+        std::stringstream ss(line);
+        DrumEvent ev;
+
+        if (!(ss >> ev.time
+                 >> ev.rightInstrument
+                 >> ev.leftInstrument
+                 >> ev.rightPower
+                 >> ev.leftPower
+                 >> ev.isBass
+                 >> ev.hihatOpen)) {
+            continue; // 파싱 실패 라인 무시
+        }
+
+        events.push_back(ev);
+        totalTime += ev.time;
+    }
+
+    // 4.8초 맞추기
+    const double TARGET_TIME = 4.8;
+
+    if (totalTime < TARGET_TIME ) {
+        DrumEvent dummy;
+        dummy.time = TARGET_TIME - totalTime;
+        dummy.rightInstrument = 0;
+        dummy.leftInstrument  = 0;
+        dummy.rightPower      = 0;
+        dummy.leftPower       = 0;
+        dummy.isBass          = 0;
+        dummy.hihatOpen       = 0;
+
+        events.push_back(dummy);
+    }
+
+    // 출력
+    output << std::fixed << std::setprecision(3);
+    for (const auto& ev : events) {
+        output << ev.time << "\t"
+               << ev.rightInstrument << "\t"
+               << ev.leftInstrument << "\t"
+               << ev.rightPower << "\t"
+               << ev.leftPower << "\t"
+               << ev.isBass << "\t"
+               << ev.hihatOpen << "\n";
+    }
+
+}
 
 // 그루브 관련 처리
 void Functions::addGroove(int bpm, const std::string& inputFilename, const std::string& outputFilename) {

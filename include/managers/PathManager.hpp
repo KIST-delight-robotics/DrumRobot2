@@ -322,6 +322,8 @@ private:
     double makeCosineProfile(double qi, double qf, double ti, double tf, double t);
 
     //////////////////////////////////// DXL Trajectory
+    int curInst;
+    int nextInst;
     queue<DXLTrajectory> DXLQueue;
 
     void genDxlTrajectory(MatrixXd &measureMatrix, int n);

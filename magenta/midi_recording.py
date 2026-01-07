@@ -174,6 +174,9 @@ class RecordingManager:
                 time_since_last_message = now - last_message_time  # 메시지 간의 시간 차이(초)
                 ticks_since_last_message = time_since_last_message / seconds_per_beat * ticks_per_beat  # 틱 단위로 변환
                 t = int(ticks_since_last_message)  # t를 틱 단위로 설정
+                if (now - start_time) >= recording_second - seconds_per_beat / ticks_per_beat:
+                        print("recording is over.")
+                        break
 
                 # 받은 메시지를 트랙에 추가
                 if msg.type == 'note_on':
@@ -192,7 +195,7 @@ class RecordingManager:
             time.sleep(0.01)   # CPU 사용률을 낮추기 위해 짧은 딜레이 추가
         
         # MIDI 파일 저장
-        track.append(mido.MetaMessage('end_of_track', time=1))
+        track.append(mido.MetaMessage('end_of_track', time=0))
         mid.save(output_file)
         print(f"\n[Python] Recording saved to {output_file}")
         midi_input.close()
@@ -253,6 +256,9 @@ class RecordingManager:
                     time_since_last_message = now - last_message_time  # 메시지 간의 시간 차이(초)
                     ticks_since_last_message = time_since_last_message / seconds_per_beat * ticks_per_beat  # 틱 단위로 변환
                     t = int(ticks_since_last_message)  # t를 틱 단위로 설정
+                    if (now - start_time) >= recording_second - seconds_per_beat / ticks_per_beat:
+                        print("recording is over.")
+                        break
                         
                 if first_note_received:
                     # 받은 메시지를 트랙에 추가
@@ -273,7 +279,7 @@ class RecordingManager:
             time.sleep(0.01)   # CPU 사용률을 낮추기 위해 짧은 딜레이 추가
         
         # MIDI 파일 저장
-        track.append(mido.MetaMessage('end_of_track', time=1))
+        track.append(mido.MetaMessage('end_of_track', time=0))
         mid.save(output_file)
         print(f"\n[Python] Recording saved to {output_file}")
         midi_input.close()

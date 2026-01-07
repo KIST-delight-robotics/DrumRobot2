@@ -76,6 +76,9 @@ void PathManager::initPlayStateValue()
     preDiff = 0.0;              // 브레이크 판단(필터)에 사용될 전 허리 차이값
 
     getVelocityRadps(true, 0.0, 0);     // 속도 계산을 위한 초기값
+
+    curInst = 1;
+    nextInst = 1;
 }
 
 void PathManager::processLine(MatrixXd &measureMatrix)
@@ -286,7 +289,7 @@ void PathManager::setReadyAngle()
     readyAngle(11) = hA.openAngle;
 
     // DXL
-    readyAngle(12) = 0.0*M_PI/180.0;
+    readyAngle(12) = getInstAngle(1) + readyAngle(0);
     readyAngle(13) = 110.0*M_PI/180.0;
 
     // ***허리 브레이크 테스트용*** // (이인우)
@@ -2370,8 +2373,6 @@ double PathManager::makeCosineProfile(double qi, double qf, double ti, double tf
 void PathManager::genDxlTrajectory(MatrixXd &measureMatrix, int n)
 {
     // 악기 정보
-    static int curInst = 0;
-    static int nextInst = 0;
     int codeInst = measureMatrix(1, 2);
 
     if(codeInst != 0)
@@ -2773,6 +2774,8 @@ void PathManager::pushDxlBuffer(double q0)
 
     vector<vector<float>> dxlCommand = {{0.0, 0.0, dxlQ.dxl1 + (float)q0}, {0.0, 0.0, dxlQ.dxl2}};
     dxlCommandBuffer.push(dxlCommand);
+
+    func.appendToCSV("DXL_log", false, dxlQ.dxl1 + (float)q0, dxlQ.dxl2);
 }
 
 void PathManager::pushCommandBuffer(VectorXd &Qi, double kpRatioR, double kpRatioL)

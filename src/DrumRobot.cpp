@@ -927,8 +927,13 @@ void DrumRobot::runPythonInThread()
                         bool startFlag = (j == 0);
                         bool endFlag = (j == creationNum[i] - 1);
                         
-                        // 디스이즈미용
-                        outputMid = "../magenta/generated/output" + std::to_string(i) + "_" + std::to_string(j + 1) + "3.mid";
+                        // 디스이즈미
+                        if (i == 3){
+                            outputMid = "../magenta/generated/output" + std::to_string(i) + "_" + std::to_string(j + 1) + "3.mid";
+                        }
+                        else{
+                            outputMid = "../magenta/generated/output" + std::to_string(i) + "_" + std::to_string(j + 1) + "2.mid";
+                        }
                         // if (j < recordNum[i])
                         // {
                         //     outputMid = "../magenta/generated/output" + std::to_string(i) + "_" + std::to_string(j + 1) + "3.mid";
@@ -1294,7 +1299,7 @@ void DrumRobot::setPythonArgs()
             if(mT % 2 == 1)
                 std::cout << "생성 마디 갯수는 2의 배수여야 합니다.\n";
             if(mT > 3*rT)
-                std::cout << "생성 마디 갯수는 녹음 마디의 3배 이하여하 합니다.\n";
+                std::cout << "생성 마디 갯수는 녹음 마디의 3배 이하여야 합니다.\n";
         }while(mT % 2 == 1 || mT > 3*rT);
 
         std::cout << i + 1 << "번째 wait time: ";
@@ -1822,8 +1827,10 @@ void DrumRobot::generateCodeFromMIDI(std::string midPath, std::string veloPath, 
     filesystem::path outputPath3 = "../include/magenta/output3_mc2c.csv";    
     filesystem::path outputPath4 = "../include/magenta/output4_hand_assign.csv";
 
-    filesystem::path outputPath5 = "../include/magenta/output5_vel.txt";
-    filesystem::path outputPath6 = "../include/magenta/output6_add_groove.txt";
+    filesystem::path outputPath5 = "../include/magenta/output5_time_compensation.csv";
+
+    filesystem::path outputPath6 = "../include/magenta/output6_vel.txt";
+    filesystem::path outputPath7 = "../include/magenta/output7_add_groove.txt";
 
     filesystem::path outputPath = magentaCodePath + std::to_string(recordingIndex) + ".txt";
 
@@ -1876,6 +1883,8 @@ void DrumRobot::generateCodeFromMIDI(std::string midPath, std::string veloPath, 
     func.convertMcToC(outputPath2, outputPath3);
     func.assignHandsToEvents(outputPath3, outputPath4);
 
+    func.compensateTotalTimeTo4p8(outputPath4, outputPath5); 
+
     if (veloPath != "null")
     {
         // veloPath 세기 파일 outputFile 우리가 쓸 아웃풋 파일
@@ -1885,12 +1894,12 @@ void DrumRobot::generateCodeFromMIDI(std::string midPath, std::string veloPath, 
         func.loadSegments(outputVel, segs);
 
         // 수정전 악보 scoreIn 최종 출력 파일 scoreOut
-        func.applyIntensityToScore(segs, outputPath4, outputPath5, mapTo357);
+        func.applyIntensityToScore(segs, outputPath5, outputPath6, mapTo357);
 
         // 그루브 추가 
-        func.addGroove(bpm, outputPath5, outputPath6);
+        func.addGroove(bpm, outputPath6, outputPath7);
         
-        func.convertToMeasureFile(outputPath6, outputPath, startFlag, endFlag);
+        func.convertToMeasureFile(outputPath7, outputPath, startFlag, endFlag);
 
         std::remove(outputPath1.c_str());      // 중간 단계 txt 파일 삭제
         std::remove(outputPath2.c_str());
@@ -1899,16 +1908,18 @@ void DrumRobot::generateCodeFromMIDI(std::string midPath, std::string veloPath, 
 
         std::remove(outputPath5.c_str());
         std::remove(outputPath6.c_str());
+        std::remove(outputPath7.c_str());
         std::remove(outputVel.c_str());
     }
     else
     {
-        func.convertToMeasureFile(outputPath4, outputPath, startFlag, endFlag);
+        func.convertToMeasureFile(outputPath5, outputPath, startFlag, endFlag);
 
         std::remove(outputPath1.c_str());      // 중간 단계 txt 파일 삭제
         std::remove(outputPath2.c_str());
         std::remove(outputPath3.c_str());
         std::remove(outputPath4.c_str());
+        std::remove(outputPath5.c_str());
     }
 }
 
