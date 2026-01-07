@@ -151,5 +151,5 @@ private:
     cv::Mat getMarkerWorldPose(double x, double y, double z);
     void printMatrix(const std::string& name, const cv::Mat& M);
     cv::Vec3d getEulerAngles(cv::Mat R_in);
-    void camera_calibration(float CURRENT_WAIST_ANGLE_DEG);
+    void camera_calibration(double CURRENT_WAIST_ANGLE_DEG);
 };

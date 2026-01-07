@@ -1429,11 +1429,11 @@ cv::Vec3d TestManager::getEulerAngles(cv::Mat R_in)
     return angles;
 }
 
-void TestManager::camera_calibration(float CURRENT_WAIST_ANGLE_DEG)
+void TestManager::camera_calibration(double CURRENT_WAIST_ANGLE_DEG)
 {
     try {
 
-        struct MarkerPos { float x, y, z; };
+        struct MarkerPos { double x, y, z; };
         std::map<int, MarkerPos> KNOWN_MARKERS = {
             // {ID, {x, y, z}}
             {0, {-0.783, 0.00, 0.08}},  // ID 0번 마커 위치
@@ -1452,13 +1452,13 @@ void TestManager::camera_calibration(float CURRENT_WAIST_ANGLE_DEG)
         rs2_intrinsics intr = stream.get_intrinsics();
 
         cv::Mat cameraMatrix = cv::Mat::eye(3, 3, CV_64F);
-        cameraMatrix.at<float>(0, 0) = intr.fx;    // x축 초점거리
-        cameraMatrix.at<float>(1, 1) = intr.fy;    // y축 초점거리
-        cameraMatrix.at<float>(0, 2) = intr.ppx;   // 주점의 x좌표
-        cameraMatrix.at<float>(1, 2) = intr.ppy;   // 주점의 y좌표
+        cameraMatrix.at<double>(0, 0) = intr.fx;    // x축 초점거리
+        cameraMatrix.at<double>(1, 1) = intr.fy;    // y축 초점거리
+        cameraMatrix.at<double>(0, 2) = intr.ppx;   // 주점의 x좌표
+        cameraMatrix.at<double>(1, 2) = intr.ppy;   // 주점의 y좌표
 
         cv::Mat distCoeffs = cv::Mat::zeros(5, 1, CV_64F);
-        for(int i=0; i<5; i++) distCoeffs.at<float>(i) = intr.coeffs[i];   // 왜곡 계수 배열
+        for(int i=0; i<5; i++) distCoeffs.at<double>(i) = intr.coeffs[i];   // 왜곡 계수 배열
 
         // --- 2. Aruco 설정 (OpenCV 4.2.0 호환) ---
         cv::Ptr<cv::aruco::Dictionary> dictionary = cv::aruco::getPredefinedDictionary(cv::aruco::DICT_4X4_50);
@@ -1486,7 +1486,7 @@ void TestManager::camera_calibration(float CURRENT_WAIST_ANGLE_DEG)
                 cv::aruco::estimatePoseSingleMarkers(corners, 0.08, cameraMatrix, distCoeffs, rvecs, tvecs);
                 
                 auto current_time = std::chrono::steady_clock::now();
-                std::chrono::duration<float> elapsed_seconds = current_time - last_print_time;
+                std::chrono::duration<double> elapsed_seconds = current_time - last_print_time;
 
                 // 다중 마커를 이용한 카메라 위치 누적 계산용
                 cv::Mat T_World_Camera_Sum = cv::Mat::zeros(4, 4, CV_64F);
@@ -1535,7 +1535,7 @@ void TestManager::camera_calibration(float CURRENT_WAIST_ANGLE_DEG)
 
                     // 화면 출력 (Overlays)
                     std::string pos_text = cv::format("Cam Pos(m): x=%.2f y=%.2f z=%.2f", 
-                        T_Final.at<float>(0,3), T_Final.at<float>(1,3), T_Final.at<float>(2,3));
+                        T_Final.at<double>(0,3), T_Final.at<double>(1,3), T_Final.at<double>(2,3));
                     cv::putText(image, pos_text, cv::Point(10, 30), cv::FONT_HERSHEY_SIMPLEX, 0.7, cv::Scalar(0, 255, 0), 2);
                     
                     std::string count_text = cv::format("Markers used: %d", valid_marker_count);
@@ -1546,12 +1546,12 @@ void TestManager::camera_calibration(float CURRENT_WAIST_ANGLE_DEG)
 
                     // --- [추가] 허리 회전 고려한 고정 오프셋 계산 (Reference용) ---
                     // 허리 회전 행렬 (Z축 회전)
-                    float rad = CURRENT_WAIST_ANGLE_DEG * CV_PI / 180.0;
+                    double rad = CURRENT_WAIST_ANGLE_DEG * CV_PI / 180.0;
                     cv::Mat T_Waist_Rot = cv::Mat::eye(4, 4, CV_64F);
-                    T_Waist_Rot.at<float>(0, 0) = cos(rad);
-                    T_Waist_Rot.at<float>(0, 1) = -sin(rad);
-                    T_Waist_Rot.at<float>(1, 0) = sin(rad);
-                    T_Waist_Rot.at<float>(1, 1) = cos(rad);
+                    T_Waist_Rot.at<double>(0, 0) = cos(rad);
+                    T_Waist_Rot.at<double>(0, 1) = -sin(rad);
+                    T_Waist_Rot.at<double>(1, 0) = sin(rad);
+                    T_Waist_Rot.at<double>(1, 1) = cos(rad);
 
                     // T_World_Camera = T_Waist_Rotation * T_Offset
                     // 따라서 T_Offset = (T_Waist_Rotation)^-1 * T_World_Camera
@@ -1574,9 +1574,9 @@ void TestManager::camera_calibration(float CURRENT_WAIST_ANGLE_DEG)
                                 << " / Roll: " << angles_offset[2] << std::endl;
 
                         // 3. 로봇(허리) 기준 카메라의 장착 위치 (고정값)
-                        std::cout << "[ Offset] Pos(m): X=" << T_Offset.at<float>(0,3) 
-                                << " Y=" << T_Offset.at<float>(1,3) 
-                                << " Z=" << T_Offset.at<float>(2,3) << std::endl;
+                        std::cout << "[ Offset] Pos(m): X=" << T_Offset.at<double>(0,3) 
+                                << " Y=" << T_Offset.at<double>(1,3) 
+                                << " Z=" << T_Offset.at<double>(2,3) << std::endl;
                         
                         std::cout << "=================================================\n" << std::endl;
 

@@ -63,9 +63,9 @@ public:
 
     Coord drumXYZ[9] = {
         {0.0, 0.0, 0.0},
-        {-0.13, 0.52, 0.61}, {0.25, 0.50, 0.62}, {0.21, 0.67, 0.87},
-        {-0.05, 0.69, 0.83}, {-0.28, 0.60, 0.88}, {0.32, 0.71, 1.06},
-        {0.47, 0.52, 0.88}, {-0.06, 0.73, 1.06}
+        {-0.061, 0.373, 0.512}, {0.284, 0.358, 0.532}, {0.244, 0.585, 0.628},
+        {-0.031, 0.614, 0.692}, {-0.286, 0.504, 0.781}, {0.357, 0.625, 0.849},
+        {0.496, 0.404, 0.747}, {-0.162, 0.676, 0.872}
     };
 
     double dist(const Coord& a, const Coord& b);
@@ -90,6 +90,7 @@ public:
     void checkCross(int& rightHand, int& leftHand, int prevRightNote, int prevLeftNote);
     
     void assignHandsToEvents(const std::string& inputFilename, const std::string& outputFilename);
+    void compensateTotalTimeTo4p8(const std::string& inputPath, const std::string& outputPath);
     void addGroove(int bpm, const std::string& inputFilename, const std::string& outputFilename);
     void convertToMeasureFile(const std::string& inputFilename, const std::string& outputFilename, bool startFlag, bool endFlag);
 

@@ -59,5 +59,6 @@ tm = taskManager(bpm=bpm, base_path=base_path)
 
 if record:
     tm.make_midi(num_repeats, wait_times_sec, recording_times_bar)
+    # tm.make_midi_from_folder(num_repeats, recording_times_bar)
 else:
     tm.make_sync()
