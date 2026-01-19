@@ -146,10 +146,19 @@ private:
     void DrumScan(float Waist_angle);
     Point3D transform_to_world(Point3D cam_pt, float waist_deg, float tilt_deg);
 
+    // 유틸리티 함수
     cv::Mat getIdentity();
     cv::Mat getTransformMatrix(const cv::Vec3d& rvec, const cv::Vec3d& tvec);
     cv::Mat getMarkerWorldPose(double x, double y, double z);
     void printMatrix(const std::string& name, const cv::Mat& M);
     cv::Vec3d getEulerAngles(cv::Mat R_in);
+
+    void saveCornersToCSV(const std::string& filename, const std::vector<int>& ids, const std::vector<std::vector<cv::Point2f>>& corners);
+    void savePoseToCSV(const std::string& filename, const std::vector<int>& ids, const std::vector<cv::Vec3d>& rvecs, const std::vector<cv::Vec3d>& tvecs);
+    void saveMatrixToCSV(const std::string& filename, const cv::Mat& M);
+    cv::Mat loadMatrixFromCSV(const std::string& filename);
+    void saveAnalysisLog(const std::string& filename, double waist_angle, const std::string& data_type, int marker_id, const cv::Vec3d& tvec_raw, double z_rgb, double z_depth, const cv::Mat& T_World_Cam, const cv::Mat& T_Offset);
+
     void camera_calibration(double CURRENT_WAIST_ANGLE_DEG);
+    void measure_and_log(double current_waist_angle, const std::string& offset_filename);
 };
