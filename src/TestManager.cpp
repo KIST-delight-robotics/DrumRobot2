@@ -334,7 +334,7 @@ void TestManager::SendTestProcess()
 
                 for (auto &entry : motors)
                 {
-                    if (entry.first == "waist") 
+                    if (entry.first == "Waist") 
                     {
                         if (std::shared_ptr<TMotor> tMotor = std::dynamic_pointer_cast<TMotor>(entry.second))
                         {
@@ -356,9 +356,40 @@ void TestManager::SendTestProcess()
             }
             std::cout << " Moving Complete." << std::endl;
 
-            camera_calibration(target_deg);
+            while (1)
+            {
+                std::cout << "mode 입력 (1: calibration, 2: check, -1: exit): ";
+                int mode;
+                std::cin >> mode;
 
-            std::cout << " Scanning Complete." << std::endl;
+                if (mode == 1)
+                {
+                    camera_calibration(target_deg);
+                    std::cout << "Scanning Complete." << std::endl;
+                }
+                else if (mode == 2)
+                {
+                    std::cout << "Offset Matrix file name : ";
+                    std::string offset_filename;
+                    std::cin >> offset_filename;
+
+                    std::cout << "current angle : ";
+                    double angle;
+                    std::cin >> angle;
+
+                    measure_and_log(angle, offset_filename);
+                    std::cout << "Checking calibration Complete." << std::endl;
+                }
+                else if (mode == -1)
+                {
+                    std::cout << "bye" << std::endl;
+                    break;
+                }
+                else
+                {
+                    std::cout << "wrong command" << std::endl;
+                }
+            }
         }
         else
         {
@@ -1395,7 +1426,6 @@ cv::Mat TestManager::getTransformMatrix(const cv::Vec3d& rvec, const cv::Vec3d& 
     return T;
 }
 
-// 마커의 월드 기준 포즈 행렬 생성 (지면에 평평, Y축 방향 정렬 가정)
 cv::Mat TestManager::getMarkerWorldPose(double x, double y, double z) 
 {
     // 마커 좌표계: 빨간색(x) 오른쪽, 초록색(y) 앞쪽, 파란색(z) 위쪽
@@ -1407,7 +1437,6 @@ cv::Mat TestManager::getMarkerWorldPose(double x, double y, double z)
     return T;
 }
 
-// 행렬 출력용 헬퍼
 void TestManager::printMatrix(const std::string& name, const cv::Mat& M) 
 {
     std::cout << "[" << name << "]" << std::endl;
@@ -1429,51 +1458,244 @@ cv::Vec3d TestManager::getEulerAngles(cv::Mat R_in)
     return angles;
 }
 
+void TestManager::saveCornersToCSV(const std::string& filename, const std::vector<int>& ids, const std::vector<std::vector<cv::Point2f>>& corners) 
+{
+    std::ofstream file(filename);
+
+    if (!file.is_open()) {
+        std::cerr << "파일을 열 수 없습니다: " << filename << std::endl;
+        return;
+    }
+
+    // 헤더 작성 (순서: ID, 좌상단, 우상단, 좌하단, 우하단)
+    file << "id,tl_x,tl_y,tr_x,tr_y,bl_x,bl_y,br_x,br_y\n";
+
+    for (size_t i = 0; i < ids.size(); ++i) {
+        // ArUco 기본 corner 순서: 0=TL(좌상단), 1=TR(우상단), 2=BR(우하단), 3=BL(좌하단)
+        // 사용자 요청 순서: TL -> TR -> BL -> BR
+        
+        const auto& c = corners[i]; // 현재 마커의 코너들
+
+        file << ids[i] << ","
+             << c[0].x << "," << c[0].y << ","  // 좌상단 (Top-Left)
+             << c[1].x << "," << c[1].y << ","  // 우상단 (Top-Right)
+             << c[3].x << "," << c[3].y << ","  // 좌하단 (Bottom-Left) -> 인덱스 3
+             << c[2].x << "," << c[2].y         // 우하단 (Bottom-Right) -> 인덱스 2
+             << "\n";
+    }
+
+    file.close();
+    // std::cout << filename << " 저장 완료 (" << ids.size() << "개 마커)" << std::endl;
+}
+
+void TestManager::savePoseToCSV(const std::string& filename, const std::vector<int>& ids, const std::vector<cv::Vec3d>& rvecs, const std::vector<cv::Vec3d>& tvecs) 
+{
+    // 데이터 개수 정합성 확인
+    if (ids.size() != rvecs.size() || ids.size() != tvecs.size()) {
+        std::cerr << "오류: ID와 포즈 데이터(rvecs, tvecs)의 개수가 맞지 않습니다." << std::endl;
+        return;
+    }
+
+    std::ofstream file(filename);
+    if (!file.is_open()) {
+        std::cerr << "파일을 열 수 없습니다: " << filename << std::endl;
+        return;
+    }
+
+    // 헤더 작성 (ID, 회전 벡터 x,y,z, 이동 벡터 x,y,z)
+    file << "id,rvec_x,rvec_y,rvec_z,tvec_x,tvec_y,tvec_z\n";
+
+    for (size_t i = 0; i < ids.size(); ++i) {
+        const auto& r = rvecs[i]; // 회전 벡터
+        const auto& t = tvecs[i]; // 이동 벡터 (카메라 기준 마커 위치)
+
+        file << ids[i] << ","
+             << r[0] << "," << r[1] << "," << r[2] << ","
+             << t[0] << "," << t[1] << "," << t[2]
+             << "\n";
+    }
+
+    file.close();
+    // std::cout << filename << " 저장 완료 (" << ids.size() << "개 데이터)" << std::endl;
+}
+
+void TestManager::saveMatrixToCSV(const std::string& filename, const cv::Mat& M) 
+{
+    std::ofstream file(filename);
+    
+    if (!file.is_open()) {
+        std::cerr << "[Error] 파일을 열 수 없습니다: " << filename << std::endl;
+        return;
+    }
+
+    // 소수점 6자리까지 정밀하게 저장 (캘리브레이션 데이터는 정밀도 중요)
+    file << std::fixed << std::setprecision(6);
+
+    for (int i = 0; i < M.rows; ++i) {
+        for (int j = 0; j < M.cols; ++j) {
+            // double형으로 접근하여 값 쓰기
+            file << M.at<double>(i, j);
+            
+            // 마지막 열이 아니면 콤마(,) 추가
+            if (j < M.cols - 1) {
+                file << ",";
+            }
+        }
+        // 행이 바뀌면 줄바꿈
+        file << "\n";
+    }
+
+    file.close();
+    std::cout << "[Saved] 캘리브레이션 데이터 저장 완료: " << filename << std::endl;
+}
+
+// CSV 파일에서 4x4 행렬 불러오기 (프로그램 시작 시 사용)
+cv::Mat TestManager::loadMatrixFromCSV(const std::string& filename) 
+{
+    cv::Mat M = cv::Mat::eye(4, 4, CV_64F); // 기본 단위 행렬로 초기화
+    std::ifstream file(filename);
+
+    if (!file.is_open()) {
+        std::cerr << "[Warning] 파일을 찾을 수 없습니다 (기본값 사용): " << filename << std::endl;
+        return M;
+    }
+
+    std::string line;
+    int row = 0;
+
+    // 한 줄씩 읽기
+    while (std::getline(file, line) && row < 4) {
+        std::stringstream ss(line);
+        std::string cell;
+        int col = 0;
+
+        // 콤마(,)를 기준으로 값 분리
+        while (std::getline(ss, cell, ',') && col < 4) {
+            try {
+                // 문자열을 double로 변환하여 행렬에 대입
+                M.at<double>(row, col) = std::stod(cell);
+            } catch (...) {
+                std::cerr << "[Error] 데이터 파싱 실패: " << cell << std::endl;
+            }
+            col++;
+        }
+        row++;
+    }
+
+    file.close();
+    // std::cout << "[Loaded] 캘리브레이션 데이터 로드 완료" << std::endl;
+    return M;
+}
+
+void TestManager::saveAnalysisLog(const std::string& filename, 
+                     double waist_angle, 
+                     const std::string& data_type, // "INDIVIDUAL" or "AVERAGE"
+                     int marker_id,                // 평균일 경우 -1 등 표기
+                     const cv::Vec3d& tvec_raw,    // 원본 tvec (x, y)
+                     double z_rgb,                 // RGB 추정 깊이
+                     double z_depth,               // Depth 센서 깊이
+                     const cv::Mat& T_World_Cam,   // (4 or 5) 카메라 월드 행렬
+                     const cv::Mat& T_Offset)      // (6) 최종 오프셋 행렬
+{
+    static bool headers_written = false;
+    std::ofstream file;
+
+    if (!headers_written) {
+        file.open(filename); // 새 파일 생성
+        file << "timestamp,waist_angle,data_type,marker_id,"
+             << "raw_x,raw_y,z_rgb,z_depth,"
+             << "world_cam_x,world_cam_y,world_cam_z,"
+             << "offset_x,offset_y,offset_z\n";
+        headers_written = true;
+    } else {
+        file.open(filename, std::ios::app); // 이어쓰기
+    }
+
+    if (!file.is_open()) return;
+
+    // 타임스탬프 (현재 시간)
+    auto now = std::chrono::system_clock::now();
+    std::time_t now_time = std::chrono::system_clock::to_time_t(now);
+    char time_str[100];
+    std::strftime(time_str, sizeof(time_str), "%H:%M:%S", std::localtime(&now_time));
+
+    file << std::fixed << std::setprecision(4);
+
+    // 1. 기본 정보
+    file << time_str << "," << waist_angle << "," << data_type << "," << marker_id << ",";
+
+    // 2. 원본 측정값 (Average일 경우 tvec_raw 등은 0이나 평균값 기록)
+    file << tvec_raw[0] << "," << tvec_raw[1] << "," << z_rgb << "," << z_depth << ",";
+
+    // 3. (4 or 5번) 카메라 월드 위치 (T_World_Cam의 x,y,z)
+    file << T_World_Cam.at<double>(0, 3) << "," 
+         << T_World_Cam.at<double>(1, 3) << "," 
+         << T_World_Cam.at<double>(2, 3) << ",";
+
+    // 4. (6번) 최종 오프셋 위치 (T_Offset의 x,y,z)
+    file << T_Offset.at<double>(0, 3) << "," 
+         << T_Offset.at<double>(1, 3) << "," 
+         << T_Offset.at<double>(2, 3) << "\n";
+
+    file.close();
+}
+
 void TestManager::camera_calibration(double CURRENT_WAIST_ANGLE_DEG)
 {
     try {
+        // 0. 파일명 동적 생성 (예: calibration_log_45deg.csv)
+        // 각도를 정수형(int)으로 변환하여 파일명에 포함
+        int angle_int = (int)std::round(CURRENT_WAIST_ANGLE_DEG);
+        std::string suffix = "_" + std::to_string(angle_int) + "deg.csv";
+        std::string angle_suffix = "_" + std::to_string(angle_int) + "deg.csv";
 
+        std::string file_corners = "corners" + suffix;
+        std::string file_pose    = "pose_data" + suffix;
+        std::string file_log     = "calibration_log" + suffix;
+
+        // 알고 있는 마커 좌표
         struct MarkerPos { double x, y, z; };
         std::map<int, MarkerPos> KNOWN_MARKERS = {
-            // {ID, {x, y, z}}
-            {0, {-0.783, 0.00, 0.08}},  // ID 0번 마커 위치
-            {1, {-0.693, 0.00, 0.08}},  // ID 1번 마커 위치
-            {2, {-0.603, 0.00, 0.08}}   // ID 2번 마커 위치
+            {0, {-0.783, 0.00, 0.08}}
+            ,{1, {-0.693, 0.00, 0.08}}
+            ,{2, {-0.603, 0.00, 0.08}}
         };
 
-        // --- 1. RealSense 초기화 ---
+        // 1. RealSense 설정
         rs2::pipeline pipe;
         rs2::config cfg;
         cfg.enable_stream(RS2_STREAM_COLOR, 848, 480, RS2_FORMAT_BGR8, 30);
+        cfg.enable_stream(RS2_STREAM_DEPTH, 848, 480, RS2_FORMAT_Z16, 30);
+        
         rs2::pipeline_profile profile = pipe.start(cfg);
+        rs2::align align_to_color(RS2_STREAM_COLOR);
 
-        // Intrinsic 가져오기
+        // Intrinsic
         auto stream = profile.get_stream(RS2_STREAM_COLOR).as<rs2::video_stream_profile>();
         rs2_intrinsics intr = stream.get_intrinsics();
-
         cv::Mat cameraMatrix = cv::Mat::eye(3, 3, CV_64F);
-        cameraMatrix.at<double>(0, 0) = intr.fx;    // x축 초점거리
-        cameraMatrix.at<double>(1, 1) = intr.fy;    // y축 초점거리
-        cameraMatrix.at<double>(0, 2) = intr.ppx;   // 주점의 x좌표
-        cameraMatrix.at<double>(1, 2) = intr.ppy;   // 주점의 y좌표
-
+        cameraMatrix.at<double>(0, 0) = intr.fx; cameraMatrix.at<double>(1, 1) = intr.fy;
+        cameraMatrix.at<double>(0, 2) = intr.ppx; cameraMatrix.at<double>(1, 2) = intr.ppy;
         cv::Mat distCoeffs = cv::Mat::zeros(5, 1, CV_64F);
-        for(int i=0; i<5; i++) distCoeffs.at<double>(i) = intr.coeffs[i];   // 왜곡 계수 배열
+        for(int i=0; i<5; i++) distCoeffs.at<double>(i) = intr.coeffs[i];
 
-        // --- 2. Aruco 설정 (OpenCV 4.2.0 호환) ---
         cv::Ptr<cv::aruco::Dictionary> dictionary = cv::aruco::getPredefinedDictionary(cv::aruco::DICT_4X4_50);
         cv::Ptr<cv::aruco::DetectorParameters> parameters = cv::aruco::DetectorParameters::create();
 
-        std::cout << "=== Camera Calibration Started ===" << std::endl;
-        std::cout << "Current Waist Angle: " << CURRENT_WAIST_ANGLE_DEG << " deg" << std::endl;
-        std::cout << "Press 'ESC' to exit." << std::endl;
+        std::cout << "=== Calibration Start: " << angle_int << " deg ===" << std::endl;
+        std::cout << "Waiting for stable detection (approx 1 sec)..." << std::endl;
 
-        auto last_print_time = std::chrono::steady_clock::now();
+        // [핵심 변수] 안정화 카운트
+        int stable_frame_count = 0; 
+        const int REQUIRED_STABLE_FRAMES = 90; // 30프레임(약 1초) 동안 마커가 보여야 저장함
 
         while (true) {
             rs2::frameset frames = pipe.wait_for_frames();
+            frames = align_to_color.process(frames); 
+            
             rs2::frame color_frame = frames.get_color_frame();
-            if (!color_frame) continue;
+            rs2::depth_frame depth_frame = frames.get_depth_frame();
+            if (!color_frame || !depth_frame) continue;
 
             cv::Mat image(cv::Size(848, 480), CV_8UC3, (void*)color_frame.get_data(), cv::Mat::AUTO_STEP);
             
@@ -1481,129 +1703,272 @@ void TestManager::camera_calibration(double CURRENT_WAIST_ANGLE_DEG)
             std::vector<std::vector<cv::Point2f>> corners;
             cv::aruco::detectMarkers(image, dictionary, corners, ids, parameters);
 
-            std::vector<cv::Vec3d> rvecs, tvecs;
             if (ids.size() > 0) {
-                cv::aruco::estimatePoseSingleMarkers(corners, 0.08, cameraMatrix, distCoeffs, rvecs, tvecs);
-                
-                auto current_time = std::chrono::steady_clock::now();
-                std::chrono::duration<double> elapsed_seconds = current_time - last_print_time;
+                // 마커가 잡히면 카운트 증가
+                stable_frame_count++;
 
-                // 다중 마커를 이용한 카메라 위치 누적 계산용
-                cv::Mat T_World_Camera_Sum = cv::Mat::zeros(4, 4, CV_64F);
-                int valid_marker_count = 0;
+                // 화면에 진행 상황 표시
+                std::string status = "Stabilizing: " + std::to_string(stable_frame_count) + "/" + std::to_string(REQUIRED_STABLE_FRAMES);
+                cv::putText(image, status, cv::Point(10, 30), cv::FONT_HERSHEY_SIMPLEX, 0.7, cv::Scalar(0, 255, 255), 2);
 
-                for (size_t i = 0; i < ids.size(); ++i) {
-                    int id = ids[i];
+                // [조건 충족] 30프레임 이상 안정적으로 잡혔을 때 -> 딱 한 번 저장하고 종료
+                if (stable_frame_count >= REQUIRED_STABLE_FRAMES) {
                     
-                    // 1. 우리가 아는 마커인지 확인
-                    if (KNOWN_MARKERS.find(id) != KNOWN_MARKERS.end()) {
-                        cv::aruco::drawAxis(image, cameraMatrix, distCoeffs, rvecs[i], tvecs[i], 0.03);
+                    std::cout << ">>> Capturing Data for " << angle_int << " deg..." << std::endl;
 
-                        // A. 카메라 기준 마커 포즈 (T_Camera_Marker)
-                        cv::Mat T_Camera_Marker = getTransformMatrix(rvecs[i], tvecs[i]);
+                    // 1. Pose 추정
+                    std::vector<cv::Vec3d> rvecs, tvecs;
+                    cv::aruco::estimatePoseSingleMarkers(corners, 0.08, cameraMatrix, distCoeffs, rvecs, tvecs);
 
-                        // B. 월드 기준 마커 포즈 (T_World_Marker) - 정의된 값
-                        MarkerPos pos = KNOWN_MARKERS[id];
-                        cv::Mat T_World_Marker = getMarkerWorldPose(pos.x, pos.y, pos.z);
-
-                        // C. 월드 기준 카메라 포즈 계산 (T_World_Camera)
-                        // 수식: T_World_Camera = T_World_Marker * (T_Camera_Marker)^-1
-                        cv::Mat T_World_Camera = T_World_Marker * T_Camera_Marker.inv();
-
-                        T_World_Camera_Sum += T_World_Camera;
-                        valid_marker_count++;
-                    }
-                }
-
-                // 2. 평균 내서 최종 카메라 위치 도출
-                if (valid_marker_count > 0) {
-                    cv::Mat T_Final = T_World_Camera_Sum / valid_marker_count;
-                    
-                    // 1. 회전 행렬 추출 (4x4 행렬의 좌상단 3x3)
-                    cv::Mat RotationMatrix = T_Final(cv::Rect(0, 0, 3, 3));
-                    
-                    // 2. 각도 계산 함수 호출
-                    cv::Vec3d angles = getEulerAngles(RotationMatrix);
-
-                    // 3. 화면에 각도 출력 (X:Pitch, Y:Yaw, Z:Roll)
-                    std::string angle_text = cv::format("Angle(deg): X=%.2f Y=%.2f Z=%.2f", 
-                        angles[0], angles[1], angles[2]);
-                    
-                    // 회전된 뷰에 텍스트 출력 (위치: y=90 지점)
-                    cv::putText(image, angle_text, cv::Point(10, 90), 
-                    cv::FONT_HERSHEY_SIMPLEX, 0.6, cv::Scalar(255, 255, 0), 2); // 노란색
-
-                    // 화면 출력 (Overlays)
-                    std::string pos_text = cv::format("Cam Pos(m): x=%.2f y=%.2f z=%.2f", 
-                        T_Final.at<double>(0,3), T_Final.at<double>(1,3), T_Final.at<double>(2,3));
-                    cv::putText(image, pos_text, cv::Point(10, 30), cv::FONT_HERSHEY_SIMPLEX, 0.7, cv::Scalar(0, 255, 0), 2);
-                    
-                    std::string count_text = cv::format("Markers used: %d", valid_marker_count);
-                    cv::putText(image, count_text, cv::Point(10, 60), cv::FONT_HERSHEY_SIMPLEX, 0.7, cv::Scalar(0, 255, 0), 2);
-
-                    // 콘솔에 상세 출력 (가독성을 위해 1초에 한 번만 출력하거나 필요시 주석 해제)
-                    // printMatrix("Calculated Camera Pose in WORLD", T_Final);
-
-                    // --- [추가] 허리 회전 고려한 고정 오프셋 계산 (Reference용) ---
-                    // 허리 회전 행렬 (Z축 회전)
+                    // 2. 허리 역행렬 준비
                     double rad = CURRENT_WAIST_ANGLE_DEG * CV_PI / 180.0;
                     cv::Mat T_Waist_Rot = cv::Mat::eye(4, 4, CV_64F);
-                    T_Waist_Rot.at<double>(0, 0) = cos(rad);
-                    T_Waist_Rot.at<double>(0, 1) = -sin(rad);
-                    T_Waist_Rot.at<double>(1, 0) = sin(rad);
-                    T_Waist_Rot.at<double>(1, 1) = cos(rad);
+                    T_Waist_Rot.at<double>(0, 0) = cos(rad); T_Waist_Rot.at<double>(0, 1) = -sin(rad);
+                    T_Waist_Rot.at<double>(1, 0) = sin(rad); T_Waist_Rot.at<double>(1, 1) = cos(rad);
+                    cv::Mat T_Waist_Inv = T_Waist_Rot.inv();
 
-                    // T_World_Camera = T_Waist_Rotation * T_Offset
-                    // 따라서 T_Offset = (T_Waist_Rotation)^-1 * T_World_Camera
-                    cv::Mat T_Offset = T_Waist_Rot.inv() * T_Final;
+                    // 평균 계산용 변수
+                    cv::Mat T_World_Camera_Sum = cv::Mat::zeros(4, 4, CV_64F);
+                    int valid_count = 0;
 
-                    cv::Mat RotationMatrix_Offset = T_Offset(cv::Rect(0, 0, 3, 3));
-                    cv::Vec3d angles_offset = getEulerAngles(RotationMatrix_Offset);
-                    
-                    if (elapsed_seconds.count() > 0.5) { 
-                        std::cout << "\n================ [Status Update] ================" << std::endl;
+                    // 3. 개별 마커 처리 및 저장
+                    for (size_t i = 0; i < ids.size(); ++i) {
+                        int id = ids[i];
                         
-                        // 1. 월드(마커) 기준 카메라의 절대 회전 (로봇 움직이면 변함)
-                        std::cout << "[World  ] Pitch: " << angles[0] 
-                                << " / Yaw: " << angles[1] 
-                                << " / Roll: " << angles[2] << std::endl;
+                        // Depth 보정
+                        double z_rgb = tvecs[i][2];
+                        double z_depth = 0.0;
                         
-                        // 2. 로봇(허리) 기준 카메라의 장착 각도 (고정값, 우리가 원하는 것)
-                        std::cout << "[ Offset] Pitch: " << angles_offset[0] 
-                                << " / Yaw: " << angles_offset[1] 
-                                << " / Roll: " << angles_offset[2] << std::endl;
+                        cv::Point2f center = (corners[i][0] + corners[i][1] + corners[i][2] + corners[i][3]) * 0.25f;
+                        int cx = std::round(center.x), cy = std::round(center.y);
+                        double d_sum = 0; int d_cnt = 0;
+                        for(int dy=-2; dy<=2; dy++) {
+                            for(int dx=-2; dx<=2; dx++) {
+                                int u=cx+dx, v=cy+dy;
+                                if(u>=0 && u<848 && v>=0 && v<480) {
+                                    double d = depth_frame.get_distance(u, v);
+                                    if(d>0.1 && d<5.0) { d_sum+=d; d_cnt++; }
+                                }
+                            }
+                        }
+                        if(d_cnt > 0) {
+                            z_depth = d_sum / d_cnt;
+                            tvecs[i][2] = z_depth; // Z값 교체
+                        } else {
+                            z_depth = z_rgb;
+                        }
 
-                        // 3. 로봇(허리) 기준 카메라의 장착 위치 (고정값)
-                        std::cout << "[ Offset] Pos(m): X=" << T_Offset.at<double>(0,3) 
-                                << " Y=" << T_Offset.at<double>(1,3) 
-                                << " Z=" << T_Offset.at<double>(2,3) << std::endl;
+                        if (KNOWN_MARKERS.find(id) != KNOWN_MARKERS.end()) {
+                            cv::Mat T_Cam_Marker = getTransformMatrix(rvecs[i], tvecs[i]);
+                            MarkerPos pos = KNOWN_MARKERS[id];
+                            cv::Mat T_World_Marker = getMarkerWorldPose(pos.x, pos.y, pos.z);
+                            cv::Mat T_World_Cam_Indiv = T_World_Marker * T_Cam_Marker.inv();
+                            cv::Mat T_Offset_Indiv = T_Waist_Inv * T_World_Cam_Indiv;
+
+                            // --- [저장 A] 개별 행렬 저장 (Individual) ---
+                            // 파일명 예시: Matrix_World_Indiv_ID0_30deg.csv
+                            std::string name_world_indiv = "Matrix_World_Indiv_ID" + std::to_string(id) + angle_suffix;
+                            std::string name_offset_indiv = "Matrix_Offset_Indiv_ID" + std::to_string(id) + angle_suffix;
+
+                            saveMatrixToCSV(name_world_indiv, T_World_Cam_Indiv);
+                            saveMatrixToCSV(name_offset_indiv, T_Offset_Indiv);
+
+                            // [저장 A] 개별 데이터
+                            saveAnalysisLog(file_log, CURRENT_WAIST_ANGLE_DEG, "INDIVIDUAL", id, 
+                                            tvecs[i], z_rgb, z_depth, T_World_Cam_Indiv, T_Offset_Indiv);
+
+                            T_World_Camera_Sum += T_World_Cam_Indiv;
+                            valid_count++;
+                        }
+                    }
+
+                    // 4. 평균 데이터 처리 및 저장
+                    if (valid_count > 0) {
+                        cv::Mat T_World_Cam_Avg = T_World_Camera_Sum / valid_count;
+                        cv::Mat T_Offset_Avg = T_Waist_Inv * T_World_Cam_Avg;
+
+                        std::string name_world_avg = "Matrix_World_Avg" + angle_suffix;
+                        std::string name_offset_avg = "Matrix_Offset_Avg" + angle_suffix;
+
+                        saveMatrixToCSV(name_world_avg, T_World_Cam_Avg);
+                        saveMatrixToCSV(name_offset_avg, T_Offset_Avg);
+
+                        // [저장 B] 평균 데이터
+                        saveAnalysisLog(file_log, CURRENT_WAIST_ANGLE_DEG, "AVERAGE", -1, 
+                                        cv::Vec3d(0,0,0), 0, 0, T_World_Cam_Avg, T_Offset_Avg);
                         
-                        std::cout << "=================================================\n" << std::endl;
+                        // [저장 C] 원본 코너 및 포즈 데이터 (필요시)
+                        saveCornersToCSV(file_corners, ids, corners);
+                        savePoseToCSV(file_pose, ids, rvecs, tvecs);
 
-                        // [중요] 마지막 출력 시간을 현재 시간으로 갱신
-                        last_print_time = current_time;
+                        std::cout << ">>> [Complete] Data Saved to " << file_log << std::endl;
+                        
+                        // [종료] 저장 완료했으므로 루프 탈출 (함수 종료)
+                        break; 
                     }
                 }
+            } else {
+                // 마커가 안 보이면 카운트 초기화 (연속 30프레임 조건)
+                stable_frame_count = 0;
+                cv::putText(image, "Looking for markers...", cv::Point(10, 30), cv::FONT_HERSHEY_SIMPLEX, 0.7, cv::Scalar(0, 0, 255), 2);
             }
 
-            cv::Mat rotated_view;
-
-            cv::rotate(image, rotated_view, cv::ROTATE_90_COUNTERCLOCKWISE);
-            cv::imshow("Rotated eye view", rotated_view); // 원본 대신 회전된 이미지 출력
-
-
-            cv::imshow("Robot Camera Calibration", image);
-            if (cv::waitKey(1) == 27) break; // ESC to exit
+            // 모니터링용 화면 출력
+            cv::imshow("Auto Calibration", image);
+            if (cv::waitKey(1) == 27) break; // ESC 누르면 강제 취소
         }
 
-    } catch (const rs2::error & e) {
-        std::cerr << "RealSense Error: " << e.what() << std::endl;
     } catch (const std::exception& e) {
         std::cerr << "Error: " << e.what() << std::endl;
     }
 
     cv::destroyAllWindows(); 
-    cv::waitKey(1);
+    cv::waitKey(1); // 창 닫힘 대기
+}
 
-    // return 0;
+void TestManager::measure_and_log(double current_waist_angle, const std::string& offset_filename)
+{
+    // 1. Offset 로드
+    cv::Mat T_Offset = loadMatrixFromCSV(offset_filename);
+
+    // 2. 허리 회전 행렬 계산
+    double rad = current_waist_angle * CV_PI / 180.0;
+    cv::Mat T_Waist = cv::Mat::eye(4, 4, CV_64F);
+    T_Waist.at<double>(0, 0) = cos(rad); T_Waist.at<double>(0, 1) = -sin(rad);
+    T_Waist.at<double>(1, 0) = sin(rad); T_Waist.at<double>(1, 1) = cos(rad);
+
+    cv::Mat T_World_Camera = T_Waist * T_Offset;
+
+    // --- CSV 파일 준비 ---
+    std::string log_filename = "marker_world_log.csv";
+    std::ofstream log_file(log_filename);
+    if (log_file.is_open()) {
+        log_file << "frame_idx,marker_id,world_x,world_y,world_z\n";
+    }
+    
+    // [핵심 변수] 프레임 카운터
+    int total_frames_passed = 0;    // 카메라 켜진 후 총 프레임 수
+    int recorded_frames = 0;        // 실제 CSV에 저장된 프레임 수
+    const int WARMUP_FRAMES = 60;   // 대기할 프레임 수 (약 2초)
+    const int TARGET_FRAMES = 60;   // 저장할 프레임 수
+    bool is_logging_complete = false;
+
+    // --- RealSense & Aruco 설정 ---
+    rs2::pipeline pipe;
+    rs2::config cfg;
+    cfg.enable_stream(RS2_STREAM_COLOR, 848, 480, RS2_FORMAT_BGR8, 30);
+    cfg.enable_stream(RS2_STREAM_DEPTH, 848, 480, RS2_FORMAT_Z16, 30);
+    rs2::pipeline_profile profile = pipe.start(cfg);
+    rs2::align align_to_color(RS2_STREAM_COLOR);
+
+    auto stream = profile.get_stream(RS2_STREAM_COLOR).as<rs2::video_stream_profile>();
+    rs2_intrinsics intr = stream.get_intrinsics();
+    cv::Mat cameraMatrix = cv::Mat::eye(3, 3, CV_64F);
+    cameraMatrix.at<double>(0, 0) = intr.fx; cameraMatrix.at<double>(1, 1) = intr.fy;
+    cameraMatrix.at<double>(0, 2) = intr.ppx; cameraMatrix.at<double>(1, 2) = intr.ppy;
+    cv::Mat distCoeffs = cv::Mat::zeros(5, 1, CV_64F);
+    for(int i=0; i<5; i++) distCoeffs.at<double>(i) = intr.coeffs[i];
+
+    cv::Ptr<cv::aruco::Dictionary> dictionary = cv::aruco::getPredefinedDictionary(cv::aruco::DICT_4X4_50);
+    cv::Ptr<cv::aruco::DetectorParameters> parameters = cv::aruco::DetectorParameters::create();
+
+    std::cout << "=== Camera Started. Waiting for Warm-up (" << WARMUP_FRAMES << " frames)... ===" << std::endl;
+
+    while (true) {
+        rs2::frameset frames = pipe.wait_for_frames();
+        frames = align_to_color.process(frames);
+        
+        rs2::frame color_frame = frames.get_color_frame();
+        rs2::depth_frame depth_frame = frames.get_depth_frame();
+        if (!color_frame || !depth_frame) continue;
+
+        cv::Mat image(cv::Size(848, 480), CV_8UC3, (void*)color_frame.get_data(), cv::Mat::AUTO_STEP);
+        
+        // 프레임 카운트 증가
+        total_frames_passed++;
+
+        // 마커 감지
+        std::vector<int> ids;
+        std::vector<std::vector<cv::Point2f>> corners;
+        cv::aruco::detectMarkers(image, dictionary, corners, ids, parameters);
+
+        bool frame_has_valid_data = false; // 현재 프레임 저장 여부 플래그
+
+        if (ids.size() > 0) {
+            std::vector<cv::Vec3d> rvecs, tvecs;
+            cv::aruco::estimatePoseSingleMarkers(corners, 0.08, cameraMatrix, distCoeffs, rvecs, tvecs);
+
+            for (size_t i = 0; i < ids.size(); ++i) {
+                // 1. Depth 보정
+                cv::Point2f center = (corners[i][0] + corners[i][1] + corners[i][2] + corners[i][3]) * 0.25f;
+                int cx = std::round(center.x);
+                int cy = std::round(center.y);
+                double d_sum = 0; int d_cnt = 0;
+                for(int dy=-2; dy<=2; dy++){ for(int dx=-2; dx<=2; dx++){
+                    int u=cx+dx, v=cy+dy;
+                    if(u>=0 && u<848 && v>=0 && v<480){
+                        double d = depth_frame.get_distance(u, v);
+                        if(d>0.1 && d<5.0){ d_sum+=d; d_cnt++; }
+                    }
+                }}
+                if(d_cnt>0) tvecs[i][2] = d_sum / d_cnt;
+
+                // 2. 월드 좌표 계산
+                cv::Mat T_Cam_Marker = getTransformMatrix(rvecs[i], tvecs[i]);
+                // cv::Mat T_temp = T_World_Camera * T_Cam_Marker;
+                cv::Mat T_World_Marker = T_World_Camera * T_Cam_Marker;
+                // cv::Mat T_World_Marker = T_temp.inv();
+
+                double wx = T_World_Marker.at<double>(0, 3);
+                double wy = T_World_Marker.at<double>(1, 3);
+                double wz = T_World_Marker.at<double>(2, 3);
+
+                // [핵심 로직] Warm-up이 끝났고, 아직 기록이 완료되지 않았다면 CSV 저장
+                if (total_frames_passed > WARMUP_FRAMES && !is_logging_complete && log_file.is_open()) {
+                    log_file << recorded_frames << "," 
+                             << ids[i] << "," 
+                             << wx << "," << wy << "," << wz << "\n";
+                    frame_has_valid_data = true;
+                }
+
+                // 시각화
+                std::string pos_text = cv::format("ID %d: (%.3f, %.3f, %.3f)", ids[i], wx, wy, wz);
+                cv::putText(image, pos_text, cv::Point(10, 30 + i * 30), cv::FONT_HERSHEY_SIMPLEX, 0.6, cv::Scalar(0, 255, 0), 2);
+                cv::aruco::drawAxis(image, cameraMatrix, distCoeffs, rvecs[i], tvecs[i], 0.04);
+            }
+        }
+
+        // --- 상태 관리 및 UI 표시 ---
+        if (total_frames_passed <= WARMUP_FRAMES) {
+            // [Warm-up 상태]
+            std::string status = cv::format("Warming up... %d/%d", total_frames_passed, WARMUP_FRAMES);
+            cv::putText(image, status, cv::Point(550, 30), cv::FONT_HERSHEY_SIMPLEX, 0.7, cv::Scalar(0, 255, 255), 2); // 노란색
+        } 
+        else if (!is_logging_complete) {
+            // [Logging 상태]
+            if (frame_has_valid_data) {
+                recorded_frames++; // 데이터가 유효하게 저장되었을 때만 카운트
+            }
+
+            std::string status = cv::format("LOGGING: %d / %d", recorded_frames, TARGET_FRAMES);
+            cv::putText(image, status, cv::Point(550, 30), cv::FONT_HERSHEY_SIMPLEX, 0.7, cv::Scalar(0, 0, 255), 2); // 빨간색
+
+            // 목표 달성 확인
+            if (recorded_frames >= TARGET_FRAMES) {
+                is_logging_complete = true;
+                log_file.close();
+                std::cout << ">>> [Complete] 60 Data Frames Saved." << std::endl;
+            }
+        } 
+        else {
+            // [Complete 상태]
+            cv::putText(image, "Logging Complete!", cv::Point(550, 30), cv::FONT_HERSHEY_SIMPLEX, 0.7, cv::Scalar(255, 0, 0), 2); // 파란색
+        }
+
+        cv::imshow("Measurement with Warmup", image);
+        if (cv::waitKey(1) == 27) break;
+    }
+    
+    if (log_file.is_open()) log_file.close();
+    cv::destroyAllWindows();
 }

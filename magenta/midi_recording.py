@@ -240,11 +240,11 @@ class RecordingManager:
                 if msg.type == 'note_on' and not first_note_received:
                     first_note_received = True  # 첫 번째 note_on 메시지 수신 시
 
-                    if sample_i == 0:
-                        # self.clear_input_buffer(midi_input, 4.10256)    # 베토벤 바이러스
-                        self.clear_input_buffer(midi_input, 15)    # 디스이즈미
-                    if sample_i == 2:
-                        self.clear_input_buffer(midi_input, 10)    # 디스이즈미
+                    # if sample_i == 0:
+                    #     # self.clear_input_buffer(midi_input, 4.10256)    # 베토벤 바이러스
+                    #     self.clear_input_buffer(midi_input, 15)    # 디스이즈미
+                    # if sample_i == 2:
+                    #     self.clear_input_buffer(midi_input, 10)    # 디스이즈미
 
                     start_time = time.time()  # 녹음 시작 시간 기록
                     last_message_time = time.time()
