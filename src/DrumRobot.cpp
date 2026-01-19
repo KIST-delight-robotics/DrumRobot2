@@ -934,6 +934,24 @@ void DrumRobot::runPythonInThread()
                         else{
                             outputMid = "../magenta/generated/output" + std::to_string(i) + "_" + std::to_string(j + 1) + "2.mid";
                         }
+
+                        if (i == 0){
+                            outputVel = "../magenta/velocity/drum_events_" + std::to_string(i) + "_" + std::to_string(j + 1) + ".csv";
+                            
+                        }
+                        else if (i == 1){
+                            if (j == 2){
+                                outputVel = "null";
+                            }
+                            else{
+                                outputVel = "../magenta/velocity/drum_events_" + std::to_string(i) + "_" + std::to_string(j + 1) + ".csv";
+                            }
+                        }
+                        else{
+                            outputVel = "null";
+
+                        }
+
                         // if (j < recordNum[i])
                         // {
                         //     outputMid = "../magenta/generated/output" + std::to_string(i) + "_" + std::to_string(j + 1) + "3.mid";
@@ -995,7 +1013,7 @@ void DrumRobot::displayAvailableCommands(string flagName) const
             std::cout << "- p : Play Drumming\n";
             std::cout << "- t : Start Test\n";
             std::cout << "- h : Move to Home Pos\n";
-            // std::cout << "- m : Run Python (Magenta)\n";
+            std::cout << "- m : Run Python (Magenta)\n";
         }
     }
     else
@@ -1015,10 +1033,22 @@ void DrumRobot::processInput(const std::string &input, string flagName)
     {
         state.main = Main::Play;
     }
-    // else if (input == "m" && flagName == "isReady")
-    // {
-        
-    // }
+    else if (input == "m" && flagName == "isReady")
+    {
+        std::string midPath, midFileName;
+        std::string veloPath = "null";
+        int recordingIndex = 0;
+        bool startFlag = true;
+        bool endFlag = true;
+
+        std::cout << "\nMIDI file name: ";
+        std::cin >> midFileName;
+        midPath = "../include/magenta/" + midFileName + ".mid";
+
+        generateCodeFromMIDI(midPath, veloPath, recordingIndex, startFlag, endFlag);
+
+        std::cin >> startFlag;
+    }
     else if (input == "u" && flagName == "isHome")
     {
         pathManager.setDrumCoordinate();
@@ -1876,7 +1906,7 @@ void DrumRobot::generateCodeFromMIDI(std::string midPath, std::string veloPath, 
     }
 
     //이거 세기 반영 시키는 변수 안하면 원본 그대로 
-    bool mapTo357 = false;
+    bool mapTo357 = true;
     vector<Functions::Seg> segs;
 
     func.roundDurationsToStep(bpm, outputPath1, outputPath2); 
@@ -1888,7 +1918,7 @@ void DrumRobot::generateCodeFromMIDI(std::string midPath, std::string veloPath, 
     if (veloPath != "null")
     {
         // veloPath 세기 파일 outputFile 우리가 쓸 아웃풋 파일
-        func.analyzeVelocityWithLowPassFilter(veloPath, outputVel, bpm);
+        func.analyzeVelocityWithLowPassFilter(veloPath, outputVel);
 
         // 위에서 만든 아웃풋 파일 넣어주기 그럼 segs 에 필터씌운 정보 저장댐
         func.loadSegments(outputVel, segs);
@@ -1896,10 +1926,14 @@ void DrumRobot::generateCodeFromMIDI(std::string midPath, std::string veloPath, 
         // 수정전 악보 scoreIn 최종 출력 파일 scoreOut
         func.applyIntensityToScore(segs, outputPath5, outputPath6, mapTo357);
 
-        // 그루브 추가 
-        func.addGroove(bpm, outputPath6, outputPath7);
+        // // 그루브 추가 
+        // func.addGroove(bpm, outputPath6, outputPath7);
         
-        func.convertToMeasureFile(outputPath7, outputPath, startFlag, endFlag);
+        // func.convertToMeasureFile(outputPath7, outputPath, startFlag, endFlag);
+
+        //그루브 안쓰는 버전
+
+        func.convertToMeasureFile(outputPath6, outputPath, startFlag, endFlag);
 
         std::remove(outputPath1.c_str());      // 중간 단계 txt 파일 삭제
         std::remove(outputPath2.c_str());

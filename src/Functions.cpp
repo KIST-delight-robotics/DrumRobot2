@@ -1273,7 +1273,7 @@ void Functions::assignHandsToEvents(const std::string& inputFilename, const std:
         //step 1-1 크러시를 주로 왼쪽 크러시만 사용하도록 변경 (양손으로 치는 경우를 제외하고)
         if(inst1 == 7 || inst1 == 8 || inst2 == 7 || inst2 == 8)
         {
-            std::cout << "→ 크러시 처리 진입 1-1\n";
+            // std::cout << "→ 크러시 처리 진입 1-1\n";
             //양손연주라면
             if (inst1 != 0 && inst2 != 0)
                 {
@@ -1407,8 +1407,8 @@ void Functions::assignHandsToEvents(const std::string& inputFilename, const std:
     for (const auto& e : events) {
         int rightFlag = 0;
         int leftFlag = 0;
-        if(e.rightHand != 0)    rightFlag = 5;
-        if(e.leftHand != 0)     leftFlag = 5;
+        if(e.rightHand != 0)    rightFlag = 6;
+        if(e.leftHand != 0)     leftFlag = 6;
         output << std::fixed << std::setprecision(3)
                << e.time
                << std::setw(6) << e.rightHand
@@ -1672,9 +1672,9 @@ bool Functions::applyIntensityToScore(const vector<Functions::Seg>& segs, const 
     };
     auto mapIntensity = [&](int base) -> int {
         if (!mapTo357) return base;            // 원시 세기 사용 옵션
-        if (base <= 1) return 3;               // 0/1 -> 3
-        if (base == 2) return 5;               // 2     -> 5
-        return 7;                               // 3+    -> 7
+        if (base == 1) return 3;               // 0/1 -> 3
+        if (base == 2) return 6;               // 2     -> 5
+        return 6;                               // 3+    -> 7
     };
     // --------------------------------------
 
@@ -1740,9 +1740,9 @@ bool Functions::applyIntensityToScore(const vector<Functions::Seg>& segs, const 
 }
 
 //세기 처리해서 파싱하는거 
-void Functions::analyzeVelocityWithLowPassFilter(const std::string& velocityFile, const std::string& outputFile, double bpm)
+void Functions::analyzeVelocityWithLowPassFilter(const std::string& velocityFile, const std::string& outputFile)
 {
-    double windowSize = (60/bpm)*4;
+    double windowSize = 0.15;
 
     std::ifstream in(velocityFile);
     if (!in.is_open()) {
@@ -1798,15 +1798,27 @@ void Functions::analyzeVelocityWithLowPassFilter(const std::string& velocityFile
             countCym[bin]++;
         }
     }
+    // 40 을 기준으로 3단계로 나눔
+    // for (int i = 0; i < numWindows; ++i) {
+    //     if (countDrum[i] > 0) {
+    //         avgVelocityDrum[i] = static_cast<int>(std::round((avgVelocityDrum[i] / countDrum[i]) / 40.0));
+    //     }
+    //     if (countCym[i] > 0) {
+    //         avgVelocityCym[i] = static_cast<int>(std::round((avgVelocityCym[i] / countCym[i]) / 40.0));
+    //     }
+    // }
 
     for (int i = 0; i < numWindows; ++i) {
-        if (countDrum[i] > 0) {
-            avgVelocityDrum[i] = static_cast<int>(std::round((avgVelocityDrum[i] / countDrum[i]) / 40.0));
-        }
-        if (countCym[i] > 0) {
-            avgVelocityCym[i] = static_cast<int>(std::round((avgVelocityCym[i] / countCym[i]) / 40.0));
-        }
+    if (countDrum[i] > 0) {
+        double avg = avgVelocityDrum[i] / countDrum[i];
+        avgVelocityDrum[i] = (avg > 100.0) ? 2 : 1;
     }
+
+    if (countCym[i] > 0) {
+        double avg = avgVelocityCym[i] / countCym[i];
+        avgVelocityCym[i] = (avg > 100.0) ? 2 : 1;
+    }
+}
 
     // 결과 저장
     std::ofstream out(outputFile);

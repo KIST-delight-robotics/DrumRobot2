@@ -37,7 +37,7 @@
 #define INIT_SIGN 99
 
 // position loop mode 에서 step input 각도 제한
-#define POS_DIFF_LIMIT 30.0*M_PI/180.0
+#define POS_DIFF_LIMIT 35.0*M_PI/180.0
 
 using namespace std;
 using namespace Eigen;

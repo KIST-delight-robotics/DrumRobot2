@@ -110,7 +110,7 @@ public:
 
     bool loadSegments(const string& intensityFile, vector<Functions::Seg>& segs); 
     bool applyIntensityToScore(const vector<Functions::Seg>& segs, const string& scoreIn, const string& scoreOut, bool mapTo357);
-    void analyzeVelocityWithLowPassFilter(const std::string& velocityFile, const std::string& outputFile, double bpm);
+    void analyzeVelocityWithLowPassFilter(const std::string& velocityFile, const std::string& outputFile);
 
     void clear_directory(const std::filesystem::path& dir_path);
     
