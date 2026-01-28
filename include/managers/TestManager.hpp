@@ -160,5 +160,5 @@ private:
     void saveAnalysisLog(const std::string& filename, double waist_angle, const std::string& data_type, int marker_id, const cv::Vec3d& tvec_raw, double z_rgb, double z_depth, const cv::Mat& T_World_Cam, const cv::Mat& T_Offset);
 
     void camera_calibration(double CURRENT_WAIST_ANGLE_DEG);
-    void measure_and_log(double current_waist_angle, const std::string& offset_filename);
+    void measure_and_log(double current_waist_angle, const std::string& C_filename);
 };
