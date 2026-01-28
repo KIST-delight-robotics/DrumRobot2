@@ -19,7 +19,7 @@ class taskManager:
         # 연결된 장치 이름
         device_names = mido.get_input_names()
         
-        # self.device_name = None
+        self.device_name = None
         for device in device_names:
             if device == 'TD-17:TD-17 MIDI 1 20:0':
                 self.device_name = 'TD-17:TD-17 MIDI 1 20:0'

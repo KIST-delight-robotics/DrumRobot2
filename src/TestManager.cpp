@@ -334,7 +334,7 @@ void TestManager::SendTestProcess()
 
                 for (auto &entry : motors)
                 {
-                    if (entry.first == "Waist") 
+                    if (entry.first == "waist") 
                     {
                         if (std::shared_ptr<TMotor> tMotor = std::dynamic_pointer_cast<TMotor>(entry.second))
                         {
@@ -1656,9 +1656,14 @@ void TestManager::camera_calibration(double CURRENT_WAIST_ANGLE_DEG)
         // 알고 있는 마커 좌표
         struct MarkerPos { double x, y, z; };
         std::map<int, MarkerPos> KNOWN_MARKERS = {
-            {0, {-0.783, 0.00, 0.08}}
-            ,{1, {-0.693, 0.00, 0.08}}
-            ,{2, {-0.603, 0.00, 0.08}}
+            // {0, {-0.773, 0.00, 0.08}}
+            // ,{1, {-0.683, 0.00, 0.08}}
+            // ,{2, {-0.593, 0.00, 0.08}}
+
+            {0, {-0.773, 0.00, 0.08}}
+            ,{1, {-0.713, 0.00, 0.08}}
+            ,{2, {-0.653, 0.00, 0.08}}
+            ,{3, {-0.593, 0.00, 0.08}}
         };
 
         // 1. RealSense 설정
@@ -1718,7 +1723,7 @@ void TestManager::camera_calibration(double CURRENT_WAIST_ANGLE_DEG)
 
                     // 1. Pose 추정
                     std::vector<cv::Vec3d> rvecs, tvecs;
-                    cv::aruco::estimatePoseSingleMarkers(corners, 0.08, cameraMatrix, distCoeffs, rvecs, tvecs);
+                    cv::aruco::estimatePoseSingleMarkers(corners, 0.05, cameraMatrix, distCoeffs, rvecs, tvecs);
 
                     // 2. 허리 역행렬 준비
                     double rad = CURRENT_WAIST_ANGLE_DEG * CV_PI / 180.0;
@@ -1843,7 +1848,7 @@ void TestManager::measure_and_log(double current_waist_angle, const std::string&
     std::string log_filename = "marker_world_log.csv";
     std::ofstream log_file(log_filename);
     if (log_file.is_open()) {
-        log_file << "frame_idx,marker_id,world_x,world_y,world_z\n";
+        log_file << "frame_idx,marker_id,world_x,world_y,world_z,c_x,c_y\n";
     }
     
     // [핵심 변수] 프레임 카운터
@@ -1896,7 +1901,7 @@ void TestManager::measure_and_log(double current_waist_angle, const std::string&
 
         if (ids.size() > 0) {
             std::vector<cv::Vec3d> rvecs, tvecs;
-            cv::aruco::estimatePoseSingleMarkers(corners, 0.08, cameraMatrix, distCoeffs, rvecs, tvecs);
+            cv::aruco::estimatePoseSingleMarkers(corners, 0.05, cameraMatrix, distCoeffs, rvecs, tvecs);
 
             for (size_t i = 0; i < ids.size(); ++i) {
                 // 1. Depth 보정
@@ -1927,7 +1932,7 @@ void TestManager::measure_and_log(double current_waist_angle, const std::string&
                 if (total_frames_passed > WARMUP_FRAMES && !is_logging_complete && log_file.is_open()) {
                     log_file << recorded_frames << "," 
                              << ids[i] << "," 
-                             << wx << "," << wy << "," << wz << "\n";
+                             << wx << "," << wy << "," << wz << cx << cy << "\n";
                     frame_has_valid_data = true;
                 }
 

@@ -1037,17 +1037,34 @@ void DrumRobot::processInput(const std::string &input, string flagName)
     {
         std::string midPath, midFileName;
         std::string veloPath = "null";
-        int recordingIndex = 0;
+        int recordingIndex = 10;
         bool startFlag = true;
         bool endFlag = true;
 
-        std::cout << "\nMIDI file name: ";
-        std::cin >> midFileName;
-        midPath = "../include/magenta/" + midFileName + ".mid";
+        std::string folderName;
+        std::cout << "\nMIDI file folder name: ";
+        std::cin >> folderName;
+        std::string folder_path = "../include/magenta/" + folderName;  // 대상 폴더 경로
 
-        generateCodeFromMIDI(midPath, veloPath, recordingIndex, startFlag, endFlag);
+        // 폴더가 존재하는지 확인
+        if (std::filesystem::exists(folder_path) && std::filesystem::is_directory(folder_path)) {
+            // 폴더 내의 파일을 순차적으로 열기
+            for (const auto& entry : std::filesystem::directory_iterator(folder_path)) {
+                // 파일만 처리 (디렉토리 제외)
+                if (std::filesystem::is_regular_file(entry.status())) {
+                    std::cout << "파일 경로: " << entry.path() << std::endl;
+                    generateCodeFromMIDI(entry.path(), veloPath, recordingIndex, startFlag, endFlag);
+                    recordingIndex = recordingIndex + 10;
 
-        std::cin >> startFlag;
+                    if (startFlag)
+                    {
+                        startFlag = false;
+                    }
+                }
+            }
+        } else {
+            std::cerr << "지정한 경로는 폴더가 아닙니다." << std::endl;
+        }
     }
     else if (input == "u" && flagName == "isHome")
     {

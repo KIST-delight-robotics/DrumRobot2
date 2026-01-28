@@ -2,6 +2,7 @@ import os
 from magenta.models.music_vae import TrainedModel
 from magenta.models.music_vae import configs
 import note_seq
+import time
 
 import copy
 
@@ -85,6 +86,9 @@ class MagentaManager:
         input_sequence1 = note_seq.midi_file_to_sequence_proto(input_midi1)
         input_sequence2 = note_seq.midi_file_to_sequence_proto(input_midi2)
 
+        t_start = time.time()
+        print(f"[TIME] start           : {t_start:.3f} sec\n")
+
         # 보간
         generated_sequences = self.model.interpolate(start_sequence=input_sequence1, end_sequence=input_sequence2, num_steps=self.num_samples, length=self.length, temperature=self.temperature, assert_same_length=False)
 
@@ -96,6 +100,10 @@ class MagentaManager:
             midi_filename = output_filename + f"{i+1}.mid"
             note_seq.sequence_proto_to_midi_file(sequence, midi_filename)
             print(f"[Python] Generated MIDI file: {midi_filename}")
+        
+        t_end = time.time()
+        print(f"[TIME] end           : {t_end:.3f} sec\n")
+        print(f"[TIME] elapsed           : {t_end - t_start:.3f} sec\n")
 
 # 모델 이름 - 모델 체크포인트 파일 경로
 # 'cat-drums_2bar_small' - '/home/shy/DrumRobot/magenta/model/cat-drums_2bar_small.lokl.tar'
