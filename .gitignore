@@ -1,29 +1,40 @@
-# Python 가상환경
-venv/
-magenta-env/
-DrumSound/magenta-env/
-DrumSound/magenta_drum/venv/
+# --- [1] 빌드 및 컴파일 산출물 (전체 적용) ---
+*.o
+*.out
+*.so
+*.a
 
-# 파이썬 캐시 파일
+# --- [2] DrumRobot2: 빈 폴더 구조 유지 ---
+# obj 폴더 비우기 (단, .gitkeep은 제외)
+DrumRobot2/obj/*
+!DrumRobot2/obj/.gitkeep
+
+# bin 폴더 비우기 (단, .gitkeep은 제외)
+DrumRobot2/bin/*
+!DrumRobot2/bin/.gitkeep
+
+# DrumRobot_data 비우기 (데이터 파일 무시, .gitkeep은 유지)
+DrumRobot_data/*
+!DrumRobot_data/.gitkeep
+
+# --- [3] Python/Magenta/phil_robot 관련 ---
+# 가상환경 및 캐시 (이름이 뭐든 간에 venv, env 들어가면 무시)
+venv/
+env/
+magenta-env/
 __pycache__/
 *.pyc
-*.pyo
-*.pyd
-
-``# Python 가상환경 & 캐시 파일
-magenta/magenta_env/
-magenta/model/
-magenta/__pycache__/``
-
-# Jupyter 체크포인트
 .ipynb_checkpoints/
 
-# VSCode 설정 (옵션)
-.vscode/
+# 휠 파일 등 대용량 설치 파일 제외
+phil_robot/downloads_whl/
 
-# OS별 임시 파일
+# --- [4] IDE 설정 및 시스템 파일 ---
+.vscode/
+.idea/
 .DS_Store
 Thumbs.db
 
-# 충돌 룩업 테이블
+# --- [5] 기타 ---
+# 기존에 있던 충돌 룩업 테이블 (유지)
 include/table/

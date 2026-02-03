@@ -1,0 +1,141 @@
+/**********************************************************************
+ *
+ *  USBIO_Object_Layout.h
+ *
+ *  Header of USB I/O Object Index
+ *  
+ *  v 0.0.1 2014.4.14 by Winson Chen
+ *
+ *    To add DI Function Index.
+ *
+ *  v 0.0.0 2013.4.9 by Golden Wang
+ *
+ *    create
+ *
+ **********************************************************************/
+
+
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#define SYS_TRANSFER_MODE	0x0001
+#define SYS_POLLING_TABLE	0x0002
+#define SYS_ACTIVE_PERIOD	0x0003
+#define SYS_MASSTX_RESP_TIME	0x0004
+#define SYS_SYNC_PC2IO_TIMEOUT	0x0005
+#define SYS_SYNC_IO2PC_TIMEOUT	0x0006
+#define SYS_LOG_STATUS		0x0007
+#define SYS_DATA_LOG		0x0040
+#define SYS_MAPTABLE_IDX60	0x0060
+#define SYS_LOAD_DEFAULT	0x07FE
+#define SYS_RESET		0x07FF
+
+#define DEV_ID_FWVER_CHANNEL	0x0800
+#define DEV_USERDEFINED_BID	0x0801
+#define DEV_NICKNAME		0x0802
+#define DEV_SN			0x0803
+#define DEV_SUPPORT_DO_TYPE	0x0804
+#define DEV_SUPPORT_DI_TYPE	0x0805
+#define DEV_SUPPORT_AO_TYPE	0x0806
+#define DEV_SUPPORT_AI_TYPE	0x0807
+#define DEV_SUPPORT_PO_TYPE	0x0808
+#define DEV_SUPPORT_PI_TYPE	0x0809
+#define DEV_AO_TYPE_LOW_LIMIT	0x0810
+#define DEV_AO_TYPE_UP_LIMIT	0x0811
+#define DEV_AI_TYPE_LOW_LIMIT	0x0812
+#define DEV_AI_TYPE_UP_LIMIT	0x0813
+
+// Function Index
+#define DO_PWRON_ENABLE		0x4000
+#define DO_PWRON_VALUE		0x4001
+#define DO_SAFETY_ENABLE	0x4002
+#define DO_SAFETY_VALUE		0x4003
+#define DO_OUT_INV		0x4004
+#define DO_CHANNEL_VALUE	0x4010
+
+#define	DI_DF_WIDTH		0x4800
+#define	DI_INV_VALUE		0x4801
+#define	DI_CNT_EDGE_TRIG	0x4802
+#define	DI_CH_VAL		0x4810
+#define DI_CNT_VAL1		0x4820
+#define DI_CLR_CNT		0x4821
+#define DI_CNT_VAL2		0x4822
+#define DI_CNT_VAL3		0x4823
+#define DI_CNT_VAL4		0x4824
+
+#define AI_TYPECODE		0x5800
+#define AI_CH_CJC_OFFSET	0x5802
+#define AI_RESOLUTION		0x5803
+#define AI_CH_ENABLEMASK	0x5810
+#define AI_DATA_FORMAT		0x5811
+#define AI_FILTER_REJECTION	0x5813
+#define AI_CJC_OFFSET		0x5815
+#define AI_CJC_ENABLE		0x5816
+#define AI_WIRE_DETECTION	0x5819
+#define AI_CHANNEL_VALUE	0x5820
+#define AI_CJC_VALUE		0x5822
+
+#define AO_TYPECODE		0x5000
+#define AO_RESOLUTION		0x5003
+#define AO_CH_ENABLEMASK	0x5010  
+#define AO_WIRE_DETECTION	0x5019
+#define AO_VALUE_CALIBRATION	0x501B
+#define AO_VALUE_TRIM		0x501C
+#define AO_PWRON_ENABLE		0x5020
+#define AO_PWRON_VALUE		0x5021
+#define AO_SAFETY_ENABLE	0x5022
+#define AO_SAFETY_VALUE		0x5023
+#define AO_SLEW_RATE		0x5024
+#define AO_CHANNEL_EXP_VALUE	0x5030
+#define AO_CHANNEL_CUR_VALUE	0x5031
+
+#define PI_TYPECODE		0x6801
+#define PI_CH_CNT_CLR		0x6802
+#define PI_TRIGGER_MODE		0x6803
+#define PI_LP_FILTER_ENABLE	0x6804
+#define PI_LP_FILTER_WIDTH	0x6805
+#define PI_CH_ISOLATED_FLAG	0x6806
+#define PI_CH_STATUS_CLR	0x6807
+#define PI_CHANNEL_VALUE	0x6810
+
+// Mapping Index
+#define AI_CH0_LOW_WORD		0xD900
+#define AI_CH0_HIGH_WORD	0xD901
+#define AI_CH1_LOW_WORD		0xD902
+#define AI_CH1_HIGH_WORD	0xD903
+#define AI_CH2_LOW_WORD		0xD904
+#define AI_CH2_HIGH_WORD	0xD905
+#define AI_CH3_LOW_WORD		0xD906
+#define AI_CH3_HIGH_WORD	0xD907
+#define AI_CH4_LOW_WORD		0xD908
+#define AI_CH4_HIGH_WORD	0xD909
+#define AI_CH5_LOW_WORD		0xD90A
+#define AI_CH5_HIGH_WORD	0xD90B
+#define AI_CH6_LOW_WORD		0xD90C
+#define AI_CH6_HIGH_WORD	0xD90D
+#define AI_CH7_LOW_WORD		0xD90E
+#define AI_CH7_HIGH_WORD	0xD90F
+#define AI_CJC			0xD942
+
+#define PI_CH0_LOW_WORD		0xE880
+#define PI_CH0_HIGH_WORD	0xE881
+#define PI_CH1_LOW_WORD		0xE882
+#define PI_CH1_HIGH_WORD	0xE883
+#define PI_CH2_LOW_WORD		0xE884
+#define PI_CH2_HIGH_WORD	0xE885
+#define PI_CH3_LOW_WORD		0xE886
+#define PI_CH3_HIGH_WORD	0xE887
+#define PI_CH4_LOW_WORD		0xE888
+#define PI_CH4_HIGH_WORD	0xE889
+#define PI_CH5_LOW_WORD		0xE88A
+#define PI_CH5_HIGH_WORD	0xE88B
+#define PI_CH6_LOW_WORD		0xE88C
+#define PI_CH6_HIGH_WORD	0xE88D
+#define PI_CH7_LOW_WORD		0xE88E
+#define PI_CH7_HIGH_WORD	0xE88F
+
+#ifdef __cplusplus
+}
+#endif
