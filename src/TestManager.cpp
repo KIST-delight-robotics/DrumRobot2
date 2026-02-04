@@ -364,7 +364,7 @@ void TestManager::SendTestProcess()
 
                 if (mode == 1)
                 {
-                    camera_calibration(target_deg);
+                    camera_calibration_H(target_deg);
                     std::cout << "Scanning Complete." << std::endl;
                 }
                 else if (mode == 2)
@@ -377,7 +377,7 @@ void TestManager::SendTestProcess()
                     double angle;
                     std::cin >> angle;
 
-                    measure_and_log(angle, offset_filename);
+                    measure_and_log_H(angle, offset_filename);
                     std::cout << "Checking calibration Complete." << std::endl;
                 }
                 else if (mode == -1)
@@ -1640,14 +1640,13 @@ void TestManager::saveAnalysisLog(const std::string& filename,
     file.close();
 }
 
-void TestManager::camera_calibration_ex(double CURRENT_WAIST_ANGLE_DEG)
+void TestManager::camera_calibration_H(double CURRENT_WAIST_ANGLE_DEG)
 {
     try {
         // 0. 파일명 동적 생성 (예: calibration_log_45deg.csv)
         // 각도를 정수형(int)으로 변환하여 파일명에 포함
         int angle_int = (int)std::round(CURRENT_WAIST_ANGLE_DEG);
         std::string suffix = "_" + std::to_string(angle_int) + "deg.csv";
-        std::string angle_suffix = "_" + std::to_string(angle_int) + "deg.csv";
 
         std::string file_corners = "corners" + suffix;
         std::string file_pose    = "pose_data" + suffix;
@@ -1683,6 +1682,7 @@ void TestManager::camera_calibration_ex(double CURRENT_WAIST_ANGLE_DEG)
         cv::Mat distCoeffs = cv::Mat::zeros(5, 1, CV_64F);
         for(int i=0; i<5; i++) distCoeffs.at<double>(i) = intr.coeffs[i];
 
+        // ArUco Settings
         cv::Ptr<cv::aruco::Dictionary> dictionary = cv::aruco::getPredefinedDictionary(cv::aruco::DICT_4X4_50);
         cv::Ptr<cv::aruco::DetectorParameters> parameters = cv::aruco::DetectorParameters::create();
         parameters->cornerRefinementMethod = cv::aruco::CORNER_REFINE_SUBPIX;
@@ -1694,11 +1694,13 @@ void TestManager::camera_calibration_ex(double CURRENT_WAIST_ANGLE_DEG)
         std::cout << "Waiting for stable detection (approx 1 sec)..." << std::endl;
 
         // [핵심 변수] 안정화 카운트
-        int stable_frame_count = 0; 
-        int average_frame_count = 0;
+        int stable_frame_count = 0;
         const int REQUIRED_STABLE_FRAMES = 60;  // 이동 후 대기할 프레임 수
-        const int FRAMES_FOR_AVERAGE = 60;      // 픽셀 좌표를 평균낼 프레임 수
-        std::map<int, std::vector<cv::Point2f>> accumulated_corners;
+
+        double rad = CURRENT_WAIST_ANGLE_DEG * CV_PI / 180.0;
+        cv::Mat T_World_Rot = cv::Mat::eye(4, 4, CV_64F);
+        T_World_Rot.at<double>(0, 0) = cos(rad); T_World_Rot.at<double>(0, 1) = -sin(rad);
+        T_World_Rot.at<double>(1, 0) = sin(rad); T_World_Rot.at<double>(1, 1) = cos(rad);
 
         while (true) {
             rs2::frameset frames = pipe.wait_for_frames();
@@ -1729,7 +1731,7 @@ void TestManager::camera_calibration_ex(double CURRENT_WAIST_ANGLE_DEG)
 
                     // 1. Pose 추정
                     std::vector<cv::Vec3d> rvecs, tvecs;
-                    cv::aruco::estimatePoseSingleMarkers(corners, 0.05, cameraMatrix, distCoeffs, rvecs, tvecs);
+                    cv::aruco::estimatePoseSingleMarkers(corners, 0.06, cameraMatrix, distCoeffs, rvecs, tvecs);
 
                     // 평균 계산용 변수
                     cv::Mat T_World_Camera_Sum = cv::Mat::zeros(4, 4, CV_64F);
@@ -1749,7 +1751,7 @@ void TestManager::camera_calibration_ex(double CURRENT_WAIST_ANGLE_DEG)
                         for(int dy=-2; dy<=2; dy++) {
                             for(int dx=-2; dx<=2; dx++) {
                                 int u=cx+dx, v=cy+dy;
-                                if(u>=0 && u<848 && v>=0 && v<480) {
+                                if(u>=0 && u<width_depth && v>=0 && v<height_depth){
                                     double d = depth_frame.get_distance(u, v);
                                     if(d>0.1 && d<5.0) { d_sum+=d; d_cnt++; }
                                 }
@@ -1767,40 +1769,28 @@ void TestManager::camera_calibration_ex(double CURRENT_WAIST_ANGLE_DEG)
                             MarkerPos pos = KNOWN_MARKERS[id];
                             cv::Mat T_World_Marker = getMarkerWorldPose(pos.x, pos.y, pos.z);
                             cv::Mat T_World_Cam_Indiv = T_World_Marker * T_Cam_Marker.inv();
-                            cv::Mat T_Offset_Indiv = T_Waist_Inv * T_World_Cam_Indiv;
+
+                            cv::Mat T_Rot_Cam = T_World_Rot.inv() * T_World_Cam_Indiv;
 
                             // --- [저장 A] 개별 행렬 저장 (Individual) ---
-                            // 파일명 예시: Matrix_World_Indiv_ID0_30deg.csv
-                            std::string name_world_indiv = "Matrix_World_Indiv_ID" + std::to_string(id) + angle_suffix;
-                            std::string name_offset_indiv = "Matrix_Offset_Indiv_ID" + std::to_string(id) + angle_suffix;
-
-                            saveMatrixToCSV(name_world_indiv, T_World_Cam_Indiv);
-                            saveMatrixToCSV(name_offset_indiv, T_Offset_Indiv);
+                            std::string name_offset_indiv = "T_Rot_Cam_Indiv_ID" + std::to_string(id) + suffix;
+                            saveMatrixToCSV(name_offset_indiv, T_Rot_Cam);
 
                             // [저장 A] 개별 데이터
-                            saveAnalysisLog(file_log, CURRENT_WAIST_ANGLE_DEG, "INDIVIDUAL", id, 
-                                            tvecs[i], z_rgb, z_depth, T_World_Cam_Indiv, T_Offset_Indiv);
+                            saveAnalysisLog(file_log, CURRENT_WAIST_ANGLE_DEG, "INDIVIDUAL", id, tvecs[i], z_rgb, z_depth, T_World_Cam_Indiv, T_Rot_Cam);
 
                             T_World_Camera_Sum += T_World_Cam_Indiv;
                             valid_count++;
                         }
                     }
 
-                    double rad = CURRENT_WAIST_ANGLE_DEG * CV_PI / 180.0;
-                    cv::Mat T_World_Rot = cv::Mat::eye(4, 4, CV_64F);
-                    T_World_Rot.at<double>(0, 0) = cos(rad); T_World_Rot.at<double>(0, 1) = -sin(rad);
-                    T_World_Rot.at<double>(1, 0) = sin(rad); T_World_Rot.at<double>(1, 1) = cos(rad);
-                    cv::Mat T_Waist_Inv = T_World_Rot.inv();
-
-                     cv::Mat T_World_Marker = getMarkerWorldPose(pos.x, pos.y, pos.z);
-
                     // 4. 평균 데이터 처리 및 저장
                     if (valid_count > 0) {
                         cv::Mat T_World_Cam_Avg = T_World_Camera_Sum / valid_count;
-                        cv::Mat T_Offset_Avg = T_Waist_Inv * T_World_Cam_Avg;
+                        cv::Mat T_Offset_Avg = T_World_Rot.inv() * T_World_Cam_Avg;
 
-                        std::string name_world_avg = "Matrix_World_Avg" + angle_suffix;
-                        std::string name_offset_avg = "Matrix_Offset_Avg" + angle_suffix;
+                        std::string name_world_avg = "Matrix_World_Avg" + suffix;
+                        std::string name_offset_avg = "Matrix_Offset_Avg" + suffix;
 
                         saveMatrixToCSV(name_world_avg, T_World_Cam_Avg);
                         saveMatrixToCSV(name_offset_avg, T_Offset_Avg);
@@ -1838,7 +1828,7 @@ void TestManager::camera_calibration_ex(double CURRENT_WAIST_ANGLE_DEG)
     cv::waitKey(1); // 창 닫힘 대기
 }
 
-void TestManager::measure_and_log_ex(double current_waist_angle, const std::string& offset_filename)
+void TestManager::measure_and_log_H(double current_waist_angle, const std::string& offset_filename)
 {
     // 1. Offset 로드
     cv::Mat T_Offset = loadMatrixFromCSV(offset_filename);
@@ -1865,11 +1855,14 @@ void TestManager::measure_and_log_ex(double current_waist_angle, const std::stri
     const int TARGET_FRAMES = 60;   // 저장할 프레임 수
     bool is_logging_complete = false;
 
+    int width_rgb = 1280;   int height_rgb = 720;   int fps_rgb = 30;
+    int width_depth = 1280; int height_depth = 720; int fps_depth = 30;
+
     // --- RealSense & Aruco 설정 ---
     rs2::pipeline pipe;
     rs2::config cfg;
-    cfg.enable_stream(RS2_STREAM_COLOR, 848, 480, RS2_FORMAT_BGR8, 30);
-    cfg.enable_stream(RS2_STREAM_DEPTH, 848, 480, RS2_FORMAT_Z16, 30);
+    cfg.enable_stream(RS2_STREAM_COLOR, width_rgb, height_rgb, RS2_FORMAT_BGR8, fps_rgb);
+    cfg.enable_stream(RS2_STREAM_DEPTH, width_depth, height_rgb, RS2_FORMAT_Z16, fps_depth);
     rs2::pipeline_profile profile = pipe.start(cfg);
     rs2::align align_to_color(RS2_STREAM_COLOR);
 
@@ -1883,6 +1876,10 @@ void TestManager::measure_and_log_ex(double current_waist_angle, const std::stri
 
     cv::Ptr<cv::aruco::Dictionary> dictionary = cv::aruco::getPredefinedDictionary(cv::aruco::DICT_4X4_50);
     cv::Ptr<cv::aruco::DetectorParameters> parameters = cv::aruco::DetectorParameters::create();
+    parameters->cornerRefinementMethod = cv::aruco::CORNER_REFINE_SUBPIX;
+    parameters->cornerRefinementWinSize = 5;      // 검사 영역 크기 (기본값 5)
+    parameters->cornerRefinementMaxIterations = 30; // 최대 반복 횟수
+    parameters->cornerRefinementMinAccuracy = 0.1;  // 목표 정밀도
 
     std::cout << "=== Camera Started. Waiting for Warm-up (" << WARMUP_FRAMES << " frames)... ===" << std::endl;
 
@@ -1894,7 +1891,7 @@ void TestManager::measure_and_log_ex(double current_waist_angle, const std::stri
         rs2::depth_frame depth_frame = frames.get_depth_frame();
         if (!color_frame || !depth_frame) continue;
 
-        cv::Mat image(cv::Size(848, 480), CV_8UC3, (void*)color_frame.get_data(), cv::Mat::AUTO_STEP);
+        cv::Mat image(cv::Size(width_rgb, height_rgb), CV_8UC3, (void*)color_frame.get_data(), cv::Mat::AUTO_STEP);
         
         // 프레임 카운트 증가
         total_frames_passed++;
@@ -1908,7 +1905,7 @@ void TestManager::measure_and_log_ex(double current_waist_angle, const std::stri
 
         if (ids.size() > 0) {
             std::vector<cv::Vec3d> rvecs, tvecs;
-            cv::aruco::estimatePoseSingleMarkers(corners, 0.05, cameraMatrix, distCoeffs, rvecs, tvecs);
+            cv::aruco::estimatePoseSingleMarkers(corners, 0.06, cameraMatrix, distCoeffs, rvecs, tvecs);
 
             for (size_t i = 0; i < ids.size(); ++i) {
                 // 1. Depth 보정
@@ -1918,7 +1915,7 @@ void TestManager::measure_and_log_ex(double current_waist_angle, const std::stri
                 double d_sum = 0; int d_cnt = 0;
                 for(int dy=-2; dy<=2; dy++){ for(int dx=-2; dx<=2; dx++){
                     int u=cx+dx, v=cy+dy;
-                    if(u>=0 && u<848 && v>=0 && v<480){
+                    if(u>=0 && u<width_depth && v>=0 && v<height_depth){
                         double d = depth_frame.get_distance(u, v);
                         if(d>0.1 && d<5.0){ d_sum+=d; d_cnt++; }
                     }
