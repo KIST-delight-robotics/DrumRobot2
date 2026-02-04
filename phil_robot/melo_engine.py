@@ -2,7 +2,6 @@
 import torch
 from melo.api import TTS
 import os
-import time
 
 class TTS_Engine:
     def __init__(self):
@@ -41,7 +40,7 @@ class TTS_Engine:
         
         # 생성 (이미 로딩돼서 빠름)
         self.model.tts_to_file(clean_text, self.speaker_ids['KR'], output_path, speed=1.0)
-        
+                
         if play:
             # -q: 로그 숨김, aplay: 리눅스 기본 재생기
             os.system(f"aplay -q {output_path}")

@@ -1,7 +1,7 @@
 import sounddevice as sd
 import whisper
 import ollama
-import json
+import re
 import numpy as np
 import time
 # TTS 엔진
@@ -11,8 +11,8 @@ from melo_engine import TTS_Engine
 # ⚙️ 설정값 (Config)
 # ==========================================
 SAMPLE_RATE = 16000      # Whisper 권장 샘플링 레이트
-RECORD_SECONDS = 3       # 한 번에 들을 시간 (3초)
-LLM_MODEL = "phil-bot"     # ⚠️ 사용 중인 모델명으로 변경 필수
+RECORD_SECONDS = 4       # 한 번에 들을 시간 (4초)
+LLM_MODEL = "phil-speech"     # ⚠️ 사용 중인 모델명으로 변경 필수
 
 # ==========================================
 # 🔧 녹음 함수
@@ -119,20 +119,42 @@ def main():
             response = ollama.chat(
                 model=LLM_MODEL,
                 messages=history,
-                format='json'
-            )
+                stream=True
+           )
             
-            # JSON 파싱
-            ai_raw_json = response['message']['content'] # 원본 JSON 문자열
-            ai_data = json.loads(ai_raw_json)
-            ai_msg = ai_data.get("response", "모르겠어요")
+            ai_raw = ""   # 전체 대화 기록용 (history 저장용)
+            buffer = ""   # TTS 말하기용 임시 바구니 (한 문장씩 담음)
+            
+            # 문장이 끝나는 기호 정규식 (. ! ? ;)
+            sentence_endings = re.compile(r'[.!?;]')
 
+            for chunk in response:
+                part = chunk['message']['content']
+                
+                # 1. 화면 출력 & 전체 기록
+                print(part, end='', flush=True)
+                ai_raw += part
+                
+                # 2. TTS 바구니에 일단 담기
+                buffer += part
+
+                # 3. [핵심] 방금 들어온 글자(part)가 마침표나 물음표인가?
+                if sentence_endings.search(part):
+                    # 바구니에 실질적인 내용이 있을 때만 말하기 (공백이나 점만 있는 경우 방지)
+                    if len(buffer.strip()) > 1:
+                        # 🗣️ 문장 단위로 끊어서 말하기!
+                        tts.speak(buffer) 
+                        buffer = "" # 말했으니 바구니 비우기
+
+            # 4. 반복문이 끝났는데 바구니에 남은 말이 있다면? (마침표 안 찍고 끝난 경우)
+            if buffer.strip():
+                tts.speak(buffer)
+
+            print() # 줄바꿈
 
             # 📌 [수정 4] 로봇의 대답도 기억장치에 저장해야 다음 턴에 기억함
             # ---------------------------------------------------------
-            # 중요: 'ai_msg'(텍스트)가 아니라 'ai_raw_json'(JSON형식)을 저장해야 
-            # 로봇이 다음번에도 JSON 포맷을 유지하려고 노력합니다.
-            history.append({'role': 'assistant', 'content': ai_raw_json})
+            history.append({'role': 'assistant', 'content': ai_raw})
             # ---------------------------------------------------------
 
 
@@ -140,9 +162,9 @@ def main():
             print(f"⏱️ LLM 처리 시간: {llm_end_time - llm_start_time:.2f}초")
             
             # --- C. 말하기 (TTS) ---
-            print(f"🤖 AI: {ai_msg}")
+            print(f"🤖 AI: {ai_raw}")
 
-            tts.speak(ai_msg)
+            #tts.speak(ai_raw)
 
         except KeyboardInterrupt:
             print("\n시스템 강제 종료")
