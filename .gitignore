@@ -39,8 +39,8 @@ Thumbs.db
 # 기존에 있던 충돌 룩업 테이블 (유지)
 include/table/
 
-# --- [6] Magenta 생성 데이터 및 미디어 파일 (전체 경로 적용) ---
+# --- [6]  phil_robot 생성 미디어 파일 ---
 # 어디에 있든 이 확장자는 다 무시함
-**/*.wav
-**/*.mp3
+phil_robot/*.wav
+phil_robot/*.mp3
 **/*.log
