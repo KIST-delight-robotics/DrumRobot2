@@ -161,4 +161,5 @@ private:
 
     void camera_calibration(double CURRENT_WAIST_ANGLE_DEG);
     void measure_and_log(double current_waist_angle, const std::string& C_filename);
+    int capture_Pcam(double current_waist_angle);
 };

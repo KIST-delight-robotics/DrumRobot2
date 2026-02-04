@@ -358,7 +358,7 @@ void TestManager::SendTestProcess()
 
             while (1)
             {
-                std::cout << "mode 입력 (1: calibration, 2: check, -1: exit): ";
+                std::cout << "mode 입력 (1: calibration, 2: check, 3: capture Pcam, -1: exit): ";
                 int mode;
                 std::cin >> mode;
 
@@ -379,6 +379,15 @@ void TestManager::SendTestProcess()
 
                     measure_and_log(angle, offset_filename);
                     std::cout << "Checking calibration Complete." << std::endl;
+                }
+                else if (mode == 3)
+                {
+                    std::cout << "current angle : ";
+                    double angle;
+                    std::cin >> angle;
+
+                    int suc = capture_Pcam(angle);
+                    std::cout << "Capture Pcam Completely." << std::endl;
                 }
                 else if (mode == -1)
                 {
@@ -1639,7 +1648,7 @@ void TestManager::saveAnalysisLog(const std::string& filename,
 
     file.close();
 }
-
+/*
 void TestManager::camera_calibration_ex(double CURRENT_WAIST_ANGLE_DEG)
 {
     try {
@@ -1739,7 +1748,7 @@ void TestManager::camera_calibration_ex(double CURRENT_WAIST_ANGLE_DEG)
                     for (size_t i = 0; i < ids.size(); ++i) {
                         int id = ids[i];
                         
-                        // Depth 보정
+                        ++                        // Depth 보정
                         double z_rgb = tvecs[i][2];
                         double z_depth = 0.0;
                         
@@ -1984,7 +1993,7 @@ void TestManager::measure_and_log_ex(double current_waist_angle, const std::stri
     if (log_file.is_open()) log_file.close();
     cv::destroyAllWindows();
 }
-
+*/
 void TestManager::camera_calibration(double CURRENT_WAIST_ANGLE_DEG) // camera_calibration
 {
     try {
@@ -2105,7 +2114,7 @@ void TestManager::camera_calibration(double CURRENT_WAIST_ANGLE_DEG) // camera_c
                      * ========================= */
                     std::vector<cv::Vec3d> rvecs, tvecs;
                     // 중요: current_corners 대신 averaged_corners 사용
-                    cv::aruco::estimatePoseSingleMarkers(averaged_corners, 0.08, cameraMatrix, distCoeffs, rvecs, tvecs);
+                    cv::aruco::estimatePoseSingleMarkers(averaged_corners, 0.06, cameraMatrix, distCoeffs, rvecs, tvecs);
 
                     /* =========================
                      * 5. 카메라 기준 마커 좌표를 담은 행렬 생성 P_Cam
@@ -2294,7 +2303,7 @@ void TestManager::measure_and_log(double current_waist_angle, const std::string&
         * ========================= */
         std::vector<cv::Vec3d> rvecs, tvecs;
 
-        cv::aruco::estimatePoseSingleMarkers(corners, 0.08, cameraMatrix, distCoeffs, rvecs, tvecs);
+        cv::aruco::estimatePoseSingleMarkers(corners, 0.06, cameraMatrix, distCoeffs, rvecs, tvecs);
 
         for (size_t i = 0; i < ids.size(); i++) {
 
@@ -2339,4 +2348,79 @@ void TestManager::measure_and_log(double current_waist_angle, const std::string&
         if (cv::waitKey(1) == 27) break;
     }
     cv::destroyAllWindows();
+}
+
+int TestManager::capture_Pcam(double current_waist_angle)
+{
+    int angle_int = (int)std::round(current_waist_angle);
+    std::string suffix = "_" + std::to_string(angle_int) + "deg.csv";
+    try {
+        // 1️⃣ RealSense 파이프라인 설정
+        rs2::pipeline pipe;
+        rs2::config cfg;
+
+        cfg.enable_stream(RS2_STREAM_DEPTH, 640, 480, RS2_FORMAT_Z16, 30);
+        pipe.start(cfg);
+
+        std::cout << "Waiting for frames...\n";
+
+        // 2️⃣ 프레임 1장만 획득
+        rs2::frameset frames = pipe.wait_for_frames();
+        rs2::depth_frame depth = frames.get_depth_frame();
+
+        if (!depth) {
+            std::cerr << "No depth frame received\n";
+            return -1;
+        }
+
+        int width  = depth.get_width();
+        int height = depth.get_height();
+
+        std::cout << "Depth size: " << width << " x " << height << std::endl;
+
+        // 3️⃣ PointCloud 생성
+        rs2::pointcloud pc;
+        rs2::points points = pc.calculate(depth);
+
+        const rs2::vertex* vertices = points.get_vertices();
+
+        // 4️⃣ CSV 파일 열기
+        std::ofstream file("pointcloud_camera_frame" + suffix);
+        file << "u,v,x,y,z\n";
+
+        // 5️⃣ 전체 프레임 순회
+        for (int v = 0; v < height; ++v) {
+            for (int u = 0; u < width; ++u) {
+                int idx = v * width + u;
+
+                float x = vertices[idx].x;
+                float y = vertices[idx].y;
+                float z = vertices[idx].z;
+
+                // depth 없는 포인트 제거
+                if (z <= 0.0f || z >= 0.7f) continue;
+
+                file << u << ","
+                     << v << ","
+                     << x << ","
+                     << y << ","
+                     << z << "\n";
+            }
+        }
+
+        file.close();
+        pipe.stop();
+
+        std::cout << "Point cloud saved to pointcloud_camera_frame.csv\n";
+    }
+    catch (const rs2::error& e) {
+        std::cerr << "RealSense error: " << e.what() << std::endl;
+        return -1;
+    }
+    catch (const std::exception& e) {
+        std::cerr << "Error: " << e.what() << std::endl;
+        return -1;
+    }
+
+    return 0;
 }
