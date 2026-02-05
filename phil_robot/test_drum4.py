@@ -1,7 +1,7 @@
 import sounddevice as sd
 import whisper
 import ollama
-import json
+#import json
 import numpy as np
 import time
 # TTS 엔진
@@ -12,7 +12,7 @@ from melo_engine import TTS_Engine
 # ==========================================
 SAMPLE_RATE = 16000      # Whisper 권장 샘플링 레이트
 RECORD_SECONDS = 3       # 한 번에 들을 시간 (3초)
-LLM_MODEL = "phil-bot"     # ⚠️ 사용 중인 모델명으로 변경 필수
+LLM_MODEL = "phil-speech"     # ⚠️ 사용 중인 모델명으로 변경 필수
 
 # ==========================================
 # 🔧 녹음 함수
@@ -119,13 +119,13 @@ def main():
             response = ollama.chat(
                 model=LLM_MODEL,
                 messages=history,
-                format='json'
+                #format='json'
             )
             
             # JSON 파싱
             ai_raw_json = response['message']['content'] # 원본 JSON 문자열
-            ai_data = json.loads(ai_raw_json)
-            ai_msg = ai_data.get("response", "모르겠어요")
+            #ai_data = json.loads(ai_raw_json)
+            #ai_msg = ai_data.get("response", "모르겠어요")
 
 
             # 📌 [수정 4] 로봇의 대답도 기억장치에 저장해야 다음 턴에 기억함
@@ -140,9 +140,11 @@ def main():
             print(f"⏱️ LLM 처리 시간: {llm_end_time - llm_start_time:.2f}초")
             
             # --- C. 말하기 (TTS) ---
-            print(f"🤖 AI: {ai_msg}")
+            #print(f"🤖 AI: {ai_msg}")
+            print(f"🤖 AI (원본 JSON): {ai_raw_json}")
 
-            tts.speak(ai_msg)
+            #tts.speak(ai_msg)
+            tts.speak(ai_raw_json)
 
         except KeyboardInterrupt:
             print("\n시스템 강제 종료")

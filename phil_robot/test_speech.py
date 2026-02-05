@@ -1,176 +1,193 @@
 import sounddevice as sd
 import whisper
 import ollama
-import re
 import numpy as np
 import time
-# TTS 엔진
+import threading
+import queue
+from collections import deque
 from melo_engine import TTS_Engine
 
 # ==========================================
-# ⚙️ 설정값 (Config)
+# ⚙️ 설정값
 # ==========================================
-SAMPLE_RATE = 16000      # Whisper 권장 샘플링 레이트
-RECORD_SECONDS = 4       # 한 번에 들을 시간 (4초)
-LLM_MODEL = "phil-speech"     # ⚠️ 사용 중인 모델명으로 변경 필수
+SAMPLE_RATE = 16000
+LLM_MODEL = "phil-speech"
+WAKE_WORDS = ["필", "필봇", "피리", "안녕", "로봇", "일봇", "빌봇", "삘봇", "Phil", "필보사"]
+
+START_THRESHOLD = 15
+STOP_THRESHOLD = 8
+PRE_RECORD_SECONDS = 0.5
+CONVERSATION_TIMEOUT = 20
+TRASH_TEXTS = ["MBC", "뉴스", "구독", "좋아요", "시청", "감사", "여러분"]
 
 # ==========================================
-# 🔧 녹음 함수
+# 🚦 전역 변수 (스레드 간 통신용)
 # ==========================================
-def record_audio():
-    """마이크로 소리를 듣고 Array로 반환"""
-    print(f"\n🎤 듣는 중... ({RECORD_SECONDS}초)")
-    try:
-        # float32로 녹음 후 1차원으로 펴서(flatten) 반환
-        audio = sd.rec(int(RECORD_SECONDS * SAMPLE_RATE), samplerate=SAMPLE_RATE, channels=1, dtype='float32')
-        sd.wait()
-        return audio.flatten()
-        
-    except Exception as e:
-        print(f"❌ 마이크 녹음 실패: {e}")
-        return None
+audio_queue = queue.Queue()  # 귀가 들은 걸 뇌로 보내는 택배 상자
+is_speaking = False          # "지금 말하는 중이니?" (True면 듣기 중단)
+is_running = True            # 프로그램 종료 신호
 
 # ==========================================
-# 🚀 메인 함수
+# 👂 [스레드 1] 귀 (Listening Thread)
+# ==========================================
+def listener_thread_func():
+    global is_speaking, is_running
+    
+    print("👂 [Thread] 귀가 열렸습니다 (백그라운드 감지 시작)")
+    
+    pre_buffer_len = int(PRE_RECORD_SECONDS / 0.1)
+    pre_buffer = deque(maxlen=pre_buffer_len)
+    
+    # 여기서 스트림을 한 번 열어서 프로그램 끝날 때까지 절대 닫지 않음
+    with sd.InputStream(samplerate=SAMPLE_RATE, channels=1) as stream:
+        while is_running:
+            try:
+                # 1. 0.1초씩 읽으면서 '호출어' 대기
+                indata, _ = stream.read(1600)
+                pre_buffer.append(indata)
+                volume = np.linalg.norm(indata) * 10
+                
+                # 🚨 핵심: 로봇이 말하고 있을 때는 듣지 않음 (Echo 방지)
+                if is_speaking:
+                    sd.sleep(100) # CPU 낭비 방지
+                    continue
+
+                # 2. 소리가 감지되면?
+                if volume > START_THRESHOLD:
+                    print(f"\n⚡ 소리 감지 (Vol: {volume:.1f}) -> 녹음 시작")
+                    
+                    # --- 스마트 녹음 로직 (함수 안 쓰고 풀어서 작성) ---
+                    recorded_frames = list(pre_buffer)
+                    silent_chunks = 0
+                    max_silent = 12 # 1.2초
+                    
+                    while is_running and not is_speaking: # 말하기 시작하면 즉시 중단
+                        data, _ = stream.read(1600)
+                        recorded_frames.append(data)
+                        vol = np.linalg.norm(data) * 10
+                        
+                        if vol > STOP_THRESHOLD: silent_chunks = 0
+                        else: silent_chunks += 1
+                        
+                        if silent_chunks > max_silent: break # 말 끝남
+                        if len(recorded_frames) > 100: break # 10초 초과
+                    
+                    # 3. 다 들었으면 큐(Queue)에 던짐
+                    if len(recorded_frames) * 0.1 > 1.0: # 1초 이상만
+                        final_audio = np.concatenate(recorded_frames).flatten().astype(np.float32)
+                        audio_queue.put(final_audio)
+                        print("📦 오디오 배송 완료 (Queue)")
+                    else:
+                        print("🧹 너무 짧아서 버림")
+
+            except Exception as e:
+                print(f"❌ 귀 스레드 에러: {e}")
+                time.sleep(1)
+
+# ==========================================
+# 🧠 [메인 스레드] 뇌 & 입 (Main Logic)
 # ==========================================
 def main():
-    print("========== [AI CONVERSATION MODE] ==========")
+    global is_speaking, is_running
+    print("========== [AI THREADED MODE] ==========")
 
-    # 1. [초기화] TTS & STT 로딩
-    # ----------------------------------------------
-    tts = TTS_Engine() # TTS 엔진 시동
-    
-    print("[STT] Whisper 모델 로딩 중... (GPU)")
-    # small 모델 사용
+    tts = TTS_Engine()
+    print("[STT] Whisper 로딩 중...")
     stt_model = whisper.load_model("small", device="cuda")
-    print("[STT] 준비 완료!")
     
-    # 🔥 [중요] 모델 워밍업 (Warm-up)
-    # 가짜(0으로 채워진) 오디오를 한번 돌려서 GPU 초기화 문제를 방지함
-    print("🔥 모델 예열 중... (잠시만 기다려주세요)")
-    try:
-        dummy_audio = np.zeros(16000, dtype=np.float32) # 2초짜리 무음
-        stt_model.transcribe(dummy_audio, fp16=True)
-    except:
-        pass # 워밍업 에러는 무시
+    # 워밍업
+    try: stt_model.transcribe(np.zeros(16000, dtype=np.float32), fp16=True)
+    except: pass
 
+    # 🧵 스레드 시작 (귀를 독립시킴)
+    listener = threading.Thread(target=listener_thread_func, daemon=True)
+    listener.start()
 
+    history = []
+    is_active_mode = False
+    last_active_time = 0
 
-    # 📌 [수정 1] 대화 기억장치(History) 초기화
-    # ---------------------------------------------------------
-    # 시스템 프롬프트는 Modelfile에 있으므로 여기선 빈 리스트로 시작해도 됩니다.
-    history = [] 
-    # ---------------------------------------------------------
+    tts.speak("준비 완료.")
 
-
-    # 첫 인사
-    tts.speak("대화 준비가 되었습니다. 엔터 키를 누르고 말씀해 주세요.")
-
-    # 2. [루프] 대화 반복
-    # ----------------------------------------------
-    while True:
+    while is_running:
         try:
-            # --- RESTART ---
-            key = input("\n⌨️ [Enter]를 누르면 듣습니다 (종료: q) >> ")
-            if key.lower() == 'q':
-                print("시스템을 종료합니다.")
-                break
-            
-            # --- A. 듣기 (STT) ---
-            audio_data = record_audio()
-            if audio_data is None: continue
-            
-            stt_start_time = time.time()
+            # 1. 큐에서 오디오가 올 때까지 대기 (Blocking)
+            # 귀 스레드가 뭔가를 듣고 큐에 넣으면 여기서 깨어남
+            try:
+                audio_data = audio_queue.get(timeout=1) # 1초마다 체크
+            except queue.Empty:
+                continue # 오디오 없으면 계속 대기
 
-            # Whisper로 변환
-            print("📜 텍스트 변환 중...")
-            result = stt_model.transcribe(audio_data, fp16=True, language="ko", initial_prompt="자기소개, 필봇")
+            # 2. STT 변환 (메인 스레드가 담당)
+            print("📜 변환 중...", end=" ")
+            result = stt_model.transcribe(audio_data, fp16=True, language="ko", initial_prompt="안녕하세요 필봇입니다.")
             user_text = result['text'].strip()
+            print(f"-> [{user_text}]")
+
+            # 유효성 검사
+            if len(user_text) < 2: continue
+            trash_found = False
+            for trash in TRASH_TEXTS:
+                if trash in user_text: trash_found = True
+            if trash_found: continue
+
+            # 3. 대화 로직 (기존과 동일)
+            current_time = time.time()
             
-            print(f"🗣️ 사용자: {user_text}")
+            if is_active_mode:
+                if current_time - last_active_time > CONVERSATION_TIMEOUT:
+                    print("💤 대기 모드 전환")
+                    is_active_mode = False
             
-            stt_end_time = time.time()
-            print(f"⏱️ STT 처리 시간: {stt_end_time - stt_start_time:.2f}초")
+            if not is_active_mode:
+                is_wake_up = False
+                for word in WAKE_WORDS:
+                    if word in user_text:
+                        is_wake_up = True
+                        break
+                if is_wake_up:
+                    print("✅ 호출어 감지!")
+                    is_active_mode = True
+                    
+                    # 🚨 말하기 시작 -> 귀 막기
+                    is_speaking = True 
+                    tts.speak("네?")
+                    is_speaking = False # 다 말했으면 귀 열기
+                    
+                    last_active_time = time.time()
+                    if len(user_text) < 5: continue
+                else:
+                    print("🔇 무시함")
+                    continue
 
-            if not user_text:
-                print("⚠️ 소리가 감지되지 않았습니다.")
-                continue
-
-
-
-            # 📌 [수정 2] 사용자 말을 기억장치에 저장 + 오래된 기억 삭제
-            # ---------------------------------------------------------
+            start_time = time.time()
+            # 4. LLM 생각
+            last_active_time = time.time()
             history.append({'role': 'user', 'content': user_text})
-            
-            # [Jetson 보호] 기억이 너무 길어지면(10턴 이상) 앞부분 삭제 (Sliding Window)
-            if len(history) > 10:
-                history = history[-10:] 
-            # ---------------------------------------------------------
+            if len(history) > 10: history = history[-10:]
 
-
-            # --- B. 생각하기 (LLM) ---
             print("🧠 생각 중...")
+            response = ollama.chat(model=LLM_MODEL, messages=history)
+            ai_msg = response['message']['content']
+            print(f"🤖 AI: {ai_msg}")
+
+            time_taken = time.time() - start_time
+            print(f"⏱️ 처리 시간: {time_taken:.2f}초")
+            # 5. 말하기 (입 열기)
+            # 🚨 핵심: 말하는 동안 is_speaking = True로 만들어서 귀 스레드를 멈춤
+            is_speaking = True
+            tts.speak(ai_msg)
+            is_speaking = False # 말 끝나면 다시 듣기 시작
             
-            llm_start_time = time.time()
-
-
-            # 📌 [수정 3] messages에 방금 한 말이 아니라 'history' 전체를 넣음
-            # Ollama에게 질문
-            response = ollama.chat(
-                model=LLM_MODEL,
-                messages=history,
-                stream=True
-           )
-            
-            ai_raw = ""   # 전체 대화 기록용 (history 저장용)
-            buffer = ""   # TTS 말하기용 임시 바구니 (한 문장씩 담음)
-            
-            # 문장이 끝나는 기호 정규식 (. ! ? ;)
-            sentence_endings = re.compile(r'[.!?;]')
-
-            for chunk in response:
-                part = chunk['message']['content']
-                
-                # 1. 화면 출력 & 전체 기록
-                print(part, end='', flush=True)
-                ai_raw += part
-                
-                # 2. TTS 바구니에 일단 담기
-                buffer += part
-
-                # 3. [핵심] 방금 들어온 글자(part)가 마침표나 물음표인가?
-                if sentence_endings.search(part):
-                    # 바구니에 실질적인 내용이 있을 때만 말하기 (공백이나 점만 있는 경우 방지)
-                    if len(buffer.strip()) > 1:
-                        # 🗣️ 문장 단위로 끊어서 말하기!
-                        tts.speak(buffer) 
-                        buffer = "" # 말했으니 바구니 비우기
-
-            # 4. 반복문이 끝났는데 바구니에 남은 말이 있다면? (마침표 안 찍고 끝난 경우)
-            if buffer.strip():
-                tts.speak(buffer)
-
-            print() # 줄바꿈
-
-            # 📌 [수정 4] 로봇의 대답도 기억장치에 저장해야 다음 턴에 기억함
-            # ---------------------------------------------------------
-            history.append({'role': 'assistant', 'content': ai_raw})
-            # ---------------------------------------------------------
-
-
-            llm_end_time = time.time()
-            print(f"⏱️ LLM 처리 시간: {llm_end_time - llm_start_time:.2f}초")
-            
-            # --- C. 말하기 (TTS) ---
-            print(f"🤖 AI: {ai_raw}")
-
-            #tts.speak(ai_raw)
+            history.append({'role': 'assistant', 'content': ai_msg})
 
         except KeyboardInterrupt:
-            print("\n시스템 강제 종료")
+            print("\n시스템 종료 중...")
+            is_running = False
             break
         except Exception as e:
-            print(f"❌ 에러 발생: {e}")
+            print(f"❌ 메인 에러: {e}")
 
 if __name__ == "__main__":
     main()

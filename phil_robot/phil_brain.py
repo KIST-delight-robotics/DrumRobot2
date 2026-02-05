@@ -1,7 +1,7 @@
 import sounddevice as sd
 import whisper
 import ollama
-import json
+#import json
 import numpy as np
 # TCP 소켓 통신(command 전송)
 from phil_client import RobotClient
@@ -87,22 +87,37 @@ def main():
             response = ollama.chat(
                 model=LLM_MODEL,
                 messages=[{'role': 'user', 'content': user_text}],
-                format='json'
+                #format='json'
             )
             
-            # JSON 파싱
-            ai_data = json.loads(response['message']['content'])
-            ai_msg = ai_data.get("response", "모르겠어요")
-            ai_cmd = ai_data.get("command", None)
+            # 리스트 파싱
+            ai_data = response['message']['content']
+            # ai_msg = ai_data.get("response", "모르겠어요")
+            # ai_cmd = ai_data.get("command", None)
 
-            print(f"🤖 Phil: {ai_msg}")
-            tts.speak(ai_msg)
-            
+            ai_cmd = None
+
+            if ">>" in ai_data:
+                # ">>" 기준으로 메시지와 명령 분리
+                parts = ai_data.split(">>", 1)
+
+                # 앞부분: "[p]" -> 대괄호랑 공백 제거 -> "p"
+                cmd_part = parts[0].strip()
+                ai_cmd = cmd_part.replace("[", "").replace("]", "")
+
+                # 뒷부분: AI 메시지
+                ai_msg = parts[1].strip()
+
+
             # --- C. 명령 전송 (분리된 파일의 함수 사용) ---
             if ai_cmd:
                 print(f"📡 명령 전송: {ai_cmd}")
                 bot.send_command(ai_cmd)
 
+            print(f"🤖 Phil: {ai_msg}")
+            tts.speak(ai_msg)
+            
+            
     except KeyboardInterrupt:
         print("\n종료합니다.")
     finally:
