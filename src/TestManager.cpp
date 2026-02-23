@@ -358,13 +358,13 @@ void TestManager::SendTestProcess()
 
             while (1)
             {
-                std::cout << "mode 입력 (1: calibration, 2: check, 3: capture Pcam, -1: exit): ";
+                std::cout << "mode 입력 (1: calibration, 2: check, 3: cal_H, 4: check_H, 5: capture Pcam, -1: exit): ";
                 int mode;
                 std::cin >> mode;
 
                 if (mode == 1)
                 {
-                    camera_calibration_H(target_deg);
+                    camera_calibration(target_deg);
                     std::cout << "Scanning Complete." << std::endl;
                 }
                 else if (mode == 2)
@@ -377,10 +377,28 @@ void TestManager::SendTestProcess()
                     double angle;
                     std::cin >> angle;
 
-                    measure_and_log_H(angle, offset_filename);
+                    measure_and_log(angle, offset_filename);
                     std::cout << "Checking calibration Complete." << std::endl;
                 }
                 else if (mode == 3)
+                {
+                    camera_calibration_H(target_deg);
+                    std::cout << "Scanning Complete." << std::endl;
+                }
+                else if (mode == 4)
+                {
+                    std::cout << "Offset Matrix file name : ";
+                    std::string offset_filename;
+                    std::cin >> offset_filename;
+
+                    std::cout << "current angle : ";
+                    double angle;
+                    std::cin >> angle;
+
+                    measure_and_log_H(angle, offset_filename);
+                    std::cout << "Checking calibration Complete." << std::endl;
+                }
+                else if (mode == 5)
                 {
                     std::cout << "current angle : ";
                     double angle;
@@ -1710,6 +1728,7 @@ void TestManager::camera_calibration_H(double CURRENT_WAIST_ANGLE_DEG)
         cv::Mat T_World_Rot = cv::Mat::eye(4, 4, CV_64F);
         T_World_Rot.at<double>(0, 0) = cos(rad); T_World_Rot.at<double>(0, 1) = -sin(rad);
         T_World_Rot.at<double>(1, 0) = sin(rad); T_World_Rot.at<double>(1, 1) = cos(rad);
+        T_World_Rot.at<double>(2, 3) = 1.129;
 
         while (true) {
             rs2::frameset frames = pipe.wait_for_frames();
@@ -1750,7 +1769,7 @@ void TestManager::camera_calibration_H(double CURRENT_WAIST_ANGLE_DEG)
                     for (size_t i = 0; i < ids.size(); ++i) {
                         int id = ids[i];
                         
-                        ++                        // Depth 보정
+                        // Depth 보정
                         double z_rgb = tvecs[i][2];
                         double z_depth = 0.0;
                         
@@ -1775,6 +1794,7 @@ void TestManager::camera_calibration_H(double CURRENT_WAIST_ANGLE_DEG)
 
                         if (KNOWN_MARKERS.find(id) != KNOWN_MARKERS.end()) {
                             cv::Mat T_Cam_Marker = getTransformMatrix(rvecs[i], tvecs[i]);
+                            if( id == 1 ) saveMatrixToCSV("T_Cam_Marker_1", T_Cam_Marker);
                             MarkerPos pos = KNOWN_MARKERS[id];
                             cv::Mat T_World_Marker = getMarkerWorldPose(pos.x, pos.y, pos.z);
                             cv::Mat T_World_Cam_Indiv = T_World_Marker * T_Cam_Marker.inv();
@@ -1847,6 +1867,9 @@ void TestManager::measure_and_log_H(double current_waist_angle, const std::strin
     cv::Mat T_Waist = cv::Mat::eye(4, 4, CV_64F);
     T_Waist.at<double>(0, 0) = cos(rad); T_Waist.at<double>(0, 1) = -sin(rad);
     T_Waist.at<double>(1, 0) = sin(rad); T_Waist.at<double>(1, 1) = cos(rad);
+    T_Waist.at<double>(2, 3) = 1.129;
+
+    saveMatrixToCSV("T_r->w", T_Waist);
 
     cv::Mat T_World_Camera = T_Waist * T_Offset;
 
@@ -1990,7 +2013,7 @@ void TestManager::measure_and_log_H(double current_waist_angle, const std::strin
     if (log_file.is_open()) log_file.close();
     cv::destroyAllWindows();
 }
-*/
+
 void TestManager::camera_calibration(double CURRENT_WAIST_ANGLE_DEG) // camera_calibration
 {
     try {
@@ -2171,6 +2194,7 @@ void TestManager::camera_calibration(double CURRENT_WAIST_ANGLE_DEG) // camera_c
                     cv::Mat P_Rotation = cv::Mat::zeros(4, 4, CV_64F);
                     P_Rotation = T_World_Waist * P_World;
                     saveMatrixToCSV("P_World_rot" + suffix, P_Rotation);
+                    saveMatrixToCSV("T_rot->world", T_World_Waist.inv());
 
                     /* =========================
                      * 7. camera → Rotation 변환 행렬
@@ -2356,7 +2380,7 @@ int TestManager::capture_Pcam(double current_waist_angle)
         rs2::pipeline pipe;
         rs2::config cfg;
 
-        cfg.enable_stream(RS2_STREAM_DEPTH, 640, 480, RS2_FORMAT_Z16, 30);
+        cfg.enable_stream(RS2_STREAM_DEPTH, 848, 480, RS2_FORMAT_Z16, 30);
         pipe.start(cfg);
 
         std::cout << "Waiting for frames...\n";
