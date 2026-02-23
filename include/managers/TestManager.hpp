@@ -14,6 +14,18 @@ namespace cv {
 #include <librealsense2/rs.hpp>
 #include <opencv2/opencv.hpp>
 #include <opencv2/aruco.hpp>
+#include <Eigen/Dense>
+#include <pcl/point_types.h>
+#include <pcl/common/common.h>
+#include <pcl/filters/passthrough.h>
+#include <pcl/segmentation/sac_segmentation.h>
+#include <pcl/filters/extract_indices.h>
+#include <pcl/visualization/pcl_visualizer.h>
+#include <pcl/filters/voxel_grid.h> 
+#include <pcl/segmentation/extract_clusters.h>
+#include <pcl/io/pcd_io.h>
+#include <pcl/filters/statistical_outlier_removal.h>
+#include <pcl/common/transforms.h>
 
 #include <stdio.h>
 #include "../include/managers/CanManager.hpp"
@@ -147,7 +159,6 @@ private:
     Point3D transform_to_world(Point3D cam_pt, float waist_deg, float tilt_deg);
 
     // 유틸리티 함수
-    cv::Mat getIdentity();
     cv::Mat getTransformMatrix(const cv::Vec3d& rvec, const cv::Vec3d& tvec);
     cv::Mat getMarkerWorldPose(double x, double y, double z);
     void printMatrix(const std::string& name, const cv::Mat& M);
@@ -163,4 +174,9 @@ private:
     void measure_and_log(double current_waist_angle, const std::string& C_filename);
     void camera_calibration_H(double CURRENT_WAIST_ANGLE_DEG);
     void measure_and_log_H(double current_waist_angle, const std::string& offset_filename);
+    pcl::PointCloud<pcl::PointXYZ>::Ptr points_to_pcl(const rs2::points& points, const rs2::video_stream_profile& profile);
+    Eigen::Matrix4f get_cam_to_rotation_matrix();
+    Eigen::Matrix4f get_rotation_to_world_matrix(float angle_deg);
+    void cap_pc_3times();
+    void move_waist(float target_deg);
 };

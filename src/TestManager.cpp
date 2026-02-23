@@ -30,7 +30,7 @@ void TestManager::SendTestProcess()
             }
         FK(c_MotorAngle); // 현재 q값에 대한 FK 진행
     
-        std::cout << "\nSelect Method (1 - 관절각도값 조절, 2 - 좌표값 조절, 4 - 발 모터, 5 - 속도 제어 실험, 6 - 브레이크, 7 - 허리 모터, -1 - 나가기) : ";
+        std::cout << "\nSelect Method (1 - 관절각도값 조절, 2 - 좌표값 조절, 4 - 발 모터, 5 - 속도 제어 실험, 6 - 브레이크, 7 - 허리 모터, 8 - pc 캡쳐 및 원 검출, -1 - 나가기) : ";
         std::cin >> method;
 
         if(method == 1)
@@ -301,7 +301,6 @@ void TestManager::SendTestProcess()
 
             float target_deg;
             float move_time;
-            int wait_time = move_time;
             
             float c_MotorAngle[12] = {0};
             getMotorPos(c_MotorAngle);
@@ -316,6 +315,8 @@ void TestManager::SendTestProcess()
             std::cin >> target_deg;
             std::cout << " Enter Moving Time (sec): ";
             std::cin >> move_time;
+
+            int wait_time = move_time;
 
             // 예외 처리: 시간이 0 이하이면 실행 방지
             if (move_time <= 0) {
@@ -351,7 +352,7 @@ void TestManager::SendTestProcess()
             }
             for(int i = 0; i<wait_time; i++)
             {
-                std::cout << i << "\t";
+                std::cout << i + 1 << "\t" << std::flush;
                 std::this_thread::sleep_for(std::chrono::seconds(1));
             }
             std::cout << " Moving Complete." << std::endl;
@@ -390,6 +391,10 @@ void TestManager::SendTestProcess()
                     std::cout << "wrong command" << std::endl;
                 }
             }
+        }
+        else if(method == 8)
+        {
+            cap_pc_3times();
         }
         else
         {
@@ -1406,11 +1411,6 @@ TestManager::Point3D TestManager::transform_to_world(Point3D cam_pt, float waist
     return {x_world, y_world, z_world};
 }
 
-cv::Mat TestManager::getIdentity() 
-{
-    return cv::Mat::eye(4, 4, CV_64F);
-}
-
 // rvec, tvec를 4x4 변환 행렬로 변환
 cv::Mat TestManager::getTransformMatrix(const cv::Vec3d& rvec, const cv::Vec3d& tvec) 
 {
@@ -2336,4 +2336,294 @@ void TestManager::measure_and_log(double current_waist_angle, const std::string&
         if (cv::waitKey(1) == 27) break;
     }
     cv::destroyAllWindows();
+}
+
+pcl::PointCloud<pcl::PointXYZ>::Ptr TestManager::points_to_pcl(const rs2::points& points, const rs2::video_stream_profile& profile) {
+    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
+    auto intrin = profile.get_intrinsics();
+    cloud->width = intrin.width;
+    cloud->height = intrin.height;
+    cloud->is_dense = false;
+    cloud->points.resize(points.size());
+    auto ptr = points.get_vertices();
+    for (auto& p : cloud->points) {
+        p.x = ptr->x; p.y = ptr->y; p.z = ptr->z;
+        ptr++;
+    }
+    return cloud;
+}
+
+Eigen::Matrix4f TestManager::get_cam_to_rotation_matrix() {
+    Eigen::Matrix4f T = Eigen::Matrix4f::Identity();
+    T(0, 0) = -0.01219;  T(0, 1) = 0.999661;  T(0, 2) = -0.02301;  T(0, 3) = 0.004527; 
+    T(1, 0) = 0.767679;  T(1, 1) = 0.024104;  T(1, 2) = 0.640381;  T(1, 3) = 0.15327;
+    T(2, 0) = 0.640719;  T(2, 1) = -0.00986;  T(2, 2) = -0.76771;  T(2, 3) = -0.08879;
+    T(3, 0) = 0;         T(3, 1) = 0;         T(3, 2) = 0;         T(3, 3) = 1;
+
+    return T;
+}
+
+Eigen::Matrix4f TestManager::get_rotation_to_world_matrix(float angle_deg) {
+    float rad = angle_deg * M_PI / 180.0;
+    Eigen::Matrix4f T = Eigen::Matrix4f::Identity();
+    T(0, 0) = cos(rad);  T(0, 1) = sin(rad);
+    T(1, 0) = -sin(rad);  T(1, 1) = cos(rad);
+    T(2, 3) = 1.129;
+    return T;
+}
+
+void saveCoefficientsToCSV(const pcl::ModelCoefficients::Ptr& coefficients) {
+    // CSV 파일 열기 (쓰기 모드)
+    std::ofstream file("coefficients.csv", std::ios::app);
+
+    if (!file.is_open()) {
+        std::cerr << "파일을 열 수 없습니다: " << std::endl;
+        return;
+    }
+
+    // coefficients의 values 벡터에 저장된 모든 값을 CSV 형식으로 파일에 작성
+    for (size_t i = 0; i < coefficients->values.size(); ++i) {
+        file << coefficients->values[i];
+        if (i != coefficients->values.size() - 1) {
+            file << ",";  // 마지막 값이 아니면 쉼표 추가
+        }
+    }
+
+    file << std::endl;  // 파일의 끝에 새 줄 추가
+    file.close();       // 파일 닫기
+
+    std::cout << "CSV 파일이 성공적으로 저장되었습니다: " << std::endl;
+}
+
+void TestManager::cap_pc_3times()
+{
+    int width = 848; int height = 480; int fps = 30;
+    rs2::pipeline pipe;
+    rs2::config cfg;
+    cfg.enable_stream(RS2_STREAM_COLOR, width, height, RS2_FORMAT_BGR8, fps);
+    cfg.enable_stream(RS2_STREAM_DEPTH, width, height, RS2_FORMAT_Z16, fps);
+    auto selection = pipe.start(cfg);
+    auto color_stream = selection.get_stream(RS2_STREAM_COLOR).as<rs2::video_stream_profile>();
+
+    rs2::temporal_filter temp_filter;
+    rs2::hole_filling_filter hole_filter;
+
+    pcl::PointCloud<pcl::PointXYZ>::Ptr combined_world_cloud(new pcl::PointCloud<pcl::PointXYZ>);
+    Eigen::Matrix4f T_joint_cam = get_cam_to_rotation_matrix();
+    std::vector<pcl::ModelCoefficients::Ptr> coefficients_list;
+    std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> cloud_list;
+    pcl::PointCloud<pcl::PointXYZ>::Ptr full_cloud(new pcl::PointCloud<pcl::PointXYZ>);
+
+    // 허리 회전 각도 리스트 (예: -30도, 0도, 30도)
+    std::vector<float> angles = {-30.0f, 0.0f, 30.0f};
+    // std::vector<float> angles = {40.0f};
+
+
+    std::vector<pcl::PointIndices> cluster_num;
+
+    for (float angle : angles) {
+        std::cout << angle << "도 위치로 로봇 이동 및 데이터 수집..." << std::endl;
+        
+        move_waist(angle);
+
+        Eigen::Matrix4f T_rotation_world = get_rotation_to_world_matrix(angle);
+        Eigen::Matrix4f T_cam_world = T_rotation_world * T_joint_cam;
+
+        pcl::PointCloud<pcl::PointXYZ>::Ptr temp_cloud(new pcl::PointCloud<pcl::PointXYZ>);
+
+        rs2::frameset frames = pipe.wait_for_frames();
+        rs2::frame filtered = frames.get_depth_frame();
+        filtered = temp_filter.process(filtered);
+        // filtered = hole_filter.process(filtered);        // hole filling 필터 적용 X
+        rs2::pointcloud pc;
+        auto points = pc.calculate(filtered);
+        // full_cloud = points_to_pcl(points, color_stream);
+        temp_cloud = points_to_pcl(points, color_stream);   // 세 각도의 point cloud를 하나로 저장하기 위해 temp에 저장
+
+        pcl::PassThrough<pcl::PointXYZ> pass;
+        pass.setInputCloud(temp_cloud);
+        pass.setFilterFieldName("z");
+        pass.setFilterLimits(0.4, 0.6);     // 깊이 0.4~0.6m 내 공간의 pc만 살림
+        pass.filter(*temp_cloud);
+
+        // 월드 좌표로 변환 후 통합 컨테이너에 담기
+        pcl::PointCloud<pcl::PointXYZ>::Ptr transformed_cloud(new pcl::PointCloud<pcl::PointXYZ>);
+        pcl::transformPointCloud(*temp_cloud, *transformed_cloud, T_cam_world);
+        *combined_world_cloud += *transformed_cloud;
+    }
+
+    // 2. VoxelGrid 필터
+    pcl::VoxelGrid<pcl::PointXYZ> vg;
+    vg.setInputCloud(combined_world_cloud);
+    vg.setLeafSize(0.005f, 0.005f, 0.005f);     // 3D 공간을 5x5x5 정육면체로 쪼개서 내부 점들의 평균 한 점으로 downsampling
+    vg.filter(*combined_world_cloud);
+
+    // Statistical Outlier Removal 필터
+    pcl::StatisticalOutlierRemoval<pcl::PointXYZ> sor;
+    sor.setInputCloud(combined_world_cloud);
+    sor.setMeanK(50);            // 분석에 사용할 주변 이웃 점 개수
+    sor.setStddevMulThresh(1.0);  // 표준편차 배수 (작을수록 더 엄격하게 노이즈 제거)
+    sor.filter(*combined_world_cloud);
+
+    // 3. Euclidean clustering
+    pcl::search::KdTree<pcl::PointXYZ>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZ>);
+    tree->setInputCloud(combined_world_cloud);
+    std::vector<pcl::PointIndices> cluster_indices;
+    std::vector<std::vector<pcl::PointIndices>> total_indicies;
+    pcl::EuclideanClusterExtraction<pcl::PointXYZ> ec;
+    ec.setClusterTolerance(0.005);      // 점 간 유클리드 거리가 5mm 이하인 점들을 하나의 clustering
+    ec.setMinClusterSize(300);    
+    ec.setMaxClusterSize(50000);  
+    ec.setSearchMethod(tree);
+    ec.setInputCloud(combined_world_cloud);
+    ec.extract(cluster_indices);
+    cluster_num = cluster_indices;
+
+    coefficients_list.clear();
+    cloud_list.clear();
+
+    for (const auto& indices : cluster_indices) {
+        pcl::PointCloud<pcl::PointXYZ>::Ptr cluster_cloud(new pcl::PointCloud<pcl::PointXYZ>);
+        pcl::copyPointCloud(*combined_world_cloud, indices, *cluster_cloud);
+
+        // 4. 각 클러스터 내에서 RANSAC 실행
+        pcl::SACSegmentation<pcl::PointXYZ> seg;
+        pcl::PointIndices::Ptr inliers(new pcl::PointIndices);
+        pcl::ModelCoefficients::Ptr coeffs(new pcl::ModelCoefficients);
+
+        pcl::console::setVerbosityLevel(pcl::console::L_ERROR);
+        seg.setOptimizeCoefficients(true);
+        seg.setModelType(pcl::SACMODEL_CIRCLE3D);
+        seg.setMethodType(pcl::SAC_RANSAC);
+        seg.setDistanceThreshold(0.03);
+        seg.setMaxIterations(1000);
+        seg.setRadiusLimits(0.125, 0.205); // 드럼 크기 제약
+
+        seg.setInputCloud(cluster_cloud);
+        seg.segment(*inliers, *coeffs);
+
+        if (inliers->indices.size() > 200) {
+            float radius = coeffs->values[3];
+            // 검출 성공 시 리스트에 담기
+            coefficients_list.push_back(coeffs);
+            
+            pcl::PointCloud<pcl::PointXYZ>::Ptr circle_points(new pcl::PointCloud<pcl::PointXYZ>);
+            pcl::copyPointCloud(*cluster_cloud, *inliers, *circle_points);
+            cloud_list.push_back(circle_points);
+
+            printf("드럼 발견! 반지름: %.2fcm, 위치: (%.2f, %.2f, %.2f)\n", 
+                    radius*100, coeffs->values[0], coeffs->values[1], coeffs->values[2]);
+            saveCoefficientsToCSV(coeffs);
+        }
+    }
+
+    // --- 시각화 섹션 (루프 밖) ---
+    pcl::visualization::PCLVisualizer::Ptr viewer(new pcl::visualization::PCLVisualizer("Final Drum Finder"));
+    viewer->setBackgroundColor(0, 0, 0);
+    viewer->addCoordinateSystem(0.3);
+
+    // 원본 배경 (매우 흐리게)
+    viewer->addPointCloud<pcl::PointXYZ>(combined_world_cloud, "background");
+    viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_OPACITY, 0.1, "background");
+
+    // 1. 공통 고대비 색상 팔레트 정의 (RGBY + Magenta, Cyan, Orange)
+    std::vector<std::vector<int>> common_colors = {
+        {255, 0, 0},    // Red
+        {0, 255, 0},    // Green
+        {0, 0, 255},    // Blue
+        {255, 255, 0},  // Yellow
+        {255, 0, 255},  // Magenta
+        {0, 255, 255},  // Cyan
+        {255, 165, 0}   // Orange
+    };
+
+    // 2. 클러스터 덩어리 시각화 (확인용: 작고 투명하게)
+    // cluster_num이 std::vector<pcl::PointIndices> 타입이라고 가정합니다.
+    for (size_t i = 0; i < cluster_num.size(); ++i) {
+        pcl::PointCloud<pcl::PointXYZ>::Ptr cluster_viz(new pcl::PointCloud<pcl::PointXYZ>);
+        pcl::copyPointCloud(*combined_world_cloud, cluster_num[i], *cluster_viz);
+
+        std::string cluster_name = "cluster_all_" + std::to_string(i);
+        int c_idx = i % common_colors.size();
+
+        pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZ> cluster_color(
+            cluster_viz, common_colors[c_idx][0], common_colors[c_idx][1], common_colors[c_idx][2]
+        );
+
+        viewer->addPointCloud<pcl::PointXYZ>(cluster_viz, cluster_color, cluster_name);
+        viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 2, cluster_name);
+        viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_OPACITY, 0.1, cluster_name);
+    }
+
+    // 3. RANSAC 검출 드럼 시각화 (결과물: 크고 불투명하게)
+    for (size_t i = 0; i < cloud_list.size(); ++i) {
+        std::string drum_name = "drum_result_" + std::to_string(i);
+        int d_idx = i % common_colors.size();
+
+        pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZ> drum_color(
+            cloud_list[i], common_colors[d_idx][0], common_colors[d_idx][1], common_colors[d_idx][2]
+        );
+
+        viewer->addPointCloud<pcl::PointXYZ>(cloud_list[i], drum_color, drum_name);
+        viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 6, drum_name);
+        viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_OPACITY, 1.0, drum_name);
+
+        // 타격 중심점 (흰색 Sphere)
+        pcl::PointXYZ cp(coefficients_list[i]->values[0], coefficients_list[i]->values[1], coefficients_list[i]->values[2]);
+        viewer->addSphere(cp, 0.02, 1.0, 1.0, 1.0, "center_" + std::to_string(i));
+    }
+
+    while (!viewer->wasStopped()) {
+        viewer->spinOnce(100);
+    }
+    
+}
+
+void TestManager::move_waist(float target_deg)
+{
+    float t_now = 0.0f;
+    float dt = 0.005f;
+    
+    float c_MotorAngle[12] = {0};
+    getMotorPos(c_MotorAngle);
+    
+    float start_rad = c_MotorAngle[0];
+    // float start_rad = c_MotorAngle[6];
+
+    float move_time = (std::abs(start_rad * 180.0f / M_PI - target_deg) > 1.0f) ? std::abs(start_rad * 180.0f / M_PI - target_deg) / 10.0f : 2.0f;
+
+    std::cout << "========================================" << std::endl;
+    std::cout << " Current Waist Angle: " << start_rad * 180.0 / M_PI << " [deg]" << std::endl;
+    std::cout << " Target Waist  Angle: " << target_deg << " [deg]" << std::endl;
+    std::cout << "========================================" << std::endl;
+
+    float target_rad = target_deg * M_PI / 180.0f;
+
+    std::cout << " Moving Start..." << std::endl;
+    std::cout << move_time << std::endl;
+    // 4. 제어 루프 시작
+    while(t_now <= move_time)
+    {   
+        float Q = ((target_rad - start_rad) / 2.0f) * cos(M_PI * (t_now / move_time + 1.0f)) + ((target_rad + start_rad) / 2.0f);
+        func.appendToCSV("waist log", false, Q);
+        for (auto &entry : motors)
+        {
+            if (entry.first == "waist")
+            {
+                if (std::shared_ptr<TMotor> tMotor = std::dynamic_pointer_cast<TMotor>(entry.second))
+                {
+                    TMotorData newData;
+                    
+                    newData.position = tMotor->jointAngleToMotorPosition(Q);
+                    newData.mode = tMotor->Position; 
+                    tMotor->commandBuffer.push(newData);
+                    tMotor->finalMotorPosition = newData.position;
+                }
+            }
+        }
+        t_now += dt;
+    }
+    std::this_thread::sleep_for(std::chrono::milliseconds(std::lround((move_time + 1.0f)*1000)));
+    int tt = std::lround((move_time + 1.0f)*1000);
+    std::cout << " Moving Complete." << tt << std::endl;
 }

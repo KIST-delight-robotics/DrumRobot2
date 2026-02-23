@@ -1,12 +1,15 @@
 CC = g++
 CFLAGS = -Wall -O2 -g -std=c++17 -fPIC
+
 INCLUDE = -I./include -I./lib -I./include/USBIO_advantech -I./include/managers -I./include/motors -I./include/tasks \
-		  -I/usr/include/opencv4 # -I./DynamixelSDK-3.8.4/c++/include/dynamixel_sdk
+		  -I/usr/include/opencv4 -I./include/eigen-3.4.0 -I/usr/local/include/pcl-1.13 -I/usr/include/eigen3 -I/usr/include/flann -I/usr/include/vtk-7.1 -I/usr/lib/x86_64-linux-gnu
 LDFLAGS = -lm -lpthread -lstdc++fs -lbiodaq -L./lib -lUSBIO_64 -ldxl_x64_cpp -Wl,-rpath,'$$ORIGIN/../lib'
 LDFLAGS += -lsfml-audio -lsfml-system
 LDFLAGS += -lrealsense2
 LDFLAGS += -lopencv_core -lopencv_imgproc -lopencv_highgui -lopencv_imgcodecs -lopencv_videoio -lopencv_aruco -lopencv_calib3d
 # LDFLAGS = -lm -lpthread -lstdc++fs -L./lib -lUSBIO_64 -Wl,-rpath,/home/shy/DrumRobot_v1.0/lib -lbiodaq
+LDFLAGS +=  -L/usr/local/lib -lpcl_common -lpcl_io -lpcl_filters -lpcl_segmentation \
+           -lpcl_sample_consensus -lpcl_visualization -lpcl_search -lpcl_kdtree -lpcl_octree -lvtkRenderingLOD-7.1 -lvtkRenderingCore-7.1 -lvtkFiltersSources-7.1 -lvtkCommonExecutionModel-7.1 -lvtkCommonDataModel-7.1 -lvtkCommonMath-7.1 -lvtkCommonCore-7.1
 
 SRCDIR = ./src
 OBJDIR = ./obj
