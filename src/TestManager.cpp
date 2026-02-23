@@ -359,13 +359,13 @@ void TestManager::SendTestProcess()
 
             while (1)
             {
-                std::cout << "mode 입력 (1: calibration, 2: check, -1: exit): ";
+                std::cout << "mode 입력 (1: calibration, 2: check, 3: cal_H, 4: check_H, 5: capture Pcam, -1: exit): ";
                 int mode;
                 std::cin >> mode;
 
                 if (mode == 1)
                 {
-                    camera_calibration_H(target_deg);
+                    camera_calibration(target_deg);
                     std::cout << "Scanning Complete." << std::endl;
                 }
                 else if (mode == 2)
@@ -378,8 +378,35 @@ void TestManager::SendTestProcess()
                     double angle;
                     std::cin >> angle;
 
+                    measure_and_log(angle, offset_filename);
+                    std::cout << "Checking calibration Complete." << std::endl;
+                }
+                else if (mode == 3)
+                {
+                    camera_calibration_H(target_deg);
+                    std::cout << "Scanning Complete." << std::endl;
+                }
+                else if (mode == 4)
+                {
+                    std::cout << "Offset Matrix file name : ";
+                    std::string offset_filename;
+                    std::cin >> offset_filename;
+
+                    std::cout << "current angle : ";
+                    double angle;
+                    std::cin >> angle;
+
                     measure_and_log_H(angle, offset_filename);
                     std::cout << "Checking calibration Complete." << std::endl;
+                }
+                else if (mode == 5)
+                {
+                    std::cout << "current angle : ";
+                    double angle;
+                    std::cin >> angle;
+
+                    int suc = capture_Pcam(angle);
+                    std::cout << "Capture Pcam Completely." << std::endl;
                 }
                 else if (mode == -1)
                 {
@@ -1701,6 +1728,7 @@ void TestManager::camera_calibration_H(double CURRENT_WAIST_ANGLE_DEG)
         cv::Mat T_World_Rot = cv::Mat::eye(4, 4, CV_64F);
         T_World_Rot.at<double>(0, 0) = cos(rad); T_World_Rot.at<double>(0, 1) = -sin(rad);
         T_World_Rot.at<double>(1, 0) = sin(rad); T_World_Rot.at<double>(1, 1) = cos(rad);
+        T_World_Rot.at<double>(2, 3) = 1.129;
 
         while (true) {
             rs2::frameset frames = pipe.wait_for_frames();
@@ -1766,6 +1794,7 @@ void TestManager::camera_calibration_H(double CURRENT_WAIST_ANGLE_DEG)
 
                         if (KNOWN_MARKERS.find(id) != KNOWN_MARKERS.end()) {
                             cv::Mat T_Cam_Marker = getTransformMatrix(rvecs[i], tvecs[i]);
+                            if( id == 1 ) saveMatrixToCSV("T_Cam_Marker_1", T_Cam_Marker);
                             MarkerPos pos = KNOWN_MARKERS[id];
                             cv::Mat T_World_Marker = getMarkerWorldPose(pos.x, pos.y, pos.z);
                             cv::Mat T_World_Cam_Indiv = T_World_Marker * T_Cam_Marker.inv();
@@ -1838,6 +1867,9 @@ void TestManager::measure_and_log_H(double current_waist_angle, const std::strin
     cv::Mat T_Waist = cv::Mat::eye(4, 4, CV_64F);
     T_Waist.at<double>(0, 0) = cos(rad); T_Waist.at<double>(0, 1) = -sin(rad);
     T_Waist.at<double>(1, 0) = sin(rad); T_Waist.at<double>(1, 1) = cos(rad);
+    T_Waist.at<double>(2, 3) = 1.129;
+
+    saveMatrixToCSV("T_r->w", T_Waist);
 
     cv::Mat T_World_Camera = T_Waist * T_Offset;
 
@@ -2102,7 +2134,7 @@ void TestManager::camera_calibration(double CURRENT_WAIST_ANGLE_DEG) // camera_c
                      * ========================= */
                     std::vector<cv::Vec3d> rvecs, tvecs;
                     // 중요: current_corners 대신 averaged_corners 사용
-                    cv::aruco::estimatePoseSingleMarkers(averaged_corners, 0.08, cameraMatrix, distCoeffs, rvecs, tvecs);
+                    cv::aruco::estimatePoseSingleMarkers(averaged_corners, 0.06, cameraMatrix, distCoeffs, rvecs, tvecs);
 
                     /* =========================
                      * 5. 카메라 기준 마커 좌표를 담은 행렬 생성 P_Cam
@@ -2162,6 +2194,7 @@ void TestManager::camera_calibration(double CURRENT_WAIST_ANGLE_DEG) // camera_c
                     cv::Mat P_Rotation = cv::Mat::zeros(4, 4, CV_64F);
                     P_Rotation = T_World_Waist * P_World;
                     saveMatrixToCSV("P_World_rot" + suffix, P_Rotation);
+                    saveMatrixToCSV("T_rot->world", T_World_Waist.inv());
 
                     /* =========================
                      * 7. camera → Rotation 변환 행렬
@@ -2291,7 +2324,7 @@ void TestManager::measure_and_log(double current_waist_angle, const std::string&
         * ========================= */
         std::vector<cv::Vec3d> rvecs, tvecs;
 
-        cv::aruco::estimatePoseSingleMarkers(corners, 0.08, cameraMatrix, distCoeffs, rvecs, tvecs);
+        cv::aruco::estimatePoseSingleMarkers(corners, 0.06, cameraMatrix, distCoeffs, rvecs, tvecs);
 
         for (size_t i = 0; i < ids.size(); i++) {
 
@@ -2336,6 +2369,81 @@ void TestManager::measure_and_log(double current_waist_angle, const std::string&
         if (cv::waitKey(1) == 27) break;
     }
     cv::destroyAllWindows();
+}
+
+int TestManager::capture_Pcam(double current_waist_angle)
+{
+    int angle_int = (int)std::round(current_waist_angle);
+    std::string suffix = "_" + std::to_string(angle_int) + "deg.csv";
+    try {
+        // 1️⃣ RealSense 파이프라인 설정
+        rs2::pipeline pipe;
+        rs2::config cfg;
+
+        cfg.enable_stream(RS2_STREAM_DEPTH, 848, 480, RS2_FORMAT_Z16, 30);
+        pipe.start(cfg);
+
+        std::cout << "Waiting for frames...\n";
+
+        // 2️⃣ 프레임 1장만 획득
+        rs2::frameset frames = pipe.wait_for_frames();
+        rs2::depth_frame depth = frames.get_depth_frame();
+
+        if (!depth) {
+            std::cerr << "No depth frame received\n";
+            return -1;
+        }
+
+        int width  = depth.get_width();
+        int height = depth.get_height();
+
+        std::cout << "Depth size: " << width << " x " << height << std::endl;
+
+        // 3️⃣ PointCloud 생성
+        rs2::pointcloud pc;
+        rs2::points points = pc.calculate(depth);
+
+        const rs2::vertex* vertices = points.get_vertices();
+
+        // 4️⃣ CSV 파일 열기
+        std::ofstream file("pointcloud_camera_frame" + suffix);
+        file << "u,v,x,y,z\n";
+
+        // 5️⃣ 전체 프레임 순회
+        for (int v = 0; v < height; ++v) {
+            for (int u = 0; u < width; ++u) {
+                int idx = v * width + u;
+
+                float x = vertices[idx].x;
+                float y = vertices[idx].y;
+                float z = vertices[idx].z;
+
+                // depth 없는 포인트 제거
+                if (z <= 0.0f || z >= 0.7f) continue;
+
+                file << u << ","
+                     << v << ","
+                     << x << ","
+                     << y << ","
+                     << z << "\n";
+            }
+        }
+
+        file.close();
+        pipe.stop();
+
+        std::cout << "Point cloud saved to pointcloud_camera_frame.csv\n";
+    }
+    catch (const rs2::error& e) {
+        std::cerr << "RealSense error: " << e.what() << std::endl;
+        return -1;
+    }
+    catch (const std::exception& e) {
+        std::cerr << "Error: " << e.what() << std::endl;
+        return -1;
+    }
+
+    return 0;
 }
 
 pcl::PointCloud<pcl::PointXYZ>::Ptr TestManager::points_to_pcl(const rs2::points& points, const rs2::video_stream_profile& profile) {

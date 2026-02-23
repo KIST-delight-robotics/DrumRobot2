@@ -172,6 +172,7 @@ private:
 
     void camera_calibration(double CURRENT_WAIST_ANGLE_DEG);
     void measure_and_log(double current_waist_angle, const std::string& C_filename);
+    int capture_Pcam(double current_waist_angle);
     void camera_calibration_H(double CURRENT_WAIST_ANGLE_DEG);
     void measure_and_log_H(double current_waist_angle, const std::string& offset_filename);
     pcl::PointCloud<pcl::PointXYZ>::Ptr points_to_pcl(const rs2::points& points, const rs2::video_stream_profile& profile);
