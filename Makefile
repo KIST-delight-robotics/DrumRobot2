@@ -1,7 +1,7 @@
 CC = g++
 CFLAGS = -Wall -O2 -g -std=c++17 -fPIC
 
-INCLUDE = -I./include -I./lib -I./include/USBIO_advantech -I./include/managers -I./include/motors -I./include/tasks -I./include/eigen-3.4.0 
+INCLUDE = -I./include -I./lib -I./include/USBIO_advantech -I./include/managers -I./include/motors -I./include/tasks -I./include/eigen-3.4.0
 LDFLAGS = -lm -lpthread -lstdc++fs -lbiodaq -L./lib -lUSBIO_64 -ldxl_x64_cpp -Wl,-rpath,'$$ORIGIN/../lib'
 LDFLAGS += -lsfml-audio -lsfml-system
 #LDFLAGS = -lm -lpthread -lstdc++fs -L./lib -lUSBIO_64 -Wl,-rpath,/home/shy/DrumRobot_v1.0/lib -lbiodaq
