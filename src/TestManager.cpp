@@ -405,7 +405,7 @@ void TestManager::SendTestProcess()
                     double angle;
                     std::cin >> angle;
 
-                    int suc = capture_Pcam(angle);
+                    capture_Pcam(angle);
                     std::cout << "Capture Pcam Completely." << std::endl;
                 }
                 else if (mode == -1)
@@ -2371,7 +2371,7 @@ void TestManager::measure_and_log(double current_waist_angle, const std::string&
     cv::destroyAllWindows();
 }
 
-int TestManager::capture_Pcam(double current_waist_angle)
+void TestManager::capture_Pcam(double current_waist_angle)
 {
     int angle_int = (int)std::round(current_waist_angle);
     std::string suffix = "_" + std::to_string(angle_int) + "deg.csv";
@@ -2391,7 +2391,7 @@ int TestManager::capture_Pcam(double current_waist_angle)
 
         if (!depth) {
             std::cerr << "No depth frame received\n";
-            return -1;
+            return;
         }
 
         int width  = depth.get_width();
@@ -2432,18 +2432,18 @@ int TestManager::capture_Pcam(double current_waist_angle)
         file.close();
         pipe.stop();
 
-        std::cout << "Point cloud saved to pointcloud_camera_frame.csv\n";
+        std::cout << "Point cloud saved to pointcloud_camera_frame" << suffix << ".csv\n";
     }
     catch (const rs2::error& e) {
         std::cerr << "RealSense error: " << e.what() << std::endl;
-        return -1;
+        return;
     }
     catch (const std::exception& e) {
         std::cerr << "Error: " << e.what() << std::endl;
-        return -1;
+        return;
     }
 
-    return 0;
+    return;
 }
 
 pcl::PointCloud<pcl::PointXYZ>::Ptr TestManager::points_to_pcl(const rs2::points& points, const rs2::video_stream_profile& profile) {
@@ -2474,13 +2474,13 @@ Eigen::Matrix4f TestManager::get_cam_to_rotation_matrix() {
 Eigen::Matrix4f TestManager::get_rotation_to_world_matrix(float angle_deg) {
     float rad = angle_deg * M_PI / 180.0;
     Eigen::Matrix4f T = Eigen::Matrix4f::Identity();
-    T(0, 0) = cos(rad);  T(0, 1) = sin(rad);
-    T(1, 0) = -sin(rad);  T(1, 1) = cos(rad);
+    T(0, 0) = cos(rad);  T(0, 1) = -sin(rad);
+    T(1, 0) = sin(rad);  T(1, 1) = cos(rad);
     T(2, 3) = 1.129;
     return T;
 }
 
-void saveCoefficientsToCSV(const pcl::ModelCoefficients::Ptr& coefficients) {
+void TestManager::saveCoefficientsToCSV(const pcl::ModelCoefficients::Ptr& coefficients) {
     // CSV 파일 열기 (쓰기 모드)
     std::ofstream file("coefficients.csv", std::ios::app);
 
@@ -2503,6 +2503,29 @@ void saveCoefficientsToCSV(const pcl::ModelCoefficients::Ptr& coefficients) {
     std::cout << "CSV 파일이 성공적으로 저장되었습니다: " << std::endl;
 }
 
+void TestManager::saveCloudToCSV(const pcl::PointCloud<pcl::PointXYZ>::Ptr& cloud, const std::string& filename) {
+    // std::ios::out은 기본적으로 파일을 새로 생성하거나 기존 내용을 지우고 새로 씁니다.
+    std::ofstream file(filename);
+
+    if (!file.is_open()) {
+        std::cerr << "파일을 열 수 없습니다: " << filename << std::endl;
+        return;
+    }
+
+    // 소수점 정밀도 설정 (필요에 따라 조절 가능, 예: 6자리)
+    file << std::fixed << std::setprecision(6);
+
+    for (const auto& point : cloud->points) {
+        // 유효하지 않은 점(NaN) 제외 (is_dense가 false일 경우 대비)
+        if (std::isfinite(point.x) && std::isfinite(point.y) && std::isfinite(point.z)) {
+            file << point.x << "," << point.y << "," << point.z << "\n";
+        }
+    }
+
+    file.close();
+    std::cout << "PointCloud가 성공적으로 저장되었습니다: " << filename << " (총 " << cloud->size() << "개 점)" << std::endl;
+}
+
 void TestManager::cap_pc_3times()
 {
     int width = 848; int height = 480; int fps = 30;
@@ -2523,7 +2546,7 @@ void TestManager::cap_pc_3times()
     pcl::PointCloud<pcl::PointXYZ>::Ptr full_cloud(new pcl::PointCloud<pcl::PointXYZ>);
 
     // 허리 회전 각도 리스트 (예: -30도, 0도, 30도)
-    std::vector<float> angles = {-30.0f, 0.0f, 30.0f};
+    std::vector<float> angles = {40.0f, 20.0f, 0.0f, -20.0f, -40.0f};
     // std::vector<float> angles = {40.0f};
 
 
@@ -2534,7 +2557,12 @@ void TestManager::cap_pc_3times()
         
         move_waist(angle);
 
-        Eigen::Matrix4f T_rotation_world = get_rotation_to_world_matrix(angle);
+        float c_MotorAngle[12] = {0};
+        getMotorPos(c_MotorAngle);
+        float cur_deg = c_MotorAngle[0] * 180.0f / M_PI;
+        std::cout << "current waist angle is " << cur_deg << std::endl;
+
+        Eigen::Matrix4f T_rotation_world = get_rotation_to_world_matrix(cur_deg);
         Eigen::Matrix4f T_cam_world = T_rotation_world * T_joint_cam;
 
         pcl::PointCloud<pcl::PointXYZ>::Ptr temp_cloud(new pcl::PointCloud<pcl::PointXYZ>);
@@ -2554,11 +2582,15 @@ void TestManager::cap_pc_3times()
         pass.setFilterLimits(0.4, 0.6);     // 깊이 0.4~0.6m 내 공간의 pc만 살림
         pass.filter(*temp_cloud);
 
+        string pc_name = "../temp_cloud" + std::to_string(cur_deg) + ".csv";
+        saveCloudToCSV(temp_cloud, pc_name);
+
         // 월드 좌표로 변환 후 통합 컨테이너에 담기
         pcl::PointCloud<pcl::PointXYZ>::Ptr transformed_cloud(new pcl::PointCloud<pcl::PointXYZ>);
         pcl::transformPointCloud(*temp_cloud, *transformed_cloud, T_cam_world);
         *combined_world_cloud += *transformed_cloud;
     }
+    saveCloudToCSV(combined_world_cloud, "../combined_pc_original.csv");
 
     // 2. VoxelGrid 필터
     pcl::VoxelGrid<pcl::PointXYZ> vg;
@@ -2681,9 +2713,18 @@ void TestManager::cap_pc_3times()
         viewer->addSphere(cp, 0.02, 1.0, 1.0, 1.0, "center_" + std::to_string(i));
     }
 
+    // 1. 별도 함수 정의 없이 람다로 q키 입력 시 종료 설정
+    viewer->registerKeyboardCallback([&](const pcl::visualization::KeyboardEvent& event) {
+        if (event.getKeySym() == "q" && event.keyDown()) viewer->close();
+    });
+
     while (!viewer->wasStopped()) {
         viewer->spinOnce(100);
     }
+
+    // 3. 안전한 정리
+    viewer->close();
+    viewer.reset();
     
 }
 
@@ -2732,6 +2773,6 @@ void TestManager::move_waist(float target_deg)
         t_now += dt;
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(std::lround((move_time + 1.0f)*1000)));
-    int tt = std::lround((move_time + 1.0f)*1000);
+    int tt = std::lround((move_time + 2.0f)*1000);
     std::cout << " Moving Complete." << tt << std::endl;
 }
