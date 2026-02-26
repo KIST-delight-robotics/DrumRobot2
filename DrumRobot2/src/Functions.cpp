@@ -1184,9 +1184,11 @@ void Functions::checkCross(int& rightHand, int& leftHand, int prevRightNote, int
 //                     if (preferred == RIGHT) {
 //                         // std::cout << "    → RIGHT 선택\n";
 //                         e.rightHand = inst1;
+//                         e.leftHand = 0;
 //                     } else if (preferred == LEFT) {
 //                         // std::cout << "    → LEFT 선택\n";
 //                         e.leftHand = inst1;
+//                         e.rightHand = 0;
 //                     } 
 //                     //악기 위치 거리 기반으로 손 분배 이때 전에 친악기를 inst2로 사용해서 구함  
 //                     else {
@@ -1385,7 +1387,7 @@ void Functions::assignHandsToEvents(const std::string& inputFilename, const std:
                         e.leftHand = inst1;
                         e.rightHand = 0;
                     } 
-                    //악기 위치 거리 기반으로 손 분배 이때 전에 친악기를 inst2로 사용해서 구함 그전에 친 두 악기는 같은수밖에 없다 -> 점수가 같기 때문에 시간도 거리도 같은거라
+                    //악기 위치 거리 기반으로 손 분배 이때 전에 친악기를 inst2로 사용해서 구함  
                     else {
                         // std::cout << "    → SAME 판단 → 섹션 기반 분배\n";
                         int inst2 = (prevRightNote != 0) ? prevRightNote : prevLeftNote;
@@ -1579,6 +1581,7 @@ bool Functions::applyIntensityToScore(const vector<Functions::Seg>& segs, const 
         return (b >= e) ? string() : string(b, e);
     };
     size_t cursor = 0; // 전진 포인터
+
     auto findSeg = [&](double t) -> const Seg* {
     while (cursor < segs.size()) {
         const Seg& s = segs[cursor];
