@@ -2546,7 +2546,7 @@ void TestManager::cap_pc_3times()
     pcl::PointCloud<pcl::PointXYZ>::Ptr full_cloud(new pcl::PointCloud<pcl::PointXYZ>);
 
     // 허리 회전 각도 리스트 (예: -30도, 0도, 30도)
-    std::vector<float> angles = {40.0f, 20.0f, 0.0f, -20.0f, -40.0f};
+    std::vector<float> angles = {10.0f, 5.0f, 0.0f, -5.0f, -10.0f};
     // std::vector<float> angles = {40.0f};
 
 
