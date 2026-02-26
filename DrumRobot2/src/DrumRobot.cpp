@@ -1,14 +1,15 @@
+// DrumRobot2/src/DrumRobot.cpp
+
 #include "../include/tasks/DrumRobot.hpp"
 
-// For Qt
-// #include "../tasks/DrumRobot.hpp"
+using namespace std;
 
 // DrumRobot 클래스의 생성자
 DrumRobot::DrumRobot(State &stateRef,
                      CanManager &canManagerRef,
                      PathManager &pathManagerRef,
                      TestManager &testManagerRef,
-                     std::map<std::string, std::shared_ptr<GenericMotor>> &motorsRef,
+                     map<string, shared_ptr<GenericMotor>> &motorsRef,
                      USBIO &usbioRef,
                      Functions &funRef)
     : state(stateRef),
@@ -17,10 +18,11 @@ DrumRobot::DrumRobot(State &stateRef,
       testManager(testManagerRef),
       motors(motorsRef),
       usbio(usbioRef),
-      func(funRef)
+      func(funRef),
+      agentAction(pathManagerRef, flagObj, arduino, motorsRef)
 {
-    sendLoopPeriod = std::chrono::steady_clock::now();
-    recvLoopPeriod = std::chrono::steady_clock::now();
+    sendLoopPeriod = chrono::steady_clock::now();
+    recvLoopPeriod = chrono::steady_clock::now();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -48,7 +50,7 @@ void DrumRobot::initializeMotors()
         int can_id = canManager.motorMapping[motor_pair.first];
 
         // 타입에 따라 적절한 캐스팅과 초기화 수행
-        if (std::shared_ptr<TMotor> tMotor = std::dynamic_pointer_cast<TMotor>(motor))
+        if (shared_ptr<TMotor> tMotor = dynamic_pointer_cast<TMotor>(motor))
         {
             // 각 모터 이름에 따른 멤버 변수 설정
             if (motor_pair.first == "waist")
@@ -138,7 +140,7 @@ void DrumRobot::initializeMotors()
                 tMotor->positionGain = 4000.0;
             }
         }
-        else if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motor))
+        else if (shared_ptr<MaxonMotor> maxonMotor = dynamic_pointer_cast<MaxonMotor>(motor))
         {
             // 각 모터 이름에 따른 멤버 변수 설정
             if (motor_pair.first == "R_wrist")
@@ -228,7 +230,7 @@ void DrumRobot::motorSettingCmd()
     for (const auto &motor_pair : motors)
     {
         // 각 요소가 MaxonMotor 타입인지 확인
-        if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motor_pair.second))
+        if (shared_ptr<MaxonMotor> maxonMotor = dynamic_pointer_cast<MaxonMotor>(motor_pair.second))
         {
 
             if (virtualMaxonMotor.size() == 0)
@@ -260,9 +262,9 @@ void DrumRobot::motorSettingCmd()
 
     for (const auto &motorPair : motors)
     {
-        std::string name = motorPair.first;
-        std::shared_ptr<GenericMotor> motor = motorPair.second;
-        if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motorPair.second))
+        string name = motorPair.first;
+        shared_ptr<GenericMotor> motor = motorPair.second;
+        if (shared_ptr<MaxonMotor> maxonMotor = dynamic_pointer_cast<MaxonMotor>(motorPair.second))
         {
             // CSP Settings
             maxoncmd.getCSPMode(*maxonMotor, &frame);
@@ -368,11 +370,11 @@ void DrumRobot::motorSettingCmd()
 
 void DrumRobot::initializeFolder()
 {
-    std::string syncDir = "../magenta/sync";
-    std::string recordDir = "../magenta/record";
-    std::string outputMidDir = "../magenta/generated";
-    std::string outputVelDir = "../magenta/velocity";
-    std::string outputCode = "../include/magenta";
+    string syncDir = "../magenta/sync";
+    string recordDir = "../magenta/record";
+    string outputMidDir = "../magenta/generated";
+    string outputVelDir = "../magenta/velocity";
+    string outputCode = "../include/magenta";
 
     func.clear_directory(syncDir);
     func.clear_directory(recordDir);
@@ -381,14 +383,14 @@ void DrumRobot::initializeFolder()
     func.clear_directory(outputCode);
 }
 
-bool DrumRobot::initializePos(const std::string &input)
+bool DrumRobot::initializePos(const string &input)
 {
     // set zero
     if (input == "o")
     {
         for (const auto &motorPair : motors)
         {
-            if (std::shared_ptr<TMotor> tMotor = std::dynamic_pointer_cast<TMotor>(motorPair.second))
+            if (shared_ptr<TMotor> tMotor = dynamic_pointer_cast<TMotor>(motorPair.second))
             {
                 tservocmd.comm_can_set_origin(*tMotor, &tMotor->sendFrame, 0);
                 canManager.sendMotorFrame(tMotor);
@@ -396,16 +398,16 @@ bool DrumRobot::initializePos(const std::string &input)
 
                 usleep(1000*100);    // 100ms
 
-                // std::cout << "Tmotor [" << tMotor->myName << "] set Zero \n";
-                // std::cout << "Current Motor Position : " << tMotor->motorPosition / M_PI * 180 << "deg\n";
+                // cout << "Tmotor [" << tMotor->myName << "] set Zero \n";
+                // cout << "Current Motor Position : " << tMotor->motorPosition / M_PI * 180 << "deg\n";
             }
-            else if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motorPair.second))
+            else if (shared_ptr<MaxonMotor> maxonMotor = dynamic_pointer_cast<MaxonMotor>(motorPair.second))
             {
                 maxonMotor->finalMotorPosition = 0.0;
             }
         }
 
-        std::cout << "set zero and offset setting ~ ~ ~\n";
+        cout << "set zero and offset setting ~ ~ ~\n";
         sleep(2);   // Set Zero 명령이 확실히 실행된 후
 
         arduino.setHeadLED(Arduino::POWER_ON);  // led 로딩바 차는 모션 실행
@@ -420,39 +422,39 @@ bool DrumRobot::initializePos(const std::string &input)
     }
     else
     {
-        std::cout << "Invalid command or not allowed in current state!\n";
+        cout << "Invalid command or not allowed in current state!\n";
         return false;
     }
 }
 
 void DrumRobot::initializeDrumRobot()
 {
-    std::string input;
-
+    string input;
     pathManager.initPathManager();
     initializeMotors();
     initializeCanManager();
     motorSettingCmd(); // Maxon
     canManager.setSocketNonBlock();
     dxl.initialize();
-
     usbio.initUSBIO4761();
     func.openCSVFile();
-
     arduino.connect("/dev/ttyACM0");
+    initializeFolder(); // Magenta 관련 폴더 초기화
 
-    // 폴더 비우기
-    initializeFolder();
+    cout << "System Initialize Complete. Waiting for Brain...\n";
+    cout << "[System] Socket Server Starting..."<< endl;
 
-    std::cout << "System Initialize Complete [ Press Commands ]\n";
-    std::cout << "- o : Set Zero & Offset setting\n";
-    // std::cout << "- i : Offset setting\n";
-
-    do
+    agentSocket.start(); // --- TCP Socket 통신 시작 --- //
+    while(true)
     {
-        std::cout << "Enter command: ";
-        std::getline(std::cin, input);
-    } while (!initializePos(input));
+        if (agentSocket.isConnected())
+        {
+            cout << "[System] Brain Connected!" << endl;
+            initializePos("o");
+            break;
+        }
+        usleep(1000);
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -467,26 +469,29 @@ void DrumRobot::deactivateControlTask()
 
     for (auto &motorPair : motors)
     {
-        std::string name = motorPair.first;
+        string name = motorPair.first;
         auto &motor = motorPair.second;
 
         // 타입에 따라 적절한 캐스팅과 초기화 수행
-        if (std::shared_ptr<TMotor> tMotor = std::dynamic_pointer_cast<TMotor>(motor))
+        if (shared_ptr<TMotor> tMotor = dynamic_pointer_cast<TMotor>(motor))
         {
             tservocmd.comm_can_set_cb(*tMotor, &tMotor->sendFrame, 0);
             canManager.sendMotorFrame(tMotor);
-            std::cout << "Exiting for motor [" << name << "]" << std::endl;
+            cout << "Exiting for motor [" << name << "]" << endl;
         }
-        else if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motor))
+        else if (shared_ptr<MaxonMotor> maxonMotor = dynamic_pointer_cast<MaxonMotor>(motor))
         {
             maxoncmd.getQuickStop(*maxonMotor, &frame);
             canManager.txFrame(motor, frame);
 
             maxoncmd.getSync(&frame);
             canManager.txFrame(motor, frame);
-            std::cout << "Exiting for motor [" << name << "]" << std::endl;
+            cout << "Exiting for motor [" << name << "]" << endl;
         }
     }
+
+    agentSocket.stop(); // --- TCP Socket 통신 종료 --- //
+
     dxl.DXLTorqueOff();
     arduino.disconnect();
 }
@@ -503,9 +508,9 @@ void DrumRobot::maxonMotorEnable()
     // 제어 모드 설정
     for (const auto &motorPair : motors)
     {
-        std::string name = motorPair.first;
-        std::shared_ptr<GenericMotor> motor = motorPair.second;
-        if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motor))
+        string name = motorPair.first;
+        shared_ptr<GenericMotor> motor = motorPair.second;
+        if (shared_ptr<MaxonMotor> maxonMotor = dynamic_pointer_cast<MaxonMotor>(motor))
         {
             maxoncmd.getHomeMode(*maxonMotor, &frame);
             canManager.txFrame(motor, frame);
@@ -529,7 +534,7 @@ void DrumRobot::maxonMotorEnable()
             maxoncmd.getSync(&frame);
             canManager.txFrame(motor, frame);
             
-            std::cout << "Maxon Enabled\n";
+            cout << "Maxon Enabled\n";
 
             usleep(100000);
 
@@ -541,20 +546,20 @@ void DrumRobot::maxonMotorEnable()
 
             // usleep(100000);
             
-            // std::cout << "Maxon Enabled(2) \n";
+            // cout << "Maxon Enabled(2) \n";
         }
     }
 }
 
-void DrumRobot::setMaxonMotorMode(std::string targetMode)
+void DrumRobot::setMaxonMotorMode(string targetMode)
 {
     struct can_frame frame;
     canManager.setSocketsTimeout(0, 10000);
     for (const auto &motorPair : motors)
     {
-        std::string name = motorPair.first;
-        std::shared_ptr<GenericMotor> motor = motorPair.second;
-        if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motorPair.second))
+        string name = motorPair.first;
+        shared_ptr<GenericMotor> motor = motorPair.second;
+        if (shared_ptr<MaxonMotor> maxonMotor = dynamic_pointer_cast<MaxonMotor>(motorPair.second))
         {
             if (targetMode == "CSV")    // Cyclic Sync Velocity Mode
             {
@@ -663,12 +668,12 @@ void DrumRobot::sendLoopForThread()
     sleep(2);   // read thead에서 clear / initial pos Path 생성 할 때까지 기다림
 
     int cycleCounter = 0; // 주기 조절을 위한 변수 (Tmotor : 5ms, Maxon : 1ms)
-    sendLoopPeriod = std::chrono::steady_clock::now();
+    sendLoopPeriod = chrono::steady_clock::now();
     while (state.main != Main::Shutdown)
     {
-        sendLoopPeriod += std::chrono::microseconds(1000);  // 주기 : 1msec
+        sendLoopPeriod += chrono::microseconds(1000);  // 주기 : 1msec
         
-        std::map<std::string, bool> fixFlags; // 각 모터의 고정 상태 저장
+        map<string, bool> fixFlags; // 각 모터의 고정 상태 저장
         
         if (!canManager.setCANFrame(fixFlags, cycleCounter))
         {   
@@ -707,7 +712,7 @@ void DrumRobot::sendLoopForThread()
         
         for (auto &motor_pair : motors)
         {
-            std::shared_ptr<GenericMotor> motor = motor_pair.second;
+            shared_ptr<GenericMotor> motor = motor_pair.second;
             // t모터는 5번 중 1번만 실행
             if (motor->isTMotor()) 
             {
@@ -753,7 +758,7 @@ void DrumRobot::sendLoopForThread()
                 // float des1 = (float)dxlCommand[0][2];
                 // float des2 = (float)dxlCommand[1][2];
 
-                std::map<int, float> pos_act = dxl.syncRead();
+                map<int, float> pos_act = dxl.syncRead();
                 // float act1 = pos_act[1];
                 // float act2 = pos_act[2];
 
@@ -774,7 +779,7 @@ void DrumRobot::sendLoopForThread()
 
         cycleCounter = (cycleCounter + 1) % 5;
 
-        std::this_thread::sleep_until(sendLoopPeriod);
+        this_thread::sleep_until(sendLoopPeriod);
     }
 }
 
@@ -784,8 +789,8 @@ void DrumRobot::recvLoopForThread()
 
     while (state.main != Main::Shutdown)
     {
-        recvLoopPeriod = std::chrono::steady_clock::now();
-        recvLoopPeriod += std::chrono::microseconds(100);  // 주기 : 100us
+        recvLoopPeriod = chrono::steady_clock::now();
+        recvLoopPeriod += chrono::microseconds(100);  // 주기 : 100us
 
         canManager.readFramesFromAllSockets(); 
         bool isSafe = canManager.distributeFramesToMotors(true);
@@ -794,7 +799,7 @@ void DrumRobot::recvLoopForThread()
             state.main = Main::Error;
         }
         
-        std::this_thread::sleep_until(recvLoopPeriod);
+        this_thread::sleep_until(recvLoopPeriod);
     }
 }
 
@@ -802,7 +807,7 @@ void DrumRobot::musicMachine()
 {
     bool played = false;
     bool waiting = false;
-    std::unique_ptr<sf::Music> music;
+    unique_ptr<sf::Music> music;
 
     while (state.main != Main::Shutdown)
     {
@@ -812,13 +817,13 @@ void DrumRobot::musicMachine()
             {
                 if (setWaitingTime)
                 {
-                    music = std::make_unique<sf::Music>();
+                    music = make_unique<sf::Music>();
                     if (!music->openFromFile(wavPath)) {
-                        std::cerr << "음악 파일 열기 실패: " << wavPath << "\n";
+                        cerr << "음악 파일 열기 실패: " << wavPath << "\n";
                         music.reset(); // 파괴
                         continue;
                     }
-                    std::cout << "음악 준비 완료. 동기화 타이밍 대기 중...\n";
+                    cout << "음악 준비 완료. 동기화 타이밍 대기 중...\n";
                     setWaitingTime = false;
                     waiting = true;
                 }
@@ -826,18 +831,18 @@ void DrumRobot::musicMachine()
                 if (waiting)
                 {
                     // 재생
-                    if (!played && std::chrono::system_clock::now() >= syncTime)
+                    if (!played && chrono::system_clock::now() >= syncTime)
                     {
                         pathManager.startOfPlay = true;
                         music->play();
                         played = true;
-                        std::cout << "음악 재생 시작 (동기화 완료)\n";
+                        cout << "음악 재생 시작 (동기화 완료)\n";
                     }
 
                     // 재생 종료
                     if (played && music->getStatus() != sf::Music::Playing)
                     {
-                        std::cout << "음악 재생 완료\n";
+                        cout << "음악 재생 완료\n";
                         played = false;
                         waiting = false;
                         music.reset();  // 안전하게 소멸
@@ -854,7 +859,7 @@ void DrumRobot::musicMachine()
 
                 if (waiting)
                 {
-                    if (std::chrono::system_clock::now() >= syncTime)
+                    if (chrono::system_clock::now() >= syncTime)
                     {
                         pathManager.startOfPlay = true;
                         waiting = false;
@@ -863,7 +868,7 @@ void DrumRobot::musicMachine()
             }
         }
 
-        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        this_thread::sleep_for(chrono::milliseconds(1));
     }
 }
 
@@ -876,21 +881,21 @@ void DrumRobot::runPythonInThread()
     {
         if (runPython)
         {
-            std::string pythonCmd = pythonScript + " " + pythonArgs;
+            string pythonCmd = pythonScript + " " + pythonArgs;
 
             if (pythonArgs == "--sync")
             {
                 pythonCmd += " --path ../magenta/ &";   // 경로 설정 & 백그라운드 실행
 
-                int ret = std::system(pythonCmd.c_str());
+                int ret = system(pythonCmd.c_str());
                 if (ret != 0)
-                    std::cerr << "Python script failed to execute with code " << ret << std::endl;
+                    cerr << "Python script failed to execute with code " << ret << endl;
                 
-                std::cout << "\nPython script is running... \n";
+                cout << "\nPython script is running... \n";
             }
             else if (pythonArgs == "--record")
             {
-                pythonCmd += " --repeat " + std::to_string(repeatNum);
+                pythonCmd += " --repeat " + to_string(repeatNum);
 
                 pythonCmd += " --param";
                 for (int i = 0; i < repeatNum; i++)
@@ -899,52 +904,51 @@ void DrumRobot::runPythonInThread()
                     int rT = recordBarNum.front(); recordBarNum.pop();
                     int mT = makeBarNum.front(); makeBarNum.pop();
 
-                    pythonCmd += " " + std::to_string(dT);
-                    pythonCmd += " " + std::to_string(rT);
-                    pythonCmd += " " + std::to_string(mT);
+                    pythonCmd += " " + to_string(dT);
+                    pythonCmd += " " + to_string(rT);
+                    pythonCmd += " " + to_string(mT);
 
                     recordNum[i] = rT / 2;
                     creationNum[i] = mT / 2;
                 }
 
                 pythonCmd += " --bpm";
-                pythonCmd += " " + std::to_string(pathManager.bpmOfScore);
+                pythonCmd += " " + to_string(pathManager.bpmOfScore);
 
                 pythonCmd += " --path ../magenta/ &";   // 경로 설정 & 백그라운드 실행
 
-                int ret = std::system(pythonCmd.c_str());
+                int ret = system(pythonCmd.c_str());
                 if (ret != 0)
-                    std::cerr << "Python script failed to execute with code " << ret << std::endl;
+                    cerr << "Python script failed to execute with code " << ret << endl;
 
-                std::cout << "\nPython script is running... \n";
-
+                cout << "\nPython script is running... \n";
                 for (int i = 0; i < repeatNum; i++)
                 {
                     for (int j = 0; j < creationNum[i]; j++)
                     {
-                        std::string outputMid;
-                        std::string outputVel = "null";
+                        string outputMid;
+                        string outputVel = "null";
                         bool startFlag = (j == 0);
                         bool endFlag = (j == creationNum[i] - 1);
                         
                         // 디스이즈미용
-                        outputMid = "../magenta/generated/output" + std::to_string(i) + "_" + std::to_string(j + 1) + "3.mid";
+                        outputMid = "../magenta/generated/output" + to_string(i) + "_" + to_string(j + 1) + "3.mid";
                         // if (j < recordNum[i])
                         // {
-                        //     outputMid = "../magenta/generated/output" + std::to_string(i) + "_" + std::to_string(j + 1) + "3.mid";
+                        //     outputMid = "../magenta/generated/output" + to_string(i) + "_" + to_string(j + 1) + "3.mid";
                         // }
                         // else if (j < 2 * recordNum[i])
                         // {
-                        //     outputMid = "../magenta/generated/output" + std::to_string(i) + "_" + std::to_string(j - recordNum[i] + 1) + "4.mid";
+                        //     outputMid = "../magenta/generated/output" + to_string(i) + "_" + to_string(j - recordNum[i] + 1) + "4.mid";
                         // }
                         // else
                         // {
-                        //     outputMid = "../magenta/generated/output" + std::to_string(i) + "_" + std::to_string(j - 2 * recordNum[i] + 1) + "2.mid";
+                        //     outputMid = "../magenta/generated/output" + to_string(i) + "_" + to_string(j - 2 * recordNum[i] + 1) + "2.mid";
                         // }
 
                         // 해당 미디 파일 생성될 때까지 대기
-                        while(!std::filesystem::exists(outputMid))
-                            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+                        while(!filesystem::exists(outputMid))
+                            this_thread::sleep_for(chrono::milliseconds(1));
 
                         usleep(100*1000);
                         generateCodeFromMIDI(outputMid, outputVel, j, startFlag, endFlag);
@@ -952,9 +956,9 @@ void DrumRobot::runPythonInThread()
                 }
 
                 // 폴더 비우기
-                // std::string recordDir = "../magenta/record";
-                // std::string outputMidDir = "../magenta/generated";
-                // std::string outputVelDir = "../magenta/velocity";
+                // string recordDir = "../magenta/record";
+                // string outputMidDir = "../magenta/generated";
+                // string outputVelDir = "../magenta/velocity";
             
                 // func.clear_directory(recordDir);
                 // func.clear_directory(outputMidDir);
@@ -964,10 +968,48 @@ void DrumRobot::runPythonInThread()
             runPython = false;
         }
 
-        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        this_thread::sleep_for(chrono::milliseconds(1));
     }
 }
 
+string DrumRobot::makeStateJson()
+{
+    stringstream oss;
+    int currentState = static_cast<int>(state.main.load());
+    
+    // JSON 형태 조립 {"state": 2, "bpm": 120, "is_fixed": true}
+    oss << "{";
+    oss << "\"state\": " << currentState << ", ";
+    oss << "\"bpm\": " << pathManager.bpmOfScore << ", ";
+    oss << "\"is_fixed\": " << (flagObj.getFixationFlag() ? "true" : "false");
+    oss << "}";
+    
+    return oss.str();
+}
+
+void DrumRobot::broadcastStateThread() 
+{
+    string lastState = ""; // 마지막으로 전송한 상태 JSON 문자열
+    
+    // 로봇이 종료될 때까지 무한 반복
+    while (state.main != Main::Shutdown) {
+        
+        if (agentSocket.isConnected()) {
+            // 1. 현재 로봇의 상태를 JSON으로 조립
+            string jsonState = makeStateJson();
+        
+            // 2. 상태가 변경되었을 경우에만 전송 (중복 방지)
+            if (jsonState != lastState) {
+                agentSocket.sendState(jsonState);
+                lastState = jsonState;
+            }
+        }
+        
+        // 3. 100ms 대기 후 다시 전송
+        this_thread::sleep_for(chrono::milliseconds(100));
+    }
+}
+/*
 void DrumRobot::socketThread() {
     // ---------------------------------------------------------
     // 1. 소켓 설정 (server_test.cpp [1]~[2] 내용 복사)
@@ -1005,7 +1047,7 @@ void DrumRobot::socketThread() {
         return;
     }
     
-    std::cout << ">>> [Socket] Server Thread Started on Port " << PORT << " <<<" << std::endl;
+    cout << ">>> [Socket] Server Thread Started on Port " << PORT << " <<<" << endl;
 
     // ---------------------------------------------------------
     // 2. 연결 수락 및 데이터 수신 루프 (server_test.cpp [3] 개조)
@@ -1014,7 +1056,7 @@ void DrumRobot::socketThread() {
     // 로봇이 켜져있는 동안 계속 반복 (Main::Shutdown이 아닐 때)
     while (state.main != Main::Shutdown) { 
         
-        std::cout << "[Socket] 클라이언트 연결 대기 중..." << std::endl;
+        cout << "[Socket] 클라이언트 연결 대기 중..." << endl;
         
         // accept()는 연결될 때까지 여기서 대기함 (Blocking)
         int new_socket = accept(server_fd, (struct sockaddr *)&address, (socklen_t*)&addrlen);
@@ -1025,7 +1067,7 @@ void DrumRobot::socketThread() {
             continue;
         }
 
-        std::cout << "[Socket] 클라이언트 연결됨!" << std::endl;
+        cout << "[Socket] 클라이언트 연결됨!" << endl;
 
         // 데이터 수신 루프
             char buffer[1024];
@@ -1036,60 +1078,126 @@ void DrumRobot::socketThread() {
             int valread = read(new_socket, buffer, 1024);
             
             if (valread <= 0) { // 연결 끊김
-                std::cout << "[Socket] 클라이언트 연결 해제." << std::endl;
+                cout << "[Socket] 클라이언트 연결 해제." << endl;
                 close(new_socket);
                 break; // 다시 accept 대기 상태로 돌아감
             }
 
-            std::string cmd(buffer);
+            string cmd(buffer);
             
             // ★ 핵심: 받은 명령을 큐에 넣기 (Thread-Safe)
             {
-                std::lock_guard<std::mutex> lock(queueMutex);
+                lock_guard<mutex> lock(queueMutex);
                 commandQueue.push(cmd);
             }
-            std::cout << "[Socket] 명령 수신 및 큐 저장: " << cmd << std::endl;
+            cout << "[Socket] 명령 수신 및 큐 저장: " << cmd << endl;
         }
     }
     
     // 종료 처리
     close(server_fd);
 }
-
+*/
 ////////////////////////////////////////////////////////////////////////////////
 /*                                Ideal State                                 */
 ////////////////////////////////////////////////////////////////////////////////
 
 void DrumRobot::displayAvailableCommands(string flagName) const
 {
-    std::cout << "Available Commands:\n";
+    cout << "Available Commands:\n";
 
     if (state.main == Main::Ideal)
     {
         if (flagName == "isHome")
         {
-            std::cout << "- r : Move to Ready Pos\n";
-            std::cout << "- t : Start Test\n";
-            std::cout << "- s : Shut down the system\n";
-            std::cout << "- u : Update Drum Position\n";
+            cout << "- r : Move to Ready Pos\n";
+            cout << "- t : Start Test\n";
+            cout << "- s : Shut down the system\n";
+            cout << "- u : Update Drum Position\n";
         }
         else if (flagName == "isReady")
         {
-            std::cout << "- p : Play Drumming\n";
-            std::cout << "- t : Start Test\n";
-            std::cout << "- h : Move to Home Pos\n";
-            // std::cout << "- m : Run Python (Magenta)\n";
+            cout << "- p : Play Drumming\n";
+            cout << "- t : Start Test\n";
+            cout << "- h : Move to Home Pos\n";
+            // cout << "- m : Run Python (Magenta)\n";
         }
     }
     else
     {
-        std::cout << "- s : Shut down the system\n";
+        cout << "- s : Shut down the system\n";
     }
 }
 
-void DrumRobot::processInput(const std::string &input, string flagName)
+void DrumRobot::processInput(const string &input, string flagName)
 {
-    if (input == "r" && flagName == "isHome")
+     // 명령어 파싱 ("p:TIM" -> cmd="p", arg="TIM")
+    string cmd = input;
+    string arg = "";
+    
+    size_t delimiterPos = input.find(':');
+    if (delimiterPos != string::npos) {
+        cmd = input.substr(0, delimiterPos);
+        arg = input.substr(delimiterPos + 1);
+    }
+
+    // -------------------------------------------------------
+    // 1. Play (p) 명령 처리 - 자동화 로직 적용
+    // -------------------------------------------------------
+    if (cmd == "p") 
+    {
+        // 곡 이름이 함께 왔다면 설정 (예: p:TIM)
+        if (!arg.empty()) {
+            nextSongCode = arg; 
+            cout << ">>> [Select] 곡 설정: " << arg << endl;
+        }
+
+        // [핵심] 현재 상태가 Ready가 아니라면 (예: Home 상태)
+        if (flagName != "isReady") {
+            cout << ">>> [Auto] 연주를 위해 Ready 자세로 먼저 이동합니다..." << endl;
+            
+            // 1) Ready 플래그 설정
+            flagObj.setAddStanceFlag(FlagClass::READY);
+            
+            // 2) 자세 이동 실행 (이 함수는 모터가 다 움직일 때까지 대기함 - Source 164)
+            runAddStanceProcess(); 
+            
+            // runAddStanceProcess 내부에서 state.main을 Ideal로 되돌리므로,
+            // 여기서 다시 Play 흐름을 이어가야 합니다.
+        }
+
+        // 3) Ready 상태가 보장되었으므로 Play 모드 진입
+        cout << ">>> [Action] 연주를 시작합니다." << endl;
+        state.main = Main::Play;
+    }
+
+    // -------------------------------------------------------
+    // 2. Ready (r) 명령 처리
+    // -------------------------------------------------------
+    else if (cmd == "r")
+    {
+        // 이미 Ready 상태면 무시하거나 메시지 출력
+        if (flagName == "isReady") {
+            cout << ">>> 이미 준비된 상태입니다." << endl;
+        } 
+        else {
+            flagObj.setAddStanceFlag(FlagClass::READY);
+            state.main = Main::AddStance;
+        }
+    }
+
+    // -------------------------------------------------------
+    // 3. Home (h) 명령 처리
+    // -------------------------------------------------------
+    else if (cmd == "h")
+    {
+        // Play 중에는 h 명령이 안 먹히므로(Ideal 상태에서만 processInput 호출), 
+        // Ready 상태에서만 Home으로 갈 수 있게 유지
+        flagObj.setAddStanceFlag(FlagClass::HOME);
+        state.main = Main::AddStance;
+    }
+
+    /*if (input == "r" && flagName == "isHome")
     {
         flagObj.setAddStanceFlag(FlagClass::READY);
         state.main = Main::AddStance;
@@ -1107,14 +1215,15 @@ void DrumRobot::processInput(const std::string &input, string flagName)
         pathManager.setDrumCoordinate();
         pathManager.setAddStanceAngle();
 
-        std::cout << "\nUpdate Drum Position!!!\n";
+        cout << "\nUpdate Drum Position!!!\n";
         sleep(1);
     }
     else if (input == "h" && flagName == "isReady")
     {
         flagObj.setAddStanceFlag(FlagClass::HOME);
         state.main = Main::AddStance;
-    }
+    }*/
+   
     else if (input == "s" && flagName == "isHome")
     {
         flagObj.setAddStanceFlag(FlagClass::SHUTDOWN);
@@ -1126,7 +1235,7 @@ void DrumRobot::processInput(const std::string &input, string flagName)
     }
     else
     {
-        std::cout << "Invalid command or not allowed in current state!\n";
+        cout << "Invalid command or not allowed in current state!\n";
     }
 }
 
@@ -1140,8 +1249,8 @@ void DrumRobot::idealStateRoutine()
         string check;
         do
         {
-            std::cout << ">>> 키 뽑았는지 확인 (k 입력): ";
-            std::getline(std::cin, check);
+            cout << ">>> 키 뽑았는지 확인 (k 입력): ";
+            getline(cin, check);
         } while (check != "k");
         isLockKeyRemoved = true;
     }
@@ -1165,29 +1274,30 @@ void DrumRobot::idealStateRoutine()
             return;
         }
 
-        string input = "";
-
         // ========================================================
-        // [수정 핵심] 키보드 입력(cin) 대기 -> 큐(Queue) 확인으로 변경
+        // [수정 핵심] 큐(Queue) 확인으로 변경
         // ========================================================
         
-        // 3. 큐 확인 (자물쇠 잠그고 확인)
-        {
-            std::lock_guard<std::mutex> lock(queueMutex);
-            if (!commandQueue.empty())
-            {
-                input = commandQueue.front();
-                commandQueue.pop();
-                cout << "[Main] 명령 수신: " << input << endl;
-            }
-        }
+        // 3. 명령 수신 (소켓에서 명령이 오면 popCommand로 꺼내옴)
+        string input = agentSocket.popCommand();
 
         // 4. 명령 처리
         if (!input.empty())
         {
-            processInput(input, flag);
+            // (A) 상태 제어 명령 (r, p, h, s, t, u) -> 기존 상태 머신(processInput)으로
+            // p:TIM 처럼 콜론이 붙은 곡 선택 명령도 포함
+            if (input == "r" || input == "h" || input == "s" || input == "t" || input == "u" || 
+                input.rfind("p", 0) == 0) // "p"로 시작하는 경우 (p 또는 p:TIM)
+            {
+                processInput(input, flag);
+            }
+            // (B) 행동 제어 명령 (look, gesture, led, move) -> AgentAction으로 직행
+            else 
+            {
+                // state 변경 없이 즉시 행동 수행
+                agentAction.executeCommand(input); 
+            }
         }
-        
         // 5. [필수] CPU 폭주 방지 (1ms 대기)
         else
         {
@@ -1239,52 +1349,52 @@ void DrumRobot::setSyncTime(int waitingTimeMillisecond)
     // wait time + sync time 더해서 기다릴수 있도록 세팅 여기서 세팅된 시간이 pathManager 에서 기다리게 된다.   
     // 싱크 타임이 두개 거나 악보 읽는것도 두개거나
     // txt 파일 시간 읽어오기
-    std::ifstream infile(syncPath);
-    std::string time_str;
+    ifstream infile(syncPath);
+    string time_str;
     if (!infile || !(infile >> time_str)) {
-        std::cerr << "sync.txt 파일을 읽을 수 없습니다.\n" << syncPath;
+        cerr << "sync.txt 파일을 읽을 수 없습니다.\n" << syncPath;
         return;
     }
 
     // HH:MM:SS.mmm 파싱
     int hour, min, sec, millis;
     char sep1, sep2, dot;
-    std::istringstream iss(time_str);
+    istringstream iss(time_str);
     if (!(iss >> hour >> sep1 >> min >> sep2 >> sec >> dot >> millis)) {
-        std::cerr << "시간 형식 파싱 실패\n";
+        cerr << "시간 형식 파싱 실패\n";
         return;
     }
 
-    auto now = std::chrono::system_clock::now();
-    time_t tt = std::chrono::system_clock::to_time_t(now);
-    tm* local_tm = std::localtime(&tt);
+    auto now = chrono::system_clock::now();
+    time_t tt = chrono::system_clock::to_time_t(now);
+    tm* local_tm = localtime(&tt);
     local_tm->tm_hour = hour;
     local_tm->tm_min = min;
     local_tm->tm_sec = sec;
-    auto base_time = std::chrono::system_clock::from_time_t(std::mktime(local_tm)) + std::chrono::milliseconds(millis);
+    auto base_time = chrono::system_clock::from_time_t(mktime(local_tm)) + chrono::milliseconds(millis);
 
-    std::remove(syncPath.c_str());      // syncTime 업데이트 하고 sync.txt 바로 지움
+    remove(syncPath.c_str());      // syncTime 업데이트 하고 sync.txt 바로 지움
     
-    syncTime = base_time + std::chrono::milliseconds(waitingTimeMillisecond);
+    syncTime = base_time + chrono::milliseconds(waitingTimeMillisecond);
     setWaitingTime = true;
 }
 
-void DrumRobot::displayPlayCommands(bool useMagenta, bool useDrumPad, float inputWaitMs, std::string txtFileName)
+void DrumRobot::displayPlayCommands(bool useMagenta, bool useDrumPad, float inputWaitMs, string txtFileName)
 {
     int ret = system("clear");
-    if (ret == -1) std::cout << "system clear error" << endl;
+    if (ret == -1) cout << "system clear error" << endl;
 
     // magenta or code name
     if(useMagenta)
     {
-        std::cout << "magenta: On \n";
-        std::cout << "trigger: Play When The Drum Pad is Struck. \n";
-        std::cout << "args:\n";
+        cout << "magenta: On \n";
+        cout << "trigger: Play When The Drum Pad is Struck. \n";
+        cout << "args:\n";
         
         int argsSize = delayTime.size();
         if (repeatNum == argsSize)
         {
-            std::cout << "\t- Repeat Num:" << repeatNum << "\n";
+            cout << "\t- Repeat Num:" << repeatNum << "\n";
             for (int i = 0; i < repeatNum; i++)
             {
                 float a, b, c, d;
@@ -1292,76 +1402,75 @@ void DrumRobot::displayPlayCommands(bool useMagenta, bool useDrumPad, float inpu
                 delayTime.pop(); recordBarNum.pop(); makeBarNum.pop(); waitTime.pop();
                 delayTime.push(a); recordBarNum.push(b); makeBarNum.push(c); waitTime.push(d);
 
-                std::cout << "\t- " << i + 1 << "번째 Delay Time/Record Bar/Make Bar/Wait Time - (" << a << "/" << b << "/" << c << "/" << d << ") (s)\n";
+                cout << "\t- " << i + 1 << "번째 Delay Time/Record Bar/Make Bar/Wait Time - (" << a << "/" << b << "/" << c << "/" << d << ") (s)\n";
             }
         }
         else
         {
-            std::cout << "\t- Arguments Required\n";
+            cout << "\t- Arguments Required\n";
         }
     }
     else
     {
-        std::cout << "magenta: Off \n";
-        std::cout << "code: " << txtFileName << "\n";
+        cout << "magenta: Off \n";
+        cout << "code: " << txtFileName << "\n";
 
         if (useDrumPad)
         {
-            std::cout << "trigger: Play When The Drum Pad is Struck (" << inputWaitMs/1000.0 << "s)\n";
+            cout << "trigger: Play When The Drum Pad is Struck (" << inputWaitMs/1000.0 << "s)\n";
         }
         else
         {
-            std::cout << "trigger: Play After a Set Time Delay (" << inputWaitMs/1000.0 << "s)\n";
+            cout << "trigger: Play After a Set Time Delay (" << inputWaitMs/1000.0 << "s)\n";
         }
     }
 
     // bpm
-    std::cout << "bpm: " << pathManager.bpmOfScore << "\n";
+    cout << "bpm: " << pathManager.bpmOfScore << "\n";
     
     // maxon motor mode
-    std::cout << "Maxon Motor Mode: ";
+    cout << "Maxon Motor Mode: ";
     if (pathManager.maxonMode == "unknown")
-        std::cout << "unknown \n";
+        cout << "unknown \n";
     else if (pathManager.maxonMode == "CST")
-        std::cout << "CST mode \n";
+        cout << "CST mode \n";
     else
-        std::cout << "CSP mode \n";
-
+        cout << "CSP mode \n";
     // Tmotor mode
-    std::cout << "Tmotor Mode: ";
+    cout << "Tmotor Mode: ";
     if (pathManager.tmotorMode == "unknown")
-        std::cout << "unknown \n";
+        cout << "unknown \n";
     // else if (pathManager.tmotorMode == "velocityFF")
-    //     std::cout << "velocity control mode (only Feedforward) \n";
+    //     cout << "velocity control mode (only Feedforward) \n";
     // else if (pathManager.tmotorMode == "velocityFB")
-    //     std::cout << "velocity control mode (only Feedback) \n";
+    //     cout << "velocity control mode (only Feedback) \n";
     else if (pathManager.tmotorMode == "velocity")
-        std::cout << "velocity control mode \n";
+        cout << "velocity control mode \n";
     else
-        std::cout << "position control mode \n";
+        cout << "position control mode \n";
     
     // music
     if (playMusic)
     {
-        std::cout << "music: Drumming With Music \n";
-        std::cout << "\t- path:" << wavPath << "\n";
+        cout << "music: Drumming With Music \n";
+        cout << "\t- path:" << wavPath << "\n";
     }
     else
     {
-        std::cout << "music: Just Drumming \n";
+        cout << "music: Just Drumming \n";
     }
     
-    std::cout << "\nEnter Commad (magenta, ";
+    cout << "\nEnter Command (magenta, ";
     if (useMagenta)
-        std::cout << "args, ";
+        cout << "args, ";
     else
-        std::cout << "code, trigger, ";
-    std::cout << "bpm, modeM, modeT, music, run, exit): ";
+        cout << "code, trigger, ";
+    cout << "bpm, modeM, modeT, music, run, exit): ";
 }
 
 void DrumRobot::setPythonArgs()
 {
-    std::cout << "\n반복 횟수: ";
+    cout << "\n반복 횟수: ";
     cin >> repeatNum;
 
     // 큐 초기화 (모든 요소 삭제)
@@ -1384,26 +1493,26 @@ void DrumRobot::setPythonArgs()
         int dT, rT, mT;
         float wT;
         
-        std::cout << "\n" << i + 1 << "번째 delay time: ";
+        cout << "\n" << i + 1 << "번째 delay time: ";
         cin >> dT;
         
         do{ 
-            std::cout << i + 1 << "번째 record bar number: ";
+            cout << i + 1 << "번째 record bar number: ";
             cin >> rT;
             if (rT % 2 == 1)
-                std::cout << "녹음 마디 갯수는 2의 배수여야 합니다.\n";
+                cout << "녹음 마디 갯수는 2의 배수여야 합니다.\n";
         }while(rT % 2 == 1);
         
         do{
-            std::cout << i + 1 << "번째 make bar number: ";
+            cout << i + 1 << "번째 make bar number: ";
             cin >> mT;
             if(mT % 2 == 1)
-                std::cout << "생성 마디 갯수는 2의 배수여야 합니다.\n";
+                cout << "생성 마디 갯수는 2의 배수여야 합니다.\n";
             if(mT > 3*rT)
-                std::cout << "생성 마디 갯수는 녹음 마디의 3배 이하여하 합니다.\n";
+                cout << "생성 마디 갯수는 녹음 마디의 3배 이하여하 합니다.\n";
         }while(mT % 2 == 1 || mT > 3*rT);
 
-        std::cout << i + 1 << "번째 wait time: ";
+        cout << i + 1 << "번째 wait time: ";
         cin >> wT;
 
         delayTime.push(dT);
@@ -1413,7 +1522,7 @@ void DrumRobot::setPythonArgs()
     }
 }
 
-bool DrumRobot::checkPreconditions(bool useMagenta, std::string txtPath)
+bool DrumRobot::checkPreconditions(bool useMagenta, string txtPath)
 {
     if (useMagenta)
     {
@@ -1448,27 +1557,27 @@ bool DrumRobot::checkPreconditions(bool useMagenta, std::string txtPath)
     return true;
 }
 
-std::string DrumRobot::selectPlayMode()
+string DrumRobot::selectPlayMode()
 {
-    std::string userInput;
+    string userInput;
     int cnt = 0;    // 입력 횟수 (일정 횟수 초과되면 오류)
     const int maxAttempts = 999;    // 최대 시도 횟수
 
-    std::string errCode = "null"; // Ideal 로 이동
+    string errCode = "null"; // Ideal 로 이동
 
     bool useMagenta = false;
     bool useDrumPad = false;
     int mode = 1;
     int triggerMode = 1;
     float inputWaitMs = 3000.0; // 3s
-    static std::string txtFileName = "null";
-    std::string txtPath = txtBaseFolderPath + txtFileName;;
-    std::string wavFileName = "null";
+    static string txtFileName = "null";
+    string txtPath = txtBaseFolderPath + txtFileName;;
+    string wavFileName = "null";
 
     while(cnt < maxAttempts)
     {
         displayPlayCommands(useMagenta, useDrumPad, inputWaitMs, txtFileName);
-        std::cin >> userInput;
+        cin >> userInput;
 
         if (userInput == "magenta")
         {
@@ -1485,18 +1594,18 @@ std::string DrumRobot::selectPlayMode()
         }
         else if (userInput == "code" && (!useMagenta))
         {
-            std::cout << "\nEnter Music Code Name: ";
-            std::cin >> txtFileName;
+            cout << "\nEnter Music Code Name: ";
+            cin >> txtFileName;
 
             txtPath = txtBaseFolderPath + txtFileName;
             repeatNum = 1;
         }
         else if (userInput == "trigger" && (!useMagenta))
         {
-            std::cout << "\nEnter Trigger Mode (Play After a Set Time Delay : 1 / Play When The Drum Pad is Struck : 0): ";
-            std::cin >> triggerMode;
-            std::cout << "Enter Waiting Time: ";
-            std::cin >> inputWaitMs;
+            cout << "\nEnter Trigger Mode (Play After a Set Time Delay : 1 / Play When The Drum Pad is Struck : 0): ";
+            cin >> triggerMode;
+            cout << "Enter Waiting Time: ";
+            cin >> inputWaitMs;
             inputWaitMs *= 1000;
 
             if (triggerMode == 1)
@@ -1508,45 +1617,46 @@ std::string DrumRobot::selectPlayMode()
         {
             do
             {
-                std::cout << "\nEnter Initial BPM of Music: ";
-                std::cin >> pathManager.bpmOfScore;
+                cout << "\nEnter Initial BPM of Music: ";
+                cin >> pathManager.bpmOfScore;
+
                 if (pathManager.bpmOfScore <= 0)
                 {
-                    std::cout << "\nInvalid Input (BPM <= 0)\n";
+                    cout << "\nInvalid Input (BPM <= 0)\n";
                 }
+
             } while (pathManager.bpmOfScore <= 0);
         }
         else if (userInput == "modeM")
         {
             do
             {
-                std::cout << "\nEnter Maxon Control Mode (CSP: 1 / CST: 0): ";
-                std::cin >> mode;
+                cout << "\nEnter Maxon Control Mode (CSP: 1 / CST: 0): ";
+                cin >> mode;
 
                 if (mode == 0)
                 {
                     pathManager.maxonMode = "CST";
 
                     // Kp 값 입력받기
-                    std::cout << "Kp: ";
-                    std::cin >> pathManager.Kp;
+                    cout << "Kp: ";
+                    cin >> pathManager.Kp;
 
                     // Kd 값 입력받기
-                    std::cout << "Kd: ";
-                    std::cin >> pathManager.Kd;
+                    cout << "Kd: ";
+                    cin >> pathManager.Kd;
 
                     // Kd 값 입력받기
-                    std::cout << "KdDrop: ";
-                    std::cin >> pathManager.KdDrop;
+                    cout << "KdDrop: ";
+                    cin >> pathManager.KdDrop;
 
                     // KpMin 값 입력받기
-                    std::cout << "KpMin (0~1): ";
-                    std::cin >> pathManager.kpMin;
+                    cout << "KpMin (0~1): ";
+                    cin >> pathManager.kpMin;
 
                     // KpMax 값 입력받기
-                    std::cout << "KpMax: ";
-                    std::cin >> pathManager.kpMax;
-
+                    cout << "KpMax: ";
+                    cin >> pathManager.kpMax;
                 }
                 else if (mode == 1)
                 {
@@ -1554,7 +1664,7 @@ std::string DrumRobot::selectPlayMode()
                 }
                 else
                 {
-                    std::cout << "\nInvalid Input\n";
+                    cout << "\nInvalid Input\n";
                     pathManager.maxonMode = "unknown";
                 }
             } while (pathManager.maxonMode == "unknown");
@@ -1563,8 +1673,8 @@ std::string DrumRobot::selectPlayMode()
         {
             do
             {
-                std::cout << "\nEnter Tmotor Control Mode (position: 1 / velocity: 2): ";
-                std::cin >> mode;
+                cout << "\nEnter Tmotor Control Mode (position: 1 / velocity: 2): ";
+                cin >> mode;
 
                 if (mode == 1)
                 {
@@ -1584,7 +1694,7 @@ std::string DrumRobot::selectPlayMode()
                 // }
                 else
                 {
-                    std::cout << "\nInvalid Input\n";
+                    cout << "\nInvalid Input\n";
                     pathManager.tmotorMode = "unknown";
                 }
             } while (pathManager.tmotorMode == "unknown");
@@ -1597,8 +1707,8 @@ std::string DrumRobot::selectPlayMode()
             }
             else
             {
-                std::cout << "\nEnter Music Name: ";
-                std::cin >> wavFileName;
+                cout << "\nEnter Music Name: ";
+                cin >> wavFileName;
                 wavPath = wavBaseFolderPath + wavFileName + ".wav";
                 playMusic = true;
             }
@@ -1612,9 +1722,9 @@ std::string DrumRobot::selectPlayMode()
                     pythonArgs = "--record";
                     runPython = true;
 
-                    std::string txtIndexPath = txtPath + "0.txt";
-                    while (!std::filesystem::exists(txtIndexPath)) {
-                        std::this_thread::sleep_for(std::chrono::milliseconds(1)); // 1ms 대기
+                    string txtIndexPath = txtPath + "0.txt";
+                    while (!filesystem::exists(txtIndexPath)) {
+                        this_thread::sleep_for(chrono::milliseconds(1)); // 1ms 대기
                     }
 
                     inputWaitMs = waitTime.front() * 1000;
@@ -1624,19 +1734,19 @@ std::string DrumRobot::selectPlayMode()
                 else if (useDrumPad)
                 {
                     // ★★★ [여기 추가] 출발 전 기존 파일 삭제 (좀비 파일 제거) ★★★
-                    //std::remove(syncPath.c_str());
+                    //remove(syncPath.c_str());
                     pythonArgs = "--sync";
                     runPython = true;
 
-                    while (!std::filesystem::exists(syncPath)) {
-                        std::this_thread::sleep_for(std::chrono::milliseconds(1)); // 1ms 대기
+                    while (!filesystem::exists(syncPath)) {
+                        this_thread::sleep_for(chrono::milliseconds(1)); // 1ms 대기
                     }
 
                     setSyncTime((int)inputWaitMs);
                 }
                 else
                 {
-                    syncTime = std::chrono::system_clock::now() + std::chrono::milliseconds((int)inputWaitMs);
+                    syncTime = chrono::system_clock::now() + chrono::milliseconds((int)inputWaitMs);
                     setWaitingTime = true;
                 }
                 
@@ -1644,7 +1754,7 @@ std::string DrumRobot::selectPlayMode()
             }
             else
             {
-                std::cout << "\nInvalid Command\n";
+                cout << "\nInvalid Command\n";
                 sleep(1);
             }
         }
@@ -1654,23 +1764,23 @@ std::string DrumRobot::selectPlayMode()
         }
         else
         {
-            std::cout << "\nInvalid Command\n";
+            cout << "\nInvalid Command\n";
             sleep(1);
         }
 
         cnt++;
     }
 
-    std::cout << "\n입력을 시도한 횟수가 " << maxAttempts << " 이상입니다\n";
+    cout << "\n입력을 시도한 횟수가 " << maxAttempts << " 이상입니다\n";
     sleep(1);
 
     return errCode;
 }
 
-string DrumRobot::trimWhitespace(const std::string &str)
+string DrumRobot::trimWhitespace(const string &str)
 {
     size_t first = str.find_first_not_of(" \t");
-    if (std::string::npos == first)
+    if (string::npos == first)
     {
         return str;
     }
@@ -1710,9 +1820,9 @@ bool DrumRobot::readMeasure(ifstream& inputFile)
 
         if (items[0] == "bpm")                          // bpm 변경 코드
         {
-            // std::cout << "\n bpm : " << pathManager.bpmOfScore;
+            // cout << "\n bpm : " << pathManager.bpmOfScore;
             pathManager.bpmOfScore = stod(items[1]);
-            // std::cout << " -> " << pathManager.bpmOfScore << "\n";
+            // cout << " -> " << pathManager.bpmOfScore << "\n";
         }
         else if (items[0] == "end")                     // 종료 코드
         {
@@ -1749,27 +1859,95 @@ bool DrumRobot::readMeasure(ifstream& inputFile)
 
     // // 루프가 끝난 후, 실패 원인 분석
     // if (inputFile.eof()) {
-    //     std::cout << "getline()이 파일 끝(EOF)에 도달하여 종료되었습니다." << std::endl;
+    //     cout << "getline()이 파일 끝(EOF)에 도달하여 종료되었습니다." << endl;
     // }
     // else if (inputFile.fail()) {
-    //     std::cout << "getline()이 논리적 오류로 실패했습니다." << std::endl;
+    //     cout << "getline()이 논리적 오류로 실패했습니다." << endl;
     // }
     // else if (inputFile.bad()) {
-    //     std::cout << "getline()이 심각한 I/O 오류로 실패했습니다." << std::endl;
+    //     cout << "getline()이 심각한 I/O 오류로 실패했습니다." << endl;
     // }
-    // std::cout << measureMatrix;
+    // cout << measureMatrix;
     return false;
 }
 
 void DrumRobot::runPlayProcess()
 {
-    std::string txtPath;
-    std::string txtIndexPath;
+    string txtPath;
+    string txtIndexPath;
     int fileIndex = 0;
 
-    // 초기화
+    // 1. 초기화
     initializePlayState();
 
+    // =========================================================================
+    // [수정] Agent 모드: selectPlayMode(키보드 입력) 제거 -> 변수 기반 자동 설정
+    // =========================================================================
+
+    // (1) 곡 이름 확인 (processInput에서 p:TIM 등으로 설정된 값)
+    if (nextSongCode.empty()) {
+        nextSongCode = "test_one"; // 기본값 설정 (안전장치)
+    }
+
+    cout << ">>> [Agent] Auto-Start Playing: " << nextSongCode << endl;
+
+    // (2) 파일 경로 완성 (예: ../include/codes/TIM)
+    txtPath = txtBaseFolderPath + nextSongCode; // 경로 완성
+
+    // (3) 파일 존재 여부 확인 (TIM0.txt가 있는지 체크)
+    // C++ 로직상 파일명 뒤에 숫자(Index)와 .txt가 붙으므로 0번 파일을 체크함 [Source 203]
+    string checkPath = txtPath + "0.txt";
+    if (!filesystem::exists(checkPath)) 
+    {
+        cout << ">>> [Error] 악보 파일을 찾을 수 없습니다: " << checkPath << endl;
+        cout << ">>> 대기 모드(Home)로 복귀합니다." << endl;
+        
+        // 파일을 못 찾으면 Ideal 상태로 복귀
+        state.main = Main::Ideal; 
+        flagObj.setAddStanceFlag(FlagClass::HOME);
+        return;
+    }
+
+    // (4) 연주 설정 강제 주입 (기존에 키보드로 입력받던 값들)
+    bool useMagenta = false; // Magenta 뇌는 아직 안 씀
+    repeatNum = 1;           // 1번만 연주
+    currentIterations = 1;   // 반복 카운트 초기화
+    
+    
+    // LED 켜기
+    arduino.setHeadLED(Arduino::PLAYING);
+
+    // =================================================================
+    // [추가] 에이전트 모드용 하드웨어 기본 설정 (Manual 입력 대체)
+    // =================================================================
+    
+    // 1. BPM 기본값 설정 (악보 파일에 bpm 태그가 없으면 이 속도로 연주)
+    if (pathManager.bpmOfScore <= 0) {
+        pathManager.bpmOfScore = 100.0; // 기본 100 BPM
+    }
+
+    // 2. 모터 제어 모드 확정 (CSP: 위치 제어)
+    // (InitializePos에서 이미 했지만, 안전을 위해 확실히 고정)
+    if (pathManager.maxonMode == "unknown" || pathManager.maxonMode.empty()) {
+        pathManager.maxonMode = "CSP"; 
+    }
+    if (pathManager.tmotorMode == "unknown" || pathManager.tmotorMode.empty()) {
+        pathManager.tmotorMode = "position";
+    }
+    
+    // Maxon 모터 게인(Gain) 값 설정 (기존 selectPlayMode에서 입력받던 값들)
+    // CSP 모드는 게인이 필요 없으므로(0), CST일 때만 필요한 값들을 0으로 초기화
+    pathManager.Kp = 300.0;
+    pathManager.Kd = 30.0; 
+    pathManager.KdDrop = 30.0;
+    pathManager.kpMin = 1;
+    pathManager.kpMax = 300.0;
+    
+    // [추가] "자동 엔터" 역할
+    cout << ">>> [System] 연주 시작 트리거 (Start)" << endl;
+    pathManager.startOfPlay = true;  
+    // =================================================================
+    /*
     // 모드 세팅
     if (repeatNum == currentIterations) // == 1
     {
@@ -1790,27 +1968,27 @@ void DrumRobot::runPlayProcess()
         currentIterations++;
         txtPath = magentaCodePath;
 
-        txtIndexPath = txtPath + std::to_string(fileIndex) + ".txt";
-        while (!std::filesystem::exists(txtIndexPath)) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(1)); // 100ms 대기
+        txtIndexPath = txtPath + to_string(fileIndex) + ".txt";
+        while (!filesystem::exists(txtIndexPath)) {
+            this_thread::sleep_for(chrono::milliseconds(1)); // 100ms 대기
         }
 
         float inputWaitMs = waitTime.front() * 1000;
         waitTime.pop();
         setSyncTime((int)inputWaitMs);
     }
-
+    */
     while (!endOfScore)
     {
-        std::ifstream inputFile;
-        txtIndexPath = txtPath + std::to_string(fileIndex) + ".txt";
+        ifstream inputFile;
+        txtIndexPath = txtPath + to_string(fileIndex) + ".txt";
         inputFile.open(txtIndexPath); // 파일 열기
 
         if (inputFile.is_open())     //////////////////////////////////////// 파일 열기 성공
         {
-            if (inputFile.peek() == std::ifstream::traits_type::eof())
+            if (inputFile.peek() == ifstream::traits_type::eof())
             {
-                std::cout << "\n - The file exists, but it is empty.\n";
+                cout << "\n - The file exists, but it is empty.\n";
                 inputFile.close();          // 파일 닫기
                 usleep(100);                // 대기 : 악보 작성 중 
             }
@@ -1838,14 +2016,14 @@ void DrumRobot::runPlayProcess()
                 inputFile.close(); // 파일 닫기
                 fileIndex++;    // 다음 파일 열 준비
 
-                // std::cout << "\nfileIndex : " << fileIndex << "\n";
+                // cout << "\nfileIndex : " << fileIndex << "\n";
             }
         }
         else     //////////////////////////////////////////////////////////// 파일 열기 실패
         {
             if (fileIndex == 0)                                             ////////// 1. Play 시작도 못한 경우 (악보 입력 오타 등) -> Ideal 로 이동
             {
-                std::cout << "not find " << txtIndexPath << "\n";
+                cout << "not find " << txtIndexPath << "\n";
                 sleep(1);
 
                 repeatNum = 1;
@@ -1856,7 +2034,7 @@ void DrumRobot::runPlayProcess()
             }
             else if (flagObj.getFixationFlag() && (!allMotorsUnConected))   ////////// 2. 로봇 상태가 fixed 로 변경 (악보가 들어오기 전 명령 소진) -> 에러
             {
-                std::cout << "Error : not find " << txtIndexPath << "\n";
+                cout << "Error : not find " << txtIndexPath << "\n";
                 state.main = Main::Error;
                 return;
             }
@@ -1879,31 +2057,31 @@ void DrumRobot::runPlayProcess()
         // 악보 파일 저장 후 삭제
         for (int i = 0; i < fileIndex; i++)
         {
-            txtIndexPath = txtPath + std::to_string(i) + ".txt";
+            txtIndexPath = txtPath + to_string(i) + ".txt";
 
             // 현재 시간 가져오기
-            auto now = std::chrono::system_clock::now();
-            std::time_t t = std::chrono::system_clock::to_time_t(now);
-            std::tm localTime = *std::localtime(&t);
+            auto now = chrono::system_clock::now();
+            time_t t = chrono::system_clock::to_time_t(now);
+            tm localTime = *localtime(&t);
 
             // 시간 문자열 생성 (MMDDHHMM)
-            std::ostringstream timeStream;
-            timeStream << std::setw(2) << std::setfill('0') << localTime.tm_mon + 1   // 월
-                    << std::setw(2) << std::setfill('0') << localTime.tm_mday       // 일
-                    << std::setw(2) << std::setfill('0') << localTime.tm_hour       // 시
-                    << std::setw(2) << std::setfill('0') << localTime.tm_min;       // 분
-            std::string timeStr = timeStream.str();
+            ::ostringstream timeStream;
+            timeStream << ::setw(2) << setfill('0') << localTime.tm_mon + 1   // 월
+                    << setw(2) << setfill('0') << localTime.tm_mday       // 일
+                    << setw(2) << setfill('0') << localTime.tm_hour       // 시
+                    << setw(2) << setfill('0') << localTime.tm_min;       // 분
+            string timeStr = timeStream.str();
             
-            std::string saveFolder = "../../DrumRobot_data/codes/";
+            string saveFolder = "../../DrumRobot_data/codes/";
 
-            std::string saveCode = saveFolder + "save_code_" + timeStr + "_" + std::to_string(currentIterations-1) + std::to_string(i+1) + ".txt";
+            string saveCode = saveFolder + "save_code_" + timeStr + "_" + to_string(currentIterations-1) + to_string(i+1) + ".txt";
 
-            std::filesystem::rename(txtIndexPath.c_str(), saveCode.c_str());
-            std::remove(txtIndexPath.c_str());
+            filesystem::rename(txtIndexPath.c_str(), saveCode.c_str());
+            remove(txtIndexPath.c_str());
         }
     }
 
-    std::cout << "Play is Over\n";
+    cout << "Play is Over\n";
     if (repeatNum == currentIterations)
     {
         flagObj.setAddStanceFlag(FlagClass::HOME); // 연주 종료 후 Home 으로 이동
@@ -1922,7 +2100,7 @@ void DrumRobot::runPlayProcess()
 /*                                                                            */
 ////////////////////////////////////////////////////////////////////////////////
 
-void DrumRobot::generateCodeFromMIDI(std::string midPath, std::string veloPath, int recordingIndex, bool startFlag, bool endFlag)
+void DrumRobot::generateCodeFromMIDI(string midPath, string veloPath, int recordingIndex, bool startFlag, bool endFlag)
 {
     // 경로 설정
     filesystem::path outputPath1 = "../include/magenta/output1_drum_hits_time.csv"; 
@@ -1933,9 +2111,9 @@ void DrumRobot::generateCodeFromMIDI(std::string midPath, std::string veloPath, 
     filesystem::path outputPath5 = "../include/magenta/output5_vel.txt";
     filesystem::path outputPath6 = "../include/magenta/output6_add_groove.txt";
 
-    filesystem::path outputPath = magentaCodePath + std::to_string(recordingIndex) + ".txt";
+    filesystem::path outputPath = magentaCodePath + to_string(recordingIndex) + ".txt";
 
-    std::string outputVel = "../include/magenta/vel_output.txt";
+    string outputVel = "../include/magenta/vel_output.txt";
 
     // mid 파일 받아서 악보 생성하기
     size_t pos;
@@ -1943,7 +2121,7 @@ void DrumRobot::generateCodeFromMIDI(std::string midPath, std::string veloPath, 
     // int initial_setting_flag = 0;
     double note_on_time = 0;
 
-    std::vector<unsigned char> midiData;
+    vector<unsigned char> midiData;
 
     if (filesystem::exists(midPath) && flagObj.getAddStanceFlag() == "isReady")
     {
@@ -1957,7 +2135,7 @@ void DrumRobot::generateCodeFromMIDI(std::string midPath, std::string veloPath, 
 
     while (pos + 8 <= midiData.size()) {
         if (!(midiData[pos] == 'M' && midiData[pos+1] == 'T' && midiData[pos+2] == 'r' && midiData[pos+3] == 'k')) {
-            // std::cerr << "MTrk expected at pos " << pos << "\n";
+            // cerr << "MTrk expected at pos " << pos << "\n";
             break;
         }
         size_t trackLength = (midiData[pos+4] << 24) |
@@ -2000,23 +2178,23 @@ void DrumRobot::generateCodeFromMIDI(std::string midPath, std::string veloPath, 
         
         func.convertToMeasureFile(outputPath6, outputPath, startFlag, endFlag);
 
-        std::remove(outputPath1.c_str());      // 중간 단계 txt 파일 삭제
-        std::remove(outputPath2.c_str());
-        std::remove(outputPath3.c_str());
-        std::remove(outputPath4.c_str());
+        remove(outputPath1.c_str());      // 중간 단계 txt 파일 삭제
+        remove(outputPath2.c_str());
+        remove(outputPath3.c_str());
+        remove(outputPath4.c_str());
 
-        std::remove(outputPath5.c_str());
-        std::remove(outputPath6.c_str());
-        std::remove(outputVel.c_str());
+        remove(outputPath5.c_str());
+        remove(outputPath6.c_str());
+        remove(outputVel.c_str());
     }
     else
     {
         func.convertToMeasureFile(outputPath4, outputPath, startFlag, endFlag);
 
-        std::remove(outputPath1.c_str());      // 중간 단계 txt 파일 삭제
-        std::remove(outputPath2.c_str());
-        std::remove(outputPath3.c_str());
-        std::remove(outputPath4.c_str());
+        remove(outputPath1.c_str());      // 중간 단계 txt 파일 삭제
+        remove(outputPath2.c_str());
+        remove(outputPath3.c_str());
+        remove(outputPath4.c_str());
     }
 }
 
@@ -2156,7 +2334,7 @@ void DXL::syncWrite(vector<vector<float>> command)
 {
     if (useDXL)
     {
-        sw = std::make_unique<dynamixel::GroupSyncWrite>(port, pkt, 108, 12);
+        sw = make_unique<dynamixel::GroupSyncWrite>(port, pkt, 108, 12);
 
         int numDxl = motorIDs.size();
         for (int i = 0; i < numDxl; i++)
@@ -2179,9 +2357,9 @@ void DXL::syncWrite(vector<vector<float>> command)
     }
 }
 
-std::map<int, float> DXL::syncRead()
+map<int, float> DXL::syncRead()
 {
-    std::map<int, float> dxlData;
+    map<int, float> dxlData;
 
     if (useDXL)
     {
@@ -2195,7 +2373,7 @@ std::map<int, float> DXL::syncRead()
         // 데이터 요청
         int dxl_comm_result = groupSyncRead.txRxPacket();
         if (dxl_comm_result != COMM_SUCCESS) {
-            std::cerr << "SyncRead failed" << std::endl;
+            cerr << "SyncRead failed" << endl;
             return dxlData; // 빈 map 반환
         }
 
@@ -2209,7 +2387,7 @@ std::map<int, float> DXL::syncRead()
             }
             else
             {
-                std::cerr << "[ID:" << id << "] data not available!" << std::endl;
+                cerr << "[ID:" << id << "] data not available!" << endl;
             }
         }
 
@@ -2223,11 +2401,11 @@ std::map<int, float> DXL::syncRead()
 int32_t DXL::angleToTick(float angle)
 {
     float degree = angle * 180.0 / M_PI;
-    degree = std::clamp(degree, -180.f, 180.f);
+    degree = clamp(degree, -180.f, 180.f);
     const float ticks_per_degree = 4096.0 / 360.0;
     float ticks = 2048.0 - (degree * ticks_per_degree);
 
-    return static_cast<int32_t>(std::round(ticks));
+    return static_cast<int32_t>(round(ticks));
 }
 
 float DXL::tickToAngle(int32_t ticks)
@@ -2268,7 +2446,7 @@ bool Arduino::connect(const char* port_name)
 {
     // 이미 연결되어 있다면 아무것도 하지 않음
     if (is_connected) {
-        std::cout << "이미 연결되어 있습니다." << std::endl;
+        cout << "이미 연결되어 있습니다." << endl;
         return true;
     }
 
@@ -2276,8 +2454,8 @@ bool Arduino::connect(const char* port_name)
     arduino_port = open(port_name, O_RDWR);
 
     if (arduino_port < 0) {
-        std::cerr << "에러: 시리얼 포트를 열 수 없습니다. (" << port_name << ")" << std::endl;
-        std::cerr << strerror(errno) << std::endl;
+        cerr << "에러: 시리얼 포트를 열 수 없습니다. (" << port_name << ")" << endl;
+        cerr << strerror(errno) << endl;
         return false; // 실패
     }
     
@@ -2286,7 +2464,7 @@ bool Arduino::connect(const char* port_name)
 
     // 현재 포트 설정을 읽어옴
     if (tcgetattr(arduino_port, &tty) != 0) {
-        std::cerr << "에러: 포트 설정을 읽어오는 데 실패했습니다: " << strerror(errno) << std::endl;
+        cerr << "에러: 포트 설정을 읽어오는 데 실패했습니다: " << strerror(errno) << endl;
         close(arduino_port); // 포트를 열었으므로 닫아줘야 함
         return false;
     }
@@ -2323,12 +2501,12 @@ bool Arduino::connect(const char* port_name)
     tty.c_oflag &= ~OPOST;
 
     if (tcsetattr(arduino_port, TCSANOW, &tty) != 0) {
-        std::cerr << "에러: 포트 설정을 적용하는 데 실패했습니다." << std::endl;
+        cerr << "에러: 포트 설정을 적용하는 데 실패했습니다." << endl;
         close(arduino_port);
         return false; // 실패
     }
 
-    std::cout << "시리얼 포트(" << port_name << ") 연결 및 설정 완료." << std::endl;
+    cout << "시리얼 포트(" << port_name << ") 연결 및 설정 완료." << endl;
     is_connected = true;
     return true; // 성공
 }
@@ -2340,7 +2518,7 @@ void Arduino::disconnect()
         close(arduino_port);
         is_connected = false;
         arduino_port = -1;
-        std::cout << "시리얼 포트 연결을 해제했습니다." << std::endl;
+        cout << "시리얼 포트 연결을 해제했습니다." << endl;
     }
 }
 
@@ -2349,28 +2527,28 @@ bool Arduino::sendCommand(int command_num)
 {
     // 연결이 안 되어있으면 에러
     if (!is_connected) {
-        std::cerr << "에러: 아두이노가 연결되지 않아 명령을 보낼 수 없습니다." << std::endl;
+        cerr << "에러: 아두이노가 연결되지 않아 명령을 보낼 수 없습니다." << endl;
         return false;
     }
 
     // int를 char로 변환 (0~9 사이의 숫자만 가능)
     // 예: 숫자 1 -> 문자 '1' (ASCII 49)
     if (command_num < 0 || command_num > 9) {
-        std::cerr << "에러: 0-9 사이의 숫자만 보낼 수 있습니다." << std::endl;
+        cerr << "에러: 0-9 사이의 숫자만 보낼 수 있습니다." << endl;
         return false;
     }
     char msg_to_send = command_num + '0';       // 문자 '0'은 숫자 48에 해당됨 
 
-    std::cout << arduino_port << std::endl;
+    cout << arduino_port << endl;
     // 변환된 문자를 아두이노로 전송
     int bytes_written = write(arduino_port, &msg_to_send, 1);
 
     if (bytes_written < 0) {
-        std::cerr << "에러: 데이터 쓰기에 실패했습니다." << std::endl;
+        cerr << "에러: 데이터 쓰기에 실패했습니다." << endl;
         return false;
     }
 
-    // std::cout << "아두이노로 명령 '" << msg_to_send << "' 전송 완료." << std::endl;
+    // cout << "아두이노로 명령 '" << msg_to_send << "' 전송 완료." << endl;
     return true;
 }
 

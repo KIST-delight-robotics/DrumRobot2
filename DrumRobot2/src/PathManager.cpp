@@ -1,4 +1,5 @@
-#include "../include/managers/PathManager.hpp" // 적절한 경로로 변경하세요.
+// PathManager.cpp
+#include "../include/managers/PathManager.hpp"
 #include "../DynamixelSDK-3.8.4/c++/include/dynamixel_sdk/dynamixel_sdk.h"
 
 

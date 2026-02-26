@@ -5,7 +5,17 @@ import ollama
 import numpy as np
 import time
 # TTS 엔진
+
+import os
+import psutil
+
 from melo_engine import TTS_Engine
+
+
+def get_mem_usage():
+    """현재 프로세스의 메모리 사용량을 MB 단위로 반환"""
+    process = psutil.Process(os.getpid())
+    return process.memory_info().rss / (1024 * 1024)
 
 # ==========================================
 # ⚙️ 설정값 (Config)
@@ -35,6 +45,26 @@ def record_audio():
 # ==========================================
 def main():
     print("========== [AI CONVERSATION MODE] ==========")
+
+    # 시작 시점 메모리
+    base_mem = get_mem_usage()
+    print(f"[{time.strftime('%H:%M:%S')}] 초기 메모리: {base_mem:.2f} MB")
+
+    # 1. [초기화] TTS 로딩
+    # ----------------------------------------------
+    tts = TTS_Engine() 
+    tts_mem = get_mem_usage()
+    print(f"[{time.strftime('%H:%M:%S')}] TTS 로드 후: {tts_mem:.2f} MB (증가량: {tts_mem - base_mem:.2f} MB)")
+    
+    # 2. [초기화] STT 로딩
+    # ----------------------------------------------
+    print("[STT] Whisper 모델 로딩 중... (GPU)")
+    stt_model = whisper.load_model("small", device="cuda")
+    stt_mem = get_mem_usage()
+    print(f"[{time.strftime('%H:%M:%S')}] STT 로드 후: {stt_mem:.2f} MB (증가량: {stt_mem - tts_mem:.2f} MB)")
+    
+    print(f"\n✅ 모델 로딩 완료! 총 점유: {stt_mem:.2f} MB")
+    print("----------------------------------------------")
 
     # 1. [초기화] TTS & STT 로딩
     # ----------------------------------------------

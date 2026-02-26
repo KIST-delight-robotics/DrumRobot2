@@ -3,6 +3,8 @@ import torch
 from melo.api import TTS
 import os
 
+import time  # 상단에 추가
+
 class TTS_Engine:
     def __init__(self):
         print("\n[TTS] 엔진 시동 거는 중... (모델 로딩)")
@@ -38,9 +40,21 @@ class TTS_Engine:
 
         clean_text = self.preprocess(text)
         
+        # 1. 순수 합성 시간 측정 시작
+        inference_start = time.time()
+
         # 생성 (이미 로딩돼서 빠름)
         self.model.tts_to_file(clean_text, self.speaker_ids['KR'], output_path, speed=1.0)
-                
+        
+        inference_end = time.time()
+        print(f"  └ [TTS Inference] {inference_end - inference_start:.2f}s (텍스트 → 오디오 파일)")
         if play:
+
+            # 2. 재생 지연 시간 측정 (aplay 호출 오버헤드 확인용)
+            play_start = time.time()
+
             # -q: 로그 숨김, aplay: 리눅스 기본 재생기
             os.system(f"aplay -q {output_path}")
+
+            play_end = time.time()
+            print(f"  └ [TTS Playback] {play_end - play_start:.2f}s (오디오 장치 재생)")

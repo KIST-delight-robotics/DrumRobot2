@@ -56,7 +56,6 @@ class PathManager
 {
 
 public:
-    
     PathManager(State &stateRef,
                 CanManager &canManagerRef,
                 std::map<std::string, std::shared_ptr<GenericMotor>> &motorsRef,
@@ -65,7 +64,6 @@ public:
     
     bool endOfPlayCommand = false;
     bool startOfPlay = false;
-    //
     double bpmOfScore = 100.0;      ///< 악보의 BPM 정보.
     string maxonMode = "unknown";
     int Kp, Kd;
@@ -81,6 +79,7 @@ public:
 
     // DXL
     std::queue<vector<vector<float>>> dxlCommandBuffer;
+    std::mutex dxlBufferMutex; // [★ 추가] DXL 모터 전용 자물쇠
 
     /////////////////////////////////////////////////////////////////////////// Init
     void setDrumCoordinate();   // 임시로 이동 private -> public

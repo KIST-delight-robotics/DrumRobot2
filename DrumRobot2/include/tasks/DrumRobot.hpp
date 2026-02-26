@@ -1,38 +1,31 @@
+// DrumRobot.hpp
 #pragma once
 
-#include <stdio.h>
-#include <map>
+#include <map> 
+#include <vector>
 #include <memory>
 #include <string>
 #include <functional>
 #include <queue>
-#include <algorithm>
+#include <filesystem>
 #include <thread>
-#include <cerrno>  // errno
-#include <cstring> // strerror
+#include <cerrno>
+#include <cstring>
 #include <sstream>
 #include <iomanip>
-#include <filesystem>
 #include <iostream>
-#include <vector>
-#include <limits>
-#include <ctime>
 #include <fstream>
 #include <atomic>
 #include <cmath>
 #include <chrono>
-#include <set>
 #include <SFML/Audio.hpp>
-#include <termios.h>
 
-#include <sys/socket.h> //new
-#include <netinet/in.h>
+/*
 #include <unistd.h>
-#include <queue>   // 큐 (명령 보관함)
-#include <mutex>   // 뮤텍스 (자물쇠)
-#include <string.h> //new
+#include <set>
+*/
 
-#include "SystemState.hpp"
+#include "../include/tasks/SystemState.hpp"
 #include "../include/managers/CanManager.hpp"
 #include "../include/managers/PathManager.hpp"
 #include "../include/motors/CommandParser.hpp"
@@ -41,8 +34,8 @@
 #include "../include/USBIO_advantech/USBIO_advantech.hpp"
 #include "../include/tasks/Functions.hpp"
 #include "../DynamixelSDK-3.8.4/c++/include/dynamixel_sdk/dynamixel_sdk.h"
-
-using namespace std;
+#include "../include/managers/AgentSocket.hpp" // LLM TCP 소켓 통신
+#include "../include/tasks/AgentAction.hpp" // AgentAction 함수 참조
 
 class FlagClass
 {
@@ -60,16 +53,19 @@ public:
     };
 
     void setAddStanceFlag(AddStanceFlag flag);
-    string getAddStanceFlag();
+    std::string getAddStanceFlag();
 
     // fixed
-    void setFixationFlag(string flagName);
+    void setFixationFlag(std::string flagName);
     bool getFixationFlag();
 
 private:
 
+    // AddStanceFlag이 START, HOME, READY, SHUTDOWN 중 하나로 설정되어야 함
     AddStanceFlag addStanceFlag = START;
     bool isFixed = false;
+    // 상태 정보 JSON 생성 함수
+    std::string makeStateJson();
 };
 
 class DXL
@@ -80,7 +76,7 @@ public:
 
     void initialize();
     void DXLTorqueOff();
-    void syncWrite(vector<vector<float>> command);
+    void syncWrite(std::vector<std::vector<float>> command);
     std::map<int, float> syncRead();
 
 private:
@@ -90,11 +86,11 @@ private:
     std::unique_ptr<dynamixel::GroupSyncRead> sr;
 
     bool useDXL = false;
-    vector<uint8_t> motorIDs; // 연결된 다이나믹셀 ID
+    std::vector<uint8_t> motorIDs; // 연결된 다이나믹셀 ID
     
     int32_t angleToTick(float angle);
     float tickToAngle(int32_t ticks);
-    void commandToValues(int32_t values[], vector<float> command);
+    void commandToValues(int32_t values[], std::vector<float> command);
 };
 
 class Arduino
@@ -136,17 +132,14 @@ public:
               Functions &funcRef);
 
     // thread
-    void stateMachine();
-    void sendLoopForThread();
-    void recvLoopForThread();
-    void musicMachine();
-    void runPythonInThread();
-    void socketThread(); // 소켓 받을 스레드
-
-    int server_fd; //new
-    std::queue<std::string> commandQueue; // 명령을 쌓아두는 줄
-    std::mutex queueMutex; //new
-
+    void stateMachine(); // 메인 루프 (상태 머신)
+    void sendLoopForThread(); // CAN 프레임 송신하는 쓰레드
+    void recvLoopForThread(); // CAN 프레임 수신하는 쓰레드
+    void musicMachine(); // 음악 재생 및 싱크 맞추는 쓰레드
+    void runPythonInThread(); // 파이썬 스크립트 실행하는 쓰레드
+    void broadcastStateThread(); // LLM에 상태 정보 전송하는 쓰레드
+    std::string makeStateJson(); // LLM에 보낼 상태 정보 JSON 생성 함수
+    
     // init
     void initializeDrumRobot();
     
@@ -159,14 +152,17 @@ private:
     USBIO &usbio;
     Functions &func;
 
+    AgentSocket agentSocket; // LLM TCP 소켓 통신
+    AgentAction agentAction; // LLM 명령어 파서 및 실행기
+
     // Parsing
     TMotorServoCommandParser tservocmd;
     TMotorCommandParser tmotorcmd;
     MaxonCommandParser maxoncmd;
 
     // Sync command
-    vector<std::shared_ptr<MaxonMotor>> virtualMaxonMotor;
-    // std::shared_ptr<MaxonMotor> virtualMaxonMotor;
+    std::vector<std::shared_ptr<MaxonMotor>> virtualMaxonMotor;
+    // shared_ptr<MaxonMotor> virtualMaxonMotor;
 
     // 쓰레드 루프 주기
     std::chrono::_V2::steady_clock::time_point sendLoopPeriod;
@@ -203,8 +199,8 @@ private:
     void setMaxonMotorMode(std::string targetMode);
 
     //////////////////////////////////////////////////////////////// Ideal State
-    void displayAvailableCommands(string flagName) const;
-    void processInput(const std::string &input, string flagName);
+    void displayAvailableCommands(std::string flagName) const;
+    void processInput(const std::string &input, std::string flagName);
     void idealStateRoutine();
 
     //////////////////////////////////////////////////////////////// AddStance State
@@ -230,13 +226,15 @@ private:
     std::string pythonArgs;
     // 가상환경 파이썬 실행 파일의 절대 경로 + 실행할 스크립트의 절대 경로
     std::string pythonScript = "/home/shy/robot_project/DrumRobot2/magenta/venv/bin/python3 /home/shy/robot_project/DrumRobot2/magenta/script.py";
+    // 에이전트가 선택한 곡 코드를 저장할 변수
+    std::string nextSongCode = "test_one"; // 기본값 설정 (빈 값이면 에러 날 수 있음)
     // 마젠타 반복 생성을 위한 변수들
     int repeatNum = 1;
     int currentIterations = 1;
-    queue<int> delayTime;
-    queue<int> makeBarNum;
-    queue<int> recordBarNum;
-    queue<float> waitTime;
+    std::queue<int> delayTime;
+    std::queue<int> makeBarNum;
+    std::queue<int> recordBarNum;
+    std::queue<float> waitTime;
 
     void initializePlayState();
     void setSyncTime(int waitingTime);
@@ -244,8 +242,8 @@ private:
     void setPythonArgs();
     bool checkPreconditions(bool useMagenta, std::string txtPath);
     std::string selectPlayMode();
-    string trimWhitespace(const std::string &str);
-    bool readMeasure(ifstream& inputFile);  // 한번에 읽을 악보의 크기(measureThreshold)만큼 읽으면 true 반환
+    std::string trimWhitespace(const std::string &str);
+    bool readMeasure(std::ifstream& inputFile);  // 한번에 읽을 악보의 크기(measureThreshold)만큼 읽으면 true 반환
     void runPlayProcess();
 
     //////////////////////////////////////////////////////////////// 

@@ -1,3 +1,4 @@
+// main.cpp
 #include <thread>
 #include <vector>
 #include <iostream>
@@ -62,8 +63,8 @@ int main(int argc, char *argv[])
     std::thread receiveThread(&DrumRobot::recvLoopForThread, &drumRobot);
     std::thread musicThread(&DrumRobot::musicMachine, &drumRobot);
     std::thread pythonThread(&DrumRobot::runPythonInThread, &drumRobot);
+    std::thread broadcastThread(&DrumRobot::broadcastStateThread, &drumRobot); // LLM에 상태 정보 전송하는 쓰레드
     //std::thread guiThread(&GuiManager::guiThread, &guiManager);
-    std::thread serverThread(&DrumRobot::socketThread, &drumRobot);
 
     // Threads Priority Settings
     if (!setThreadPriority(sendThread, 5))
@@ -103,6 +104,6 @@ int main(int argc, char *argv[])
     receiveThread.join();
     musicThread.join();
     pythonThread.join();
+    broadcastThread.join();
     //guiThread.join();
-    serverThread.join(); // ★★★ [추가] ★★★
 }

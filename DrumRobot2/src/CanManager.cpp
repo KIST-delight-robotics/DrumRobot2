@@ -1,3 +1,4 @@
+// CanManager.cpp
 #include "../include/managers/CanManager.hpp"
 
 // For Qt

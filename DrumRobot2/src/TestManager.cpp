@@ -1,8 +1,8 @@
-#include "../include/managers/TestManager.hpp" // 적절한 경로로 변경하세요.
-#include "TestManager.hpp"
+// TestManager.cpp
+#include "../include/managers/TestManager.hpp"
 #include "../3rdparty/aruco/include/opencv2/aruco.hpp"
 // For  Qt
-// #include "../managers/TestManager.hpp"
+
 using namespace std;
 using namespace cv;
 

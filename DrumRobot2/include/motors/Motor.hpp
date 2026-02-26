@@ -15,6 +15,7 @@
 #include <iostream>
 #include <cmath>
 #include <map>
+#include <mutex> // For std::mutex()
 using namespace std;
 
 class GenericMotor
@@ -104,6 +105,7 @@ public:
 
     // commandBuffer
     std::queue<TMotorData> commandBuffer;
+    std::mutex bufferMutex; // [★ 추가] T-Motor 전용 자물쇠
     void clearCommandBuffer();
 
     bool useFourBarLinkage;
@@ -168,6 +170,7 @@ public:
 
     // commandBuffer
     queue<MaxonData> commandBuffer;
+    std::mutex bufferMutex; // [★ 추가] Maxon 전용 자물쇠
     void clearCommandBuffer();
 
     float jointAngleToMotorPosition(float jointAngle);

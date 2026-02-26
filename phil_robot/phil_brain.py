@@ -1,12 +1,15 @@
+# phil_robot/phil_brain.py
+
 import sounddevice as sd
 import whisper
 import ollama
 #import json
 import numpy as np
 # TCP 소켓 통신(command 전송)
-from phil_client import RobotClient
+from phil_client import RobotClient, ROBOT_STATE
 # TTS 엔진
 from melo_engine import TTS_Engine
+from response_parser import parse_llm_response 
 
 # ==========================================
 # ⚙️ 설정값 (Config)
@@ -84,9 +87,23 @@ def main():
             # --- B. 생각하기 ---
             print("🧠 생각 중...")
 
+            current_state = ROBOT_STATE["state"]
+
+            # 상태에 따른 맥락 주입
+            if current_state == 2:
+                state_context = "현재 당신(로봇)은 드럼을 신나게 연주(Play) 중입니다. 사용자가 손을 들라거나 다른 행동을 요구하면 지금은 연주 중이라 어렵다고 정중히 거절하세요."
+            elif current_state == 4:
+                state_context = "현재 당신의 관절이 닿지 않거나 물리적 에러(Error)가 발생해 멈춰있습니다. 사용자에게 관절 문제로 움직일 수 없다고 핑계를 대고 사과하세요."
+            elif current_state == 0 and not ROBOT_STATE["is_fixed"]:
+                state_context = "현재 당신은 지정된 자세로 바쁘게 이동(Moving) 중입니다."
+            else:
+                state_context = "현재 당신은 대기(Ideal) 중이며, 사용자의 어떤 명령이든 받을 준비가 되어 있습니다."
+
+            context_injected_user_text = f"{state_context}\n사용자: {user_text}\n\n[명령어는 항상 >> 명령 형식으로 응답해주세요. 예시: >> move_forward]"        
+            
             response = ollama.chat(
                 model=LLM_MODEL,
-                messages=[{'role': 'user', 'content': user_text}],
+                messages=[{'role': 'user', 'content': context_injected_user_text}],
                 #format='json'
             )
             
@@ -95,27 +112,28 @@ def main():
             # ai_msg = ai_data.get("response", "모르겠어요")
             # ai_cmd = ai_data.get("command", None)
 
-            ai_cmd = None
+            #ai_cmd = None
 
-            if ">>" in ai_data:
+            #if ">>" in ai_data:
                 # ">>" 기준으로 메시지와 명령 분리
-                parts = ai_data.split(">>", 1)
+                # parts = ai_data.split(">>", 1)
 
                 # 앞부분: "[p]" -> 대괄호랑 공백 제거 -> "p"
-                cmd_part = parts[0].strip()
-                ai_cmd = cmd_part.replace("[", "").replace("]", "")
+                # cmd_part = parts[0].strip()
+                # ai_cmd = cmd_part.replace("[", "").replace("]", "")
 
                 # 뒷부분: AI 메시지
-                ai_msg = parts[1].strip()
+                # ai_msg = parts[1].strip()
 
+            commands, message = parse_llm_response(ai_data)
 
             # --- C. 명령 전송 (분리된 파일의 함수 사용) ---
-            if ai_cmd:
-                print(f"📡 명령 전송: {ai_cmd}")
-                bot.send_command(ai_cmd)
+            for cmd in commands:
+                print(f"📡 명령 전송: {cmd}")
+                bot.send_command(cmd)
 
-            print(f"🤖 Phil: {ai_msg}")
-            tts.speak(ai_msg)
+            print(f"🤖 Phil: {message}")
+            tts.speak(message)
             
             
     except KeyboardInterrupt:

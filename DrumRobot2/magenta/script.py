@@ -24,7 +24,7 @@ from task_manager import taskManager
 # ALSA Sequencer 없이 장치 파일에서 직접 읽어오는 클래스
 # ==========================================
 # ★ 중요: ls -l /dev/snd/ 확인 후 경로 수정 (또는 udev rule 적용 후 /dev/drum_pad 사용)
-FIXED_MIDI_PATH = '/dev/snd/midiC3D0' # **실제 장치**에 맞게 수정 필요
+FIXED_MIDI_PATH = '/dev/snd/midiC4D0' # **실제 장치**에 맞게 수정 필요
 
 class DrumPadInterface:
     def __init__(self, device_path):
