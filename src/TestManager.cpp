@@ -2526,29 +2526,60 @@ void TestManager::saveCloudToCSV(const pcl::PointCloud<pcl::PointXYZ>::Ptr& clou
     std::cout << "PointCloud가 성공적으로 저장되었습니다: " << filename << " (총 " << cloud->size() << "개 점)" << std::endl;
 }
 
-void TestManager::cap_pc_3times()
+void TestManager::cap_pc_3times()   // 허리를 회전시키며 point cloud를 수집하는 함수
 {
     int width = 848; int height = 480; int fps = 30;
     rs2::pipeline pipe;
     rs2::config cfg;
     cfg.enable_stream(RS2_STREAM_COLOR, width, height, RS2_FORMAT_BGR8, fps);
     cfg.enable_stream(RS2_STREAM_DEPTH, width, height, RS2_FORMAT_Z16, fps);
-    auto selection = pipe.start(cfg);
-    auto color_stream = selection.get_stream(RS2_STREAM_COLOR).as<rs2::video_stream_profile>();
+    rs2::pipeline_profile profile = pipe.start(cfg);
+    auto color_stream = profile.get_stream(RS2_STREAM_COLOR).as<rs2::video_stream_profile>();
+
+    rs2::device dev = profile.get_device();
+    rs2::depth_sensor depth_sensor = dev.first<rs2::depth_sensor>();
+
+    if (depth_sensor.supports(RS2_OPTION_VISUAL_PRESET)) {
+        // RS2_RS400_VISUAL_PRESET_HIGH_ACCURACY 적용 (노이즈 억제력 최대화)
+        depth_sensor.set_option(RS2_OPTION_VISUAL_PRESET, RS2_RS400_VISUAL_PRESET_HIGH_ACCURACY);
+        std::cout << "카메라에 High Accuracy 프리셋이 성공적으로 적용되었습니다." << std::endl;
+    }
+
+    // 2. 필터 
+    rs2::threshold_filter thresh_filter;
+    thresh_filter.set_option(RS2_OPTION_MIN_DISTANCE, 0.4f);
+    thresh_filter.set_option(RS2_OPTION_MAX_DISTANCE, 0.6f);
+
+    rs2::decimation_filter dec_filter;
+    dec_filter.set_option(RS2_OPTION_FILTER_MAGNITUDE, 4.0f);
+
+    rs2::spatial_filter spat_filter;
+    spat_filter.set_option(RS2_OPTION_FILTER_SMOOTH_ALPHA, 0.25f);
+    spat_filter.set_option(RS2_OPTION_FILTER_SMOOTH_DELTA, 20.0f); 
+    spat_filter.set_option(RS2_OPTION_FILTER_MAGNITUDE, 5.0f);    
 
     rs2::temporal_filter temp_filter;
-    rs2::hole_filling_filter hole_filter;
+    temp_filter.set_option(RS2_OPTION_FILTER_SMOOTH_ALPHA, 0.4f); 
+    temp_filter.set_option(RS2_OPTION_FILTER_SMOOTH_DELTA, 20.0f); 
+    temp_filter.set_option(RS2_OPTION_HOLES_FILL, 3.0f); 
+
+    // rs2::hole_filling_filter hole_filter;
+    // hole_filter.set_option(RS2_OPTION_HOLES_FILL, 1.0f); 
+
+    // Disparity 도메인 변환 객체 (true: Depth->Disparity, false: Disparity->Depth)
+    rs2::disparity_transform depth_to_disparity(true);
+    rs2::disparity_transform disparity_to_depth(false);
+
+    Eigen::Matrix4f T_joint_cam = get_cam_to_rotation_matrix();
 
     pcl::PointCloud<pcl::PointXYZ>::Ptr combined_world_cloud(new pcl::PointCloud<pcl::PointXYZ>);
-    Eigen::Matrix4f T_joint_cam = get_cam_to_rotation_matrix();
-    std::vector<pcl::ModelCoefficients::Ptr> coefficients_list;
-    std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> cloud_list;
     pcl::PointCloud<pcl::PointXYZ>::Ptr full_cloud(new pcl::PointCloud<pcl::PointXYZ>);
 
-    // 허리 회전 각도 리스트 (예: -30도, 0도, 30도)
-    std::vector<float> angles = {40.0f, 20.0f, 0.0f, -20.0f, -40.0f};
-    // std::vector<float> angles = {40.0f};
+    std::vector<pcl::ModelCoefficients::Ptr> coefficients_list;
+    std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> cloud_list;
 
+    // 허리 회전 각도 리스트 (예: -30도, 0도, 30도)
+    std::vector<float> angles = {10.0f, 5.0f, 0.0f, -5.0f, -10.0f};
 
     std::vector<pcl::PointIndices> cluster_num;
 
@@ -2567,20 +2598,40 @@ void TestManager::cap_pc_3times()
 
         pcl::PointCloud<pcl::PointXYZ>::Ptr temp_cloud(new pcl::PointCloud<pcl::PointXYZ>);
 
-        rs2::frameset frames = pipe.wait_for_frames();
-        rs2::frame filtered = frames.get_depth_frame();
+        int warmup_frames = 30;
+
+        for (int i = 0; i < warmup_frames; i++) {
+            rs2::frameset frames = pipe.wait_for_frames();
+            rs2::frame filtered = frames.get_depth_frame();
+
+            filtered = thresh_filter.process(filtered);
+            filtered = dec_filter.process(filtered);           // 1. 다운샘플링
+            filtered = depth_to_disparity.process(filtered);   // 2. Depth -> Disparity 변환 (필수)
+            filtered = spat_filter.process(filtered);          // 3. 공간 필터
+            filtered = temp_filter.process(filtered);          // 4. 시간 필터
+            filtered = disparity_to_depth.process(filtered);   // 5. Disparity -> Depth 복구 (필수)
+            // filtered = hole_filter.process(filtered);          // 6. 구멍 메우기 (드럼 테두리 왜곡 시 제거 고려)
+        }
+
+        rs2::frameset final_frames = pipe.wait_for_frames();
+        rs2::frame filtered = final_frames.get_depth_frame();
+        filtered = thresh_filter.process(filtered);
+        filtered = dec_filter.process(filtered);
+        filtered = depth_to_disparity.process(filtered);
+        filtered = spat_filter.process(filtered);
         filtered = temp_filter.process(filtered);
-        // filtered = hole_filter.process(filtered);        // hole filling 필터 적용 X
+        filtered = disparity_to_depth.process(filtered);
+
         rs2::pointcloud pc;
-        auto points = pc.calculate(filtered);
+        rs2::points points = pc.calculate(filtered);
         // full_cloud = points_to_pcl(points, color_stream);
         temp_cloud = points_to_pcl(points, color_stream);   // 세 각도의 point cloud를 하나로 저장하기 위해 temp에 저장
 
-        pcl::PassThrough<pcl::PointXYZ> pass;
-        pass.setInputCloud(temp_cloud);
-        pass.setFilterFieldName("z");
-        pass.setFilterLimits(0.4, 0.6);     // 깊이 0.4~0.6m 내 공간의 pc만 살림
-        pass.filter(*temp_cloud);
+        // pcl::PassThrough<pcl::PointXYZ> pass;
+        // pass.setInputCloud(temp_cloud);
+        // pass.setFilterFieldName("z");
+        // pass.setFilterLimits(0.4, 0.6);     // 깊이 0.4~0.6m 내 공간의 pc만 살림
+        // pass.filter(*temp_cloud);
 
         string pc_name = "../temp_cloud" + std::to_string(cur_deg) + ".csv";
         saveCloudToCSV(temp_cloud, pc_name);
@@ -2592,11 +2643,11 @@ void TestManager::cap_pc_3times()
     }
     saveCloudToCSV(combined_world_cloud, "../combined_pc_original.csv");
 
-    // 2. VoxelGrid 필터
-    pcl::VoxelGrid<pcl::PointXYZ> vg;
-    vg.setInputCloud(combined_world_cloud);
-    vg.setLeafSize(0.005f, 0.005f, 0.005f);     // 3D 공간을 5x5x5 정육면체로 쪼개서 내부 점들의 평균 한 점으로 downsampling
-    vg.filter(*combined_world_cloud);
+    // // 2. VoxelGrid 필터
+    // pcl::VoxelGrid<pcl::PointXYZ> vg;
+    // vg.setInputCloud(combined_world_cloud);
+    // vg.setLeafSize(0.005f, 0.005f, 0.005f);     // 3D 공간을 5x5x5 정육면체로 쪼개서 내부 점들의 평균 한 점으로 downsampling
+    // vg.filter(*combined_world_cloud);
 
     // Statistical Outlier Removal 필터
     pcl::StatisticalOutlierRemoval<pcl::PointXYZ> sor;
