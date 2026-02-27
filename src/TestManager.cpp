@@ -2579,7 +2579,7 @@ void TestManager::cap_pc_3times()   // 허리를 회전시키며 point cloud를 
     std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> cloud_list;
 
     // 허리 회전 각도 리스트 (예: -30도, 0도, 30도)
-    std::vector<float> angles = {10.0f, 5.0f, 0.0f, -5.0f, -10.0f};
+    std::vector<float> angles = {25.0f, 20.0f, 15.0f, 10.0f, 5.0f, 0.0f, -5.0f, -10.0f, -15.0f, -20.0f, -25.0f};
 
     std::vector<pcl::PointIndices> cluster_num;
 
