@@ -88,18 +88,31 @@ def main():
 
             current_state = ROBOT_STATE["state"]
 
-            # 상태에 따른 맥락 주입
-            if current_state == 2:
-                state_context = "현재 당신(로봇)은 드럼을 신나게 연주(Play) 중입니다. 사용자가 손을 들라거나 다른 행동을 요구하면 지금은 연주 중이라 어렵다고 정중히 거절하세요."
-            elif current_state == 4:
-                state_context = "현재 당신의 관절이 닿지 않거나 물리적 에러(Error)가 발생해 멈춰있습니다. 사용자에게 관절 문제로 움직일 수 없다고 핑계를 대고 사과하세요."
-            elif current_state == 0 and not ROBOT_STATE["is_fixed"]:
-                state_context = "현재 당신은 지정된 자세로 바쁘게 이동(Moving) 중입니다."
-            else:
-                state_context = "현재 당신은 대기(Ideal) 중이며, 사용자의 어떤 명령이든 받을 준비가 되어 있습니다."
+            # 1. ROBOT_STATE에서 상태값들 안전하게 꺼내기 (없으면 기본값 반환)
+            current_state = ROBOT_STATE.get("state", 0)
+            is_fixed = ROBOT_STATE.get("is_fixed", True)
+            error_detail = ROBOT_STATE.get("error_detail", "None")
+            current_song = ROBOT_STATE.get("current_song", "None")
+            progress = ROBOT_STATE.get("progress", "None")
+            last_action = ROBOT_STATE.get("last_action", "None")
 
-            context_injected_user_text = f"{state_context}\n사용자: {user_text}\n\n[명령어는 항상 >> 명령 형식으로 응답해주세요. 예시: >> move_forward]"        
+            # 2. 상태에 따른 아주 디테일한 맥락 주입
+            if current_state == 2:
+                state_context = f"현재 당신(로봇)은 '{current_song}' 곡을 신나게 연주(Play) 중입니다. (진행률: {progress}) 사용자가 손을 들라거나 다른 행동을 요구하면 지금은 연주 중이라 어렵다고 정중히 거절하세요."
             
+            elif current_state == 4:
+                # ★ C++ 미들웨어가 보내준 진짜 에러 원인을 프롬프트에 주입!
+                state_context = f"현재 당신의 신체에 에러(Error)가 발생해 멈춰있습니다. (시스템 에러 원인: {error_detail}) 사용자에게 이 에러 원인을 설명하면서 핑계를 대고 사과하세요."
+            
+            elif current_state == 0 and not is_fixed:
+                state_context = f"현재 당신은 지정된 자세로 바쁘게 이동(Moving) 중입니다. (최근 수행 명령: {last_action})"
+            
+            else:
+                state_context = f"현재 당신은 대기(Ideal) 중이며, 사용자의 어떤 명령이든 받을 준비가 되어 있습니다. (최근 수행 명령: {last_action})"
+
+            # 3. 사용자 프롬프트에 조립
+            context_injected_user_text = f"[System Info: {state_context}]\n사용자: {user_text}\n\n[명령어는 항상 >> 명령 형식으로 응답해주세요. 예시: >> move_forward]"    
+                
             response = ollama.chat(
                 model=LLM_MODEL,
                 messages=[{'role': 'user', 'content': context_injected_user_text}],

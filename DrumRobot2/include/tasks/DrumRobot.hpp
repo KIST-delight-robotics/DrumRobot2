@@ -228,6 +228,9 @@ private:
     std::string pythonScript = "/home/shy/robot_project/DrumRobot2/magenta/venv/bin/python3 /home/shy/robot_project/DrumRobot2/magenta/script.py";
     // 에이전트가 선택한 곡 코드를 저장할 변수
     std::string nextSongCode = "test_one"; // 기본값 설정 (빈 값이면 에러 날 수 있음)
+    std::string lastExecutedCmd = "None"; // 마지막으로 실행된 명령어 저장 변수
+    std::string lastErrorReason = "None"; // 마지막으로 명령어 실행 실패 시 이유 저장 변수
+    
     // 마젠타 반복 생성을 위한 변수들
     int repeatNum = 1;
     int currentIterations = 1;

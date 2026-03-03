@@ -677,6 +677,7 @@ void DrumRobot::sendLoopForThread()
         
         if (!canManager.setCANFrame(fixFlags, cycleCounter))
         {   
+            lastErrorReason = "위험 궤적 감지! 미들웨어가 모터 보호를 위해 무리한 움직임을 차단했습니다."; // 모터 송신 에러
             state.main = Main::Error;
             break;
         }
@@ -768,6 +769,7 @@ void DrumRobot::sendLoopForThread()
         
         if (isWriteError)
         {
+                        lastErrorReason = "모터 연결 끊김! CAN 통신 케이블이나 전원을 확인해 주세요."; // CAN 통신 에러
             state.main = Main::Error;
         }
 
@@ -796,6 +798,7 @@ void DrumRobot::recvLoopForThread()
         bool isSafe = canManager.distributeFramesToMotors(true);
         if (!isSafe)
         {
+            lastErrorReason = "물리적 한계 초과! 관절 각도가 제한 범위를 벗어났거나 과전류가 발생했습니다."; // 모터 수신 에러
             state.main = Main::Error;
         }
         
@@ -979,9 +982,24 @@ string DrumRobot::makeStateJson()
     
     // JSON 형태 조립 {"state": 2, "bpm": 120, "is_fixed": true}
     oss << "{";
+    
+    // 1. 기존 필수 데이터
     oss << "\"state\": " << currentState << ", ";
     oss << "\"bpm\": " << pathManager.bpmOfScore << ", ";
     oss << "\"is_fixed\": " << (flagObj.getFixationFlag() ? "true" : "false");
+    // 2. [추가] 곡명 및 진행률 (Context)
+    oss << "\"current_song\": \"" << nextSongCode << "\", ";
+    oss << "\"progress\": \"" << currentIterations << "/" << repeatNum << "\", ";
+
+    // 3. [추가] 마지막으로 실행된 명령어 및 에러 메시지 (Context)
+    oss << "\"last_action\": \"" << lastExecutedCmd << "\", "; 
+    
+    // 4. [추가] 에러 상태일 때만 에러 메시지 포함, 아니면 "None"으로 표시
+    if (currentState == 4) {
+        oss << "\"error_message\": \"" << lastErrorReason << "\", ";
+    } else {
+        oss << "\"error_message\": \"None\"";
+    }
     oss << "}";
     
     return oss.str();
@@ -1284,6 +1302,7 @@ void DrumRobot::idealStateRoutine()
         // 4. 명령 처리
         if (!input.empty())
         {
+            lastExecutedCmd = input; // 마지막으로 실행된 명령어 저장
             // (A) 상태 제어 명령 (r, p, h, s, t, u) -> 기존 상태 머신(processInput)으로
             // p:TIM 처럼 콜론이 붙은 곡 선택 명령도 포함
             if (input == "r" || input == "h" || input == "s" || input == "t" || input == "u" || 
@@ -1997,6 +2016,11 @@ void DrumRobot::runPlayProcess()
                 while(readMeasure(inputFile))    // 한마디 분량 미만으로 남을 때까지 궤적/명령 생성
                 {
                     pathManager.processLine(measureMatrix);
+
+                    if (state.main == Main::Error) {
+                            lastErrorReason = "자세 계산 실패! 역기구학(IK) 계산 결과 팔이 닿지 않거나 꼬이는 궤적입니다."; // 궤적 생성 실패
+                            return;
+                        }
                 }
 
                 // send thread에서 읽기 전까지 대기
@@ -2050,6 +2074,10 @@ void DrumRobot::runPlayProcess()
     while (!pathManager.endOfPlayCommand)      // 명령 전부 생성할 때까지
     {
         pathManager.processLine(measureMatrix);
+        if (state.main == Main::Error) {
+            lastErrorReason = "자세 계산 실패! 역기구학(IK) 계산 결과 팔이 닿지 않거나 꼬이는 궤적입니다."; // 궤적 생성 실패
+            return; // 에러가 났으니 더 이상 궤적을 만들지 않고 즉시 종료!
+        }
     }
 
     if(txtPath == magentaCodePath)
@@ -2079,6 +2107,17 @@ void DrumRobot::runPlayProcess()
             filesystem::rename(txtIndexPath.c_str(), saveCode.c_str());
             remove(txtIndexPath.c_str());
         }
+    }
+
+    // ====================================================================
+    // ★ [핵심 추가] 궤적 생성은 끝났지만, 실제 모터 연주가 끝날 때까지 뇌를 대기시킴
+    // ====================================================================
+    cout << ">>> [Agent] 궤적 생성 완료. 모터 연주가 끝날 때까지 대기(Play)합니다..." << endl;
+
+    // 모터가 궤적을 꺼내가서 연주가 완전히 끝날 때까지 대기 (fixation이 풀리고, 모든 모터가 unconnected 상태가 될 때까지)
+    while (flagObj.getFixationFlag() || !allMotorsUnConected)
+    {        
+        usleep(1000); // 100ms 대기
     }
 
     cout << "Play is Over\n";
