@@ -123,6 +123,19 @@ C++ `broadcastStateThread` → JSON serialization (state, bpm, is_fixed) → TCP
 3. Speak command like "손을 올려" (raise hand)
 4. LLM generates [CMD:action:params] → C++ processes → motor actuates
 
+### Tests & Simulators
+Several lightweight scripts are provided for exercising subsystems without the full robot.
+
+* **Python unit-style tests** live alongside `phil_robot/`:
+	- `test_speech.py` – threaded STT/LLM/TTS loop used during early development. Run with `python test_speech.py`.
+	- `test_drum*.py` – variants that exercise the RobotClient and command parsing without audio; useful for mocking the C++ server.
+	- `phil_robot/MeloTTS/test/` contains standard MeloTTS library tests.
+	These scripts are run directly with the workspace Python environment (`conda activate drum4`).
+
+* **C++ socket stub** lives in `DrumRobot2/tests/server_test.cpp`.  Build with `make` or manually compile and run to emulate the 127.0.0.1:9999 command port.  The program prints incoming single‑char commands (`r`, `p`, `s`, etc.) and is handy for debugging the TCP handshake.
+
+There is no formal test framework; treat the above as examples and manual verifiers.
+
 ### Debugging Latency
 - MeloTTS: Check inference + playback times printed in log
 - Whisper: Compare timestamp at `record_audio()` vs result completion
@@ -146,3 +159,5 @@ C++ `broadcastStateThread` → JSON serialization (state, bpm, is_fixed) → TCP
 3. **JSON Parsing**: C++ expects newline-terminated JSON; Python must add '\n' after JSON.dumps()
 4. **Dummy Audio Length**: Must be ≥1 sample; use 16000 samples (1 sec @ 16kHz) for safety
 5. **Korean TTS**: MeloTTS preprocessor converts English acronyms (GPU→지피유); add custom replacements if needed
+
+6. **Python test scripts** should be executed from the `phil_robot` directory so relative imports work.
