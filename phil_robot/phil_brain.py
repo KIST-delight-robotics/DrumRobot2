@@ -111,8 +111,7 @@ def main():
                 state_context = f"현재 당신은 대기(Ideal) 중이며, 사용자의 어떤 명령이든 받을 준비가 되어 있습니다. (최근 수행 명령: {last_action})"
 
             # 3. 사용자 프롬프트에 조립
-            context_injected_user_text = f"[System Info: {state_context}]\n사용자: {user_text}\n\n[명령어는 항상 >> 명령 형식으로 응답해주세요. 예시: >> move_forward]"    
-                
+            context_injected_user_text = f"[System Info: {state_context}]\n사용자: {user_text}\n\n[명령어는 항상 >> 명령 형식으로 응답해주세요. 예시: >> move_forward]"
             response = ollama.chat(
                 model=LLM_MODEL,
                 messages=[{'role': 'user', 'content': context_injected_user_text}],
