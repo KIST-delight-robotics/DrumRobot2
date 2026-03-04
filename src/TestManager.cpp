@@ -2842,6 +2842,8 @@ void TestManager::get_marker_pose()
     // 2. CSV 파일 준비
     std::ofstream file("../aruco_marker_pose_avg.csv");
     file << "angle_deg,marker_id,cx,cy,cz,nx,ny,nz\n";
+    std::ofstream file1("../aruco_marker_pose_all_frames.csv");
+    file1 << "frames,angle_deg,marker_id,cx,cy,cz,nx,ny,nz\n";
 
     // 3. RealSense 및 ArUco 설정
     int width = 1280, height = 720, fps = 30;
@@ -2897,13 +2899,14 @@ void TestManager::get_marker_pose()
         std::map<int, int> count;
 
         int capture_frames = 30; // 30 프레임 동안 스캔하여 평균냄
-        
+
         std::cout << "데이터 측정 중 (" << capture_frames << " 프레임)...\n";
         for (int trial = 0; trial < capture_frames; ++trial) {
             rs2::frameset frames = pipe.wait_for_frames();
             frames = align_to_color.process(frames);
             // frames = align_to_depth.process(frames);
             auto color = frames.get_color_frame();
+            auto depth = frames.get_depth_frame();
             if (!color) continue;
             
             cv::Mat image(cv::Size(width, height), CV_8UC3, (void*)color.get_data(), cv::Mat::AUTO_STEP);
@@ -2912,23 +2915,19 @@ void TestManager::get_marker_pose()
             std::vector<std::vector<cv::Point2f>> corners;
             cv::aruco::detectMarkers(image, dictionary, corners, ids, parameters);
 
+            if (ids.empty()) continue; // 마커가 없으면 다음 프레임으로 넘어감
+            std::vector<cv::Vec3d> rvecs, tvecs;
             // 시각화: 마커 감지 결과를 윈도우에 표시
             if (!ids.empty()) {
                 cv::aruco::drawDetectedMarkers(image, corners, ids);
                 // 포즈가 계산되면 축도 그림
-                std::vector<cv::Vec3d> tmp_r, tmp_t;
-                cv::aruco::estimatePoseSingleMarkers(corners, 0.02, cameraMatrix, distCoeffs, tmp_r, tmp_t);
+                cv::aruco::estimatePoseSingleMarkers(corners, 0.02, cameraMatrix, distCoeffs, rvecs, tvecs);
                 for (size_t di = 0; di < ids.size(); ++di) {
-                    cv::aruco::drawAxis(image, cameraMatrix, distCoeffs, tmp_r[di], tmp_t[di], 0.05);
+                    cv::aruco::drawAxis(image, cameraMatrix, distCoeffs, rvecs[di], tvecs[di], 0.05);
                 }
             }
             cv::imshow("ArUco Scan", image);
-            if (cv::waitKey(1) == 27) { /* ESC로 중단 시 바로 반환 */ }
-
-            if (ids.empty()) continue; // 마커가 없으면 다음 프레임으로
-
-            std::vector<cv::Vec3d> rvecs, tvecs;
-            cv::aruco::estimatePoseSingleMarkers(corners, 0.02, cameraMatrix, distCoeffs, rvecs, tvecs);
+            if (cv::waitKey(1) == 27) { break;}
 
             for (size_t i = 0; i < ids.size(); ++i) {
                 int id = ids[i];
@@ -2942,9 +2941,31 @@ void TestManager::get_marker_pose()
 
                 // depth 값 가져오기 (이미 align_to_color 되어 있으므로 depth,&color 크기 일치)
                 float z_depth = 0.0f;
-                auto depth = frames.get_depth_frame();
-                if (iu >= 0 && iu < width && iv >= 0 && iv < height) {
+                // auto depth = frames.get_depth_frame();
+                double d_sum = 0.0;
+                int d_cnt = 0;
+
+                if (iu >= 0 && iu < height && iv >= 0 && iv < width) {
                     z_depth = depth.get_distance(iu, iv);
+                }
+                for(int dy = -2; dy <= 2; dy++) {
+                    for(int dx = -2; dx <= 2; dx++) {
+                        int px = iu + dx;
+                        int py = iv + dy;
+                        if(px >= 0 && px < height && py >= 0 && py < width) {
+                            double d = depth.get_distance(px, py);
+                            // 노이즈(0) 및 너무 먼 값 제외 (예: 0.1m ~ 5.0m)
+                            if(d > 0.1 && d < 1.0) { 
+                                d_sum += d;
+                                d_cnt++;
+                            }
+                        }
+                    }
+                }
+                if (d_cnt > 0) {
+                    z_depth = d_sum / d_cnt;
+                } else {
+                    z_depth = tvecs[i][2]; 
                 }
 
                 // 1) 중심 좌표 변환 (카메라 -> 월드) : z는 depth 프레임에서 읽은 값 사용
@@ -2958,36 +2979,80 @@ void TestManager::get_marker_pose()
                 Eigen::Vector4f n_cam_eig(R.at<double>(0,2), R.at<double>(1,2), R.at<double>(2,2), 0.0f);
                 Eigen::Vector4f n_world = T_cam_world * n_cam_eig;
 
+                file1 << trial << "," << angle << "," << id << ","
+                    << p_world[0] << "," << p_world[1] << "," << p_world[2] << ","
+                    << n_world[0] << "," << n_world[1] << "," << n_world[2] << "\n";
+                
+                // 5) 누적합 계산 (초기화 안전망 포함)
+                if (pos_sum.find(id) == pos_sum.end()) {
+                    pos_sum[id] = Eigen::Vector3f::Zero();
+                    norm_sum[id] = Eigen::Vector3f::Zero();
+                    count[id] = 0;
+                }
+
                 // 누적합 계산
                 pos_sum[id] += Eigen::Vector3f(p_world[0], p_world[1], p_world[2]);
                 norm_sum[id] += Eigen::Vector3f(n_world[0], n_world[1], n_world[2]);
                 count[id]++;
             }
         }
+        std::vector<int> expected_ids = {1, 2, 3, 4}; // 설치된 타겟 마커 ID 목록
+        bool any_marker_found = false;
 
-        // [평균 및 CSV 저장 단계]
-        if (count.empty()) {
-            file << angle << ",-1,NaN,NaN,NaN,NaN,NaN,NaN\n";
-            std::cout << "[경고] 해당 각도에서 마커를 찾지 못했습니다: " << angle << " deg\n";
-        } else {
-            for (auto const& [id, c] : count) {
-                if (c > 0) {
-                    // 산술 평균 계산
-                    Eigen::Vector3f avg_pos = pos_sum[id] / static_cast<float>(c);
-                    Eigen::Vector3f avg_norm = norm_sum[id] / static_cast<float>(c);
-                    
-                    // 평균화된 법선 벡터는 크기가 1이 아닐 수 있으므로 다시 정규화
-                    avg_norm.normalize();
+        for (int id : expected_ids) {
+            // 해당 ID가 count 맵에 존재하고, 측정 횟수가 0보다 큰지 확인
+            if (count.find(id) != count.end() && count[id] > 0) {
+                int c = count[id];
+                
+                // 산술 평균 계산
+                Eigen::Vector3f avg_pos = pos_sum[id] / static_cast<float>(c);
+                Eigen::Vector3f avg_norm = norm_sum[id] / static_cast<float>(c);
+                
+                // 평균화된 법선 벡터는 크기가 1이 아닐 수 있으므로 다시 정규화
+                avg_norm.normalize();
 
-                    // CSV에 쓰기
-                    file << angle << "," << id << ","
-                         << avg_pos[0] << "," << avg_pos[1] << "," << avg_pos[2] << ","
-                         << avg_norm[0] << "," << avg_norm[1] << "," << avg_norm[2] << "\n";
-                         
-                    std::cout << " - 마커 ID " << id << " 기록 완료 (측정 횟수: " << c << ")\n";
-                }
+                // CSV에 쓰기
+                file << angle << "," << id << ","
+                     << avg_pos[0] << "," << avg_pos[1] << "," << avg_pos[2] << ","
+                     << avg_norm[0] << "," << avg_norm[1] << "," << avg_norm[2] << "\n";
+                     
+                std::cout << " - 마커 ID " << id << " 기록 완료 (측정 횟수: " << c << ")\n";
+                any_marker_found = true;
+            } else {
+                // 해당 마커가 한 번도 감지되지 않은 경우 NaN 기록
+                file << angle << "," << id << ",NaN,NaN,NaN,NaN,NaN,NaN\n";
+                std::cout << "[경고] " << angle << " deg 위치에서 마커 ID " << id << "을(를) 찾지 못했습니다.\n";
             }
         }
+
+        // 모든 마커가 하나도 보이지 않은 경우 추가 경고
+        if (!any_marker_found) {
+            std::cout << "[경고] 해당 각도(" << angle << " deg)에서 어떠한 마커도 감지되지 않았습니다!\n";
+        }
+        
+        // // [평균 및 CSV 저장 단계]
+        // if (count.empty()) {
+        //     file << angle << ",-1,NaN,NaN,NaN,NaN,NaN,NaN\n";
+        //     std::cout << "[경고] 해당 각도에서 마커를 찾지 못했습니다: " << angle << " deg\n";
+        // } else {
+        //     for (auto const& [id, c] : count) {
+        //         if (c > 0) {
+        //             // 산술 평균 계산
+        //             Eigen::Vector3f avg_pos = pos_sum[id] / static_cast<float>(c);
+        //             Eigen::Vector3f avg_norm = norm_sum[id] / static_cast<float>(c);
+                    
+        //             // 평균화된 법선 벡터는 크기가 1이 아닐 수 있으므로 다시 정규화
+        //             avg_norm.normalize();
+
+        //             // CSV에 쓰기
+        //             file << angle << "," << id << ","
+        //                  << avg_pos[0] << "," << avg_pos[1] << "," << avg_pos[2] << ","
+        //                  << avg_norm[0] << "," << avg_norm[1] << "," << avg_norm[2] << "\n";
+                         
+        //             std::cout << " - 마커 ID " << id << " 기록 완료 (측정 횟수: " << c << ")\n";
+        //         }
+        //     }
+        // }
     }
     
     file.close();
