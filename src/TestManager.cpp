@@ -30,7 +30,7 @@ void TestManager::SendTestProcess()
             }
         FK(c_MotorAngle); // 현재 q값에 대한 FK 진행
     
-        std::cout << "\nSelect Method (1 - 관절각도값 조절, 2 - 좌표값 조절, 4 - 발 모터, 5 - 속도 제어 실험, 6 - 브레이크, 7 - 허리 모터, 8 - pc 캡쳐 및 원 검출, -1 - 나가기) : ";
+        std::cout << "\nSelect Method (1 - 관절각도값 조절, 2 - 좌표값 조절, 4 - 발 모터, 5 - 속도 제어 실험, 6 - 브레이크, 7 - 허리 모터, 8 - pc 캡쳐 및 원 검출, 9 - aruco pose, -1 - 나가기) : ";
         std::cin >> method;
 
         if(method == 1)
@@ -422,6 +422,10 @@ void TestManager::SendTestProcess()
         else if(method == 8)
         {
             cap_pc_3times();
+        }
+        else if(method == 9)
+        {
+            get_marker_pose();
         }
         else
         {
@@ -2809,6 +2813,7 @@ void TestManager::move_waist(float target_deg)
         for (auto &entry : motors)
         {
             if (entry.first == "waist")
+            // if (entry.first == "L_arm3")
             {
                 if (std::shared_ptr<TMotor> tMotor = std::dynamic_pointer_cast<TMotor>(entry.second))
                 {
@@ -2826,4 +2831,166 @@ void TestManager::move_waist(float target_deg)
     std::this_thread::sleep_for(std::chrono::milliseconds(std::lround((move_time + 1.0f)*1000)));
     int tt = std::lround((move_time + 2.0f)*1000);
     std::cout << " Moving Complete." << tt << std::endl;
+}
+
+void TestManager::get_marker_pose()
+{
+    // 허리를 회전시키며 ArUco 마커의 위치와 법선 벡터를 측정하여 CSV로 저장하는 함수
+    // 1. 사용할 각도 리스트
+    std::vector<float> angles = {20.0f, 15.0f, 10.0f, 5.0f, 0.0f, -5.0f, -10.0f, -15.0f, -20.0f, -25.0f};
+
+    // 2. CSV 파일 준비
+    std::ofstream file("../aruco_marker_pose_avg.csv");
+    file << "angle_deg,marker_id,cx,cy,cz,nx,ny,nz\n";
+
+    // 3. RealSense 및 ArUco 설정
+    int width = 1280, height = 720, fps = 30;
+    rs2::pipeline pipe;
+    rs2::config cfg;
+    cfg.enable_stream(RS2_STREAM_COLOR, width, height, RS2_FORMAT_BGR8, fps);
+    cfg.enable_stream(RS2_STREAM_DEPTH, width, height, RS2_FORMAT_Z16, fps);
+    rs2::pipeline_profile profile = pipe.start(cfg);
+    rs2::align align_to_color(RS2_STREAM_COLOR);
+    rs2::align align_to_depth(RS2_STREAM_DEPTH);
+
+    // 내부 파라미터(Intrinsic) 설정
+    auto stream = profile.get_stream(RS2_STREAM_COLOR).as<rs2::video_stream_profile>();
+    // auto stream = profile.get_stream(RS2_STREAM_DEPTH).as<rs2::video_stream_profile>();
+    rs2_intrinsics intr = stream.get_intrinsics();
+    cv::Mat cameraMatrix = cv::Mat::eye(3, 3, CV_64F);
+    cameraMatrix.at<double>(0, 0) = intr.fx;
+    cameraMatrix.at<double>(1, 1) = intr.fy;
+    cameraMatrix.at<double>(0, 2) = intr.ppx;
+    cameraMatrix.at<double>(1, 2) = intr.ppy;
+    cv::Mat distCoeffs = cv::Mat::zeros(5, 1, CV_64F);
+    for(int i = 0; i < 5; i++) distCoeffs.at<double>(i) = intr.coeffs[i];
+
+    // ArUco 파라미터 셋업
+    auto dictionary = cv::aruco::getPredefinedDictionary(cv::aruco::DICT_4X4_50);
+    auto parameters = cv::aruco::DetectorParameters::create();
+    parameters->cornerRefinementMethod = cv::aruco::CORNER_REFINE_SUBPIX;
+    parameters->cornerRefinementWinSize = 5;
+    parameters->cornerRefinementMaxIterations = 30;
+    parameters->cornerRefinementMinAccuracy = 0.1;
+
+    // 4. 각 각도별 순회 측정
+    for (float angle : angles) {
+        std::cout << "\n==== " << angle << " deg 위치로 이동 중... ====\n";
+        
+        // 허리 이동 (move_waist 내부에서 이동 완료 시간까지 이미 대기함)
+        move_waist(angle);
+
+        // [안정화 단계] 카메라 이동 후 흔들림 및 Auto-Exposure 세팅을 위해 30프레임 날림 (약 1초)
+        std::cout << "카메라 안정화 대기 중...\n";
+        for (int i = 0; i < 30; ++i) {
+            pipe.wait_for_frames();
+        }
+
+        // 변환 행렬 계산
+        Eigen::Matrix4f T_joint_cam = get_cam_to_rotation_matrix();
+        Eigen::Matrix4f T_rotation_world = get_rotation_to_world_matrix(angle);
+        Eigen::Matrix4f T_cam_world = T_rotation_world * T_joint_cam;
+
+        // 평균 계산을 위한 데이터 누적 맵 선언 (모든 마커 대상)
+        std::map<int, Eigen::Vector3f> pos_sum;
+        std::map<int, Eigen::Vector3f> norm_sum;
+        std::map<int, int> count;
+
+        int capture_frames = 30; // 30 프레임 동안 스캔하여 평균냄
+        
+        std::cout << "데이터 측정 중 (" << capture_frames << " 프레임)...\n";
+        for (int trial = 0; trial < capture_frames; ++trial) {
+            rs2::frameset frames = pipe.wait_for_frames();
+            frames = align_to_color.process(frames);
+            // frames = align_to_depth.process(frames);
+            auto color = frames.get_color_frame();
+            if (!color) continue;
+            
+            cv::Mat image(cv::Size(width, height), CV_8UC3, (void*)color.get_data(), cv::Mat::AUTO_STEP);
+
+            std::vector<int> ids;
+            std::vector<std::vector<cv::Point2f>> corners;
+            cv::aruco::detectMarkers(image, dictionary, corners, ids, parameters);
+
+            // 시각화: 마커 감지 결과를 윈도우에 표시
+            if (!ids.empty()) {
+                cv::aruco::drawDetectedMarkers(image, corners, ids);
+                // 포즈가 계산되면 축도 그림
+                std::vector<cv::Vec3d> tmp_r, tmp_t;
+                cv::aruco::estimatePoseSingleMarkers(corners, 0.02, cameraMatrix, distCoeffs, tmp_r, tmp_t);
+                for (size_t di = 0; di < ids.size(); ++di) {
+                    cv::aruco::drawAxis(image, cameraMatrix, distCoeffs, tmp_r[di], tmp_t[di], 0.05);
+                }
+            }
+            cv::imshow("ArUco Scan", image);
+            if (cv::waitKey(1) == 27) { /* ESC로 중단 시 바로 반환 */ }
+
+            if (ids.empty()) continue; // 마커가 없으면 다음 프레임으로
+
+            std::vector<cv::Vec3d> rvecs, tvecs;
+            cv::aruco::estimatePoseSingleMarkers(corners, 0.02, cameraMatrix, distCoeffs, rvecs, tvecs);
+
+            for (size_t i = 0; i < ids.size(); ++i) {
+                int id = ids[i];
+
+                // 마커 중심 픽셀 좌표 계산
+                float u = 0, v = 0;
+                for (int k = 0; k < 4; ++k) { u += corners[i][k].x; v += corners[i][k].y; }
+                u /= 4.0f; v /= 4.0f;
+                int iu = static_cast<int>(std::round(u));
+                int iv = static_cast<int>(std::round(v));
+
+                // depth 값 가져오기 (이미 align_to_color 되어 있으므로 depth,&color 크기 일치)
+                float z_depth = 0.0f;
+                auto depth = frames.get_depth_frame();
+                if (iu >= 0 && iu < width && iv >= 0 && iv < height) {
+                    z_depth = depth.get_distance(iu, iv);
+                }
+
+                // 1) 중심 좌표 변환 (카메라 -> 월드) : z는 depth 프레임에서 읽은 값 사용
+                Eigen::Vector4f p_cam_eig(tvecs[i][0], tvecs[i][1], z_depth, 1.0f);
+                Eigen::Vector4f p_world = T_cam_world * p_cam_eig;
+
+                // 2) 법선 벡터 변환 (카메라 -> 월드)
+                cv::Mat R;
+                cv::Rodrigues(rvecs[i], R);
+                // ArUco 마커 좌표계에서 z축이 법선 벡터이므로 R행렬의 3번째 열 추출
+                Eigen::Vector4f n_cam_eig(R.at<double>(0,2), R.at<double>(1,2), R.at<double>(2,2), 0.0f);
+                Eigen::Vector4f n_world = T_cam_world * n_cam_eig;
+
+                // 누적합 계산
+                pos_sum[id] += Eigen::Vector3f(p_world[0], p_world[1], p_world[2]);
+                norm_sum[id] += Eigen::Vector3f(n_world[0], n_world[1], n_world[2]);
+                count[id]++;
+            }
+        }
+
+        // [평균 및 CSV 저장 단계]
+        if (count.empty()) {
+            file << angle << ",-1,NaN,NaN,NaN,NaN,NaN,NaN\n";
+            std::cout << "[경고] 해당 각도에서 마커를 찾지 못했습니다: " << angle << " deg\n";
+        } else {
+            for (auto const& [id, c] : count) {
+                if (c > 0) {
+                    // 산술 평균 계산
+                    Eigen::Vector3f avg_pos = pos_sum[id] / static_cast<float>(c);
+                    Eigen::Vector3f avg_norm = norm_sum[id] / static_cast<float>(c);
+                    
+                    // 평균화된 법선 벡터는 크기가 1이 아닐 수 있으므로 다시 정규화
+                    avg_norm.normalize();
+
+                    // CSV에 쓰기
+                    file << angle << "," << id << ","
+                         << avg_pos[0] << "," << avg_pos[1] << "," << avg_pos[2] << ","
+                         << avg_norm[0] << "," << avg_norm[1] << "," << avg_norm[2] << "\n";
+                         
+                    std::cout << " - 마커 ID " << id << " 기록 완료 (측정 횟수: " << c << ")\n";
+                }
+            }
+        }
+    }
+    
+    file.close();
+    pipe.stop();
+    std::cout << "\n[완료] 모든 각도의 스캔이 완료되었으며, 'aruco_marker_pose_avg.csv'에 저장되었습니다.\n";
 }

@@ -182,4 +182,6 @@ private:
     void saveCloudToCSV(const pcl::PointCloud<pcl::PointXYZ>::Ptr& cloud, const std::string& filename);
     void cap_pc_3times();
     void move_waist(float target_deg);
+    void get_marker_pose();
+
 };
