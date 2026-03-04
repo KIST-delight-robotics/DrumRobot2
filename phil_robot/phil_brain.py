@@ -19,6 +19,19 @@ LLM_MODEL = "phil-bot"     # ⚠️ 사용 중인 모델명으로 변경 필수
 HOST = '127.0.0.1'
 PORT = 9999
 
+JOINT_LIMITS = {
+    "waist": (-89.0, 89.0),
+    "R_arm1": (0.0, 149.0),
+    "L_arm1": (29.0, 179.0),
+    "R_arm2": (-59.0, 89.0),
+    "R_arm3": (0.0, 139.0),
+    "L_arm2": (-59.0, 89.0),
+    "L_arm3": (0.0, 139.0),
+    "R_wrist": (-107.0, 134.0), # 135도에서 과전류
+    "L_wrist": (-107.0, 134.0), # 135도에서 과전류
+    "R_foot": (-89.0, 199.0),
+    "L_foot": (-89.0, 199.0)
+}
 
 # ==========================================
 # 🔧 녹음 함수
@@ -95,9 +108,13 @@ def main():
             current_song = ROBOT_STATE.get("current_song", "None")
             progress = ROBOT_STATE.get("progress", "None")
             last_action = ROBOT_STATE.get("last_action", "None")
+            is_lock_key_removed = ROBOT_STATE.get("is_lock_key_removed", False)
 
             # 2. 상태에 따른 아주 디테일한 맥락 주입
-            if current_state == 2:
+            if not is_lock_key_removed:
+                state_context = f"현재 당신(로봇)은 락키가 설치되어 있습니다. (락키 제거 여부: {is_lock_key_removed}) 사용자가 락키를 제거하면 연주를 시작할 수 있습니다."
+
+            elif current_state == 2:
                 state_context = f"현재 당신(로봇)은 '{current_song}' 곡을 신나게 연주(Play) 중입니다. (진행률: {progress}) 사용자가 손을 들라거나 다른 행동을 요구하면 지금은 연주 중이라 어렵다고 정중히 거절하세요."
             
             elif current_state == 4:

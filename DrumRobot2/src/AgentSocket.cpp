@@ -9,6 +9,13 @@ AgentSocket::~AgentSocket() {
     stop();
 }
 
+// 큐 비우기 함수
+void AgentSocket::clearQueue() {
+    std::lock_guard<std::mutex> lock(queueMutex);
+    std::queue<std::string> empty;
+    std::swap(commandQueue, empty);
+}
+
 void AgentSocket::start() {
     if (keepRunning) return; // 이미 실행 중이면 패스
 
@@ -88,6 +95,12 @@ void AgentSocket::runServerLoop() {
 
             std::string cmd(buffer);
             
+            // ★ 안전장치: 셔터(게이트)가 닫혀있으면 명령 폐기
+            if (!isGateOpen.load()) {
+                std::cout << "🚫 [Safeguard] 로봇 보호 상태: 명령 폐기 -> " << cmd << std::endl;
+                continue; 
+            }
+
             // ★ 중요: 큐에 넣을 때는 자물쇠(Mutex) 잠그기
             {
                 std::lock_guard<std::mutex> lock(queueMutex);

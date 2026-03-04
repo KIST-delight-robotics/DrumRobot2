@@ -231,6 +231,8 @@ private:
     std::string lastExecutedCmd = "None"; // 마지막으로 실행된 명령어 저장 변수
     std::string lastErrorReason = "None"; // 마지막으로 명령어 실행 실패 시 이유 저장 변수
     
+    bool isLockKeyRemoved = false; // 락키 제거 여부 확인용 변수
+
     // 마젠타 반복 생성을 위한 변수들
     int repeatNum = 1;
     int currentIterations = 1;

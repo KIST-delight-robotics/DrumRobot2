@@ -6,9 +6,14 @@ import json
 
 # 로봇의 상태를 기억할 전역 변수 (초기값)
 ROBOT_STATE = {
-    "state": 0,    # 0: Ideal, 2: Play, 4: Error 등
-    "bpm": 100,
-    "is_fixed": False
+    "state": 0,          # 0: Ideal, 2: Play, 4: Error 등
+    "bpm": 100,          # 기본 템포
+    "is_fixed": True,    # 기본값: 가만히 있음 (True)
+    "error_detail": "None",
+    "current_song": "None",
+    "progress": "None",
+    "last_action": "None",
+    "is_lock_key_removed": False  # 락키 제거 여부 (추가)
 }
 
 class RobotClient:
@@ -65,6 +70,7 @@ class RobotClient:
                 while '\n' in buffer:
                     line, buffer = buffer.split('\n', 1)
                     if line.strip():
+                        print(f"👀 [Debug 수신] {line.strip()}") # 디버깅 용
                         try:
                             # 3. 전역 변수 업데이트
                             new_state = json.loads(line)

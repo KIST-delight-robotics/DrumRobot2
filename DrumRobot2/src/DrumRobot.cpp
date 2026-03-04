@@ -986,20 +986,25 @@ string DrumRobot::makeStateJson()
     // 1. 기존 필수 데이터
     oss << "\"state\": " << currentState << ", ";
     oss << "\"bpm\": " << pathManager.bpmOfScore << ", ";
-    oss << "\"is_fixed\": " << (flagObj.getFixationFlag() ? "true" : "false");
+    oss << "\"is_fixed\": " << (flagObj.getFixationFlag() ? "true" : "false") << ", ";
+    
     // 2. [추가] 곡명 및 진행률 (Context)
     oss << "\"current_song\": \"" << nextSongCode << "\", ";
     oss << "\"progress\": \"" << currentIterations << "/" << repeatNum << "\", ";
 
-    // 3. [추가] 마지막으로 실행된 명령어 및 에러 메시지 (Context)
+    // 3. [추가] 잠금 키 해제 여부
+    oss << "\"is_lock_key_removed\": " << (isLockKeyRemoved ? "true" : "false") << ", ";
+
+    // 4. [추가] 마지막으로 실행된 명령어 및 에러 메시지 (Context)
     oss << "\"last_action\": \"" << lastExecutedCmd << "\", "; 
     
-    // 4. [추가] 에러 상태일 때만 에러 메시지 포함, 아니면 "None"으로 표시
+    // 5. [추가] 에러 상태일 때만 에러 메시지 포함, 아니면 "None"으로 표시
     if (currentState == 4) {
         oss << "\"error_message\": \"" << lastErrorReason << "\", ";
     } else {
         oss << "\"error_message\": \"None\"";
     }
+
     oss << "}";
     
     return oss.str();
@@ -1186,6 +1191,11 @@ void DrumRobot::processInput(const string &input, string flagName)
 
         // 3) Ready 상태가 보장되었으므로 Play 모드 진입
         cout << ">>> [Action] 연주를 시작합니다." << endl;
+
+        // [핵심] Play 시작 시점에 소켓 폐쇄 (명령 수신 중단)
+        agentSocket.closeGate(); // 연주 시작 시 소켓 폐쇄
+        cout << ">>> 수신 게이트가 폐쇄됩니다." << endl;
+
         state.main = Main::Play;
     }
 
@@ -1260,7 +1270,6 @@ void DrumRobot::processInput(const string &input, string flagName)
 void DrumRobot::idealStateRoutine()
 {
     // 키 뽑았는지 확인하는 안전장치
-    static bool isLockKeyRemoved = false; 
     if (!isLockKeyRemoved)
     {
         // 안전한 상태인지 한 번만 실행됨
@@ -1271,6 +1280,8 @@ void DrumRobot::idealStateRoutine()
             getline(cin, check);
         } while (check != "k");
         isLockKeyRemoved = true;
+        agentSocket.openGate(); // 소켓으로 게이트 열었다고 신호 보내기
+        cout << ">>> 키가 제거되었습니다. 수신 게이트가 활성화됩니다.\n"; 
     }
 
     // 로봇이 고정된 상태(Move가 끝난 상태)인지 확인 (Source 57 참조)
@@ -2114,8 +2125,8 @@ void DrumRobot::runPlayProcess()
     // ====================================================================
     cout << ">>> [Agent] 궤적 생성 완료. 모터 연주가 끝날 때까지 대기(Play)합니다..." << endl;
 
-    // 모터가 궤적을 꺼내가서 연주가 완전히 끝날 때까지 대기 (fixation이 풀리고, 모든 모터가 unconnected 상태가 될 때까지)
-    while (flagObj.getFixationFlag() || !allMotorsUnConected)
+    // 궤적은 다 만들어졌지만, 모터가 실제로 연주를 끝내야 하므로, fixationFlag가 켜질 때까지 대기
+    while (!flagObj.getFixationFlag() && !allMotorsUnConected)
     {        
         usleep(1000); // 100ms 대기
     }
@@ -2133,6 +2144,10 @@ void DrumRobot::runPlayProcess()
     }
     
     state.main = Main::AddStance;
+
+    // 게이트 개방
+    agentSocket.openGate();
+    cout << " [System] 연주 종료. 명령 수신 게이트 개방." << endl;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

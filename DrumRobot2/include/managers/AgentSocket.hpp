@@ -13,9 +13,10 @@
 #include <atomic>
 
 // 로봇의 상태를 확인하기 위해 필요하다면 include
-// #include "../tasks/SystemState.hpp" 
+// #include "../tasks/SystemState.hpp"
 
-class AgentSocket {
+class AgentSocket
+{
 public:
     // 생성자: 포트 번호를 받음 (기본 9999)
     AgentSocket(int port = 9999);
@@ -23,7 +24,7 @@ public:
 
     // 서버 시작 (스레드 생성)
     void start();
-    
+
     // 서버 종료 (자원 해제)
     void stop();
 
@@ -35,9 +36,18 @@ public:
     bool isConnected();
 
     // 상태 정보 전송 (예: JSON 문자열)
-    void sendState(const std::string& jsonStr);
+    void sendState(const std::string &jsonStr);
 
-    private:
+    // 셔터(게이트) 제어 함수
+    void openGate() { isGateOpen = true; }
+    void closeGate()
+    {
+        isGateOpen = false;
+        clearQueue(); // 셔터 닫을 때 혹시 남아있는 쓰레기도 싹 비움
+    }
+    void clearQueue();
+
+private:
     int server_fd;
     int new_socket;
     int port;
@@ -53,6 +63,9 @@ public:
 
     // 스레드 내부에서 돌아갈 실제 루프 함수
     void runServerLoop();
+
+    // 셔터(게이트) 상태 플래그
+    std::atomic<bool> isGateOpen{false};
 };
 
 #endif // AGENTSOCKET_HPP
