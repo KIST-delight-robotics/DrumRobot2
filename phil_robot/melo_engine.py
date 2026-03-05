@@ -25,11 +25,13 @@ class TTS_Engine:
             self.model = None
 
     def preprocess(self, text):
-        # 젯슨이 못 읽는 영어 약어 처리
+        # 젯슨이 못 읽는 단어 처리
         replacements = {
             "GPU": "지피유", "CPU": "씨피유", "LLM": "엘엘엠", 
             "AI": "에이아이", "Jetson": "젯슨", "Orin": "오린",
-            "MeloTTS": "멜로 티티에스", "CUDA": "쿠다"
+            "MeloTTS": "멜로 티티에스", "CUDA": "쿠다", "80": "팔십",
+            "100": "백", "120": "백이십", "160": "백육십", "96": "구십육",
+            "88": "팔십팔", "64": "육십사", "16": "열여섯", "32": "서른둘"
         }
         for k, v in replacements.items():
             text = text.replace(k, v).replace(k.lower(), v)

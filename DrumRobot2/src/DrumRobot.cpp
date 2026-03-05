@@ -980,7 +980,6 @@ string DrumRobot::makeStateJson()
     stringstream oss;
     int currentState = static_cast<int>(state.main.load());
     
-    // JSON 형태 조립 {"state": 2, "bpm": 120, "is_fixed": true}
     oss << "{";
     
     // 1. 기존 필수 데이터
@@ -1000,7 +999,7 @@ string DrumRobot::makeStateJson()
     
     // 5. [추가] 에러 상태일 때만 에러 메시지 포함, 아니면 "None"으로 표시
     if (currentState == 4) {
-        oss << "\"error_message\": \"" << lastErrorReason << "\", ";
+        oss << "\"error_message\": \"" << lastErrorReason << "\"";
     } else {
         oss << "\"error_message\": \"None\"";
     }
