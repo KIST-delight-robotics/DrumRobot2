@@ -36,7 +36,7 @@ void AgentAction::executeCommand(std::string fullCmd)
     std::string action = tokens[0]; // 메인 행동 키워드
 
     // 3. 정책 매핑 (Routing)
-    // (1) ex)시선 제어: look:pan,tilt(수평, 수직)
+    // (1) ex)시선 제어: look:pan,tilt(수평, 수직)-> home: 0,90 (정면)
     if (action == "look" && tokens.size() >= 2) 
     {
         std::vector<std::string> angles = split(tokens[1], ',');
@@ -117,29 +117,40 @@ void AgentAction::policy_gesture(std::string type)
     if (type == "wave" || type == "hi")
     {
         // (1) 시선 처리: 움직이는 오른손을 바라봄 (자연스러움 유도)
-        policy_lookAt(-30, -10); 
+        policy_lookAt(30, 100); // 오른쪽 아래를 바라보도록
 
         // (2) 안전을 위해 손목 살짝 들기 (드럼 충돌 방지)
         policy_moveJoint("R_wrist", 0.0);
 
-        // (3) 팔을 옆으로 들기 (R_arm2: 어깨 Roll 모터, Max 90도)
-        policy_moveJoint("R_arm2", 80.0); 
+        // (3) 팔 바깥으로 돌리기 (R_arm1: 어깨 roll 모터, Max 150도)
+        policy_moveJoint("R_arm1", 30.0);
+
+        // (4) 팔 위로 들기 (R_arm2: 어깨 pitch 모터, Max 90도)
+        policy_moveJoint("R_arm2", 70.0); 
         
-        // (4) 팔꿈치를 굽혔다 폈다 반복 (R_arm3)
+        // (5) 팔꿈치와 손목 굽혔다 폈다 반복 (R_arm3, R_wrist)
         // moveJoint 명령은 큐(Queue)에 쌓이므로 순차적으로 실행됩니다.
-        policy_moveJoint("R_arm3", 90.0); // 안쪽으로 굽힘
+        // 1. 팔꿈치, 손목 굽히기
+        policy_moveJoint("R_arm3", 75.0); // 안쪽으로 굽힘
+        policy_moveJoint("R_wrist", 45.0); // 손목도 함께 굽힘
+        // 2. 팔꿈치, 손목 펴기
         policy_moveJoint("R_arm3", 45.0); // 바깥쪽으로 폄
-        policy_moveJoint("R_arm3", 90.0); // 다시 굽힘
+        policy_moveJoint("R_wrist", 0.0); // 손목 원위치
+        // 3. 팔꿈치, 손목 굽히기
+        policy_moveJoint("R_arm3", 75.0); // 다시 굽힘
+        policy_moveJoint("R_wrist", 45.0); // 손목도 함께 굽힘
+        // 4. 팔꿈치, 손목 펴기 (마무리)
         policy_moveJoint("R_arm3", 45.0); // 다시 폄
+        policy_moveJoint("R_wrist", 0.0); // 손목 원위치
     }
     // 2. 끄덕임 (Nod) - DXL 모터 사용
     else if (type == "nod"){
         // 끄덕임: 아래 -> 위 -> 정면
-        policy_lookAt(0, 20); // 아래
+        policy_lookAt(0, 110); // 아래
         // 연속 동작은 큐에 순차적으로 넣으면 됨 (PathManager 구조상)
         // 실제로는 시간 지연이 필요할 수 있음. 
         // V1에서는 단순하게 구현.
-        policy_lookAt(0, 0);  // 정면
+        policy_lookAt(0, 90);  // 정면
     }
     // 3. 도리도리 (Shake) - 좌우로 고개 흔들기
     else if (type == "shake"){
@@ -149,16 +160,16 @@ void AgentAction::policy_gesture(std::string type)
     }
     // 4. 환호 (Hurray) - 양팔 만세
     else if (type == "hurray" || type == "happy") {
-        // 양쪽 어깨(arm1)를 150도(최대)로 들어 올림
-        policy_moveJoint("R_arm1", 140.0);
-        policy_moveJoint("L_arm1", 140.0);
+        // 양쪽 팔 들어 올림
+        policy_moveJoint("R_arm2", 70.0);
+        policy_moveJoint("L_arm2", 70.0);
         
-        // 팔꿈치는 펴줌
-        policy_moveJoint("R_arm3", 0.0);
-        policy_moveJoint("L_arm3", 0.0);
+        // 양쪽 팔꿈치 펴기
+        policy_moveJoint("R_arm3", 15.0);
+        policy_moveJoint("L_arm3", 15.0);
         
         // 고개 들기 (DXL)
-        policy_lookAt(0, -30); 
+        policy_lookAt(0, 70); 
     }
 }
 
@@ -209,6 +220,8 @@ void AgentAction::policy_moveJoint(std::string motorName, float angleDeg)
 
     auto motor = motors[motorName];
     float targetRad = angleDeg * M_PI / 180.0f;
+    float move_time = 2.0f;
+    float dt = 0.005f;      // 5ms 주기 (CAN 통신 주기)
 
     // 2. 모터 타입별 명령 생성 (GenericMotor -> TMotor/MaxonMotor 캐스팅)
     // T-Motor 처리
@@ -216,63 +229,70 @@ void AgentAction::policy_moveJoint(std::string motorName, float angleDeg)
     {
         // [안전장치] 각도 제한 확인
         if (targetRad < tMotor->rMin || targetRad > tMotor->rMax) {
-            std::cerr << "[Warning] Joint Limit Exceeded (T-Motor): " << motorName 
-                << " Curr: " << angleDeg << " Limit: " << tMotor->rMin << "~" << tMotor->rMax << std::endl;
-                return;
+            std::cerr << "[Warning] Joint Limit Exceeded (T-Motor): " << motorName << " Curr: " << angleDeg << " Limit: " << tMotor->rMin << "~" << tMotor->rMax << std::endl;
+            return;
+        }
+
+        // [보간 준비] 시작점과 목표점 계산 (Radian 단위)
+        float startRad = tMotor->motorPositionToJointAngle(tMotor->finalMotorPosition); // 현재 위치를 기준으로 보간 시작
+        
+        std::lock_guard<std::mutex> lock(tMotor->bufferMutex); // T-Motor 전용 자물쇠 
+
+        for (float t = dt; t <= move_time; t += dt) {
+            
+            // 사인 보간 공식: current = (target - start) / 2 * cos(pi * t / T + pi) + (target + start) / 2
+            float current_rad = ((targetRad - startRad) / 2.0f) * cos(M_PI * (t / move_time + 1.0f)) + ((targetRad + startRad) / 2.0f);
+
+            // T-Motor 명령 생성
+            TMotorData newData;
+            newData.position = tMotor->jointAngleToMotorPosition(current_rad);
+            newData.mode = tMotor->Position;
+            newData.velocityERPM = 0;
+            newData.useBrake = 0;
+
+            // T-Motor 명령 버퍼에 추가
+            tMotor->commandBuffer.push(newData);
+            tMotor->finalMotorPosition = newData.position; // 최종 위치 업데이트 (다음 명령의 시작점이 됨)
+        }
     }
 
-    TMotorData newData;
-    newData.position = tMotor->jointAngleToMotorPosition(targetRad);
-    newData.mode = tMotor->Position;
-    newData.velocityERPM = 0;
-    newData.useBrake = 0;
-    
-    // [수정] Mutex 잠금 범위 내에서만 push 수행 (중복 제거)
-    {
-        std::lock_guard<std::mutex> lock(tMotor->bufferMutex); 
-        tMotor->commandBuffer.push(newData);
-    } 
-    
-    // 최종 위치 업데이트 (다음 명령의 시작점이 됨)
-    tMotor->finalMotorPosition = newData.position;
-    }
-    // Maxon Motor 처리 (보간 로직 적용)
+    // Maxon 모터 처리
     else if (auto maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motor))
     {
         // [안전장치] 각도 제한 확인
         if (targetRad < maxonMotor->rMin || targetRad > maxonMotor->rMax) {
-        std::cerr << "[Warning] Joint Limit Exceeded (Maxon): " << motorName << std::endl;
-        return;
-    }
-
-    // [보간 준비] 시작점과 목표점 계산
-    // finalMotorPosition은 이전에 마지막으로 명령 내린 위치입니다.
-    float startPos = maxonMotor->finalMotorPosition; 
-    float targetPos = maxonMotor->jointAngleToMotorPosition(targetRad);
-
-    // [수정] 5단계 선형 보간 (Linear Interpolation)
-    // Maxon은 1ms 주기로 동작하므로 5ms 동안 부드럽게 이동하도록 5개로 쪼갭니다.
-    {
-        std::lock_guard<std::mutex> lock(maxonMotor->bufferMutex);
-        
-        for(int i = 1; i <= 5; i++) {
-            MaxonData stepData;
-            
-            // 공식: 시작점 + (변화량 * 진행률)
-            // i=1: 20%, i=2: 40%, ... i=5: 100% 도달
-            float interpolatedPos = startPos + (targetPos - startPos) * (i / 5.0f);
-            
-            stepData.position = interpolatedPos;
-            stepData.mode = maxonMotor->CSP; // 위치 제어
-            stepData.kp = 0;
-            stepData.kd = 0;
-            
-            maxonMotor->commandBuffer.push(stepData);
+            std::cerr << "[Warning] Joint Limit Exceeded (Maxon): " << motorName << " Curr: " << angleDeg << " Limit: " << maxonMotor->rMin << "~" << maxonMotor->rMax << std::endl;
+            return;
         }
-    } 
-    
-    // 최종 위치 업데이트 (아주 중요: 다음 보간의 시작점이 됨)
-    maxonMotor->finalMotorPosition = targetPos;
+
+        // [보간 준비] 시작점과 목표점 계산
+        // finalMotorPosition은 이전에 마지막으로 명령 내린 위치입니다.
+        float startRad = maxonMotor->motorPositionToJointAngle(maxonMotor->finalMotorPosition); // 현재 위치를 기준으로 보간 시작
+
+        std::lock_guard<std::mutex> lock(maxonMotor->bufferMutex);
+
+        for (float t = dt; t <= move_time; t += dt) {
+            
+            // 사인 보간 공식: start + (target - start) * (1 - cos(pi * t / T)) / 2
+            float current_rad = startRad + (targetRad - startRad) * (1 - cos(M_PI * t / move_time)) / 2.0f;
+
+            // Maxon 모터 전용 1ms 5단계 쪼개기
+            for (int i = 0; i < 5; i++) { 
+                
+                MaxonData newData;
+                newData.position = maxonMotor->jointAngleToMotorPosition(current_rad);
+                newData.mode = maxonMotor->CSP;
+                newData.kp = 0;
+                newData.kd = 0;
+
+                maxonMotor->commandBuffer.push(newData);
+                maxonMotor->finalMotorPosition = newData.position; // 최종 위치 업데이트 (다음 명령의 시작점이 됨)
+            }
+        }
+    }
+    else 
+    {
+        std::cerr << "[Agent] Unsupported Motor Type for: " << motorName << std::endl;
     }
 
 }
