@@ -1,7 +1,7 @@
 # 🥁 Phil Robot: AI-Powered Humanoid Drummer
 > **Jetson AGX Orin 기반의 로컬 AI 에이전트와 실시간 C++ 모터 제어 시스템의 통합 아키텍처**
 
-![Phil Robot Preview](https://www.youtube.com/watch?v=SHXWN2f2ou8)
+![Phil Robot Preview](./docs/DrumRobot.jpg)
 *(https://www.youtube.com/watch?v=SHXWN2f2ou8)*
 
 ## 📖 Project Overview
@@ -53,3 +53,36 @@ graph LR
     %% TTS Output
     TTS -.->|"Audio Feedback"| Speaker((Speaker))
     class Speaker hardware;
+
+    graph TD
+    classDef aiBox fill:#E1F5FE,stroke:#0288D1,stroke-width:2px,color:#000;
+    classDef cppBox fill:#E8F5E9,stroke:#388E3C,stroke-width:2px,color:#000;
+    classDef stateBox fill:#FCE4EC,stroke:#C2185B,stroke-width:2px,color:#000;
+
+    subgraph Python_Brain ["🧠 AI Python Process (Initialization & Parsing)"]
+        direction TB
+        PyInit[TTS Engine Pre-loading] --> WhisperListen[Whisper STT Listening]
+        WhisperListen --> LLM_Gen[LLM Generation]
+        LLM_Gen --> CustomParser[Response Parser<br/>Extract Command & Text]
+        class PyInit,WhisperListen,LLM_Gen,CustomParser aiBox;
+    end
+
+    subgraph Cpp_Body ["🦾 C++ Robot Process (Lifecycle & Threads)"]
+        direction TB
+        Start((Start)) --> InitSetup[System Setup & Motor Init]
+        InitSetup --> WaitO{"Wait for 'o' Key"}
+        WaitO -->|'o' Pressed| WaitLock{"Physical Lock Key<br/>Removed?"}
+        WaitLock -->|Key Removed| SpawnThreads[Spawn Multi-Threads<br/>& Open Socket]
+        
+        subgraph State_Machine ["Robot State Machine"]
+            direction LR
+            State_H((0: Idle/Ready)) -->|Cmd: p| State_P((2: Playing))
+            State_P -->|Cmd: s| State_H
+            State_P -.->|Collision/Issue| State_E((4: Error))
+        end
+        SpawnThreads --> State_H
+        class Start,InitSetup,WaitO,WaitLock,SpawnThreads cppBox;
+        class State_H,State_P,State_E stateBox;
+    end
+
+    CustomParser -.->|"Parsed Command<br/>[CMD:action]"| State_Machine
