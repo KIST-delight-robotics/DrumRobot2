@@ -36,7 +36,7 @@ Thumbs.db
 
 # --- [5] 기타 ---
 # 기존에 있던 충돌 룩업 테이블 (유지)
-include/table/
+# include/table/
 
 # --- [6]  phil_robot 생성 미디어 파일 ---
 # 어디에 있든 이 확장자는 다 무시함
