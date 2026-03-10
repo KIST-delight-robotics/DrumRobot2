@@ -34,11 +34,7 @@ phil_robot/downloads_whl/
 .DS_Store
 Thumbs.db
 
-# --- [5] 기타 ---
-# 기존에 있던 충돌 룩업 테이블 (유지)
-# include/table/
-
-# --- [6]  phil_robot 생성 미디어 파일 ---
+# --- [5]  phil_robot 생성 미디어 파일 ---
 # 어디에 있든 이 확장자는 다 무시함
 phil_robot/*.wav
 phil_robot/*.mp3
