@@ -5,8 +5,8 @@
 *(https://www.youtube.com/watch?v=SHXWN2f2ou8)*
 
 ## 📖 Project Overview
-**Phil Robot**은 KIST에서 개발된 휴머노이드 드럼 로봇 '필(Phil)'에게 AI 기반의 인지/대화 능력을 부여하는 프로젝트입니다. 
-외부 클라우드 API에 의존하지 않고, 엣지 디바이스(Jetson AGX Orin) 내에서 독립적으로 구동되는 **On-Device AI 파이프라인(Whisper ↔ Qwen 30B ↔ MeloTTS)**과 실시간성이 요구되는 **C++ 하드웨어 제어 시스템(CAN 통신)**을 이기종 소켓 통신으로 완벽하게 통합했습니다.
+**Phil Robot**은 KIST에서 개발한 휴머노이드 드럼 로봇 '필(Phil)'에게 AI 기반의 인지/대화 능력을 부여하는 프로젝트입니다. 
+외부 클라우드 API에 의존하지 않고, 엣지 디바이스(Jetson AGX Orin) 내에서 독립적으로 구동되는 **On-Device AI 파이프라인(Whisper ↔ Qwen 30B ↔ MeloTTS)**과 실시간성이 요구되는 **C++ 하드웨어 제어 시스템(CAN 통신)**으로 이루어진 Heterogeneous 시스템을 TCP 소켓 통신으로 통합했습니다.
 
 ## 🏗️ System Architecture (Level 1)
 Python(AI Brain)과 C++(Robot Body)을 철저히 분리하여, AI 연산이 실시간 모터 제어 루프를 방해하지 않도록 비동기 IPC 구조를 채택했습니다.
@@ -18,10 +18,10 @@ config:
 ---
 graph LR
     %% Styling Definitions
-    classDef pythonBox fill:#E1F5FE,stroke:#0288D1,stroke-width:2px,color:#000;
-    classDef cppBox fill:#E8F5E9,stroke:#388E3C,stroke-width:2px,color:#000;
-    classDef hardware fill:#FFF3E0,stroke:#F57C00,stroke-width:2px,color:#000;
-    classDef highlight fill:#FCE4EC,stroke:#C2185B,stroke-width:2px,stroke-dasharray: 5 5,color:#000;
+    classDef pythonBox fill:#E1F5FE,stroke:#0288D1,stroke-width:3px,color:#000;
+    classDef cppBox fill:#E8F5E9,stroke:#388E3C,stroke-width:3px,color:#000;
+    classDef hardware fill:#FFF3E0,stroke:#F57C00,stroke-width:3px,color:#000;
+    classDef highlight fill:#FCE4EC,stroke:#C2185B,stroke-width:3px,stroke-dasharray: 5 5,color:#000;
 
     subgraph Brain ["🧠 AI Agent Process (Python / Jetson GPU)"]
         direction TB
@@ -53,36 +53,3 @@ graph LR
     %% TTS Output
     TTS -.->|"Audio Feedback"| Speaker((Speaker))
     class Speaker hardware;
-
-    graph TD
-    classDef aiBox fill:#E1F5FE,stroke:#0288D1,stroke-width:2px,color:#000;
-    classDef cppBox fill:#E8F5E9,stroke:#388E3C,stroke-width:2px,color:#000;
-    classDef stateBox fill:#FCE4EC,stroke:#C2185B,stroke-width:2px,color:#000;
-
-    subgraph Python_Brain ["🧠 AI Python Process (Initialization & Parsing)"]
-        direction TB
-        PyInit[TTS Engine Pre-loading] --> WhisperListen[Whisper STT Listening]
-        WhisperListen --> LLM_Gen[LLM Generation]
-        LLM_Gen --> CustomParser[Response Parser<br/>Extract Command & Text]
-        class PyInit,WhisperListen,LLM_Gen,CustomParser aiBox;
-    end
-
-    subgraph Cpp_Body ["🦾 C++ Robot Process (Lifecycle & Threads)"]
-        direction TB
-        Start((Start)) --> InitSetup[System Setup & Motor Init]
-        InitSetup --> WaitO{"Wait for 'o' Key"}
-        WaitO -->|'o' Pressed| WaitLock{"Physical Lock Key<br/>Removed?"}
-        WaitLock -->|Key Removed| SpawnThreads[Spawn Multi-Threads<br/>& Open Socket]
-        
-        subgraph State_Machine ["Robot State Machine"]
-            direction LR
-            State_H((0: Idle/Ready)) -->|Cmd: p| State_P((2: Playing))
-            State_P -->|Cmd: s| State_H
-            State_P -.->|Collision/Issue| State_E((4: Error))
-        end
-        SpawnThreads --> State_H
-        class Start,InitSetup,WaitO,WaitLock,SpawnThreads cppBox;
-        class State_H,State_P,State_E stateBox;
-    end
-
-    CustomParser -.->|"Parsed Command<br/>[CMD:action]"| State_Machine
