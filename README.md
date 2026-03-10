@@ -96,7 +96,7 @@ make
 ### Step 2. Python AI Brain (Client)
 새로운 터미널 창을 열고 AI 파이프라인을 실행합니다.
 ```bash
-conda activate drum
+conda activate drum4
 cd phil_robot
 ./init_phil.sh
 python phil_robot/phil_brain.py
