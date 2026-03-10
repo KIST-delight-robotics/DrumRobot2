@@ -59,7 +59,7 @@ graph LR
 
 ## 📂 1. Directory Structure (핵심 모듈 구조)
 
-불필요한 데이터 로그 및 외부 의존성(SDK, 3rd party)을 제외한 프로젝트의 핵심 폴더 및 파일 구조입니다. 크게 **C++ Body(`DrumRobot2`)**와 **Python Brain(`phil_robot`)**으로 나뉘어 있습니다.
+불필요한 데이터 로그 및 외부 의존성(SDK, 3rd party)을 제외한 프로젝트의 핵심 폴더 및 파일 구조입니다. 크게 **C++ Body(`DrumRobot2`)** 와 **Python Brain(`phil_robot`)** 으로 나뉘어 있습니다.
 
 ```text
 📦 ROBOT_PROJECT
