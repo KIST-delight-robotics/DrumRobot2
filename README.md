@@ -6,10 +6,10 @@
 
 ## 📖 Project Overview
 **Phil Robot**은 KIST에서 개발한 휴머노이드 드럼 로봇 '필(Phil)'에게 AI 기반의 인지/대화 능력을 부여하는 프로젝트입니다. 
-외부 클라우드 API에 의존하지 않고, 엣지 디바이스(Jetson AGX Orin) 내에서 독립적으로 구동되는 **On-Device AI 파이프라인(Whisper ↔ Qwen 30B ↔ MeloTTS)** 과 실시간성이 요구되는 **C++ 하드웨어 제어 시스템(CAN 통신)** 으로 이루어진 Heterogeneous 시스템을 **TCP 소켓 통신** 으로 통합했습니다.
+외부 API에 전혀 사용하지 않고, 엣지 디바이스(Jetson AGX Orin) 내에서 독립적으로 구동되는 **On-Device AI 파이프라인(Whisper ↔ Qwen 30B ↔ MeloTTS)** 과 실시간성이 요구되는 **C++ 하드웨어 제어 시스템(CAN 통신)** 으로 이루어진 Heterogeneous 시스템을 **TCP 소켓 통신** 으로 통합했습니다.
 
-## 🏗️ System Architecture (Level 1)
-Python(AI Brain)과 C++(Robot Body)을 철저히 분리하여, AI 연산이 실시간 모터 제어 루프를 방해하지 않도록 비동기 IPC 구조를 채택했습니다.
+## 🏗️ System Architecture
+Python(AI Brain)과 C++(Robot Body)을 분리하여, AI 연산이 실시간 모터 제어 루프를 방해하지 않도록 비동기 IPC 구조를 채택했습니다.
 
 ```mermaid
 ---
@@ -54,6 +54,41 @@ graph LR
     TTS -.->|"Audio Feedback"| Speaker((Speaker))
     class Speaker hardware;
 ```
+
+---
+
+## 📂 1. Directory Structure (핵심 모듈 구조)
+
+불필요한 데이터 로그 및 외부 의존성(SDK, 3rd party)을 제외한 프로젝트의 핵심 폴더 및 파일 구조입니다. 크게 **C++ Body(`DrumRobot2`)**와 **Python Brain(`phil_robot`)**으로 나뉘어 있습니다.
+
+```text
+📦 ROBOT_PROJECT
+├── 📂 DrumRobot2                   # 🦾 [C++ Body] 실시간 로봇 모터 제어 및 소켓 서버
+│   ├── 📂 include                  # 모터, 매니저, 시스템 상태 관리를 위한 헤더 파일
+│   ├── 📂 src                      # C++ 핵심 동작 소스 코드
+│   │   ├── main.cpp                # 프로그램 엔트리 포인트 및 멀티스레드 스폰
+│   │   ├── DrumRobot.cpp           # 로봇 라이프사이클 및 상태 머신(State Machine) 관리
+│   │   ├── AgentSocket.cpp         # [IPC] Python AI와 통신하는 TCP 소켓 서버
+│   │   ├── AgentAction.cpp         # [Parsing] 수신된 [CMD] 정규식 파싱 및 물리적 모션 매핑
+│   │   ├── CanManager.cpp          # 로봇 관절 모터(Maxon/T-Motor) CAN 통신 제어
+│   │   └── PathManager.cpp         # IK/FK 기반 역운동학 및 드럼 타격 궤적(Path) 생성
+│   ├── 📂 magenta                  # [AI Music] Google Magenta 기반 MIDI 패턴 생성 및 처리
+│   ├── 📜 Makefile                 # ARM cpu 환경 최적화 빌드 스크립트
+│   └── 📂 scripts                  # CAN 네트워크 초기화(ipup/down) 쉘 스크립트
+│
+├── 📂 phil_robot                   # 🧠 [Python Brain] On-Device AI 에이전트 (클라이언트)
+│   ├── 🐍 phil_brain.py            # AI 메인 파이프라인 (STT 입력 ↔ LLM 추론 ↔ TTS 출력)
+│   ├── 🐍 phil_client.py           # [IPC] C++ 소켓 서버로 제어 명령 전송 및 상태 피드백 수신
+│   ├── 🐍 response_parser.py       # LLM 출력에서 자연어 대화와 제어 커맨드(Harness) 분리
+│   ├── 🐍 melo_engine.py           # 로컬 VRAM을 활용한 MeloTTS 기반 음성 합성 모듈
+│   ├── 📜 init_phil.sh             # AI 파이프라인 초기화 및 모델 Warm-up 실행 스크립트
+│   └── 📂 MeloTTS                  # 로컬 TTS 엔진 서브모듈
+│
+├── 📂 docs                         # 각종 에셋 보관
+└── 📜 README.md
+```
+---
+
 ## ✨ 2. Key Technical Highlights (핵심 엔지니어링)
 
 ### 1️⃣ Harness Engineering 기반의 비결정적 출력 제어
@@ -104,6 +139,6 @@ python phil_robot/phil_brain.py
 1. TTS 엔진과 STT 모델이 VRAM에 로딩(Warm-up)됩니다.
 
 2. 콘솔에 [Listening...]이 뜨면 마이크에 대고 자연스럽게 명령합니다.
-(예: "필봇, 인사해줘!" 또는 "This Is Me 연주 시작하자.")
+(예: "필봇,안녕!" 또는 "This Is Me 연주 시작하자.")
 ---
 **💡 이 프로젝트의 세부 아키텍처와 자세한 설명은 .github/copilot-instructions.md에 상세히 기록되어 있습니다.**
