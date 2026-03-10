@@ -89,9 +89,9 @@ make clean
 make
 ./bin/main.out
 ```
-1. 프로그램이 켜지면 터미널에서 o 키를 눌러 모터 초기화를 진행합니다.
+1. 프로그램이 켜지면 터미널에서 소켓이 연결되며 모터 초기화를 진행합니다.
 2. 로봇의 **물리적 안전 키(Lock Key)** 를 뽑습니다.
-3. 소켓 서버(Port 9999)가 열리며 대기 상태(0: Idle/Ready)로 진입합니다.
+3. 키를 제거한 후 'k'를 누르고 대기 상태(0: Idle/Ready)로 진입합니다.
 
 ### Step 2. Python AI Brain (Client)
 새로운 터미널 창을 열고 AI 파이프라인을 실행합니다.
@@ -105,3 +105,5 @@ python phil_robot/phil_brain.py
 
 2. 콘솔에 [Listening...]이 뜨면 마이크에 대고 자연스럽게 명령합니다.
 (예: "필봇, 인사해줘!" 또는 "This Is Me 연주 시작하자.")
+---
+**💡 이 프로젝트의 세부 아키텍처와 자세한 설명은 .github/copilot-instructions.md에 상세히 기록되어 있습니다.**
