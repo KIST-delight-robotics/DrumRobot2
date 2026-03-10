@@ -2,7 +2,7 @@
 > **Jetson AGX Orin 기반의 로컬 AI 에이전트와 실시간 C++ 모터 제어 시스템의 통합 아키텍처**
 
 ![Phil Robot Preview](https://www.youtube.com/watch?v=SHXWN2f2ou8)
-*(여기에 실제 로봇 사진이나 작동 영상을 GIF로 변환해서 넣으시면 완벽합니다.)*
+*(https://www.youtube.com/watch?v=SHXWN2f2ou8)*
 
 ## 📖 Project Overview
 **Phil Robot**은 KIST에서 개발된 휴머노이드 드럼 로봇 '필(Phil)'에게 AI 기반의 인지/대화 능력을 부여하는 프로젝트입니다. 
