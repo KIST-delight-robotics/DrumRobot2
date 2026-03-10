@@ -6,7 +6,7 @@
 
 ## 📖 Project Overview
 **Phil Robot**은 KIST에서 개발한 휴머노이드 드럼 로봇 '필(Phil)'에게 AI 기반의 인지/대화 능력을 부여하는 프로젝트입니다. 
-외부 클라우드 API에 의존하지 않고, 엣지 디바이스(Jetson AGX Orin) 내에서 독립적으로 구동되는 **On-Device AI 파이프라인(Whisper ↔ Qwen 30B ↔ MeloTTS)**과 실시간성이 요구되는 **C++ 하드웨어 제어 시스템(CAN 통신)**으로 이루어진 Heterogeneous 시스템을 TCP 소켓 통신으로 통합했습니다.
+외부 클라우드 API에 의존하지 않고, 엣지 디바이스(Jetson AGX Orin) 내에서 독립적으로 구동되는 **On-Device AI 파이프라인(Whisper ↔ Qwen 30B ↔ MeloTTS)** 과 실시간성이 요구되는 **C++ 하드웨어 제어 시스템(CAN 통신)** 으로 이루어진 Heterogeneous 시스템을 **TCP 소켓 통신** 으로 통합했습니다.
 
 ## 🏗️ System Architecture (Level 1)
 Python(AI Brain)과 C++(Robot Body)을 철저히 분리하여, AI 연산이 실시간 모터 제어 루프를 방해하지 않도록 비동기 IPC 구조를 채택했습니다.
@@ -53,3 +53,55 @@ graph LR
     %% TTS Output
     TTS -.->|"Audio Feedback"| Speaker((Speaker))
     class Speaker hardware;
+```
+## ✨ 2. Key Technical Highlights (핵심 엔지니어링)
+
+### 1️⃣ Harness Engineering 기반의 비결정적 출력 제어
+LLM의 자유로운 자연어 출력을 C++ 제어부가 정확하게 파싱할 수 있도록, 시스템 프롬프팅을 통해 모든 제어 명령을 표준화된 프로토콜로 강제(Harness)했습니다.
+* **통신 포맷:** `[CMD:action:params] >> speech text`
+
+### 2️⃣ State-Aware Context Injection (상태 인식형 프롬프팅)
+LLM이 로봇의 현재 물리적 상태를 인지하고 맥락에 맞는 대답을 하도록 설계했습니다.
+* **Playing (연주 중):** 사용자의 무리한 요구나 추가 동작 지시를 정중히 거절합니다.
+* **Error (에러 상태):** 물리적 한계나 오류 상황(예: 관절 각도 초과, 충돌 위험)에 대해 사과 및 상황 설명을 진행합니다.
+
+### 3️⃣ Model Warm-up & Latency 최적화
+GPU Stalling(병목 현상)을 방지하기 위해, 파이프라인 초기화 시 더미(Dummy) 데이터를 주입하여 VRAM에 모델을 미리 상주(Pre-loading)시킵니다.
+* **Whisper:** 첫 전사(Transcription) 전에 1초(16,000 samples) 분량의 Zero-padded 오디오를 주입합니다.
+* **MeloTTS:** 시작 시 빈 텍스트로 `.speak()`를 호출하여 초기 음성 합성의 지연시간(Latency Spike)을 완벽히 제거했습니다.
+
+### 4️⃣ 비대칭(Asymmetric) IPC 프로토콜 최적화 & 동시성 제어
+* **비대칭 통신:** AI에서 로봇으로 가는 명령 전송은 초경량 정규식 기반 텍스트로 레이턴시를 최소화하고, 로봇에서 AI로 오는 상태 피드백은 `JSON` 포맷으로 확장성을 확보했습니다.
+* **동시성 제어:** C++ `std::mutex`를 활용해 Command Queue의 데이터 레이스(Data Race)를 원천 차단하여 모터의 지터링(Jittering)을 방지했습니다.
+
+---
+
+## 🚀 3. Build & Run (실행 방법)
+
+> ⚠️ **필수 주의사항 (Connection Order)**
+> TCP 연결 구조상, 반드시 **C++(Server)** 가 먼저 실행되어 대기 상태(`'o'` 키 입력 완료)가 된 후 **Python(Client)** 을 실행해야 합니다.
+
+### Step 1. C++ Backend (DrumRobot Body)
+루트 디렉토리에서 프로젝트를 빌드하고 서버를 실행합니다.
+```bash
+cd DrumRobot2
+make clean
+make
+./bin/main.out
+```
+1. 프로그램이 켜지면 터미널에서 o 키를 눌러 모터 초기화를 진행합니다.
+2. 로봇의 **물리적 안전 키(Lock Key)** 를 뽑습니다.
+3. 소켓 서버(Port 9999)가 열리며 대기 상태(0: Idle/Ready)로 진입합니다.
+
+### Step 2. Python AI Brain (Client)
+새로운 터미널 창을 열고 AI 파이프라인을 실행합니다.
+```bash
+conda activate drum
+cd phil_robot
+./init_phil.sh
+python phil_robot/phil_brain.py
+```
+1. TTS 엔진과 STT 모델이 VRAM에 로딩(Warm-up)됩니다.
+
+2. 콘솔에 [Listening...]이 뜨면 마이크에 대고 자연스럽게 명령합니다.
+(예: "필봇, 인사해줘!" 또는 "This Is Me 연주 시작하자.")
