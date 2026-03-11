@@ -2545,8 +2545,8 @@ void TestManager::cap_pc_3times()   // 허리를 회전시키며 point cloud를 
 
     if (depth_sensor.supports(RS2_OPTION_VISUAL_PRESET)) {
         // RS2_RS400_VISUAL_PRESET_HIGH_ACCURACY 적용 (노이즈 억제력 최대화)
-        depth_sensor.set_option(RS2_OPTION_VISUAL_PRESET, RS2_RS400_VISUAL_PRESET_HIGH_ACCURACY);
-        std::cout << "카메라에 High Accuracy 프리셋이 성공적으로 적용되었습니다." << std::endl;
+        depth_sensor.set_option(RS2_OPTION_VISUAL_PRESET, RS2_RS400_VISUAL_PRESET_HIGH_DENSITY);
+        std::cout << "카메라에 High DENSITY 프리셋이 성공적으로 적용되었습니다." << std::endl;
     }
 
     // 2. 필터 
@@ -2558,9 +2558,9 @@ void TestManager::cap_pc_3times()   // 허리를 회전시키며 point cloud를 
     dec_filter.set_option(RS2_OPTION_FILTER_MAGNITUDE, 4.0f);
 
     rs2::spatial_filter spat_filter;
-    spat_filter.set_option(RS2_OPTION_FILTER_SMOOTH_ALPHA, 0.25f);
+    spat_filter.set_option(RS2_OPTION_FILTER_SMOOTH_ALPHA, 0.5f);
     spat_filter.set_option(RS2_OPTION_FILTER_SMOOTH_DELTA, 20.0f); 
-    spat_filter.set_option(RS2_OPTION_FILTER_MAGNITUDE, 5.0f);    
+    spat_filter.set_option(RS2_OPTION_FILTER_MAGNITUDE, 3.0f);    
 
     rs2::temporal_filter temp_filter;
     temp_filter.set_option(RS2_OPTION_FILTER_SMOOTH_ALPHA, 0.4f); 
@@ -2583,7 +2583,7 @@ void TestManager::cap_pc_3times()   // 허리를 회전시키며 point cloud를 
     std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> cloud_list;
 
     // 허리 회전 각도 리스트 (예: -30도, 0도, 30도)
-    std::vector<float> angles = {25.0f, 20.0f, 15.0f, 10.0f, 5.0f, 0.0f, -5.0f, -10.0f, -15.0f, -20.0f, -25.0f};
+    std::vector<float> angles = {45.0f, 40.0f, 35.0f, 30.0f, 25.0f, 20.0f, 15.0f, 10.0f, 5.0f, 0.0f, -5.0f, -10.0f, -15.0f, -20.0f, -25.0f, -30.0f, -35.0f, -40.0f, -45.0f};
 
     std::vector<pcl::PointIndices> cluster_num;
 
