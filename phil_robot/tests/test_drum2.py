@@ -64,7 +64,7 @@ except:
 # 🤖 [로봇 설정]
 # ==========================================
 ROBOT_NAME = "phil-bot"      # Ollama 모델 이름
-VOICE_REF = "phil_voice1.wav" # 복제할 목소리 파일 (같은 폴더에 있어야 함)
+VOICE_REF = os.path.join(os.path.dirname(__file__), "..", "assets", "phil_voice1.wav") # 복제할 목소리 파일
 SAMPLE_RATE = 16000          
 DEVICE = "cuda"              # 🔥 상남자의 GPU 모드
 

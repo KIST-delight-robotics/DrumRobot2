@@ -221,7 +221,7 @@ This makes planner output more reproducible and easier to validate.
         │                                       │
         │                                       v
         │                          ┌────────────────────────┐
-        │                          │      ValidatedPlan      │
+        │                          │      ValidatedPlan     │
         │                          └────────────┬───────────┘
         │                                       │
         │                                       v

@@ -5,7 +5,7 @@ try:
 except ImportError:
     from state_adapter import build_classifier_state_summary
 
-CLASSIFIER_MODEL = "llama3.1:8b-instruct-q5_K_M"
+CLASSIFIER_MODEL = "qwen3:4b-instruct-2507-q4_K_M"
 
 DEFAULT_INTENT_RESULT = {
     "intent": "unknown",
@@ -15,6 +15,7 @@ DEFAULT_INTENT_RESULT = {
 }
 
 MOTION_REQUIRED_INTENTS = {"motion_request", "play_request", "stop_request"}
+IDENTITY_CHAT_KEYWORDS = ["이름", "누구", "정체", "자기소개"]
 
 CLASSIFIER_SYSTEM_PROMPT = """당신은 로봇 에이전트의 1차 intent classifier 다.
 반드시 JSON 객체 하나만 출력한다. 설명문, 코드블록, 마크다운은 절대 출력하지 않는다.
@@ -28,7 +29,7 @@ CLASSIFIER_SYSTEM_PROMPT = """당신은 로봇 에이전트의 1차 intent class
 }
 
 분류 기준:
-- chat: 일반 대화, 인사, 감정 표현, 상식 질문
+- chat: 일반 대화, 인사, 감정 표현, 상식 질문, 이름/정체/자기소개 질문
 - motion_request: 손/팔/허리/손목/시선/제스처 등 물리 동작 요청
 - play_request: 연주 시작/곡 재생/드럼 연주 요청
 - status_question: 현재 상태, 직전 행동, 왜 멈췄는지, 무엇을 했는지 질문
@@ -83,6 +84,24 @@ def parse_intent_response(ai_text):
         result["needs_dialogue"] = payload["needs_dialogue"]
     if isinstance(payload.get("risk_level"), str):
         result["risk_level"] = payload["risk_level"].strip() or DEFAULT_INTENT_RESULT["risk_level"]
+
+    return result
+
+
+def normalize_intent_result(intent_result, user_text):
+    """
+    classifier 결과를 코드에서 한 번 더 정규화한다.
+    이름/정체 질문처럼 반복되는 오분류는 deterministic rule 로 보정한다.
+    """
+    result = dict(intent_result or DEFAULT_INTENT_RESULT)
+    normalized_text = (user_text or "").strip()
+
+    if any(keyword in normalized_text for keyword in IDENTITY_CHAT_KEYWORDS):
+        result["intent"] = "chat"
+        result["needs_motion"] = False
+        result["needs_dialogue"] = True
+        if not result.get("risk_level"):
+            result["risk_level"] = "low"
 
     # classifier 가 intent 는 맞췄지만 motion flag 를 놓치는 경우를 코드에서 보정한다.
     if result["intent"] in MOTION_REQUIRED_INTENTS:

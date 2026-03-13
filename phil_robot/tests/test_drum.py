@@ -62,7 +62,7 @@ import time
 
 # --- 설정 ---
 ROBOT_NAME = "phil-bot"     
-VOICE_REF = "phil_voice1.wav" 
+VOICE_REF = os.path.join(os.path.dirname(__file__), "..", "assets", "phil_voice1.wav")
 SAMPLE_RATE = 16000         
 
 # CPU 모드로 실행

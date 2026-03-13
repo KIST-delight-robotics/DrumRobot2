@@ -7,6 +7,7 @@ try:
         CLASSIFIER_MODEL,
         CLASSIFIER_SYSTEM_PROMPT,
         build_classifier_payload,
+        normalize_intent_result,
         parse_intent_response,
     )
     from .llm_contract import DEFAULT_LLM_MODEL
@@ -25,6 +26,7 @@ except ImportError:
         CLASSIFIER_MODEL,
         CLASSIFIER_SYSTEM_PROMPT,
         build_classifier_payload,
+        normalize_intent_result,
         parse_intent_response,
     )
     from llm_contract import DEFAULT_LLM_MODEL
@@ -77,6 +79,7 @@ def run_brain_turn(
     )
     classifier_duration_sec = time.time() - classifier_start_time
     classifier_result = parse_intent_response(classifier_raw_response_text)
+    classifier_result = normalize_intent_result(classifier_result, user_text)
 
     planner_domain = select_planner_domain(classifier_result)
     planner_system_prompt = get_planner_system_prompt(planner_domain)

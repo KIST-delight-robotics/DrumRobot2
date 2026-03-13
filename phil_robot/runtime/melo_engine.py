@@ -5,6 +5,8 @@ import os
 
 import time  # 상단에 추가
 
+ARTIFACT_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "artifacts")
+
 class TTS_Engine:
     def __init__(self):
         print("\n[TTS] 엔진 시동 거는 중... (모델 로딩)")
@@ -40,8 +42,12 @@ class TTS_Engine:
             text = text.replace(k, v).replace(k.lower(), v)
         return text
 
-    def speak(self, text, output_path="temp_speech.wav", play=True):
+    def speak(self, text, output_path=None, play=True):
         if not self.model: return
+
+        if output_path is None:
+            os.makedirs(ARTIFACT_DIR, exist_ok=True)
+            output_path = os.path.join(ARTIFACT_DIR, "temp_speech.wav")
 
         clean_text = self.preprocess(text)
         

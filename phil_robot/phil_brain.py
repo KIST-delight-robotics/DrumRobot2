@@ -8,11 +8,11 @@ import psutil
 import sounddevice as sd
 import whisper
 
-from brain_pipeline import run_brain_turn
-from executor import execute_validated_plan
-from llm_contract import DEFAULT_LLM_MODEL
-from melo_engine import TTS_Engine
-from phil_client import RobotClient, get_robot_state_snapshot
+from pipeline.brain_pipeline import run_brain_turn
+from pipeline.executor import execute_validated_plan
+from pipeline.llm_contract import DEFAULT_LLM_MODEL
+from runtime.melo_engine import TTS_Engine
+from runtime.phil_client import RobotClient, get_robot_state_snapshot
 
 # ==========================================
 # Config

@@ -28,6 +28,7 @@ __pycache__/
 
 # 휠 파일 등 대용량 설치 파일 제외
 phil_robot/downloads_whl/
+phil_robot/third_party/downloads_whl/
 
 # --- [4] IDE 설정 및 시스템 파일 ---
 .idea/
@@ -38,4 +39,6 @@ Thumbs.db
 # 어디에 있든 이 확장자는 다 무시함
 phil_robot/*.wav
 phil_robot/*.mp3
+phil_robot/artifacts/
+phil_robot/**/__pycache__/
 **/*.log

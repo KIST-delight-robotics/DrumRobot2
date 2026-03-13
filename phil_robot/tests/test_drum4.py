@@ -9,7 +9,14 @@ import time
 import os
 import psutil
 
-from melo_engine import TTS_Engine
+CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+PHIL_ROBOT_DIR = os.path.dirname(CURRENT_DIR)
+PROJECT_ROOT = os.path.dirname(PHIL_ROBOT_DIR)
+
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
+
+from phil_robot.runtime.melo_engine import TTS_Engine
 
 
 def get_mem_usage():
