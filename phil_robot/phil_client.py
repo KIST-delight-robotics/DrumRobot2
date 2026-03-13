@@ -3,6 +3,10 @@ import socket
 import time
 import threading
 import json
+import copy
+
+ANGLE_UPDATE_DEADBAND_DEG = 0.2
+ANGLE_LOG_DEADBAND_DEG = 0.5
 
 # 로봇의 상태를 기억할 전역 변수 (초기값)
 ROBOT_STATE = {
@@ -18,6 +22,73 @@ ROBOT_STATE = {
         "R_wrist": 90.0, "L_wrist": 90.0
     }
 }
+STATE_LOCK = threading.Lock()
+
+
+def get_robot_state_json():
+    """현재 로봇 상태를 LLM 프롬프트용 JSON 문자열로 반환"""
+    return json.dumps(get_robot_state_snapshot(), ensure_ascii=False)
+
+
+def get_robot_state_snapshot():
+    """수신 스레드와 충돌하지 않도록 현재 상태의 스냅샷을 복사해 반환"""
+    with STATE_LOCK:
+        return copy.deepcopy(ROBOT_STATE)
+
+
+def _merge_angle_state(previous_angles, incoming_angles, deadband_deg):
+    """
+    미세한 각도 노이즈는 이전 값을 유지해 Python 쪽 상태도 덜 흔들리게 만든다.
+    C++ 송신 deadband의 보조 장치 역할이다.
+    """
+    merged_angles = copy.deepcopy(previous_angles) if isinstance(previous_angles, dict) else {}
+    if not isinstance(incoming_angles, dict):
+        return merged_angles
+
+    for joint_name, incoming_value in incoming_angles.items():
+        previous_value = merged_angles.get(joint_name)
+        if (
+            isinstance(previous_value, (int, float))
+            and isinstance(incoming_value, (int, float))
+            and abs(float(incoming_value) - float(previous_value)) < deadband_deg
+        ):
+            continue
+
+        merged_angles[joint_name] = incoming_value
+
+    return merged_angles
+
+
+def _state_changed_meaningfully(previous_state, current_state):
+    """
+    출력용 비교는 각도 미세 변화에 둔감하게 만들어 로그 채터링을 줄인다.
+    """
+    if previous_state is None:
+        return True
+
+    tracked_keys = ["state", "bpm", "is_fixed", "current_song", "last_action", "is_lock_key_removed", "progress", "error_message"]
+    for key in tracked_keys:
+        if previous_state.get(key) != current_state.get(key):
+            return True
+
+    if current_state.get("state") == 2:
+        return False
+
+    previous_angles = previous_state.get("current_angles", {})
+    current_angles = current_state.get("current_angles", {})
+    joint_names = set(previous_angles.keys()) | set(current_angles.keys())
+    for joint_name in joint_names:
+        prev_value = previous_angles.get(joint_name)
+        curr_value = current_angles.get(joint_name)
+        if not isinstance(prev_value, (int, float)) or not isinstance(curr_value, (int, float)):
+            if prev_value != curr_value:
+                return True
+            continue
+
+        if abs(float(curr_value) - float(prev_value)) >= ANGLE_LOG_DEADBAND_DEG:
+            return True
+
+    return False
 
 class RobotClient:
 
@@ -73,16 +144,28 @@ class RobotClient:
                 while '\n' in buffer:
                     line, buffer = buffer.split('\n', 1)
                     if line.strip():
-                        print(f"👀 [Debug 수신] {line.strip()}") # 디버깅 용
                         try:
                             # 3. 전역 변수 업데이트
                             new_state = json.loads(line)
-                            ROBOT_STATE.update(new_state)
+                            with STATE_LOCK:
+                                incoming_state_value = new_state.get("state", ROBOT_STATE.get("state"))
+                                if incoming_state_value == 2 and "current_angles" in new_state:
+                                    new_state.pop("current_angles")
+
+                                if "current_angles" in new_state:
+                                    new_state["current_angles"] = _merge_angle_state(
+                                        ROBOT_STATE.get("current_angles", {}),
+                                        new_state["current_angles"],
+                                        ANGLE_UPDATE_DEADBAND_DEG,
+                                    )
+                                ROBOT_STATE.update(new_state)
+                                current_snapshot = copy.deepcopy(ROBOT_STATE)
                         
                             # 이전과 다르게 출력될 때만 상태 갱신 메시지 출력
-                            if last_printed_state != ROBOT_STATE:
-                                print(f"\n[상태 갱신] {ROBOT_STATE}")
-                                last_printed_state = ROBOT_STATE.copy() # 현재 상태를 복사하여 저장
+                            if _state_changed_meaningfully(last_printed_state, current_snapshot):
+                                print(f"👀 [Debug 수신] {line.strip()}") # 디버깅 용
+                                print(f"\n[상태 갱신] {current_snapshot}")
+                                last_printed_state = current_snapshot
                         
                         except json.JSONDecodeError:
                             pass

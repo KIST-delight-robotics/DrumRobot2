@@ -9,6 +9,60 @@ AgentSocket::~AgentSocket() {
     stop();
 }
 
+std::string AgentSocket::trimPayload(const std::string& payload) const {
+    size_t start = 0;
+    while (start < payload.size() && std::isspace(static_cast<unsigned char>(payload[start]))) {
+        start++;
+    }
+
+    size_t end = payload.size();
+    while (end > start && std::isspace(static_cast<unsigned char>(payload[end - 1]))) {
+        end--;
+    }
+
+    return payload.substr(start, end - start);
+}
+
+bool AgentSocket::isJsonPayloadStart(const std::string& payload) const {
+    std::string trimmed = trimPayload(payload);
+    return !trimmed.empty() && trimmed.front() == '{';
+}
+
+bool AgentSocket::isCompleteJsonPayload(const std::string& payload) const {
+    int braceDepth = 0;
+    bool inString = false;
+    bool escape = false;
+
+    for (char ch : payload) {
+        if (escape) {
+            escape = false;
+            continue;
+        }
+
+        if (ch == '\\') {
+            escape = true;
+            continue;
+        }
+
+        if (ch == '"') {
+            inString = !inString;
+            continue;
+        }
+
+        if (inString) {
+            continue;
+        }
+
+        if (ch == '{') {
+            braceDepth++;
+        } else if (ch == '}') {
+            braceDepth--;
+        }
+    }
+
+    return braceDepth == 0 && !payload.empty();
+}
+
 // 큐 비우기 함수
 void AgentSocket::clearQueue() {
     std::lock_guard<std::mutex> lock(queueMutex);
@@ -83,6 +137,8 @@ void AgentSocket::runServerLoop() {
         // 2. 데이터 수신 루프
         char buffer[1024] = {0};
         std::string recvBuffer = ""; // ★ TCP 스트림 조립용 누적 버퍼 추가
+        std::string jsonPayloadBuffer = "";
+        bool collectingJson = false;
 
         while (keepRunning) {
             memset(buffer, 0, sizeof(buffer));
@@ -111,11 +167,30 @@ void AgentSocket::runServerLoop() {
                 if (!cmd.empty() && cmd.back() == '\r') {
                     cmd.pop_back();
                 }
-                
+
+                cmd = trimPayload(cmd);
                 if (cmd.empty()) continue; // 빈 줄은 무시
-            
-                //std::string cmd(buffer);
-            
+
+                if (collectingJson || isJsonPayloadStart(cmd)) {
+                    if (!collectingJson) {
+                        jsonPayloadBuffer.clear();
+                        collectingJson = true;
+                    }
+
+                    if (!jsonPayloadBuffer.empty()) {
+                        jsonPayloadBuffer += "\n";
+                    }
+                    jsonPayloadBuffer += cmd;
+
+                    if (!isCompleteJsonPayload(jsonPayloadBuffer)) {
+                        continue;
+                    }
+
+                    cmd = jsonPayloadBuffer;
+                    jsonPayloadBuffer.clear();
+                    collectingJson = false;
+                }
+
                 // ★ 안전장치: 셔터(게이트)가 닫혀있으면 명령 폐기
                 if (!isGateOpen.load()) {
                     std::cout << "🚫 [Safeguard] 로봇 보호 상태: 명령 폐기 -> " << cmd << std::endl;

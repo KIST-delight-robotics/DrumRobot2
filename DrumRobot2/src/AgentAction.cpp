@@ -85,6 +85,25 @@ void AgentAction::executeCommand(std::string fullCmd)
     }
 }
 
+std::vector<std::string> AgentAction::unpackCommands(const std::string& payload)
+{
+    std::vector<std::string> commands;
+    std::string trimmedPayload = trim(payload);
+    if (trimmedPayload.empty()) {
+        return commands;
+    }
+
+    if (!trimmedPayload.empty() && trimmedPayload.front() == '{') {
+        if (!parseJsonCommandPayload(trimmedPayload, commands)) {
+            std::cerr << "[Agent] JSON payload parsing failed: " << trimmedPayload << std::endl;
+        }
+        return commands;
+    }
+
+    commands.push_back(trimmedPayload);
+    return commands;
+}
+
 // =============================================================
 // Action Policies (행동 구체화)
 // =============================================================
@@ -325,4 +344,175 @@ std::string AgentAction::cleanCommand(std::string cmd)
         cmd = cmd.substr(0, end);
     }
     return cmd;
+}
+
+std::string AgentAction::trim(const std::string& value)
+{
+    size_t start = 0;
+    while (start < value.size() && std::isspace(static_cast<unsigned char>(value[start]))) {
+        start++;
+    }
+
+    size_t end = value.size();
+    while (end > start && std::isspace(static_cast<unsigned char>(value[end - 1]))) {
+        end--;
+    }
+
+    return value.substr(start, end - start);
+}
+
+bool AgentAction::parseJsonCommandPayload(const std::string& payload, std::vector<std::string>& commands)
+{
+    std::vector<std::string> parsedCommands;
+    if (extractJsonStringArray(payload, "commands", parsedCommands)) {
+        for (const auto& cmd : parsedCommands) {
+            std::string trimmedCmd = trim(cmd);
+            if (!trimmedCmd.empty()) {
+                commands.push_back(trimmedCmd);
+            }
+        }
+        return true;
+    }
+
+    std::string singleCommand;
+    if (extractJsonStringValue(payload, "command", singleCommand)) {
+        singleCommand = trim(singleCommand);
+        if (!singleCommand.empty()) {
+            commands.push_back(singleCommand);
+        }
+        return true;
+    }
+
+    return false;
+}
+
+bool AgentAction::extractJsonStringArray(const std::string& payload, const std::string& key, std::vector<std::string>& values)
+{
+    std::string token = "\"" + key + "\"";
+    size_t keyPos = payload.find(token);
+    if (keyPos == std::string::npos) {
+        return false;
+    }
+
+    size_t colonPos = payload.find(':', keyPos + token.size());
+    if (colonPos == std::string::npos) {
+        return false;
+    }
+
+    size_t pos = colonPos + 1;
+    while (pos < payload.size() && std::isspace(static_cast<unsigned char>(payload[pos]))) {
+        pos++;
+    }
+
+    if (pos >= payload.size() || payload[pos] != '[') {
+        return false;
+    }
+    pos++;
+
+    while (pos < payload.size()) {
+        while (pos < payload.size() && std::isspace(static_cast<unsigned char>(payload[pos]))) {
+            pos++;
+        }
+
+        if (pos >= payload.size()) {
+            return false;
+        }
+        if (payload[pos] == ']') {
+            return true;
+        }
+        if (payload[pos] == ',') {
+            pos++;
+            continue;
+        }
+        if (payload[pos] != '"') {
+            return false;
+        }
+
+        std::string parsedValue;
+        size_t nextPos = pos;
+        if (!readJsonString(payload, pos, parsedValue, nextPos)) {
+            return false;
+        }
+
+        values.push_back(parsedValue);
+        pos = nextPos;
+
+        while (pos < payload.size() && std::isspace(static_cast<unsigned char>(payload[pos]))) {
+            pos++;
+        }
+
+        if (pos < payload.size() && payload[pos] == ',') {
+            pos++;
+        }
+    }
+
+    return false;
+}
+
+bool AgentAction::extractJsonStringValue(const std::string& payload, const std::string& key, std::string& value)
+{
+    std::string token = "\"" + key + "\"";
+    size_t keyPos = payload.find(token);
+    if (keyPos == std::string::npos) {
+        return false;
+    }
+
+    size_t colonPos = payload.find(':', keyPos + token.size());
+    if (colonPos == std::string::npos) {
+        return false;
+    }
+
+    size_t pos = colonPos + 1;
+    while (pos < payload.size() && std::isspace(static_cast<unsigned char>(payload[pos]))) {
+        pos++;
+    }
+
+    if (pos >= payload.size() || payload[pos] != '"') {
+        return false;
+    }
+
+    size_t nextPos = pos;
+    return readJsonString(payload, pos, value, nextPos);
+}
+
+bool AgentAction::readJsonString(const std::string& payload, size_t startQuote, std::string& value, size_t& nextPos)
+{
+    if (startQuote >= payload.size() || payload[startQuote] != '"') {
+        return false;
+    }
+
+    value.clear();
+    bool escape = false;
+
+    for (size_t i = startQuote + 1; i < payload.size(); ++i) {
+        char current = payload[i];
+
+        if (escape) {
+            switch (current) {
+                case '"': value.push_back('"'); break;
+                case '\\': value.push_back('\\'); break;
+                case '/': value.push_back('/'); break;
+                case 'n': value.push_back('\n'); break;
+                case 'r': value.push_back('\r'); break;
+                case 't': value.push_back('\t'); break;
+                default: value.push_back(current); break;
+            }
+            escape = false;
+            continue;
+        }
+
+        if (current == '\\') {
+            escape = true;
+            continue;
+        }
+
+        if (current == '"') {
+            nextPos = i + 1;
+            return true;
+        }
+
+        value.push_back(current);
+    }
+
+    return false;
 }
