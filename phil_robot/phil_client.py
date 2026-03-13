@@ -9,11 +9,14 @@ ROBOT_STATE = {
     "state": 0,          # 0: Ideal, 2: Play, 4: Error 등
     "bpm": 100,          # 기본 템포
     "is_fixed": True,    # 기본값: 가만히 있음 (True)
-    "error_detail": "None",
     "current_song": "None",
-    "progress": "None",
     "last_action": "None",
-    "is_lock_key_removed": False  # 락키 제거 여부 (추가)
+    "is_lock_key_removed": False,  # 락키 제거 여부 (추가)
+    "current_angles": {
+        "waist": 0.0, "R_arm1": 45.0, "L_arm1": 45.0, 
+        "R_arm2": 0.0, "R_arm3": 20.0, "L_arm2": 0.0, "L_arm3": 20.0,
+        "R_wrist": 90.0, "L_wrist": 90.0
+    }
 }
 
 class RobotClient:
