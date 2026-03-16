@@ -8,6 +8,7 @@ except ImportError:
     from command_validator import JOINT_LIMITS
 
 DEFAULT_RELATIVE_STEP_DEG = 15.0
+JOINT_LIMIT_EPSILON_DEG = 0.1
 
 JOINT_ALIASES = [
     ("왼쪽 손목", "L_wrist", "왼쪽 손목"),
@@ -57,6 +58,13 @@ def resolve_motion_commands(user_text, commands, robot_state):
     delta = intent["delta_deg"] if intent["delta_deg"] is not None else DEFAULT_RELATIVE_STEP_DEG
     target_angle = float(current_angle) + (intent["direction"] * delta)
     min_angle, max_angle = JOINT_LIMITS[intent["joint_name"]]
+
+    # 실측 각도가 75.03처럼 살짝 떠 있는 경우, 상대 이동 결과가 90.03이 되어
+    # 물리적으로는 가능한 최대각(90도)까지의 동작까지 막히지 않도록 작은 오차는 경계값으로 클램프한다.
+    if target_angle > max_angle and (target_angle - max_angle) <= JOINT_LIMIT_EPSILON_DEG:
+        target_angle = max_angle
+    elif target_angle < min_angle and (min_angle - target_angle) <= JOINT_LIMIT_EPSILON_DEG:
+        target_angle = min_angle
 
     if target_angle < min_angle or target_angle > max_angle:
         direction_text = "올리면" if intent["direction"] > 0 else "내리면"

@@ -1,9 +1,10 @@
 import json
+import re
 
 try:
-    from .state_adapter import build_classifier_state_summary
+    from .state_adapter import build_classifier_state_summary, detect_joint_angle_query
 except ImportError:
-    from state_adapter import build_classifier_state_summary
+    from state_adapter import build_classifier_state_summary, detect_joint_angle_query
 
 CLASSIFIER_MODEL = "qwen3:4b-instruct-2507-q4_K_M"
 
@@ -16,6 +17,7 @@ DEFAULT_INTENT_RESULT = {
 
 MOTION_REQUIRED_INTENTS = {"motion_request", "play_request", "stop_request"}
 IDENTITY_CHAT_KEYWORDS = ["이름", "누구", "정체", "자기소개"]
+ANGLE_STATUS_PATTERN = re.compile(r"(각도|몇\s*도|몇도)")
 
 CLASSIFIER_SYSTEM_PROMPT = """당신은 로봇 에이전트의 1차 intent classifier 다.
 반드시 JSON 객체 하나만 출력한다. 설명문, 코드블록, 마크다운은 절대 출력하지 않는다.
@@ -98,6 +100,13 @@ def normalize_intent_result(intent_result, user_text):
 
     if any(keyword in normalized_text for keyword in IDENTITY_CHAT_KEYWORDS):
         result["intent"] = "chat"
+        result["needs_motion"] = False
+        result["needs_dialogue"] = True
+        if not result.get("risk_level"):
+            result["risk_level"] = "low"
+
+    if detect_joint_angle_query(normalized_text) or ANGLE_STATUS_PATTERN.search(normalized_text):
+        result["intent"] = "status_question"
         result["needs_motion"] = False
         result["needs_dialogue"] = True
         if not result.get("risk_level"):

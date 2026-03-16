@@ -8,13 +8,13 @@ Target operating constraints:
 
 - classifier latency target: `<= 1.5 s`
 - planner model: fixed to `qwen3:30b-a3b-instruct-2507-q4_K_M`
-- evaluation protocol: `smoke` suite in `phil_robot/eval/cases_smoke.json`
+- evaluation protocol: `smoke` suite in [cases_smoke.json](/home/shy/robot_project/phil_robot/eval/cases_smoke.json)
 
-Decision criterion:
+Decision criteria:
 
 - preserve classifier correctness on the current control/task distribution
 - reduce stage-1 intent-classification latency
-- maintain end-to-end pipeline stability under the existing multi-layer pipeline:
+- maintain end-to-end pipeline stability under the current multi-layer path:
   `STT -> classifier -> domain planner -> validator -> executor -> TTS`
 
 ## 2. Experimental Setup
@@ -37,7 +37,7 @@ Decision criterion:
 ### 2.2 Metrics
 
 - `classifier_checks`
-  - exact-match pass count for the classifier expectations defined in the suite
+  - exact-match pass count for classifier expectations defined in the suite
 - `cases`
   - full end-to-end pass count across classifier, planner, validator, and speech checks
 - `avg_classifier_sec`
@@ -51,7 +51,7 @@ Decision criterion:
 
 - planner model: `qwen3:30b-a3b-instruct-2507-q4_K_M`
 - validator / executor: current repository implementation
-- state input: reduced LLM state summary from `state_adapter.py`
+- state input: reduced LLM state summary from [state_adapter.py](/home/shy/robot_project/phil_robot/pipeline/state_adapter.py)
 
 ## 3. Broad Classifier Screening
 
@@ -63,8 +63,8 @@ The first pass screened a mixed set of instruct-capable local models using class
 | `llama3.2:3b-instruct-q4_K_M` | 2.0 GB | 10/11 | 4.270 | 5.981 | Misclassified general-knowledge chat |
 | `phi3:3.8b-mini-4k-instruct-q4_K_S` | 2.2 GB | 5/11 | 8.889 | 23.182 | Unstable for Korean intent classification |
 | `gemma:2b-instruct` | 1.6 GB | 9/11 | 5.680 | 12.469 | Accuracy loss on greeting / knowledge chat |
-| `qwen2.5:3b-instruct` | 1.9 GB | 10/11 | 3.742 | 9.774 | Strongest early candidate |
-| `qwen2.5:7b-instruct` | 4.7 GB | 11/11 | 5.567 | 14.588 | Accurate but too slow for stage-1 |
+| `qwen2.5:3b-instruct` | 1.9 GB | 10/11 | 3.742 | 9.774 | Strong early candidate |
+| `qwen2.5:7b-instruct` | 4.7 GB | 11/11 | 5.567 | 14.588 | Accurate but too slow for stage 1 |
 
 ## 4. Quantized Qwen-Focused Screening
 
@@ -90,7 +90,7 @@ These runs evaluate the full control stack, not just classifier output. Planner 
 
 Notes:
 
-- The final `qwen3:4b` timing above was re-measured in a standalone run after model selection to remove parallel-process interference.
+- The final `qwen3:4b` timing above was re-measured in a standalone run after model selection to reduce parallel-process interference.
 - The `qwen3:4b` run is the current deployment candidate because it is the only tested classifier that simultaneously achieved:
   - `11/11` classifier correctness
   - `11/11` full-case pass rate
@@ -109,13 +109,13 @@ Selection rationale:
 3. zero regressions on the current `smoke` suite
 4. significantly lower stage-1 latency than the previous baseline `llama3.1:8b-instruct-q5_K_M`
 
-Latency reduction versus previous baseline:
+Latency reduction versus the previous baseline:
 
 - classifier latency: `6.481 s -> 1.627 s`
 - absolute reduction: `4.854 s`
 - relative reduction: `74.9%`
 
-End-to-end LLM latency reduction versus previous baseline:
+End-to-end LLM latency reduction versus the previous baseline:
 
 - total LLM latency: `12.602 s -> 6.344 s`
 - absolute reduction: `6.258 s`
@@ -152,7 +152,7 @@ Expected benefit:
 ## 8. Artifacts
 
 - evaluation suite: [cases_smoke.json](/home/shy/robot_project/phil_robot/eval/cases_smoke.json)
-- latest smoke report for selected classifier:
+- latest smoke report for the selected classifier:
   [smoke_report_qwen3_4b_classifier.json](/home/shy/robot_project/phil_robot/eval/reports/smoke_report_qwen3_4b_classifier.json)
 - current classifier configuration:
-  [intent_classifier.py](/home/shy/robot_project/phil_robot/intent_classifier.py)
+  [intent_classifier.py](/home/shy/robot_project/phil_robot/pipeline/intent_classifier.py)

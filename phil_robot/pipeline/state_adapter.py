@@ -1,4 +1,5 @@
 import copy
+import re
 from typing import Dict
 
 SONG_LABELS = {
@@ -22,6 +23,24 @@ DEFAULT_CURRENT_ANGLES = {
     "R_foot": None,
     "L_foot": None,
 }
+
+JOINT_QUERY_ALIASES = [
+    ("왼쪽 손목", "L_wrist", "왼쪽 손목"),
+    ("왼손목", "L_wrist", "왼쪽 손목"),
+    ("오른쪽 손목", "R_wrist", "오른쪽 손목"),
+    ("오른손목", "R_wrist", "오른쪽 손목"),
+    ("허리", "waist", "허리"),
+    ("왼쪽 팔", "L_arm1", "왼쪽 팔"),
+    ("왼팔", "L_arm1", "왼쪽 팔"),
+    ("오른쪽 팔", "R_arm1", "오른쪽 팔"),
+    ("오른팔", "R_arm1", "오른쪽 팔"),
+    ("왼쪽 발", "L_foot", "왼쪽 발"),
+    ("왼발", "L_foot", "왼쪽 발"),
+    ("오른쪽 발", "R_foot", "오른쪽 발"),
+    ("오른발", "R_foot", "오른쪽 발"),
+]
+
+ANGLE_QUERY_PATTERN = re.compile(r"(각도|몇\s*도|몇도)")
 
 
 def adapt_robot_state(raw_state):
@@ -91,4 +110,40 @@ def build_planner_state_summary(robot_state: Dict) -> Dict:
         "progress": robot_state.get("progress", "unknown"),
         "last_action": robot_state.get("last_action", "None"),
         "error_detail": robot_state.get("error_detail", "None"),
+        # status/planner 가 현재 자세를 설명할 수 있도록 관절 스냅샷을 함께 전달한다.
+        "current_angles": copy.deepcopy(robot_state.get("current_angles", DEFAULT_CURRENT_ANGLES)),
     }
+
+
+def detect_joint_angle_query(user_text: str):
+    """
+    사용자가 특정 관절의 "현재 각도"를 묻는 질의인지 감지한다.
+    각도 조회는 LLM 자유 생성보다 deterministic 응답이 더 안전하다.
+    """
+    text = (user_text or "").strip()
+    if not text or not ANGLE_QUERY_PATTERN.search(text):
+        return None
+
+    for alias, joint_name, display_name in JOINT_QUERY_ALIASES:
+        if alias in text:
+            return {
+                "joint_name": joint_name,
+                "display_name": display_name,
+            }
+
+    return None
+
+
+def build_joint_angle_answer(robot_state: Dict, joint_info: Dict):
+    """
+    상태 스냅샷에서 현재 관절 각도를 직접 읽어 사용자용 설명 문장으로 만든다.
+    """
+    if not isinstance(joint_info, dict):
+        return None
+
+    current_angles = robot_state.get("current_angles", {})
+    angle_value = current_angles.get(joint_info["joint_name"])
+    if not isinstance(angle_value, (int, float)):
+        return f"{joint_info['display_name']}의 현재 각도는 아직 확인할 수 없습니다."
+
+    return f"현재 {joint_info['display_name']} 각도는 {float(angle_value):.1f}도입니다."

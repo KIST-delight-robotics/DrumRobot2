@@ -19,7 +19,7 @@ try:
         parse_plan_response,
         select_planner_domain,
     )
-    from .state_adapter import adapt_robot_state
+    from .state_adapter import adapt_robot_state, build_joint_angle_answer, detect_joint_angle_query
     from .validator import ValidatedPlan, build_validated_plan
 except ImportError:
     from intent_classifier import (
@@ -38,7 +38,7 @@ except ImportError:
         parse_plan_response,
         select_planner_domain,
     )
-    from state_adapter import adapt_robot_state
+    from state_adapter import adapt_robot_state, build_joint_angle_answer, detect_joint_angle_query
     from validator import ValidatedPlan, build_validated_plan
 
 
@@ -82,6 +82,36 @@ def run_brain_turn(
     classifier_result = normalize_intent_result(classifier_result, user_text)
 
     planner_domain = select_planner_domain(classifier_result)
+    joint_angle_query = detect_joint_angle_query(user_text)
+    if classifier_result.get("intent") == "status_question" and joint_angle_query:
+        deterministic_speech = build_joint_angle_answer(adapted_state, joint_angle_query)
+        planner_result = {
+            "skills": [],
+            "commands": [],
+            "speech": deterministic_speech,
+            "reason": "현재 관절 각도 조회는 상태 스냅샷에서 직접 응답",
+        }
+        validated_plan = build_validated_plan(
+            user_text=user_text,
+            robot_state=adapted_state,
+            classifier_result=classifier_result,
+            planner_result=planner_result,
+        )
+        return BrainTurnResult(
+            classifier_payload=classifier_payload,
+            classifier_result=classifier_result,
+            planner_domain=planner_domain,
+            prompt_payload="",
+            classifier_raw_response_text=classifier_raw_response_text,
+            raw_response_text="",
+            planner_result=planner_result,
+            adapted_state=adapted_state,
+            validated_plan=validated_plan,
+            classifier_duration_sec=classifier_duration_sec,
+            planner_duration_sec=0.0,
+            llm_duration_sec=classifier_duration_sec,
+        )
+
     planner_system_prompt = get_planner_system_prompt(planner_domain)
     prompt_payload = build_planner_payload(adapted_state, user_text, classifier_result, planner_domain)
     planner_start_time = time.time()

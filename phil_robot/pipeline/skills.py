@@ -13,7 +13,7 @@ SKILL_LIBRARY: Dict[str, Dict[str, object]] = {
     "wave_hi": {
         "category": "social",
         "description": "정면을 보고 손을 흔들며 밝게 인사한다.",
-        "commands": ["look:0,0", "gesture:wave", "led:happy"],
+        "commands": ["look:0,90", "gesture:wave", "led:happy"],
     },
     "nod_yes": {
         "category": "social",
@@ -39,27 +39,27 @@ SKILL_LIBRARY: Dict[str, Dict[str, object]] = {
     "look_forward": {
         "category": "visual",
         "description": "정면을 바라본다.",
-        "commands": ["look:0,0"],
+        "commands": ["look:0,90"],
     },
     "look_left": {
         "category": "visual",
         "description": "왼쪽을 바라본다.",
-        "commands": ["look:30,0"],
+        "commands": ["look:-30,90"],
     },
     "look_right": {
         "category": "visual",
         "description": "오른쪽을 바라본다.",
-        "commands": ["look:-30,0"],
+        "commands": ["look:30,90"],
     },
     "look_up": {
         "category": "visual",
         "description": "위쪽을 바라본다.",
-        "commands": ["look:0,20"],
+        "commands": ["look:0,70"],
     },
     "look_down": {
         "category": "visual",
         "description": "아래쪽을 바라본다.",
-        "commands": ["look:0,-20"],
+        "commands": ["look:0,110"],
     },
     # 자세 / 전환
     "ready_pose": {

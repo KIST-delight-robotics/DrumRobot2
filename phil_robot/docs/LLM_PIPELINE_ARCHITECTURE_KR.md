@@ -1,36 +1,35 @@
-# Phil Robot LLM Pipeline Architecture
+# Phil Robot LLM 파이프라인 아키텍처
 
-## Overview
+## 개요
 
-This document summarizes the current Python-side control architecture for `phil_robot`.
-The original voice loop was a monolithic:
+이 문서는 `phil_robot`의 현재 Python 측 제어 아키텍처를 정리한 것입니다.
+초기 음성 루프는 다음과 같은 단일 구조였습니다.
 
 ```text
 STT -> one LLM call -> parse -> send_command -> TTS
 ```
 
-The current implementation is a staged pipeline with explicit contracts, domain routing,
-state adaptation, validation, and execution boundaries.
+현재 구현은 계약, 도메인 라우팅, 상태 적응, 검증, 실행 경계를 갖춘 단계형 파이프라인으로 바뀌었습니다.
 
-Current top-level stages:
+현재 상위 단계는 다음과 같습니다.
 
 1. `STT`
-2. `Runtime State Snapshot`
-3. `State Adaptation`
-4. `Intent Classification`
-5. `Deterministic Status Shortcut`
-6. `Domain-Specific Planning`
-7. `Skill Expansion`
-8. `Relative Motion Resolution`
-9. `Command Validation`
-10. `Plan Validation`
-11. `Execution`
+2. `런타임 상태 스냅샷`
+3. `상태 적응`
+4. `의도 분류`
+5. `결정적 상태 질의 shortcut`
+6. `도메인별 planner`
+7. `skill expansion`
+8. `상대 모션 해석`
+9. `명령 검증`
+10. `plan 검증`
+11. `실행`
 12. `TTS`
-13. `State Feedback`
+13. `상태 피드백`
 
-## What Changed Compared to the Original Loop
+## 기존 루프와 비교해 무엇이 바뀌었는가
 
-### Original Architecture
+### 기존 아키텍처
 
 ```text
 Whisper STT
@@ -40,7 +39,7 @@ Whisper STT
   -> TTS
 ```
 
-### Current Architecture
+### 현재 아키텍처
 
 ```text
 Whisper STT
@@ -58,28 +57,28 @@ Whisper STT
   -> robot state feedback
 ```
 
-### Major Engineering Improvements
+### 핵심 개선점
 
-- JSON-only LLM outputs instead of free-form command strings
-- explicit classifier/planner split
+- 자유형 제어 문자열 대신 JSON-only LLM 출력
+- classifier / planner 분리
 - domain-specific planner routing
 - skill-first planning
-- plan-level validation object (`ValidatedPlan`)
-- deterministic handling for selected status queries
-- low-level runtime state separated from LLM-facing summaries
-- runtime safety no longer delegated purely to prompts
-- reduced parser fragility
-- clearer debugging and future replay/evaluation insertion points
+- plan 단위 검증 객체(`ValidatedPlan`)
+- 일부 상태 질의에 대한 deterministic 응답
+- low-level 런타임 상태와 LLM용 상태 요약 분리
+- 안전성 판단을 프롬프트에만 의존하지 않음
+- parser 취약성 감소
+- 향후 replay / evaluation 삽입 지점 명확화
 
-## Current Capabilities
+## 현재 가능한 기능
 
-### Interaction Capabilities
+### 상호작용 기능
 
-- Korean speech input via Whisper STT
-- Korean speech output via MeloTTS
-- two-stage LLM inference
-  - stage 1: intent classifier
-  - stage 2: planner
+- Whisper STT 기반 한국어 음성 입력
+- MeloTTS 기반 한국어 음성 출력
+- 2단계 LLM 추론
+  - 1단계: intent classifier
+  - 2단계: planner
 - domain-specific planning
   - `chat`
   - `motion`
@@ -87,15 +86,15 @@ Whisper STT
   - `status`
   - `stop`
   - `generic`
-- safety-aware rejection messaging
-- state-aware explanatory responses
-- deterministic direct answers for selected status questions
-  - robot identity questions
-  - joint-angle questions such as `왼쪽 손목 몇 도야`
+- 안전 상태를 반영한 거절 메시지
+- 상태 기반 설명 응답
+- 일부 상태 질문에 대한 deterministic direct answer
+  - 로봇 이름/정체 질문
+  - `왼쪽 손목 몇 도야` 같은 관절 각도 질문
 
-### Control Capabilities
+### 제어 기능
 
-- direct low-level command support:
+- 직접 low-level command 지원
   - `r`
   - `h`
   - `s`
@@ -105,24 +104,24 @@ Whisper STT
   - `led:<emotion>`
   - `move:<motor>,<angle>`
   - `wait:<seconds>`
-- relative motion interpretation:
+- 상대 모션 해석
   - `올려봐`
   - `내려봐`
   - `50도 더 올려`
   - `거기서 50도 더 올리고 2초 있다`
-- joint range blocking
-- robot-state-based blocking:
+- 관절 범위 차단
+- 로봇 상태 기반 차단
   - safety lock
   - play state
   - error state
   - busy / non-fixed state
-- sequence warning generation
+- 시퀀스 경고 생성
 
-### Skill-First Planning Capabilities
+### Skill-First Planning 기능
 
-Planner output can contain high-level skills instead of only low-level commands.
+Planner 출력은 low-level command만이 아니라 high-level skill도 포함할 수 있습니다.
 
-Current built-in skills:
+현재 내장 skill:
 
 - `wave_hi`
 - `nod_yes`
@@ -142,15 +141,15 @@ Current built-in skills:
 - `play_test_one`
 - `shutdown_system`
 
-Each skill includes:
+각 skill은 다음 메타데이터를 가집니다.
 
 - `category`
 - `description`
 - deterministic low-level `commands`
 
-This makes planner output more reproducible and easier to validate.
+이 구조 덕분에 planner 출력은 더 재현 가능하고 검증하기 쉬워졌습니다.
 
-## Python LLM Architecture Diagram
+## Python LLM 아키텍처 다이어그램
 
 ### ASCII Diagram
 
@@ -269,91 +268,50 @@ This makes planner output more reproducible and easier to validate.
 C++ robot state broadcast -> runtime/phil_client.py -> thread-safe ROBOT_STATE -> phil_brain.py
 ```
 
-### Mermaid Diagram
-
-```mermaid
-flowchart TD
-    A[User Speech] --> B[Whisper STT]
-    B --> C[phil_brain.py orchestration]
-    C --> D[state_adapter.adapt_robot_state]
-
-    D --> E[intent_classifier.build_classifier_payload]
-    E --> F[llm_interface.call_json_llm classifier]
-    F --> G[parse_intent_response + normalize_intent_result]
-
-    G --> H{deterministic status shortcut?}
-    H -->|yes| I[build_joint_angle_answer or direct status response]
-    H -->|no| J[planner.select_planner_domain]
-    J --> K[planner.get_planner_system_prompt]
-    G --> L[planner.build_planner_payload]
-    K --> M[llm_interface.call_json_llm planner]
-    L --> M
-    M --> N[planner.parse_plan_response]
-    N --> O[planner.enforce_intent_constraints]
-
-    I --> P[validator.build_validated_plan]
-    O --> P
-
-    P --> Q[skills.expand_skills]
-    P --> R[motion_resolver.resolve_motion_commands]
-    R --> S[command_validator.validate_commands]
-    Q --> P
-    S --> P
-
-    P --> T[ValidatedPlan]
-    T --> U[executor.execute_validated_plan]
-    U --> V[RobotClient.send_command]
-    T --> W[MeloTTS.speak]
-
-    X[C++ robot state broadcast] --> Y[runtime/phil_client.py receive thread]
-    Y --> Z[thread-safe ROBOT_STATE snapshot]
-    Z --> C
-```
-
-## Module Responsibilities
+## 모듈별 책임
 
 ### 1. Orchestration Layer
 
-File: [phil_brain.py](/home/shy/robot_project/phil_robot/phil_brain.py)
+파일: [phil_brain.py](/home/shy/robot_project/phil_robot/phil_brain.py)
 
-Responsibilities:
+책임:
 
 - runtime bootstrap
-- STT invocation
-- state snapshot acquisition
-- pipeline invocation
-- validated plan execution
-- TTS invocation
-- human-readable debug logging
+- STT 호출
+- state snapshot 획득
+- pipeline 호출
+- validated plan 실행
+- TTS 호출
+- 사람이 읽기 좋은 debug 로그 출력
 
-This file is an orchestration entrypoint, not a mixed logic container.
+이 파일은 혼합 로직 컨테이너가 아니라 orchestration entrypoint입니다.
 
 ### 2. State Adaptation Layer
 
-File: [state_adapter.py](/home/shy/robot_project/phil_robot/pipeline/state_adapter.py)
+파일: [state_adapter.py](/home/shy/robot_project/phil_robot/pipeline/state_adapter.py)
 
-Responsibilities:
+책임:
 
-- normalize raw robot state from C++
-- map internal song codes to display labels
-- alias `error_message` -> `error_detail`
-- preserve full runtime state for low-level Python control logic
-- build LLM-facing state summaries
-- detect joint-angle status queries
-- build deterministic angle answers from the current state snapshot
+- C++ raw state 정규화
+- 내부 song code를 표시용 label로 매핑
+- `error_message` -> `error_detail` alias
+- low-level Python 제어용 full runtime state 보존
+- LLM용 state summary 생성
+- joint-angle status query 감지
+- 현재 상태 스냅샷 기반 deterministic angle answer 생성
 
-State is intentionally split into multiple representations.
+상태는 의도적으로 여러 표현으로 나뉩니다.
 
 #### Full Adapted Runtime State
 
-Used by:
+사용처:
 
 - [brain_pipeline.py](/home/shy/robot_project/phil_robot/pipeline/brain_pipeline.py)
 - [motion_resolver.py](/home/shy/robot_project/phil_robot/pipeline/motion_resolver.py)
 - [command_validator.py](/home/shy/robot_project/phil_robot/pipeline/command_validator.py)
 - [validator.py](/home/shy/robot_project/phil_robot/pipeline/validator.py)
 
-Contains:
+포함 정보:
 
 - `current_angles`
 - `last_action`
@@ -361,11 +319,11 @@ Contains:
 
 #### Classifier State Summary
 
-Used by:
+사용처:
 
 - [intent_classifier.py](/home/shy/robot_project/phil_robot/pipeline/intent_classifier.py)
 
-Contains compact decision features only:
+포함 정보:
 
 - mode/state
 - busy/can_move
@@ -376,11 +334,11 @@ Contains compact decision features only:
 
 #### Planner State Summary
 
-Used by:
+사용처:
 
 - [planner.py](/home/shy/robot_project/phil_robot/pipeline/planner.py)
 
-Contains high-level execution state and a current joint snapshot for status explanations:
+포함 정보:
 
 - state
 - busy/can_move
@@ -394,18 +352,18 @@ Contains high-level execution state and a current joint snapshot for status expl
 
 ### 3. Intent Classification Layer
 
-File: [intent_classifier.py](/home/shy/robot_project/phil_robot/pipeline/intent_classifier.py)
+파일: [intent_classifier.py](/home/shy/robot_project/phil_robot/pipeline/intent_classifier.py)
 
-Responsibilities:
+책임:
 
-- classify user intent
-- estimate `needs_motion`
-- estimate `needs_dialogue`
-- provide a coarse `risk_level`
-- apply post-parse normalization for motion-bearing intents
-- force angle-question utterances into `status_question`
+- 사용자 intent 분류
+- `needs_motion` 추정
+- `needs_dialogue` 추정
+- coarse `risk_level` 제공
+- motion-bearing intent에 대한 post-parse normalization
+- 각도 질문을 `status_question`으로 강제
 
-Output schema:
+출력 스키마:
 
 ```json
 {
@@ -418,27 +376,27 @@ Output schema:
 
 ### 4. LLM Interface Layer
 
-File: [llm_interface.py](/home/shy/robot_project/phil_robot/pipeline/llm_interface.py)
+파일: [llm_interface.py](/home/shy/robot_project/phil_robot/pipeline/llm_interface.py)
 
-Responsibilities:
+책임:
 
-- wrap Ollama chat invocation
-- enforce JSON output mode
-- centralize LLM fallback handling
+- Ollama chat 호출 래핑
+- JSON output mode 강제
+- LLM fallback 처리 집중
 
 ### 5. Domain-Specific Planning Layer
 
-File: [planner.py](/home/shy/robot_project/phil_robot/pipeline/planner.py)
+파일: [planner.py](/home/shy/robot_project/phil_robot/pipeline/planner.py)
 
-Responsibilities:
+책임:
 
-- map `intent` to planner domain
-- choose a domain-specific system prompt
-- build planner payload
-- parse planner JSON
-- enforce post-plan domain constraints
+- `intent`를 planner domain으로 매핑
+- domain-specific system prompt 선택
+- planner payload 생성
+- planner JSON 파싱
+- post-plan domain constraint 적용
 
-Current planner domains:
+현재 planner domain:
 
 - `chat`
 - `motion`
@@ -447,90 +405,54 @@ Current planner domains:
 - `stop`
 - `generic`
 
-Planner output schema:
-
-```json
-{
-  "skills": ["wave_hi"],
-  "commands": [],
-  "speech": "안녕하세요!",
-  "reason": "simple greeting"
-}
-```
-
-Planner domains reduce prompt interference between unrelated tasks. For example:
-
-- chat planning no longer shares the same main prompt logic as play planning
-- status explanation is separated from motion generation
-- stop/shutdown planning is isolated from social/motion planning
-
 ### 6. Skill Registry Layer
 
-File: [skills.py](/home/shy/robot_project/phil_robot/pipeline/skills.py)
+파일: [skills.py](/home/shy/robot_project/phil_robot/pipeline/skills.py)
 
-Responsibilities:
+책임:
 
-- maintain stable high-level behavior macros
-- associate skills with categories and descriptions
-- expand symbolic actions into deterministic command sequences
-- deduplicate consecutive duplicate commands
-
-Skill categories:
-
-- `social`
-- `visual`
-- `posture`
-- `play`
-- `system`
+- stable high-level behavior macro 유지
+- skill category / description 관리
+- symbolic action을 deterministic command sequence로 확장
+- 연속 중복 command 제거
 
 ### 7. Relative Motion Resolution Layer
 
-File: [motion_resolver.py](/home/shy/robot_project/phil_robot/pipeline/motion_resolver.py)
+파일: [motion_resolver.py](/home/shy/robot_project/phil_robot/pipeline/motion_resolver.py)
 
-Responsibilities:
+책임:
 
-- resolve relative motion language into absolute motor targets
-- infer omitted joint context from `last_action`
-- block over-limit relative requests before execution
-- strip associated `wait` chains when a preceding move is invalid
-
-This is where low-level joint state becomes relevant again.
+- 상대 모션 표현을 절대 motor target으로 변환
+- `last_action` 기반 생략된 관절 문맥 추론
+- 범위를 넘는 상대 요청을 실행 전 차단
+- move가 무효일 때 뒤따르는 `wait`도 함께 제거
 
 ### 8. Command Validation Layer
 
-File: [command_validator.py](/home/shy/robot_project/phil_robot/pipeline/command_validator.py)
+파일: [command_validator.py](/home/shy/robot_project/phil_robot/pipeline/command_validator.py)
 
-Responsibilities:
+책임:
 
-- grammar validation
-- enum validation
-- range validation
-- state gating
+- 문법 검증
+- enum 검증
+- 범위 검증
+- 상태 차단
 - legacy normalization
-- sequence warning generation
-
-Validated concerns include:
-
-- command syntax
-- joint range compliance
-- lock-key gating
-- play-state gating
-- busy-state gating
-- coarse sequencing risks
+- 시퀀스 경고 생성
 
 ### 9. Plan Validation Layer
 
-File: [validator.py](/home/shy/robot_project/phil_robot/pipeline/validator.py)
+파일: [validator.py](/home/shy/robot_project/phil_robot/pipeline/validator.py)
 
-Responsibilities:
+책임:
 
-- expand skills
-- resolve relative motions
-- validate resulting low-level commands
-- merge warnings
-- finalize user-facing speech
+- skill expansion
+- relative motion resolution
+- low-level command 검증
+- warning 병합
+- 사용자 facing speech 최종화
 
-Execution contract:
+실행 계약:
 
 ```python
 ValidatedPlan(
@@ -546,58 +468,51 @@ ValidatedPlan(
 )
 ```
 
-`ValidatedPlan` is the boundary between planning and execution.
-
 ### 10. Execution Layer
 
-Files:
+파일:
 
 - [executor.py](/home/shy/robot_project/phil_robot/pipeline/executor.py)
 - [command_executor.py](/home/shy/robot_project/phil_robot/pipeline/command_executor.py)
 
-Responsibilities:
+책임:
 
-- consume only validated plans
-- transmit robot commands over the socket client
-- handle `wait:<seconds>` in Python as a temporary delay primitive
+- validated plan만 소비
+- socket client를 통해 실제 로봇 명령 전송
+- `wait:<seconds>`를 Python 측 임시 delay primitive로 처리
 
 ### 11. Runtime Transport and Feedback Layer
 
-Files:
+파일:
 
 - [phil_client.py](/home/shy/robot_project/phil_robot/runtime/phil_client.py)
 - [melo_engine.py](/home/shy/robot_project/phil_robot/runtime/melo_engine.py)
 - [DrumRobot.cpp](/home/shy/robot_project/DrumRobot2/src/DrumRobot.cpp)
 
-Responsibilities:
+책임:
 
-- receive robot state asynchronously
-- maintain a thread-safe state snapshot
-- merge angle updates with deadband behavior
-- suppress noisy angle spam in `state == 2`
-- expose runtime feedback to the next interaction turn
-- synthesize TTS output through MeloTTS with vendored runtime paths
-
-On the C++ side:
-
-- real `current_angles` are broadcast
-- state broadcast uses deadband / hysteresis-like filtering
+- 비동기 로봇 상태 수신
+- thread-safe state snapshot 유지
+- deadband 기반 각도 업데이트 병합
+- `state == 2`에서 noisy angle spam 억제
+- 다음 interaction turn에 runtime feedback 제공
+- vendored runtime path를 포함한 MeloTTS 합성 처리
 
 ## End-to-End Runtime Flow
 
-1. User speaks.
-2. Whisper STT converts audio to text.
-3. [phil_brain.py](/home/shy/robot_project/phil_robot/phil_brain.py) acquires a stable state snapshot from [phil_client.py](/home/shy/robot_project/phil_robot/runtime/phil_client.py).
-4. [state_adapter.py](/home/shy/robot_project/phil_robot/pipeline/state_adapter.py) normalizes the raw runtime state.
-5. [intent_classifier.py](/home/shy/robot_project/phil_robot/pipeline/intent_classifier.py) builds a compact classifier payload.
-6. [llm_interface.py](/home/shy/robot_project/phil_robot/pipeline/llm_interface.py) calls the classifier model.
-7. If the utterance is a supported deterministic status query such as a joint-angle question, [brain_pipeline.py](/home/shy/robot_project/phil_robot/pipeline/brain_pipeline.py) answers directly from the current state snapshot.
-8. Otherwise, [planner.py](/home/shy/robot_project/phil_robot/pipeline/planner.py) maps `intent` to a planner domain and builds the planner payload.
-9. [llm_interface.py](/home/shy/robot_project/phil_robot/pipeline/llm_interface.py) calls the planner model with the domain-specific prompt.
-10. [planner.py](/home/shy/robot_project/phil_robot/pipeline/planner.py) parses planner JSON and enforces domain constraints.
-11. [validator.py](/home/shy/robot_project/phil_robot/pipeline/validator.py) expands skills and resolves relative motions.
-12. [command_validator.py](/home/shy/robot_project/phil_robot/pipeline/command_validator.py) validates resulting low-level commands.
-13. A `ValidatedPlan` is produced.
-14. [executor.py](/home/shy/robot_project/phil_robot/pipeline/executor.py) transmits only validated commands.
-15. [phil_brain.py](/home/shy/robot_project/phil_robot/phil_brain.py) forwards the final speech to [melo_engine.py](/home/shy/robot_project/phil_robot/runtime/melo_engine.py).
-16. [phil_client.py](/home/shy/robot_project/phil_robot/runtime/phil_client.py) receives updated state from C++ and feeds it into the next turn.
+1. 사용자가 말한다.
+2. Whisper STT가 음성을 텍스트로 변환한다.
+3. [phil_brain.py](/home/shy/robot_project/phil_robot/phil_brain.py)가 [phil_client.py](/home/shy/robot_project/phil_robot/runtime/phil_client.py)에서 안정적인 state snapshot을 가져온다.
+4. [state_adapter.py](/home/shy/robot_project/phil_robot/pipeline/state_adapter.py)가 raw runtime state를 정규화한다.
+5. [intent_classifier.py](/home/shy/robot_project/phil_robot/pipeline/intent_classifier.py)가 compact classifier payload를 만든다.
+6. [llm_interface.py](/home/shy/robot_project/phil_robot/pipeline/llm_interface.py)가 classifier 모델을 호출한다.
+7. 발화가 지원되는 deterministic status query이면 [brain_pipeline.py](/home/shy/robot_project/phil_robot/pipeline/brain_pipeline.py)가 현재 상태 스냅샷에서 직접 답한다.
+8. 그렇지 않으면 [planner.py](/home/shy/robot_project/phil_robot/pipeline/planner.py)가 `intent`를 planner domain으로 매핑하고 planner payload를 만든다.
+9. [llm_interface.py](/home/shy/robot_project/phil_robot/pipeline/llm_interface.py)가 domain-specific prompt로 planner 모델을 호출한다.
+10. [planner.py](/home/shy/robot_project/phil_robot/pipeline/planner.py)가 planner JSON을 파싱하고 domain constraint를 적용한다.
+11. [validator.py](/home/shy/robot_project/phil_robot/pipeline/validator.py)가 skill을 확장하고 relative motion을 해석한다.
+12. [command_validator.py](/home/shy/robot_project/phil_robot/pipeline/command_validator.py)가 low-level command를 검증한다.
+13. `ValidatedPlan`이 생성된다.
+14. [executor.py](/home/shy/robot_project/phil_robot/pipeline/executor.py)가 검증 통과한 command만 전송한다.
+15. [phil_brain.py](/home/shy/robot_project/phil_robot/phil_brain.py)가 최종 speech를 [melo_engine.py](/home/shy/robot_project/phil_robot/runtime/melo_engine.py)로 넘긴다.
+16. [phil_client.py](/home/shy/robot_project/phil_robot/runtime/phil_client.py)가 C++에서 갱신된 상태를 받아 다음 턴에 반영한다.

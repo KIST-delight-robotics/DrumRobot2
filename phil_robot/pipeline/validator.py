@@ -71,7 +71,11 @@ def build_validated_plan(user_text: str, robot_state: Dict, classifier_result: D
         speech = resolution.message_override
     elif classifier_result.get("needs_motion", False) and not has_actionable_motion_command(validation.valid_commands):
         speech = build_motion_block_message(robot_state)
-    elif user_text_requests_motion(user_text) and not has_actionable_motion_command(validation.valid_commands):
+    elif (
+        classifier_result.get("intent") == "motion_request"
+        and user_text_requests_motion(user_text)
+        and not has_actionable_motion_command(validation.valid_commands)
+    ):
         speech = build_motion_block_message(robot_state)
 
     return ValidatedPlan(

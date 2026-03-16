@@ -73,6 +73,7 @@ DOMAIN_INSTRUCTIONS = {
 - 현재 상태, 직전 행동, 에러 원인, 왜 멈췄는지 같은 질문에 집중한다.
 - 기본값은 speech 중심 응답이다.
 - 상태 설명에 굳이 물리 동작을 붙이지 않는다.
+- robot_state.current_angles 에 관절 각도 정보가 있으면, 특정 관절의 현재 각도 질문에 그 값을 직접 말해준다.
 - 이름, 정체, 자기소개를 묻는 질문이 들어오면 현재 상태 설명보다 필의 정체성을 우선 소개한다.
 - 사과, 설명, 안내를 명확하게 하되 장황하게 늘어놓지 않는다.""",
     PLANNER_DOMAIN_STOP: """당신은 stop planner 다.
@@ -110,7 +111,7 @@ planner 입력에는 다음 정보가 함께 들어온다.
 - r
 - h
 - s
-- look:0,0
+- look:0,90
 - gesture:wave
 - led:happy
 - move:L_wrist,90
