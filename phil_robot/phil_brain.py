@@ -8,9 +8,9 @@ import psutil
 import sounddevice as sd
 import whisper
 
+from config import PLANNER_MODEL
 from pipeline.brain_pipeline import run_brain_turn
 from pipeline.executor import execute_validated_plan
-from pipeline.llm_contract import DEFAULT_LLM_MODEL
 from runtime.melo_engine import TTS_Engine
 from runtime.phil_client import RobotClient, get_robot_state_snapshot
 
@@ -19,7 +19,6 @@ from runtime.phil_client import RobotClient, get_robot_state_snapshot
 # ==========================================
 SAMPLE_RATE = 16000
 RECORD_SECONDS = 3
-LLM_MODEL = DEFAULT_LLM_MODEL
 HOST = "127.0.0.1"
 PORT = 9999
 
@@ -154,7 +153,7 @@ def main():
             brain_result = run_brain_turn(
                 user_text=user_text,
                 raw_robot_state=robot_state,
-                model_name=LLM_MODEL,
+                model_name=PLANNER_MODEL,
             )
 
             debug_brain_result(brain_result)

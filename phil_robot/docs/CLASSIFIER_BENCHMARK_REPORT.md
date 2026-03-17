@@ -153,6 +153,6 @@ Expected benefit:
 
 - evaluation suite: [cases_smoke.json](/home/shy/robot_project/phil_robot/eval/cases_smoke.json)
 - latest smoke report for the selected classifier:
-  [smoke_report_qwen3_4b_classifier.json](/home/shy/robot_project/phil_robot/eval/reports/smoke_report_qwen3_4b_classifier.json)
+  [smoke_report_q3-4b-q4km_q3-30b-a3b-q4km.json](/home/shy/robot_project/phil_robot/eval/reports/smoke_report_q3-4b-q4km_q3-30b-a3b-q4km.json)
 - current classifier configuration:
   [intent_classifier.py](/home/shy/robot_project/phil_robot/pipeline/intent_classifier.py)

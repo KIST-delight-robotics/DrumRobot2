@@ -1,8 +1,9 @@
 import argparse
 import json
 import os
+import re
 import sys
-from dataclasses import asdict
+from datetime import datetime
 from typing import Any, Dict, List, Tuple
 
 
@@ -14,11 +15,13 @@ if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
 from phil_robot.pipeline.brain_pipeline import run_brain_turn  # noqa: E402
+from phil_robot.config import CLASSIFIER_MODEL, PLANNER_MODEL  # noqa: E402
 
 
 DEFAULT_CASES = {
     "smoke": os.path.join(CURRENT_DIR, "cases_smoke.json"),
 }
+DEFAULT_REPORT_DIR = os.path.join(CURRENT_DIR, "reports")
 
 
 def load_cases(cases_path: str) -> List[Dict[str, Any]]:
@@ -29,6 +32,87 @@ def load_cases(cases_path: str) -> List[Dict[str, Any]]:
         raise ValueError("Case file must be a JSON array.")
 
     return payload
+
+
+def infer_suite_name(suite_name: str, cases_path: str) -> str:
+    """suite 이름이 없으면 케이스 파일명에서 대표 이름을 추론한다."""
+    if suite_name:
+        return suite_name
+
+    stem = os.path.splitext(os.path.basename(cases_path))[0]
+    if stem.startswith("cases_"):
+        return stem[len("cases_") :]
+    return stem
+
+
+def abbreviate_model_name(model_name: str) -> str:
+    """
+    리포트 파일명에 넣기 위한 모델 약어를 생성한다.
+
+    예:
+    - qwen3:4b-instruct-2507-q4_K_M -> q3-4b-q4km
+    - qwen3:30b-a3b-instruct-2507-q4_K_M -> q3-30b-a3b-q4km
+    """
+    normalized = (model_name or "unknown").strip().lower()
+    provider, _, remainder = normalized.partition(":")
+
+    provider_alias = {
+        "qwen3": "q3",
+        "qwen2.5": "q25",
+        "llama3.2": "l32",
+        "llama3.1": "l31",
+        "phi3": "p3",
+        "gemma": "gm",
+    }.get(provider, re.sub(r"[^a-z0-9]+", "", provider)[:6] or "model")
+
+    size_tokens: List[str] = []
+    size_match = re.search(r"(\d+(?:\.\d+)?)b(?:-([a-z]\d+b))?", remainder)
+    if size_match:
+        primary_size = size_match.group(1).replace(".", "")
+        size_tokens.append(f"{primary_size}b")
+        if size_match.group(2):
+            size_tokens.append(size_match.group(2))
+
+    quant_token = ""
+    quant_match = re.search(r"(q\d(?:_[a-z0-9]+)+)", remainder)
+    if quant_match:
+        quant_token = quant_match.group(1).replace("_", "")
+
+    parts = [provider_alias]
+    parts.extend(size_tokens)
+    if quant_token:
+        parts.append(quant_token)
+
+    return "-".join(parts)
+
+
+def build_report_path(
+    suite_name: str,
+    classifier_model_name: str,
+    planner_model_name: str,
+    report_dir: str = DEFAULT_REPORT_DIR,
+) -> str:
+    """
+    표준 리포트 파일명을 생성한다.
+
+    규칙:
+    - <suite>_report_<classifier약어>_<planner약어>_<YYYYMMDD_HHMM>.json
+    - 동일 분에 같은 조합으로 다시 저장하면 _1, _2 ... 를 뒤에 붙인다.
+    """
+    os.makedirs(report_dir, exist_ok=True)
+
+    classifier_alias = abbreviate_model_name(classifier_model_name)
+    planner_alias = abbreviate_model_name(planner_model_name)
+    timestamp = datetime.now().astimezone().strftime("%Y%m%d_%H%M")
+    stem = f"{suite_name}_report_{classifier_alias}_{planner_alias}_{timestamp}"
+    candidate = os.path.join(report_dir, f"{stem}.json")
+
+    collision_index = 1
+    while os.path.exists(candidate):
+        candidate = os.path.join(report_dir, f"{stem}_{collision_index}.json")
+        collision_index += 1
+
+    return candidate
 
 
 def _list_equals(actual: List[Any], expected: List[Any]) -> bool:
@@ -233,11 +317,17 @@ def print_results(results: List[Dict[str, Any]], summary: Dict[str, Any]) -> Non
         print(f"{layer_name}: {layer_stats['passed']}/{layer_stats['total']} checks passed")
 
 
-def save_report(report_path: str, results: List[Dict[str, Any]], summary: Dict[str, Any]) -> None:
+def save_report(
+    report_path: str,
+    results: List[Dict[str, Any]],
+    summary: Dict[str, Any],
+    metadata: Dict[str, Any],
+) -> None:
     os.makedirs(os.path.dirname(report_path), exist_ok=True)
     with open(report_path, "w", encoding="utf-8") as file:
         json.dump(
             {
+                "metadata": metadata,
                 "summary": summary,
                 "results": results,
             },
@@ -251,22 +341,45 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Run Phil Robot multi-layer evaluation cases.")
     parser.add_argument("--suite", choices=sorted(DEFAULT_CASES.keys()), help="Named case suite to run.")
     parser.add_argument("--cases", help="Explicit JSON case file to run.")
-    parser.add_argument("--report", help="Optional JSON report output path.")
+    parser.add_argument("--report", help="Explicit JSON report output path.")
+    parser.add_argument(
+        "--save-report",
+        action="store_true",
+        help="Generate a report filename automatically using the standard naming rule.",
+    )
     args = parser.parse_args()
 
     if not args.suite and not args.cases:
         parser.error("Either --suite or --cases is required.")
+    if args.report and args.save_report:
+        parser.error("Use either --report or --save-report, not both.")
 
     cases_path = args.cases or DEFAULT_CASES[args.suite]
+    suite_name = infer_suite_name(args.suite, cases_path)
     cases = load_cases(cases_path)
 
     results = [evaluate_case(case) for case in cases]
     summary = summarize_results(results)
     print_results(results, summary)
 
-    if args.report:
-        save_report(args.report, results, summary)
-        print(f"\nSaved report to: {args.report}")
+    report_path = args.report
+    if args.save_report:
+        report_path = build_report_path(
+            suite_name=suite_name,
+            classifier_model_name=CLASSIFIER_MODEL,
+            planner_model_name=PLANNER_MODEL,
+        )
+
+    if report_path:
+        metadata = {
+            "generated_at": datetime.now().astimezone().isoformat(timespec="seconds"),
+            "suite": suite_name,
+            "cases_path": os.path.abspath(cases_path),
+            "classifier_model": CLASSIFIER_MODEL,
+            "planner_model": PLANNER_MODEL,
+        }
+        save_report(report_path, results, summary, metadata)
+        print(f"\nSaved report to: {report_path}")
 
     return 0 if summary["failed_cases"] == 0 else 1
 

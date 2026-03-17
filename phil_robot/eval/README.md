@@ -111,14 +111,72 @@ JSON 리포트로 저장할 수도 있습니다.
 ```bash
 /home/shy/miniforge3/envs/drum4/bin/python phil_robot/eval/run_eval.py \
   --suite smoke \
-  --report phil_robot/eval/reports/smoke_report.json
+  --report phil_robot/eval/reports/smoke_report_q3-4b-q4km_q3-30b-a3b-q4km.json
 ```
 
 `eval` 폴더 안에 있을 때:
 
 ```bash
-python run_eval.py --suite smoke --report reports/smoke_report.json
+python run_eval.py --suite smoke --report reports/smoke_report_q3-4b-q4km_q3-30b-a3b-q4km.json
 ```
+
+표준 파일명 규칙으로 자동 저장하려면 `--save-report`를 사용합니다.
+
+```bash
+/home/shy/miniforge3/envs/drum4/bin/python phil_robot/eval/run_eval.py \
+  --suite smoke \
+  --save-report
+```
+
+`eval` 폴더 안에 있을 때:
+
+```bash
+python run_eval.py --suite smoke --save-report
+```
+
+## 리포트 파일명 규칙
+자동 생성되는 리포트 파일명은 다음 규칙을 따릅니다.
+
+```text
+<suite>_report_<classifier약어>_<planner약어>_<YYYYMMDD_HHMM>.json
+```
+
+예:
+
+```text
+smoke_report_q3-4b-q4km_q3-30b-a3b-q4km_20260317_1530.json
+```
+
+약어 규칙:
+- classifier 약어: 현재 `CLASSIFIER_MODEL` 값에서 생성
+- planner 약어: 현재 `PLANNER_MODEL` 값에서 생성
+- provider, 파라미터 규모, quant 정보 위주로 압축
+
+동일한 분에 같은 모델 조합으로 다시 저장하면 뒤에 순번을 붙입니다.
+
+```text
+smoke_report_q3-4b-q4km_q3-30b-a3b-q4km_20260317_1530_1.json
+smoke_report_q3-4b-q4km_q3-30b-a3b-q4km_20260317_1530_2.json
+```
+
+즉:
+- 첫 실행은 모델 조합 + 측정 시각이 들어간 이름으로 저장
+- 같은 분 안에 같은 모델 조합으로 다시 저장하면 `_1`, `_2` ... 가 자동 증가
+
+## 리포트 메타데이터
+새로 저장되는 JSON 리포트에는 다음 메타데이터가 함께 기록됩니다.
+- `generated_at`
+- `suite`
+- `cases_path`
+- `classifier_model`
+- `planner_model`
+
+이 정보로 나중에 어떤 모델 조합과 어떤 케이스 파일로 측정했는지 추적할 수 있습니다.
+
+## 기존 리포트 파일에 대한 참고
+현재 `reports/` 안에 있는 기존 `smoke_report*.json` 파일 중 일부는
+이 규칙을 도입하기 전에 수동으로 저장된 legacy 리포트일 수 있습니다.
+새 규칙은 `--save-report`로 생성한 리포트부터 일관되게 적용됩니다.
 
 ## 설계 메모
 - 이 평가 경로는 실제 classifier / planner 모델을 그대로 호출합니다.

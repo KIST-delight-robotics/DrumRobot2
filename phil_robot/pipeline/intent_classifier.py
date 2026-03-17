@@ -4,9 +4,12 @@ import re
 try:
     from .state_adapter import build_classifier_state_summary, detect_joint_angle_query
 except ImportError:
-    from state_adapter import build_classifier_state_summary, detect_joint_angle_query
+    from pipeline.state_adapter import build_classifier_state_summary, detect_joint_angle_query
 
-CLASSIFIER_MODEL = "qwen3:4b-instruct-2507-q4_K_M"
+try:
+    from ..config import CLASSIFIER_MODEL
+except ImportError:
+    from config import CLASSIFIER_MODEL
 
 DEFAULT_INTENT_RESULT = {
     "intent": "unknown",

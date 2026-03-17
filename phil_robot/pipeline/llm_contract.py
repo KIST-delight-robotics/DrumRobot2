@@ -1,7 +1,6 @@
 import json
 
 FALLBACK_MESSAGE = "죄송해요. 응답을 정리하다가 잠시 헷갈렸어요. 다시 말씀해 주세요."
-DEFAULT_LLM_MODEL = "qwen3:30b-a3b-instruct-2507-q4_K_M"
 
 
 def build_fallback_payload(reason):
