@@ -1,13 +1,12 @@
 # phil_intheloop
 
-`phil_intheloop`는 실제 로봇을 바로 건드리지 않고 `PyBullet`에서 Phil 로봇을 띄워 보는 1차 시뮬레이션 디렉터리입니다.
+`phil_intheloop`는 실제 로봇을 바로 건드리지 않고 `PyBullet`에서 Phil 로봇을 띄워 보는 시뮬레이션 디렉터리입니다.
 
 현재 목표:
 
 - URDF를 `PyBullet`에 띄운다.
-- `127.0.0.1:9999`에서 기존 `phil_robot`와 비슷한 계약으로 통신한다.
-- 완전한 SIL이 아니어도, 스크린샷과 데모 화면을 만들 수 있게 한다.
-
+- `127.0.0.1:9999`에서 기존 `phil_robot`과 TCP 소켓으로 통신한다.
+- 간단한 명령을 받아서 로봇이 움직이는 것을 시각적으로 확인한다.
 아직 하지 않는 것:
 
 - 엄밀한 실시간 제어 재현
@@ -64,11 +63,11 @@ cd phil_robot
 /home/shy/miniforge3/envs/drum4/bin/python phil_brain.py
 ```
 
-이 경우 `phil_robot`는 기존처럼 `127.0.0.1:9999`에 붙지만, 실제 C++ 로봇 대신 `PyBullet` 시뮬레이터에 연결됩니다.
+이 경우 `phil_robot`는 기존처럼 `127.0.0.1:9999`에 연결되지만, 실제 C++ 로봇 대신 `PyBullet` 시뮬레이터에 연결됩니다.
 
 주의:
 
-- 현재 구조상 음성 루프도 원리적으로는 연결된다.
+- 현재 구조상 음성 루프도 원칙상 연결된다.
 - 즉, `run_sil.py`를 먼저 띄우고 그다음 `phil_brain.py`를 실행하면, `phil_robot`가 생성한 명령은 실제 C++ 대신 SIL로 들어간다.
 - 다만 제가 실제로 끝까지 검증한 것은 소켓 명령 레벨이며, 마이크/STT/TTS를 포함한 end-to-end 음성 루프는 아직 별도 smoke test로 고정하지 않았다.
 
