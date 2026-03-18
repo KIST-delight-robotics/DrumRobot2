@@ -4,6 +4,13 @@
 ![Phil Robot Preview](./docs/DrumRobot.jpg)
 *(https://www.youtube.com/watch?v=SHXWN2f2ou8)*
 
+---
+
+(./phil_intheloop/artifacts/Simulation_intheloop.png)
+(./phil_intheloop/artifacts/SIL2.png)
+./phil_intheloop/sil/pybullet_backend.py에서 시뮬레이터에 적용된 관절 매핑과 제어 로직을 보여주는 스크린샷입니다.
+
+
 ## 📖 Project Overview
 **Phil Robot**은 KIST에서 개발한 휴머노이드 드럼 로봇 '필(Phil)'에게 AI 기반의 인지/대화 능력을 부여하는 프로젝트입니다. 
 외부 API에 전혀 사용하지 않고, 엣지 디바이스(Jetson AGX Orin) 내에서 독립적으로 구동되는 **On-Device AI 파이프라인(Whisper ↔ Qwen 30B ↔ MeloTTS)** 과 실시간성이 요구되는 **C++ 하드웨어 제어 시스템(CAN 통신)** 으로 이루어진 Heterogeneous 시스템을 **TCP 소켓 통신** 으로 통합했습니다.
