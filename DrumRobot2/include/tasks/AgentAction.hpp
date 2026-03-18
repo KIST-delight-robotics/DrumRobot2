@@ -7,6 +7,7 @@
 #include <sstream>
 #include <map>
 #include <cmath>
+#include <cctype>
 #include <memory>  // [필수 추가] std::shared_ptr를 쓰려면 이게 꼭 있어야 합니다. -> 전방 선언에 따른 문제 해결용
 
 // [수정] 헤더 충돌 방지를 위한 전방 선언 (Forward Declaration)
@@ -28,6 +29,9 @@ public:
     // 예: "[CMD:look:10,20]" -> 고개 돌리기 실행
     void executeCommand(std::string fullCmd);
 
+    // JSON payload 또는 기존 단일 문자열 명령을 공통 포맷으로 풀어낸다.
+    std::vector<std::string> unpackCommands(const std::string& payload);
+
 private:
     // --- External References (로봇의 몸체 제어권) ---
     PathManager& pathManager;
@@ -43,6 +47,12 @@ private:
     
     // 명령어 포맷 정리 (대괄호 제거 등)
     std::string cleanCommand(std::string cmd);
+
+    std::string trim(const std::string& value);
+    bool parseJsonCommandPayload(const std::string& payload, std::vector<std::string>& commands);
+    bool extractJsonStringArray(const std::string& payload, const std::string& key, std::vector<std::string>& values);
+    bool extractJsonStringValue(const std::string& payload, const std::string& key, std::string& value);
+    bool readJsonString(const std::string& payload, size_t startQuote, std::string& value, size_t& nextPos);
 
     // --- Action Policies (구체적 행동 정의) ---
     

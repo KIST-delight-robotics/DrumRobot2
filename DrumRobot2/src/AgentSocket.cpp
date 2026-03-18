@@ -9,6 +9,60 @@ AgentSocket::~AgentSocket() {
     stop();
 }
 
+std::string AgentSocket::trimPayload(const std::string& payload) const {
+    size_t start = 0;
+    while (start < payload.size() && std::isspace(static_cast<unsigned char>(payload[start]))) {
+        start++;
+    }
+
+    size_t end = payload.size();
+    while (end > start && std::isspace(static_cast<unsigned char>(payload[end - 1]))) {
+        end--;
+    }
+
+    return payload.substr(start, end - start);
+}
+
+bool AgentSocket::isJsonPayloadStart(const std::string& payload) const {
+    std::string trimmed = trimPayload(payload);
+    return !trimmed.empty() && trimmed.front() == '{';
+}
+
+bool AgentSocket::isCompleteJsonPayload(const std::string& payload) const {
+    int braceDepth = 0;
+    bool inString = false;
+    bool escape = false;
+
+    for (char ch : payload) {
+        if (escape) {
+            escape = false;
+            continue;
+        }
+
+        if (ch == '\\') {
+            escape = true;
+            continue;
+        }
+
+        if (ch == '"') {
+            inString = !inString;
+            continue;
+        }
+
+        if (inString) {
+            continue;
+        }
+
+        if (ch == '{') {
+            braceDepth++;
+        } else if (ch == '}') {
+            braceDepth--;
+        }
+    }
+
+    return braceDepth == 0 && !payload.empty();
+}
+
 // 큐 비우기 함수
 void AgentSocket::clearQueue() {
     std::lock_guard<std::mutex> lock(queueMutex);
@@ -82,6 +136,10 @@ void AgentSocket::runServerLoop() {
 
         // 2. 데이터 수신 루프
         char buffer[1024] = {0};
+        std::string recvBuffer = ""; // ★ TCP 스트림 조립용 누적 버퍼 추가
+        std::string jsonPayloadBuffer = "";
+        bool collectingJson = false;
+
         while (keepRunning) {
             memset(buffer, 0, sizeof(buffer));
             int valread = read(new_socket, buffer, sizeof(buffer) - 1); // -1 to leave space for null terminator
@@ -93,20 +151,57 @@ void AgentSocket::runServerLoop() {
                 break; // 다시 accept 대기로 돌아감
             }
 
-            std::string cmd(buffer);
-            
-            // ★ 안전장치: 셔터(게이트)가 닫혀있으면 명령 폐기
-            if (!isGateOpen.load()) {
-                std::cout << "🚫 [Safeguard] 로봇 보호 상태: 명령 폐기 -> " << cmd << std::endl;
-                continue; 
-            }
+            // ★ 받은 데이터를 무조건 누적 버퍼에 뒤이어 붙입니다.
+            recvBuffer.append(buffer, valread);
 
-            // ★ 중요: 큐에 넣을 때는 자물쇠(Mutex) 잠그기
-            {
+            // ★ '\n' 구분자를 찾아서 완전한 명령어 단위로 쪼개기
+            size_t pos;
+            while ((pos = recvBuffer.find('\n')) != std::string::npos) {
+                // '\n' 앞까지 잘라서 하나의 명령어로 추출
+                std::string cmd = recvBuffer.substr(0, pos);
+
+                // 처리한 명령어와 '\n'은 누적 버퍼에서 삭제
+                recvBuffer.erase(0, pos + 1); 
+
+                // 혹시 모를 캐리지 리턴(\r)이나 공백 찌꺼기 제거
+                if (!cmd.empty() && cmd.back() == '\r') {
+                    cmd.pop_back();
+                }
+
+                cmd = trimPayload(cmd);
+                if (cmd.empty()) continue; // 빈 줄은 무시
+
+                if (collectingJson || isJsonPayloadStart(cmd)) {
+                    if (!collectingJson) {
+                        jsonPayloadBuffer.clear();
+                        collectingJson = true;
+                    }
+
+                    if (!jsonPayloadBuffer.empty()) {
+                        jsonPayloadBuffer += "\n";
+                    }
+                    jsonPayloadBuffer += cmd;
+
+                    if (!isCompleteJsonPayload(jsonPayloadBuffer)) {
+                        continue;
+                    }
+
+                    cmd = jsonPayloadBuffer;
+                    jsonPayloadBuffer.clear();
+                    collectingJson = false;
+                }
+
+                // ★ 안전장치: 셔터(게이트)가 닫혀있으면 명령 폐기
+                if (!isGateOpen.load()) {
+                    std::cout << "🚫 [Safeguard] 로봇 보호 상태: 명령 폐기 -> " << cmd << std::endl;
+                    continue; 
+                }
+
+                // ★ 중요: 큐에 넣을 때는 자물쇠(Mutex) 잠그기
                 std::lock_guard<std::mutex> lock(queueMutex);
                 commandQueue.push(cmd);
+                
             }
-            // std::cout << "[Agent] Command Received: " << cmd << std::endl;
         }
     }
 }

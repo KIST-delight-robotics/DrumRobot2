@@ -1,0 +1,797 @@
+{
+  "summary": {
+    "total_cases": 10,
+    "passed_cases": 9,
+    "failed_cases": 1,
+    "layer_summary": {
+      "classifier": {
+        "passed": 10,
+        "total": 10
+      },
+      "planner": {
+        "passed": 13,
+        "total": 13
+      },
+      "validator": {
+        "passed": 9,
+        "total": 10
+      },
+      "e2e": {
+        "passed": 9,
+        "total": 9
+      }
+    }
+  },
+  "results": [
+    {
+      "id": "chat_greeting_basic",
+      "tags": [
+        "smoke",
+        "chat"
+      ],
+      "user_text": "안녕",
+      "passed": true,
+      "checks": [
+        {
+          "name": "classifier.intent",
+          "passed": true,
+          "expected": "chat",
+          "actual": "chat"
+        },
+        {
+          "name": "planner.domain",
+          "passed": true,
+          "expected": "chat",
+          "actual": "chat"
+        },
+        {
+          "name": "planner.skills_exact",
+          "passed": true,
+          "expected": [],
+          "actual": []
+        },
+        {
+          "name": "validator.valid_commands_exact",
+          "passed": true,
+          "expected": [],
+          "actual": []
+        },
+        {
+          "name": "e2e.speech_contains_any",
+          "passed": true,
+          "expected": [
+            "안녕",
+            "반가",
+            "안녕하세요"
+          ],
+          "actual": "안녕하세요!"
+        }
+      ],
+      "failed_checks": [],
+      "actual": {
+        "intent": "chat",
+        "needs_motion": false,
+        "needs_dialogue": true,
+        "risk_level": "low",
+        "planner_domain": "chat",
+        "skills": [],
+        "raw_commands": [],
+        "expanded_commands": [],
+        "resolved_commands": [],
+        "valid_commands": [],
+        "rejected_commands": [],
+        "speech": "안녕하세요!",
+        "reason": "간단한 인사 응답"
+      },
+      "durations_sec": {
+        "classifier": 3.269749402999878,
+        "planner": 2.6073927879333496,
+        "total": 5.8771421909332275
+      }
+    },
+    {
+      "id": "motion_wave_allowed",
+      "tags": [
+        "smoke",
+        "motion"
+      ],
+      "user_text": "손 흔들어줘",
+      "passed": true,
+      "checks": [
+        {
+          "name": "classifier.intent",
+          "passed": true,
+          "expected": "motion_request",
+          "actual": "motion_request"
+        },
+        {
+          "name": "planner.domain",
+          "passed": true,
+          "expected": "motion",
+          "actual": "motion"
+        },
+        {
+          "name": "validator.valid_commands_contains_all",
+          "passed": true,
+          "expected": [
+            "gesture:wave"
+          ],
+          "actual": [
+            "look:0,0",
+            "gesture:wave",
+            "led:happy"
+          ]
+        },
+        {
+          "name": "e2e.speech_contains_any",
+          "passed": true,
+          "expected": [
+            "인사",
+            "손",
+            "흔들",
+            "안녕",
+            "안녕하세요"
+          ],
+          "actual": "안녕하세요!"
+        }
+      ],
+      "failed_checks": [],
+      "actual": {
+        "intent": "motion_request",
+        "needs_motion": true,
+        "needs_dialogue": true,
+        "risk_level": "high",
+        "planner_domain": "motion",
+        "skills": [
+          "wave_hi"
+        ],
+        "raw_commands": [],
+        "expanded_commands": [
+          "look:0,0",
+          "gesture:wave",
+          "led:happy"
+        ],
+        "resolved_commands": [
+          "look:0,0",
+          "gesture:wave",
+          "led:happy"
+        ],
+        "valid_commands": [
+          "look:0,0",
+          "gesture:wave",
+          "led:happy"
+        ],
+        "rejected_commands": [],
+        "speech": "안녕하세요!",
+        "reason": "사용자 요청에 따라 인사 제스처 수행"
+      },
+      "durations_sec": {
+        "classifier": 3.2582907676696777,
+        "planner": 5.120420932769775,
+        "total": 8.378711700439453
+      }
+    },
+    {
+      "id": "motion_wave_blocked_by_lock",
+      "tags": [
+        "smoke",
+        "motion",
+        "safety"
+      ],
+      "user_text": "손 흔들어줘",
+      "passed": true,
+      "checks": [
+        {
+          "name": "classifier.intent",
+          "passed": true,
+          "expected": "motion_request",
+          "actual": "motion_request"
+        },
+        {
+          "name": "planner.domain",
+          "passed": true,
+          "expected": "motion",
+          "actual": "motion"
+        },
+        {
+          "name": "validator.valid_commands_any_of",
+          "passed": true,
+          "expected": [
+            [],
+            [
+              "led:happy"
+            ]
+          ],
+          "actual": [
+            "led:happy"
+          ]
+        },
+        {
+          "name": "e2e.speech_contains_any",
+          "passed": true,
+          "expected": [
+            "안전 키",
+            "움직일 수 없습니다",
+            "확인"
+          ],
+          "actual": "아직 안전 키가 해제되지 않아 움직일 수 없습니다. 안전 키를 먼저 확인해 주세요."
+        }
+      ],
+      "failed_checks": [],
+      "actual": {
+        "intent": "motion_request",
+        "needs_motion": true,
+        "needs_dialogue": true,
+        "risk_level": "high",
+        "planner_domain": "motion",
+        "skills": [
+          "wave_hi"
+        ],
+        "raw_commands": [],
+        "expanded_commands": [
+          "look:0,0",
+          "gesture:wave",
+          "led:happy"
+        ],
+        "resolved_commands": [
+          "look:0,0",
+          "gesture:wave",
+          "led:happy"
+        ],
+        "valid_commands": [
+          "led:happy"
+        ],
+        "rejected_commands": [
+          "look:0,0",
+          "gesture:wave"
+        ],
+        "speech": "아직 안전 키가 해제되지 않아 움직일 수 없습니다. 안전 키를 먼저 확인해 주세요.",
+        "reason": "손 흔들기 요청에 따라 wave_hi 스킬 사용"
+      },
+      "durations_sec": {
+        "classifier": 3.397526502609253,
+        "planner": 2.979152202606201,
+        "total": 6.376678705215454
+      }
+    },
+    {
+      "id": "play_tim_basic",
+      "tags": [
+        "smoke",
+        "play"
+      ],
+      "user_text": "This Is Me 연주해줘",
+      "passed": true,
+      "checks": [
+        {
+          "name": "classifier.intent",
+          "passed": true,
+          "expected": "play_request",
+          "actual": "play_request"
+        },
+        {
+          "name": "planner.domain",
+          "passed": true,
+          "expected": "play",
+          "actual": "play"
+        },
+        {
+          "name": "planner.skills_any_of",
+          "passed": true,
+          "expected": [
+            [
+              "play_tim"
+            ],
+            [
+              "ready_pose",
+              "play_tim"
+            ]
+          ],
+          "actual": [
+            "ready_pose",
+            "play_tim"
+          ]
+        },
+        {
+          "name": "validator.valid_commands_any_of",
+          "passed": true,
+          "expected": [
+            [
+              "r",
+              "p:TIM",
+              "led:play"
+            ]
+          ],
+          "actual": [
+            "r",
+            "p:TIM",
+            "led:play"
+          ]
+        },
+        {
+          "name": "e2e.speech_contains_any",
+          "passed": true,
+          "expected": [
+            "This Is Me",
+            "연주"
+          ],
+          "actual": "그대에게를 연주해드릴게요."
+        }
+      ],
+      "failed_checks": [],
+      "actual": {
+        "intent": "play_request",
+        "needs_motion": true,
+        "needs_dialogue": true,
+        "risk_level": "low",
+        "planner_domain": "play",
+        "skills": [
+          "ready_pose",
+          "play_tim"
+        ],
+        "raw_commands": [],
+        "expanded_commands": [
+          "r",
+          "p:TIM",
+          "led:play"
+        ],
+        "resolved_commands": [
+          "r",
+          "p:TIM",
+          "led:play"
+        ],
+        "valid_commands": [
+          "r",
+          "p:TIM",
+          "led:play"
+        ],
+        "rejected_commands": [],
+        "speech": "그대에게를 연주해드릴게요.",
+        "reason": "사용자 요청에 따라 This Is Me 연주 시작"
+      },
+      "durations_sec": {
+        "classifier": 3.247853994369507,
+        "planner": 5.192779064178467,
+        "total": 8.440633058547974
+      }
+    },
+    {
+      "id": "status_question_basic",
+      "tags": [
+        "smoke",
+        "status"
+      ],
+      "user_text": "왜 멈췄어?",
+      "passed": true,
+      "checks": [
+        {
+          "name": "classifier.intent",
+          "passed": true,
+          "expected": "status_question",
+          "actual": "status_question"
+        },
+        {
+          "name": "planner.domain",
+          "passed": true,
+          "expected": "status",
+          "actual": "status"
+        },
+        {
+          "name": "planner.skills_exact",
+          "passed": true,
+          "expected": [],
+          "actual": []
+        },
+        {
+          "name": "validator.valid_commands_exact",
+          "passed": true,
+          "expected": [],
+          "actual": []
+        },
+        {
+          "name": "e2e.speech_contains_any",
+          "passed": true,
+          "expected": [
+            "에러",
+            "멈췄",
+            "관절",
+            "한계"
+          ],
+          "actual": "죄송합니다. 현재 팔의 관절 한계에 도달하여 멈췄습니다. 점검 중입니다."
+        }
+      ],
+      "failed_checks": [],
+      "actual": {
+        "intent": "status_question",
+        "needs_motion": false,
+        "needs_dialogue": true,
+        "risk_level": "low",
+        "planner_domain": "status",
+        "skills": [],
+        "raw_commands": [],
+        "expanded_commands": [],
+        "resolved_commands": [],
+        "valid_commands": [],
+        "rejected_commands": [],
+        "speech": "죄송합니다. 현재 팔의 관절 한계에 도달하여 멈췄습니다. 점검 중입니다.",
+        "reason": "error state detected, user asked why stopped"
+      },
+      "durations_sec": {
+        "classifier": 3.2206366062164307,
+        "planner": 5.4887614250183105,
+        "total": 8.709398031234741
+      }
+    },
+    {
+      "id": "stop_request_basic",
+      "tags": [
+        "smoke",
+        "stop"
+      ],
+      "user_text": "종료해",
+      "passed": false,
+      "checks": [
+        {
+          "name": "classifier.intent",
+          "passed": true,
+          "expected": "stop_request",
+          "actual": "stop_request"
+        },
+        {
+          "name": "planner.domain",
+          "passed": true,
+          "expected": "stop",
+          "actual": "stop"
+        },
+        {
+          "name": "validator.valid_commands_any_of",
+          "passed": false,
+          "expected": [
+            [
+              "s"
+            ],
+            [
+              "h",
+              "led:idle"
+            ],
+            [
+              "h"
+            ],
+            [
+              "s",
+              "led:idle"
+            ]
+          ],
+          "actual": [
+            "h",
+            "led:idle",
+            "s"
+          ]
+        },
+        {
+          "name": "e2e.speech_contains_any",
+          "passed": true,
+          "expected": [
+            "종료",
+            "안녕히",
+            "중단"
+          ],
+          "actual": "안녕히 가세요. 종료합니다."
+        }
+      ],
+      "failed_checks": [
+        {
+          "name": "validator.valid_commands_any_of",
+          "expected": [
+            [
+              "s"
+            ],
+            [
+              "h",
+              "led:idle"
+            ],
+            [
+              "h"
+            ],
+            [
+              "s",
+              "led:idle"
+            ]
+          ],
+          "actual": [
+            "h",
+            "led:idle",
+            "s"
+          ]
+        }
+      ],
+      "actual": {
+        "intent": "stop_request",
+        "needs_motion": true,
+        "needs_dialogue": true,
+        "risk_level": "low",
+        "planner_domain": "stop",
+        "skills": [
+          "idle_home",
+          "shutdown_system"
+        ],
+        "raw_commands": [],
+        "expanded_commands": [
+          "h",
+          "led:idle",
+          "s"
+        ],
+        "resolved_commands": [
+          "h",
+          "led:idle",
+          "s"
+        ],
+        "valid_commands": [
+          "h",
+          "led:idle",
+          "s"
+        ],
+        "rejected_commands": [],
+        "speech": "안녕히 가세요. 종료합니다.",
+        "reason": "stop request with posture and system shutdown"
+      },
+      "durations_sec": {
+        "classifier": 3.2415974140167236,
+        "planner": 4.693702936172485,
+        "total": 7.935300350189209
+      }
+    },
+    {
+      "id": "relative_wrist_raise_success",
+      "tags": [
+        "smoke",
+        "motion",
+        "relative"
+      ],
+      "user_text": "왼쪽 손목 더 올려",
+      "passed": true,
+      "checks": [
+        {
+          "name": "classifier.intent",
+          "passed": true,
+          "expected": "motion_request",
+          "actual": "motion_request"
+        },
+        {
+          "name": "planner.domain",
+          "passed": true,
+          "expected": "motion",
+          "actual": "motion"
+        },
+        {
+          "name": "validator.valid_commands_contains_prefixes",
+          "passed": true,
+          "expected": [
+            "move:L_wrist,"
+          ],
+          "actual": [
+            "move:L_wrist,65"
+          ]
+        }
+      ],
+      "failed_checks": [],
+      "actual": {
+        "intent": "motion_request",
+        "needs_motion": true,
+        "needs_dialogue": true,
+        "risk_level": "high",
+        "planner_domain": "motion",
+        "skills": [],
+        "raw_commands": [
+          "move:L_wrist,90"
+        ],
+        "expanded_commands": [
+          "move:L_wrist,90"
+        ],
+        "resolved_commands": [
+          "move:L_wrist,65"
+        ],
+        "valid_commands": [
+          "move:L_wrist,65"
+        ],
+        "rejected_commands": [],
+        "speech": "왼쪽 손목을 더 올려드릴게요.",
+        "reason": "사용자 요청에 따라 왼쪽 손목을 추가로 올림"
+      },
+      "durations_sec": {
+        "classifier": 3.0609664916992188,
+        "planner": 6.577494382858276,
+        "total": 9.638460874557495
+      }
+    },
+    {
+      "id": "relative_wrist_raise_blocked",
+      "tags": [
+        "smoke",
+        "motion",
+        "relative",
+        "limit"
+      ],
+      "user_text": "거기서 50도 더 올리고 2초 있다",
+      "passed": true,
+      "checks": [
+        {
+          "name": "classifier.intent",
+          "passed": true,
+          "expected": "motion_request",
+          "actual": "motion_request"
+        },
+        {
+          "name": "planner.domain",
+          "passed": true,
+          "expected": "motion",
+          "actual": "motion"
+        },
+        {
+          "name": "validator.valid_commands_exact",
+          "passed": true,
+          "expected": [],
+          "actual": []
+        },
+        {
+          "name": "e2e.speech_contains_any",
+          "passed": true,
+          "expected": [
+            "한계",
+            "벗어나",
+            "움직일 수 없습니다"
+          ],
+          "actual": "왼쪽 손목은 현재 50.1도에서 50.0도를 더 올리면 한계 15.0도에서 90.0도를 벗어나 움직일 수 없습니다."
+        }
+      ],
+      "failed_checks": [],
+      "actual": {
+        "intent": "motion_request",
+        "needs_motion": true,
+        "needs_dialogue": false,
+        "risk_level": "high",
+        "planner_domain": "motion",
+        "skills": [],
+        "raw_commands": [
+          "move:L_wrist,140",
+          "wait:2"
+        ],
+        "expanded_commands": [
+          "move:L_wrist,140",
+          "wait:2"
+        ],
+        "resolved_commands": [],
+        "valid_commands": [],
+        "rejected_commands": [],
+        "speech": "왼쪽 손목은 현재 50.1도에서 50.0도를 더 올리면 한계 15.0도에서 90.0도를 벗어나 움직일 수 없습니다.",
+        "reason": "사용자 요청에 따라 손목 관절을 140도로 이동하고 2초 대기"
+      },
+      "durations_sec": {
+        "classifier": 3.1247401237487793,
+        "planner": 4.88201379776001,
+        "total": 8.006753921508789
+      }
+    },
+    {
+      "id": "motion_blocked_while_playing",
+      "tags": [
+        "smoke",
+        "motion",
+        "state"
+      ],
+      "user_text": "손 흔들어줘",
+      "passed": true,
+      "checks": [
+        {
+          "name": "classifier.intent",
+          "passed": true,
+          "expected": "motion_request",
+          "actual": "motion_request"
+        },
+        {
+          "name": "planner.domain",
+          "passed": true,
+          "expected": "motion",
+          "actual": "motion"
+        },
+        {
+          "name": "validator.valid_commands_exact",
+          "passed": true,
+          "expected": [],
+          "actual": []
+        },
+        {
+          "name": "e2e.speech_contains_any",
+          "passed": true,
+          "expected": [
+            "연주 중",
+            "지금은",
+            "할 수 없습니다"
+          ],
+          "actual": "지금은 연주 중이라 다른 동작을 할 수 없습니다."
+        }
+      ],
+      "failed_checks": [],
+      "actual": {
+        "intent": "motion_request",
+        "needs_motion": true,
+        "needs_dialogue": true,
+        "risk_level": "medium",
+        "planner_domain": "motion",
+        "skills": [],
+        "raw_commands": [],
+        "expanded_commands": [],
+        "resolved_commands": [],
+        "valid_commands": [],
+        "rejected_commands": [],
+        "speech": "지금은 연주 중이라 다른 동작을 할 수 없습니다.",
+        "reason": "음악 연주 중이므로 동작 불가"
+      },
+      "durations_sec": {
+        "classifier": 3.233835458755493,
+        "planner": 4.306715488433838,
+        "total": 7.540550947189331
+      }
+    },
+    {
+      "id": "chat_general_knowledge",
+      "tags": [
+        "smoke",
+        "chat"
+      ],
+      "user_text": "계란 반숙은 몇 분 삶아야 해?",
+      "passed": true,
+      "checks": [
+        {
+          "name": "classifier.intent",
+          "passed": true,
+          "expected": "chat",
+          "actual": "chat"
+        },
+        {
+          "name": "planner.domain",
+          "passed": true,
+          "expected": "chat",
+          "actual": "chat"
+        },
+        {
+          "name": "validator.valid_commands_exact",
+          "passed": true,
+          "expected": [],
+          "actual": []
+        },
+        {
+          "name": "e2e.speech_contains_any",
+          "passed": true,
+          "expected": [
+            "분",
+            "반숙",
+            "삶"
+          ],
+          "actual": "반숙 계란은 보통 4~5분 정도 삶으면 좋아요. 시간이 길어지면 딱딱해져요."
+        }
+      ],
+      "failed_checks": [],
+      "actual": {
+        "intent": "chat",
+        "needs_motion": false,
+        "needs_dialogue": true,
+        "risk_level": "low",
+        "planner_domain": "chat",
+        "skills": [],
+        "raw_commands": [],
+        "expanded_commands": [],
+        "resolved_commands": [],
+        "valid_commands": [],
+        "rejected_commands": [],
+        "speech": "반숙 계란은 보통 4~5분 정도 삶으면 좋아요. 시간이 길어지면 딱딱해져요.",
+        "reason": "사용자 질문에 대한 상식 답변 제공"
+      },
+      "durations_sec": {
+        "classifier": 3.0099031925201416,
+        "planner": 5.707419395446777,
+        "total": 8.717322587966919
+      }
+    }
+  ]
+}

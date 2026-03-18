@@ -979,6 +979,68 @@ string DrumRobot::makeStateJson()
 {
     stringstream oss;
     int currentState = static_cast<int>(state.main.load());
+    const vector<string> trackedJoints = {
+        "waist",
+        "R_arm1",
+        "L_arm1",
+        "R_arm2",
+        "R_arm3",
+        "L_arm2",
+        "L_arm3",
+        "R_wrist",
+        "L_wrist",
+        "R_foot",
+        "L_foot"
+    };
+
+    auto appendQuotedString = [&](const string& key, const string& value) {
+        oss << "\"" << key << "\": \"" << value << "\"";
+    };
+
+    auto getJointDeadbandDeg = [&](const string& jointName) -> float {
+        if (jointName.find("wrist") != string::npos || jointName.find("foot") != string::npos) {
+            return 1.0f;
+        }
+        return 0.5f;
+    };
+
+    auto appendJointAnglesJson = [&]() {
+        oss << "\"current_angles\": {";
+
+        for (size_t index = 0; index < trackedJoints.size(); ++index) {
+            const string& jointName = trackedJoints[index];
+            float measuredAngleDeg = 0.0f;
+
+            auto motorIter = motors.find(jointName);
+            if (motorIter != motors.end() && motorIter->second) {
+                measuredAngleDeg = motorIter->second->jointAngle * 180.0f / M_PI;
+            }
+
+            float angleDeg = measuredAngleDeg;
+            if (!hasBroadcastJointSnapshot || lastBroadcastJointAnglesDeg.find(jointName) == lastBroadcastJointAnglesDeg.end()) {
+                lastBroadcastJointAnglesDeg[jointName] = measuredAngleDeg;
+            } else {
+                float lastBroadcastAngle = lastBroadcastJointAnglesDeg[jointName];
+                float deadbandDeg = getJointDeadbandDeg(jointName);
+
+                if (fabs(measuredAngleDeg - lastBroadcastAngle) >= deadbandDeg) {
+                    lastBroadcastJointAnglesDeg[jointName] = measuredAngleDeg;
+                }
+            }
+
+            angleDeg = lastBroadcastJointAnglesDeg[jointName];
+            if (!hasBroadcastJointSnapshot) {
+                lastBroadcastJointAnglesDeg[jointName] = angleDeg;
+            }
+
+            oss << "\"" << jointName << "\": " << fixed << setprecision(2) << angleDeg;
+            if (index + 1 < trackedJoints.size()) {
+                oss << ", ";
+            }
+        }
+
+        oss << "}";
+    };
     
     oss << "{";
     
@@ -995,16 +1057,22 @@ string DrumRobot::makeStateJson()
     oss << "\"is_lock_key_removed\": " << (isLockKeyRemoved ? "true" : "false") << ", ";
 
     // 4. [추가] 마지막으로 실행된 명령어 및 에러 메시지 (Context)
-    oss << "\"last_action\": \"" << lastExecutedCmd << "\", "; 
+    appendQuotedString("last_action", lastExecutedCmd);
+    oss << ", ";
+
+    // 5. [추가] 현재 실측 관절 각도
+    appendJointAnglesJson();
+    oss << ", ";
     
-    // 5. [추가] 에러 상태일 때만 에러 메시지 포함, 아니면 "None"으로 표시
+    // 6. [추가] 에러 상태일 때만 에러 메시지 포함, 아니면 "None"으로 표시
     if (currentState == 4) {
-        oss << "\"error_message\": \"" << lastErrorReason << "\"";
+        appendQuotedString("error_message", lastErrorReason);
     } else {
-        oss << "\"error_message\": \"None\"";
+        appendQuotedString("error_message", "None");
     }
 
     oss << "}";
+    hasBroadcastJointSnapshot = true;
     
     return oss.str();
 }
@@ -1312,19 +1380,29 @@ void DrumRobot::idealStateRoutine()
         // 4. 명령 처리
         if (!input.empty())
         {
-            lastExecutedCmd = input; // 마지막으로 실행된 명령어 저장
-            // (A) 상태 제어 명령 (r, p, h, s, t, u) -> 기존 상태 머신(processInput)으로
-            // p:TIM 처럼 콜론이 붙은 곡 선택 명령도 포함
-            if (input == "r" || input == "h" || input == "s" || input == "t" || input == "u" || 
-                input.rfind("p", 0) == 0) // "p"로 시작하는 경우 (p 또는 p:TIM)
+            std::vector<std::string> commands = agentAction.unpackCommands(input);
+
+            for (const auto& command : commands)
             {
-                processInput(input, flag);
-            }
-            // (B) 행동 제어 명령 (look, gesture, led, move) -> AgentAction으로 직행
-            else 
-            {
-                // state 변경 없이 즉시 행동 수행
-                agentAction.executeCommand(input); 
+                if (command.empty()) {
+                    continue;
+                }
+
+                lastExecutedCmd = command; // 마지막으로 실행된 명령어 저장
+
+                // (A) 상태 제어 명령 (r, p, h, s, t, u) -> 기존 상태 머신(processInput)으로
+                // p:TIM 처럼 콜론이 붙은 곡 선택 명령도 포함
+                if (command == "r" || command == "h" || command == "s" || command == "t" || command == "u" || 
+                    command.rfind("p", 0) == 0) // "p"로 시작하는 경우 (p 또는 p:TIM)
+                {
+                    processInput(command, flag);
+                }
+                // (B) 행동 제어 명령 (look, gesture, led, move) -> AgentAction으로 직행
+                else 
+                {
+                    // state 변경 없이 즉시 행동 수행
+                    agentAction.executeCommand(command);
+                }
             }
         }
         // 5. [필수] CPU 폭주 방지 (1ms 대기)
