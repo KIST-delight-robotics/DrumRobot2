@@ -3,12 +3,12 @@ import re
 
 try:
     from .state_adapter import build_classifier_state_summary, detect_joint_angle_query
-except ImportError:
+except (ImportError, ValueError):
     from pipeline.state_adapter import build_classifier_state_summary, detect_joint_angle_query
 
 try:
     from ..config import CLASSIFIER_MODEL
-except ImportError:
+except (ImportError, ValueError):
     from config import CLASSIFIER_MODEL
 
 DEFAULT_INTENT_RESULT = {

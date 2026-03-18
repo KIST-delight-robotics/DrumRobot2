@@ -33,7 +33,7 @@ try:
     from .state_adapter import adapt_robot_state, build_joint_angle_answer, detect_joint_angle_query
     # planner 결과를 최종 실행 가능 계획으로 검증/정리
     from .validator import ValidatedPlan, build_validated_plan
-except ImportError:
+except (ImportError, ValueError):
     # phil_robot 폴더 안에서 직접 실행할 때 사용하는 fallback import다.
     # 예: cd phil_robot && python phil_brain.py
     from pipeline.intent_classifier import (
@@ -68,7 +68,7 @@ except ImportError:
 try:
     # 패키지 문맥 import일 때 공용 모델 설정을 가져온다.
     from ..config import CLASSIFIER_MODEL, PLANNER_MODEL
-except ImportError:
+except (ImportError, ValueError):
     # 직접 실행 시에는 phil_robot 루트의 config 모듈에서 가져온다.
     from config import CLASSIFIER_MODEL, PLANNER_MODEL
 

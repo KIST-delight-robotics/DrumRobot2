@@ -1,0 +1,4 @@
+__pycache__/
+.generated/
+sil/__pycache__/
+artifacts/*.ppm

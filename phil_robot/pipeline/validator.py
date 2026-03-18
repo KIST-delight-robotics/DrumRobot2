@@ -49,6 +49,19 @@ class ValidatedPlan:
     reason: str = ""
 
 
+def build_partial_execution_message(valid_commands: List[str], rejected_commands: List[str]) -> str:
+    """
+    일부 명령만 실행 가능한 경우 사용자에게 그 사실을 명확히 알린다.
+
+    너무 세부적인 reject 이유를 장황하게 나열하기보다,
+    "가능한 동작은 수행하고 일부는 제한으로 제외했다"는 사실을 우선 전달한다.
+    """
+    if not valid_commands or not rejected_commands:
+        return ""
+
+    return "가능한 동작만 먼저 수행할게요. 일부 동작은 범위나 현재 상태 제한 때문에 제외했습니다."
+
+
 def build_validated_plan(user_text: str, robot_state: Dict, classifier_result: Dict, planner_result: Dict) -> ValidatedPlan:
     """
     classifier + planner 결과를 실제 실행 가능한 plan 으로 정리한다.
@@ -69,6 +82,8 @@ def build_validated_plan(user_text: str, robot_state: Dict, classifier_result: D
     # planner 가 거절 대사를 만들지 못해도 validator 가 최종 사용자 메시지를 보수적으로 보정한다.
     if resolution.message_override:
         speech = resolution.message_override
+    elif has_actionable_motion_command(validation.valid_commands) and validation.rejected_commands:
+        speech = build_partial_execution_message(validation.valid_commands, validation.rejected_commands)
     elif classifier_result.get("needs_motion", False) and not has_actionable_motion_command(validation.valid_commands):
         speech = build_motion_block_message(robot_state)
     elif (

@@ -133,7 +133,7 @@ def validate_look_command(command, robot_state):
     except ValueError:
         return False, f"look 명령 파싱 실패: {command}"
 
-    if not (-90.0 <= pan <= 90.0 and -45.0 <= tilt <= 45.0):
+    if not (-90.0 <= pan <= 90.0 and 0.0 <= tilt <= 120.0):
         return False, f"look 범위 초과 차단: {command}"
 
     return True, ""

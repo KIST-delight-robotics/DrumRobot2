@@ -34,6 +34,7 @@ phil_robot/third_party/downloads_whl/
 .idea/
 .DS_Store
 Thumbs.db
+ppt/
 
 # --- [5]  phil_robot 생성 미디어 파일 ---
 # 어디에 있든 이 확장자는 다 무시함
