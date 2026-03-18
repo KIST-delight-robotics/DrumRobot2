@@ -6,8 +6,8 @@
 
 ---
 
-(./phil_intheloop/artifacts/Simulation_intheloop.png)
-(./phil_intheloop/artifacts/SIL2.png)
+[pybullet 1](./phil_intheloop/artifacts/Simulation_intheloop.png)
+[pybullet 2](./phil_intheloop/artifacts/SIL2.png)
 ./phil_intheloop/sil/pybullet_backend.py에서 시뮬레이터에 적용된 관절 매핑과 제어 로직을 보여주는 스크린샷입니다.
 
 
