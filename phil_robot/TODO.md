@@ -45,10 +45,10 @@
   - 목표: classifier 영향 없이 planner 자체의 latency와 output variability를 따로 측정한다.
   - 조건:
     - 동일 `classifier_result`
-    - 동일 `planner_payload`
+    - 동일 `planner_input_json`
     - warm/cold 조건 분리 가능하면 기록
   - 기록 항목:
-    - planner payload 길이
+    - planner input JSON 길이
     - planner response 길이
     - avg / median / p95 latency
 
@@ -94,7 +94,7 @@
   - 목표: 여러 planner 모델을 같은 조건에서 비교해 planner 후보를 고른다.
   - 비교 조건:
     - 동일 `cases`
-    - 동일 `classifier_result` 또는 동일 `planner_payload`
+    - 동일 `classifier_result` 또는 동일 `planner_input_json`
     - 동일 validator / executor 규칙
   - 비교 항목:
     - planner pass rate

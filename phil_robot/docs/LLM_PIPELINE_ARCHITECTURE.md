@@ -211,7 +211,7 @@ This makes planner output more reproducible and easier to validate.
            │                                 v              │
            │                  ┌──────────────────────────┐  │
            │                  │       planner.py         │  │
-           │                  │ domain router / payload  │  │
+           │                  │ domain router / input JSON │  │
            │                  └──────────────┬───────────┘  │
            │                                 │              │
            │                                 v              │
@@ -277,7 +277,7 @@ flowchart TD
     B --> C[phil_brain.py orchestration]
     C --> D[state_adapter.adapt_robot_state]
 
-    D --> E[intent_classifier.build_classifier_payload]
+    D --> E[intent_classifier.build_classifier_input_json]
     E --> F[llm_interface.call_json_llm classifier]
     F --> G[parse_intent_response + normalize_intent_result]
 
@@ -285,7 +285,7 @@ flowchart TD
     H -->|yes| I[build_joint_angle_answer or direct status response]
     H -->|no| J[planner.select_planner_domain]
     J --> K[planner.get_planner_system_prompt]
-    G --> L[planner.build_planner_payload]
+    G --> L[planner.build_planner_input_json]
     K --> M[llm_interface.call_json_llm planner]
     L --> M
     M --> N[planner.parse_plan_response]
@@ -434,7 +434,7 @@ Responsibilities:
 
 - map `intent` to planner domain
 - choose a domain-specific system prompt
-- build planner payload
+- build planner input JSON
 - parse planner JSON
 - enforce post-plan domain constraints
 
@@ -589,10 +589,10 @@ On the C++ side:
 2. Whisper STT converts audio to text.
 3. [phil_brain.py](/home/shy/robot_project/phil_robot/phil_brain.py) acquires a stable state snapshot from [phil_client.py](/home/shy/robot_project/phil_robot/runtime/phil_client.py).
 4. [state_adapter.py](/home/shy/robot_project/phil_robot/pipeline/state_adapter.py) normalizes the raw runtime state.
-5. [intent_classifier.py](/home/shy/robot_project/phil_robot/pipeline/intent_classifier.py) builds a compact classifier payload.
+5. [intent_classifier.py](/home/shy/robot_project/phil_robot/pipeline/intent_classifier.py) builds a compact classifier input JSON.
 6. [llm_interface.py](/home/shy/robot_project/phil_robot/pipeline/llm_interface.py) calls the classifier model.
 7. If the utterance is a supported deterministic status query such as a joint-angle question, [brain_pipeline.py](/home/shy/robot_project/phil_robot/pipeline/brain_pipeline.py) answers directly from the current state snapshot.
-8. Otherwise, [planner.py](/home/shy/robot_project/phil_robot/pipeline/planner.py) maps `intent` to a planner domain and builds the planner payload.
+8. Otherwise, [planner.py](/home/shy/robot_project/phil_robot/pipeline/planner.py) maps `intent` to a planner domain and builds the planner input JSON.
 9. [llm_interface.py](/home/shy/robot_project/phil_robot/pipeline/llm_interface.py) calls the planner model with the domain-specific prompt.
 10. [planner.py](/home/shy/robot_project/phil_robot/pipeline/planner.py) parses planner JSON and enforces domain constraints.
 11. [validator.py](/home/shy/robot_project/phil_robot/pipeline/validator.py) expands skills and resolves relative motions.

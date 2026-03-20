@@ -76,8 +76,8 @@ def normalize_command(command):
     """
     normalized = (command or "").strip()
     if normalized.startswith("move:motor,"):
-        payload = normalized[len("move:motor,"):]
-        return f"move:{payload}"
+        move_args = normalized[len("move:motor,"):]
+        return f"move:{move_args}"
     return normalized
 
 
@@ -126,8 +126,8 @@ def validate_look_command(command, robot_state):
         return False, reason
 
     try:
-        _, payload = command.split(":", 1)
-        pan_raw, tilt_raw = payload.split(",", 1)
+        _, look_args = command.split(":", 1)
+        pan_raw, tilt_raw = look_args.split(",", 1)
         pan = float(pan_raw)
         tilt = float(tilt_raw)
     except ValueError:
@@ -164,8 +164,8 @@ def validate_move_command(command, robot_state):
         return False, reason
 
     try:
-        _, payload = command.split(":", 1)
-        motor_name, angle_raw = payload.split(",", 1)
+        _, move_args = command.split(":", 1)
+        motor_name, angle_raw = move_args.split(",", 1)
         angle = float(angle_raw)
     except ValueError:
         return False, f"move 명령 파싱 실패: {command}"

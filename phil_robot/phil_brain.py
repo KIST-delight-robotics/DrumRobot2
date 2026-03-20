@@ -8,7 +8,7 @@ import psutil
 import sounddevice as sd
 import whisper
 
-from config import PLANNER_MODEL
+from config import PLANNER_MODEL, CLASSIFIER_MODEL
 from pipeline.brain_pipeline import run_brain_turn
 from pipeline.executor import execute_validated_plan
 from runtime.melo_engine import TTS_Engine
@@ -98,10 +98,10 @@ def transcribe_user_speech(stt_model, audio_data):
 
 def debug_brain_result(brain_result):
     """LLM 입력, 내부 thinking, validator 경고를 한 곳에서 출력"""
-    print(f"🧭 [Intent 분류 입력]\n{brain_result.classifier_payload}")
-    print(f"🧭 [Intent 분류 결과] {brain_result.classifier_result}")
+    print(f"🧭 [Classifier 입력]\n{brain_result.classifier_input_json}")
+    print(f"🧭 [Classifier 결과] {brain_result.classifier_result}")
     print(f"🧭 [Planner Domain] {brain_result.planner_domain}")
-    print(f"🧐 [Planner 프롬프트 확인]\n{brain_result.prompt_payload}")
+    print(f"🧐 [Planner 입력]\n{brain_result.planner_input_json}")
     print(f"🗺️ [Planner 결과] {brain_result.planner_result}")
     print(
         f"⏱️ LLM 처리 시간: 총 {brain_result.llm_duration_sec:.2f}초 "
@@ -111,14 +111,14 @@ def debug_brain_result(brain_result):
     if brain_result.validated_plan.reason:
         print(f"\n[Phil's Brain 🧠]\n{brain_result.validated_plan.reason}\n")
 
-    if brain_result.validated_plan.expanded_commands:
-        print(f"[Planner Expanded] {brain_result.validated_plan.expanded_commands}")
-    if brain_result.validated_plan.resolved_commands:
-        print(f"[Planner Resolved] {brain_result.validated_plan.resolved_commands}")
-    if brain_result.validated_plan.valid_commands:
-        print(f"[Validator Accepted] {brain_result.validated_plan.valid_commands}")
-    if brain_result.validated_plan.rejected_commands:
-        print(f"[Validator Rejected] {brain_result.validated_plan.rejected_commands}")
+    if brain_result.validated_plan.expanded_op_cmds:
+        print(f"[Planner Expanded] {brain_result.validated_plan.expanded_op_cmds}")
+    if brain_result.validated_plan.resolved_op_cmds:
+        print(f"[Planner Resolved] {brain_result.validated_plan.resolved_op_cmds}")
+    if brain_result.validated_plan.valid_op_cmds:
+        print(f"[Validator Accepted] {brain_result.validated_plan.valid_op_cmds}")
+    if brain_result.validated_plan.rejected_op_cmds:
+        print(f"[Validator Rejected] {brain_result.validated_plan.rejected_op_cmds}")
 
     for warning in brain_result.validated_plan.warnings:
         print(f"[Validator] {warning}")
@@ -139,10 +139,12 @@ def main():
                 break
 
             audio_data = record_audio()
+            # 녹음에 실패했으면 이번 턴의 나머지 처리는 건너뛰고 다음 입력을 받는다.
             if audio_data is None:
                 continue
 
             user_text = transcribe_user_speech(stt_model, audio_data)
+            # 음성 인식 결과가 비어 있으면 이번 턴을 종료하고 다시 입력 대기로 돌아간다.
             if not user_text:
                 continue
 
@@ -153,7 +155,8 @@ def main():
             brain_result = run_brain_turn(
                 user_text=user_text,
                 raw_robot_state=robot_state,
-                model_name=PLANNER_MODEL,
+                classifier_model_name=CLASSIFIER_MODEL,     # classifier은 현재 고정
+                planner_model_name=PLANNER_MODEL,
             )
 
             debug_brain_result(brain_result)

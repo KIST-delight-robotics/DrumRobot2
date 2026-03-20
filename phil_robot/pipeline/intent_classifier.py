@@ -21,6 +21,15 @@ DEFAULT_INTENT_RESULT = {
 MOTION_REQUIRED_INTENTS = {"motion_request", "play_request", "stop_request"}
 IDENTITY_CHAT_KEYWORDS = ["이름", "누구", "정체", "자기소개"]
 ANGLE_STATUS_PATTERN = re.compile(r"(각도|몇\s*도|몇도)")
+AMBIGUOUS_FOLLOW_UPS = {
+    "왜",
+    "왜요",
+    "왜지",
+    "뭐",
+    "뭐지",
+    "응",
+    "응왜",
+}
 
 CLASSIFIER_SYSTEM_PROMPT = """당신은 로봇 에이전트의 1차 intent classifier 다.
 반드시 JSON 객체 하나만 출력한다. 설명문, 코드블록, 마크다운은 절대 출력하지 않는다.
@@ -48,9 +57,10 @@ CLASSIFIER_SYSTEM_PROMPT = """당신은 로봇 에이전트의 1차 intent class
 """
 
 
-def build_classifier_payload(robot_state, user_text):
+def build_classifier_input_json(robot_state, user_text):
     """
-    classifier 는 planner보다 단순한 상태 요약만 받는다.
+    classifier 에 넘길 입력 JSON 문자열을 만든다.
+    planner보다 단순한 상태 요약만 넣어 의도 분류에 집중시킨다.
     이 단계에서는 전체 관절각보다 상태/바쁨/최근 행동이 더 중요하다.
     """
     summary = build_classifier_state_summary(robot_state)
@@ -65,30 +75,30 @@ def build_classifier_payload(robot_state, user_text):
     )
 
 
-def parse_intent_response(ai_text):
+def parse_intent_response(response_text):
     """
     classifier 출력은 planner 앞단에서 바로 쓰이므로 실패 시 보수적 기본값을 사용한다.
     """
-    if not isinstance(ai_text, str):
+    if not isinstance(response_text, str):
         return dict(DEFAULT_INTENT_RESULT)
 
     try:
-        payload = json.loads(ai_text)
+        response_data = json.loads(response_text)
     except json.JSONDecodeError:
         return dict(DEFAULT_INTENT_RESULT)
 
-    if not isinstance(payload, dict):
+    if not isinstance(response_data, dict):
         return dict(DEFAULT_INTENT_RESULT)
 
     result = dict(DEFAULT_INTENT_RESULT)
-    if isinstance(payload.get("intent"), str):
-        result["intent"] = payload["intent"].strip() or DEFAULT_INTENT_RESULT["intent"]
-    if isinstance(payload.get("needs_motion"), bool):
-        result["needs_motion"] = payload["needs_motion"]
-    if isinstance(payload.get("needs_dialogue"), bool):
-        result["needs_dialogue"] = payload["needs_dialogue"]
-    if isinstance(payload.get("risk_level"), str):
-        result["risk_level"] = payload["risk_level"].strip() or DEFAULT_INTENT_RESULT["risk_level"]
+    if isinstance(response_data.get("intent"), str):
+        result["intent"] = response_data["intent"].strip() or DEFAULT_INTENT_RESULT["intent"]
+    if isinstance(response_data.get("needs_motion"), bool):
+        result["needs_motion"] = response_data["needs_motion"]
+    if isinstance(response_data.get("needs_dialogue"), bool):
+        result["needs_dialogue"] = response_data["needs_dialogue"]
+    if isinstance(response_data.get("risk_level"), str):
+        result["risk_level"] = response_data["risk_level"].strip() or DEFAULT_INTENT_RESULT["risk_level"]
 
     return result
 
@@ -100,6 +110,15 @@ def normalize_intent_result(intent_result, user_text):
     """
     result = dict(intent_result or DEFAULT_INTENT_RESULT)
     normalized_text = (user_text or "").strip()
+
+    # [WARNING] 대화 history 가 없는 현재 구조에서는 "왜?", "뭐?" 같은 초단문을
+    # 상태 질문으로 해석하면 근거 없는 이유를 지어낼 가능성이 크다.
+    if is_ambiguous_follow_up(normalized_text):
+        result["intent"] = "unknown"
+        result["needs_motion"] = False
+        result["needs_dialogue"] = True
+        result["risk_level"] = "low"
+        return result
 
     if any(keyword in normalized_text for keyword in IDENTITY_CHAT_KEYWORDS):
         result["intent"] = "chat"
@@ -120,3 +139,13 @@ def normalize_intent_result(intent_result, user_text):
         result["needs_motion"] = True
 
     return result
+
+
+def is_ambiguous_follow_up(user_text):
+    """
+    history 없이 해석하기 어려운 초단문 후속 발화를 감지한다.
+    이런 입력은 planner 자유 생성보다 clarification 으로 처리하는 편이 안전하다.
+    """
+    normalized_text = (user_text or "").strip()
+    condensed_text = re.sub(r"[\s\?\!\.\,~]+", "", normalized_text)
+    return condensed_text in AMBIGUOUS_FOLLOW_UPS

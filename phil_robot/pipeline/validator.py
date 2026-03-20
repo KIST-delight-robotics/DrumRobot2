@@ -39,39 +39,45 @@ class ValidatedPlan:
     """
 
     skills: List[str] = field(default_factory=list)
-    raw_commands: List[str] = field(default_factory=list)
-    expanded_commands: List[str] = field(default_factory=list)
-    resolved_commands: List[str] = field(default_factory=list)
-    valid_commands: List[str] = field(default_factory=list)
-    rejected_commands: List[str] = field(default_factory=list)
+    raw_op_cmds: List[str] = field(default_factory=list)
+    expanded_op_cmds: List[str] = field(default_factory=list)
+    resolved_op_cmds: List[str] = field(default_factory=list)
+    valid_op_cmds: List[str] = field(default_factory=list)
+    rejected_op_cmds: List[str] = field(default_factory=list)
     warnings: List[str] = field(default_factory=list)
     speech: str = ""
     reason: str = ""
 
 
-def build_partial_execution_message(valid_commands: List[str], rejected_commands: List[str]) -> str:
+def build_partial_execution_message(valid_op_cmds: List[str], rejected_op_cmds: List[str]) -> str:
     """
     일부 명령만 실행 가능한 경우 사용자에게 그 사실을 명확히 알린다.
 
     너무 세부적인 reject 이유를 장황하게 나열하기보다,
     "가능한 동작은 수행하고 일부는 제한으로 제외했다"는 사실을 우선 전달한다.
     """
-    if not valid_commands or not rejected_commands:
+    if not valid_op_cmds or not rejected_op_cmds:
         return ""
 
     return "가능한 동작만 먼저 수행할게요. 일부 동작은 범위나 현재 상태 제한 때문에 제외했습니다."
 
 
-def build_validated_plan(user_text: str, robot_state: Dict, classifier_result: Dict, planner_result: Dict) -> ValidatedPlan:
+def build_validated_plan(
+    user_text: str,
+    robot_state: Dict,
+    classifier_result: Dict,
+    planner_result: Dict,
+) -> ValidatedPlan:
     """
     classifier + planner 결과를 실제 실행 가능한 plan 으로 정리한다.
     이 단계가 끝나면 phil_brain.py 는 더 이상 명령 보정 규칙을 알 필요가 없다.
     """
-    skill_commands, skill_warnings = expand_skills(planner_result.get("skills", []))
-    expanded_commands = skill_commands + list(planner_result.get("commands", []))
+    skill_op_cmds, skill_warnings = expand_skills(planner_result.get("skills", []))
+    planner_op_cmds = list(planner_result.get("op_cmd", planner_result.get("commands", [])))
+    expanded_op_cmds = skill_op_cmds + planner_op_cmds
 
-    resolution = resolve_motion_commands(user_text, expanded_commands, robot_state)
-    validation = validate_commands(resolution.commands, robot_state)
+    resolution = resolve_motion_commands(user_text, expanded_op_cmds, robot_state)
+    validation = validate_commands(resolution.op_cmds, robot_state)
 
     warnings = list(skill_warnings)
     warnings.extend(resolution.warnings)
@@ -95,11 +101,11 @@ def build_validated_plan(user_text: str, robot_state: Dict, classifier_result: D
 
     return ValidatedPlan(
         skills=list(planner_result.get("skills", [])),
-        raw_commands=list(planner_result.get("commands", [])),
-        expanded_commands=expanded_commands,
-        resolved_commands=list(resolution.commands),
-        valid_commands=list(validation.valid_commands),
-        rejected_commands=list(validation.rejected_commands),
+        raw_op_cmds=planner_op_cmds,
+        expanded_op_cmds=expanded_op_cmds,
+        resolved_op_cmds=list(resolution.op_cmds),
+        valid_op_cmds=list(validation.valid_commands),
+        rejected_op_cmds=list(validation.rejected_commands),
         warnings=warnings,
         speech=speech,
         reason=planner_result.get("reason", ""),

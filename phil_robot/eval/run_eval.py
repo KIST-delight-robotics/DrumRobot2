@@ -26,12 +26,12 @@ DEFAULT_REPORT_DIR = os.path.join(CURRENT_DIR, "reports")
 
 def load_cases(cases_path: str) -> List[Dict[str, Any]]:
     with open(cases_path, "r", encoding="utf-8") as file:
-        payload = json.load(file)
+        cases_data = json.load(file)
 
-    if not isinstance(payload, list):
+    if not isinstance(cases_data, list):
         raise ValueError("Case file must be a JSON array.")
 
-    return payload
+    return cases_data
 
 
 def infer_suite_name(suite_name: str, cases_path: str) -> str:
@@ -153,11 +153,11 @@ def evaluate_case(case: Dict[str, Any]) -> Dict[str, Any]:
         "risk_level": result.classifier_result.get("risk_level"),
         "planner_domain": result.planner_domain,
         "skills": list(result.validated_plan.skills),
-        "raw_commands": list(result.validated_plan.raw_commands),
-        "expanded_commands": list(result.validated_plan.expanded_commands),
-        "resolved_commands": list(result.validated_plan.resolved_commands),
-        "valid_commands": list(result.validated_plan.valid_commands),
-        "rejected_commands": list(result.validated_plan.rejected_commands),
+        "raw_op_cmds": list(result.validated_plan.raw_op_cmds),
+        "expanded_op_cmds": list(result.validated_plan.expanded_op_cmds),
+        "resolved_op_cmds": list(result.validated_plan.resolved_op_cmds),
+        "valid_op_cmds": list(result.validated_plan.valid_op_cmds),
+        "rejected_op_cmds": list(result.validated_plan.rejected_op_cmds),
         "speech": result.validated_plan.speech,
         "reason": result.validated_plan.reason,
     }
@@ -204,33 +204,40 @@ def evaluate_case(case: Dict[str, Any]) -> Dict[str, Any]:
             expected["skills_any_of"],
             actual["skills"],
         )
-    if "valid_commands_exact" in expected:
+    if "valid_op_cmds_exact" in expected or "valid_commands_exact" in expected:
+        expected_value = expected.get("valid_op_cmds_exact", expected.get("valid_commands_exact"))
         add_check(
-            "validator.valid_commands_exact",
-            _list_equals(actual["valid_commands"], expected["valid_commands_exact"]),
-            expected["valid_commands_exact"],
-            actual["valid_commands"],
+            "validator.valid_op_cmds_exact",
+            _list_equals(actual["valid_op_cmds"], expected_value),
+            expected_value,
+            actual["valid_op_cmds"],
         )
-    if "valid_commands_any_of" in expected:
+    if "valid_op_cmds_any_of" in expected or "valid_commands_any_of" in expected:
+        expected_value = expected.get("valid_op_cmds_any_of", expected.get("valid_commands_any_of"))
         add_check(
-            "validator.valid_commands_any_of",
-            _list_matches_any_of(actual["valid_commands"], expected["valid_commands_any_of"]),
-            expected["valid_commands_any_of"],
-            actual["valid_commands"],
+            "validator.valid_op_cmds_any_of",
+            _list_matches_any_of(actual["valid_op_cmds"], expected_value),
+            expected_value,
+            actual["valid_op_cmds"],
         )
-    if "valid_commands_contains_all" in expected:
+    if "valid_op_cmds_contains_all" in expected or "valid_commands_contains_all" in expected:
+        expected_value = expected.get("valid_op_cmds_contains_all", expected.get("valid_commands_contains_all"))
         add_check(
-            "validator.valid_commands_contains_all",
-            _list_contains_all(actual["valid_commands"], expected["valid_commands_contains_all"]),
-            expected["valid_commands_contains_all"],
-            actual["valid_commands"],
+            "validator.valid_op_cmds_contains_all",
+            _list_contains_all(actual["valid_op_cmds"], expected_value),
+            expected_value,
+            actual["valid_op_cmds"],
         )
-    if "valid_commands_contains_prefixes" in expected:
+    if "valid_op_cmds_contains_prefixes" in expected or "valid_commands_contains_prefixes" in expected:
+        expected_value = expected.get(
+            "valid_op_cmds_contains_prefixes",
+            expected.get("valid_commands_contains_prefixes"),
+        )
         add_check(
-            "validator.valid_commands_contains_prefixes",
-            _list_startswith_all(actual["valid_commands"], expected["valid_commands_contains_prefixes"]),
-            expected["valid_commands_contains_prefixes"],
-            actual["valid_commands"],
+            "validator.valid_op_cmds_contains_prefixes",
+            _list_startswith_all(actual["valid_op_cmds"], expected_value),
+            expected_value,
+            actual["valid_op_cmds"],
         )
     if "speech_contains_any" in expected:
         add_check(

@@ -17,8 +17,8 @@ except ImportError:
 
 @dataclass
 class ExecutionResult:
-    requested_commands: List[str] = field(default_factory=list)
-    executed_commands: List[str] = field(default_factory=list)
+    requested_op_cmds: List[str] = field(default_factory=list)
+    executed_op_cmds: List[str] = field(default_factory=list)
 
 
 def execute_validated_plan(bot, validated_plan: ValidatedPlan) -> ExecutionResult:
@@ -26,9 +26,9 @@ def execute_validated_plan(bot, validated_plan: ValidatedPlan) -> ExecutionResul
     executor 는 validator 가 통과시킨 최종 명령만 소비한다.
     이 함수는 나중에 retry, rollback, ACK 추적을 붙일 자리를 남겨둔다.
     """
-    requested_commands = list(validated_plan.valid_commands)
-    executed_commands = execute_commands(bot, requested_commands)
+    requested_op_cmds = list(validated_plan.valid_op_cmds)
+    executed_op_cmds = execute_commands(bot, requested_op_cmds)
     return ExecutionResult(
-        requested_commands=requested_commands,
-        executed_commands=executed_commands,
+        requested_op_cmds=requested_op_cmds,
+        executed_op_cmds=executed_op_cmds,
     )

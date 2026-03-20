@@ -32,17 +32,17 @@ RELATIVE_DEGREE_PATTERN = re.compile(r"(-?\d+(?:\.\d+)?)\s*도")
 
 @dataclass
 class MotionResolutionResult:
-    commands: List[str]
+    op_cmds: List[str]
     message_override: Optional[str] = None
     warnings: List[str] = field(default_factory=list)
 
 
-def resolve_motion_commands(user_text, commands, robot_state):
+def resolve_motion_commands(user_text, op_cmds, robot_state):
     """
     상대 이동 표현을 현재 각도 기반 절대각 명령으로 변환한다.
     이 레이어는 planner를 본격 도입하기 전의 얇은 motion resolver 역할을 한다.
     """
-    result = MotionResolutionResult(commands=list(commands))
+    result = MotionResolutionResult(op_cmds=list(op_cmds))
     intent = parse_relative_motion_intent(user_text, robot_state=robot_state)
     if intent is None:
         return result
@@ -52,7 +52,7 @@ def resolve_motion_commands(user_text, commands, robot_state):
     if not isinstance(current_angle, (int, float)):
         result.message_override = f"{intent['display_name']}의 현재 각도를 아직 확인할 수 없어 지금은 해당 동작을 수행할 수 없습니다."
         result.warnings.append(f"현재 각도를 알 수 없어 상대 이동 해석 실패: {intent['joint_name']}")
-        result.commands = _remove_move_commands(result.commands)
+        result.op_cmds = _remove_move_op_cmds(result.op_cmds)
         return result
 
     delta = intent["delta_deg"] if intent["delta_deg"] is not None else DEFAULT_RELATIVE_STEP_DEG
@@ -75,11 +75,11 @@ def resolve_motion_commands(user_text, commands, robot_state):
         result.warnings.append(
             f"상대 이동 한계 초과 차단: {intent['joint_name']} {current_angle:.1f} -> {target_angle:.1f}"
         )
-        result.commands = _remove_motion_sequence_commands(result.commands)
+        result.op_cmds = _remove_motion_sequence_op_cmds(result.op_cmds)
         return result
 
-    resolved_command = _format_move_command(intent["joint_name"], target_angle)
-    result.commands = _replace_or_append_move_command(result.commands, resolved_command)
+    resolved_op_cmd = _format_move_command(intent["joint_name"], target_angle)
+    result.op_cmds = _replace_or_append_move_op_cmd(result.op_cmds, resolved_op_cmd)
     result.warnings.append(
         f"상대 이동 해석: {intent['joint_name']} {current_angle:.1f} -> {target_angle:.1f}"
     )
@@ -149,8 +149,8 @@ def _infer_joint_from_context(text, robot_state):
         return None
 
     try:
-        payload = last_action.split(":", 1)[1]
-        joint_name = payload.split(",", 1)[0]
+        action_args = last_action.split(":", 1)[1]
+        joint_name = action_args.split(",", 1)[0]
     except (IndexError, ValueError):
         return None
 
@@ -180,34 +180,34 @@ def _format_move_command(joint_name, target_angle):
     return f"move:{joint_name},{target_text}"
 
 
-def _replace_or_append_move_command(commands, move_command):
+def _replace_or_append_move_op_cmd(op_cmds, move_op_cmd):
     updated_commands = []
     replaced = False
 
-    for command in commands:
+    for command in op_cmds:
         if command.startswith("move:") and not replaced:
-            updated_commands.append(move_command)
+            updated_commands.append(move_op_cmd)
             replaced = True
         elif not command.startswith("move:"):
             updated_commands.append(command)
 
     if not replaced:
-        updated_commands.append(move_command)
+        updated_commands.append(move_op_cmd)
 
     return updated_commands
 
 
-def _remove_move_commands(commands):
-    return [command for command in commands if not command.startswith("move:")]
+def _remove_move_op_cmds(op_cmds):
+    return [command for command in op_cmds if not command.startswith("move:")]
 
 
-def _remove_motion_sequence_commands(commands):
+def _remove_motion_sequence_op_cmds(op_cmds):
     """
     상대 이동 자체가 실패하면 그에 딸린 wait 도 같이 제거한다.
     사용자는 보통 "움직이고 기다리기"를 한 묶음 의도로 말하기 때문이다.
     """
     return [
         command
-        for command in commands
+        for command in op_cmds
         if not command.startswith("move:") and not command.startswith("wait:")
     ]

@@ -13,91 +13,91 @@ SKILL_LIBRARY: Dict[str, Dict[str, object]] = {
     "wave_hi": {
         "category": "social",
         "description": "정면을 보고 손을 흔들며 밝게 인사한다.",
-        "commands": ["look:0,90", "gesture:wave", "led:happy"],
+        "op_cmd": ["look:0,90", "gesture:wave", "led:happy"],
     },
     "nod_yes": {
         "category": "social",
         "description": "가볍게 끄덕이며 긍정 반응을 보인다.",
-        "commands": ["gesture:nod"],
+        "op_cmd": ["gesture:nod"],
     },
     "shake_no": {
         "category": "social",
         "description": "고개를 좌우로 흔들며 부정 반응을 보인다.",
-        "commands": ["gesture:shake"],
+        "op_cmd": ["gesture:shake"],
     },
     "happy_react": {
         "category": "social",
         "description": "기쁜 제스처와 표정으로 반응한다.",
-        "commands": ["gesture:happy", "led:happy"],
+        "op_cmd": ["gesture:happy", "led:happy"],
     },
     "celebrate": {
         "category": "social",
         "description": "만세 동작으로 크게 기쁨을 표현한다.",
-        "commands": ["gesture:hurray", "led:happy"],
+        "op_cmd": ["gesture:hurray", "led:happy"],
     },
     # 시선 계열
     "look_forward": {
         "category": "visual",
         "description": "정면을 바라본다.",
-        "commands": ["look:0,90"],
+        "op_cmd": ["look:0,90"],
     },
     "look_left": {
         "category": "visual",
         "description": "왼쪽을 바라본다.",
-        "commands": ["look:-30,90"],
+        "op_cmd": ["look:-30,90"],
     },
     "look_right": {
         "category": "visual",
         "description": "오른쪽을 바라본다.",
-        "commands": ["look:30,90"],
+        "op_cmd": ["look:30,90"],
     },
     "look_up": {
         "category": "visual",
         "description": "위쪽을 바라본다.",
-        "commands": ["look:0,70"],
+        "op_cmd": ["look:0,70"],
     },
     "look_down": {
         "category": "visual",
         "description": "아래쪽을 바라본다.",
-        "commands": ["look:0,110"],
+        "op_cmd": ["look:0,110"],
     },
     # 자세 / 전환
     "ready_pose": {
         "category": "posture",
         "description": "연주 준비 자세로 전환한다.",
-        "commands": ["r"],
+        "op_cmd": ["r"],
     },
     "idle_home": {
         "category": "posture",
         "description": "휴식 자세로 돌아가 표정을 idle 로 맞춘다.",
-        "commands": ["h", "led:idle"],
+        "op_cmd": ["h", "led:idle"],
     },
     # 연주 묶음
     "play_tim": {
         "category": "play",
         "description": "This Is Me 연주를 시작한다.",
-        "commands": ["r", "p:TIM", "led:play"],
+        "op_cmd": ["r", "p:TIM", "led:play"],
     },
     "play_ty_short": {
         "category": "play",
         "description": "그대에게 연주를 시작한다.",
-        "commands": ["r", "p:TY_short", "led:play"],
+        "op_cmd": ["r", "p:TY_short", "led:play"],
     },
     "play_bi": {
         "category": "play",
         "description": "Baby I Need You 연주를 시작한다.",
-        "commands": ["r", "p:BI", "led:play"],
+        "op_cmd": ["r", "p:BI", "led:play"],
     },
     "play_test_one": {
         "category": "play",
         "description": "테스트 비트를 연주한다.",
-        "commands": ["r", "p:test_one", "led:play"],
+        "op_cmd": ["r", "p:test_one", "led:play"],
     },
     # 시스템
     "shutdown_system": {
         "category": "system",
         "description": "시스템 종료 명령을 수행한다.",
-        "commands": ["s"],
+        "op_cmd": ["s"],
     },
 }
 
@@ -145,10 +145,10 @@ def expand_skills(skill_names: List[str]) -> Tuple[List[str], List[str]]:
     planner가 고른 skill 이름을 실제 로봇 명령 시퀀스로 펼친다.
 
     반환값:
-    - commands: 전송 가능한 문자열 명령 목록
+    - op_cmds: 전송 가능한 문자열 명령 목록
     - warnings: 알 수 없는 skill 등 디버그용 경고
     """
-    commands: List[str] = []
+    op_cmds: List[str] = []
     warnings: List[str] = []
 
     for skill_name in skill_names:
@@ -156,19 +156,19 @@ def expand_skills(skill_names: List[str]) -> Tuple[List[str], List[str]]:
         if metadata is None:
             warnings.append(f"알 수 없는 skill 무시: {skill_name}")
             continue
-        commands.extend(list(metadata["commands"]))
+        op_cmds.extend(list(metadata["op_cmd"]))
 
-    return _deduplicate_consecutive_commands(commands), warnings
+    return _deduplicate_consecutive_op_cmds(op_cmds), warnings
 
 
-def _deduplicate_consecutive_commands(commands: List[str]) -> List[str]:
+def _deduplicate_consecutive_op_cmds(op_cmds: List[str]) -> List[str]:
     """
     skill 조합 과정에서 동일한 명령이 연속으로 생기면 한 번만 남긴다.
     예: ready_pose + play_tim -> r, r, p:TIM -> r, p:TIM
     """
     deduped: List[str] = []
-    for command in commands:
-        if deduped and deduped[-1] == command:
+    for op_cmd in op_cmds:
+        if deduped and deduped[-1] == op_cmd:
             continue
-        deduped.append(command)
+        deduped.append(op_cmd)
     return deduped
