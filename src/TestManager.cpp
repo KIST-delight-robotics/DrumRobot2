@@ -2544,9 +2544,7 @@ void TestManager::cap_pc_3times()   // 허리를 회전시키며 point cloud를 
     rs2::depth_sensor depth_sensor = dev.first<rs2::depth_sensor>();
 
     if (depth_sensor.supports(RS2_OPTION_VISUAL_PRESET)) {
-        // RS2_RS400_VISUAL_PRESET_HIGH_ACCURACY 적용 (노이즈 억제력 최대화)
         depth_sensor.set_option(RS2_OPTION_VISUAL_PRESET, RS2_RS400_VISUAL_PRESET_HIGH_DENSITY);
-        std::cout << "카메라에 High DENSITY 프리셋이 성공적으로 적용되었습니다." << std::endl;
     }
 
     // 2. 필터 
@@ -2555,12 +2553,12 @@ void TestManager::cap_pc_3times()   // 허리를 회전시키며 point cloud를 
     thresh_filter.set_option(RS2_OPTION_MAX_DISTANCE, 0.6f);
 
     rs2::decimation_filter dec_filter;
-    dec_filter.set_option(RS2_OPTION_FILTER_MAGNITUDE, 4.0f);
+    dec_filter.set_option(RS2_OPTION_FILTER_MAGNITUDE, 2.0f);
 
     rs2::spatial_filter spat_filter;
     spat_filter.set_option(RS2_OPTION_FILTER_SMOOTH_ALPHA, 0.5f);
-    spat_filter.set_option(RS2_OPTION_FILTER_SMOOTH_DELTA, 20.0f); 
-    spat_filter.set_option(RS2_OPTION_FILTER_MAGNITUDE, 3.0f);    
+    spat_filter.set_option(RS2_OPTION_FILTER_SMOOTH_DELTA, 20.0f);
+    spat_filter.set_option(RS2_OPTION_FILTER_MAGNITUDE, 3.0f);
 
     rs2::temporal_filter temp_filter;
     temp_filter.set_option(RS2_OPTION_FILTER_SMOOTH_ALPHA, 0.4f); 
