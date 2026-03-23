@@ -878,7 +878,7 @@ void DrumRobot::runPythonInThread()
         {
             std::string pythonCmd = pythonScript + " " + pythonArgs;
 
-            if (pythonArgs == "--sync")
+            if (pythonArgs == "--sync" || pythonArgs == "--soundfb")
             {
                 pythonCmd += " --path ../magenta/ &";   // 경로 설정 & 백그라운드 실행
 
@@ -1433,6 +1433,13 @@ std::string DrumRobot::selectPlayMode()
         {
             std::cout << "\nEnter Music Code Name: ";
             std::cin >> txtFileName;
+
+
+            if(txtFileName == "soundfb")
+            {
+                runPython = true;
+                pythonArgs = "--soundfb";
+            }
 
             txtPath = txtBaseFolderPath + txtFileName;
             repeatNum = 1;

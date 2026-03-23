@@ -116,3 +116,6 @@ class taskManager:
             # 모든 쓰레드가 종료될 때까지 대기
             for thread in threads:
                 thread.join()
+
+    def sound_feedback(self):
+        pass # 추후 구현 예정 (녹음한 드럼 세기를 csv파일로 저장하는 기능)
