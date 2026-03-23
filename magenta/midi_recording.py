@@ -133,12 +133,12 @@ class RecordingManager:
         
         midi_input.close()
 
-    # 일정 시간동안 MIDI 신호를 실시간으로 받아와서 MIDI 파일로 저장
+    # 일정 시간동안 MIDI 신호를 실시간으로 받아와서 MIDI 파일로 저장(2마디 녹음)
     def record_for_time(self, output_file, buffer_clear_flag=False):
         bpm = self.bpm  # 템포
         ticks_per_beat = 480  # 1 비트(quarter note) 당 틱 수
         seconds_per_beat = 60 / bpm  # 1 비트의 시간(초 단위)
-        recording_second = 8 * seconds_per_beat    # 녹음 시간 (2마디)
+        recording_second = 10 * seconds_per_beat    # 녹음 시간 (2마디)
         
         # MIDI 입력 포트 연결
         midi_input = mido.open_input(self.input_port_name)
@@ -195,6 +195,73 @@ class RecordingManager:
             time.sleep(0.01)   # CPU 사용률을 낮추기 위해 짧은 딜레이 추가
         
         # MIDI 파일 저장
+        track.append(mido.MetaMessage('end_of_track', time=0))
+        mid.save(output_file)
+        print(f"\n[Python] Recording saved to {output_file}")
+        midi_input.close()
+
+    # 첫 타격 이후 지정한 시간(초) 만큼 녹음
+    def record_for_sec(self, output_file, wait_second, time_record):
+        bpm = self.bpm  # 템포
+        ticks_per_beat = 480  # 1 비트(quarter note) 당 틱 수
+        seconds_per_beat = 60 / bpm  # 1 비트의 시간(초 단위)
+        recording_second = time_record
+
+        # MIDI 입력 포트 연결
+        midi_input = mido.open_input(self.input_port_name)
+
+        # 새로운 MIDI 파일 생성
+        mid = MidiFile(ticks_per_beat=ticks_per_beat)
+        track = MidiTrack()
+        mid.tracks.append(track)
+
+        # 트랙 이름 설정과 템포 설정
+        track.append(mido.MetaMessage('track_name', name='Drum Track'))
+        track.append(mido.MetaMessage('set_tempo', tempo=mido.bpm2tempo(bpm)))  # 템포 설정
+        track.append(mido.MetaMessage('time_signature', numerator=4, denominator=4))
+        track.append(Message('program_change', channel=9, program=0, time=0))
+
+        self.clear_input_buffer(midi_input, wait_second)
+
+        print(f"\n[Python] Recording for {recording_second} seconds after the first note...")
+
+        first_note_received = False
+        start_time = None
+        last_message_time = None
+
+        while True:
+            for msg in midi_input.iter_pending():
+                print(f"[Python] Recording - Message Received: {msg}")
+
+                if msg.type == 'note_on' and not first_note_received:
+                    first_note_received = True
+                    start_time = time.time()
+                    last_message_time = time.time()
+                    t = 0
+                    print("[Python] First note received, starting recording...")
+                    self.make_sync_file()
+                elif first_note_received:
+                    now = time.time()
+                    time_since_last_message = now - last_message_time
+                    ticks_since_last_message = time_since_last_message / seconds_per_beat * ticks_per_beat
+                    t = int(ticks_since_last_message)
+
+                if first_note_received:
+                    if msg.type == 'note_on':
+                        track.append(Message('note_on', channel=9, note=msg.note, velocity=msg.velocity, time=t))
+                        last_message_time = time.time()
+                    elif msg.type == 'note_off':
+                        track.append(Message('note_on', channel=9, note=msg.note, velocity=0, time=t))
+                        last_message_time = time.time()
+
+            if first_note_received:
+                elapsed_time = time.time() - start_time
+                if elapsed_time >= recording_second:
+                    print(f"[Python] Recording stopped after {recording_second} seconds.")
+                    break
+
+            time.sleep(0.01)
+
         track.append(mido.MetaMessage('end_of_track', time=0))
         mid.save(output_file)
         print(f"\n[Python] Recording saved to {output_file}")

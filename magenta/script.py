@@ -21,16 +21,20 @@ for i in range(num_args):
     
     if arg == "--sync": 
         print(f"[Python] program mode : {arg}")   
-        # record = False
+        record = False
         sync = True
+        soundfb = False
     
     elif arg == "--record":
         print(f"[Python] program mode : {arg}")
         record = True
+        sync = False
+        soundfb = False
 
     elif arg == "--soundfb":
         print(f"[Python] program mode : {arg}")
-        # record = False
+        record = False
+        sync = False
         soundfb = True
     
     elif arg == "--repeat":
