@@ -788,6 +788,14 @@ void PathManager::solveIKandPushCommand()
 
         pushCommandBuffer(q, KpRatioR, KpRatioL);                           // 명령 생성 후 push
         pushDxlBuffer(q0);
+
+        // MATLAB Simulink 사전 테스트
+        std::vector<double> test_q;
+        for (int i = 0; i < 12; i++)
+        {
+            test_q.push_back(q(i));
+        }
+        func.appendToCSV("simulation", false, test_q);
     }
 
     if (waistParameterQueue.empty())    // DrumRobot 에게 끝났음 알리기

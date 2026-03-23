@@ -21,11 +21,17 @@ for i in range(num_args):
     
     if arg == "--sync": 
         print(f"[Python] program mode : {arg}")   
-        record = False
+        # record = False
+        sync = True
     
     elif arg == "--record":
         print(f"[Python] program mode : {arg}")
         record = True
+
+    elif arg == "--soundfb":
+        print(f"[Python] program mode : {arg}")
+        # record = False
+        soundfb = True
     
     elif arg == "--repeat":
         num_repeats = int(sys.argv[i+2])
@@ -60,5 +66,7 @@ tm = taskManager(bpm=bpm, base_path=base_path)
 if record:
     tm.make_midi(num_repeats, wait_times_sec, recording_times_bar)
     # tm.make_midi_from_folder(num_repeats, recording_times_bar)
-else:
+elif sync:
     tm.make_sync()
+elif soundfb:
+    tm.sound_feedback()
