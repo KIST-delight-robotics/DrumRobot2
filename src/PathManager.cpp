@@ -2782,8 +2782,6 @@ void PathManager::pushDxlBuffer(double q0)
 
     vector<vector<float>> dxlCommand = {{0.0, 0.0, dxlQ.dxl1 + (float)q0}, {0.0, 0.0, dxlQ.dxl2}};
     dxlCommandBuffer.push(dxlCommand);
-
-    func.appendToCSV("DXL_log", false, dxlQ.dxl1 + (float)q0, dxlQ.dxl2);
 }
 
 void PathManager::pushCommandBuffer(VectorXd &Qi, double kpRatioR, double kpRatioL)
