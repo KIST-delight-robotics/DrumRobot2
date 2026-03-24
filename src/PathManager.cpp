@@ -779,13 +779,6 @@ void PathManager::solveIKandPushCommand()
         //     func.appendToCSV(fileName, false, i, q(i));
         // }
 
-        // //* 테스트용 *// 모터 연결하면 지워야 함 (이인우)
-        // for (int i = 0; i < 7; i++)
-        // {
-        //     std::string fileName = "solveIK_v" + to_string(i);
-        //     func.appendToCSV(fileName, false, i, getVelocityRadps(false, q[i], i));
-        // }
-
         pushCommandBuffer(q, KpRatioR, KpRatioL);                           // 명령 생성 후 push
         pushDxlBuffer(q0);
 
@@ -1511,8 +1504,8 @@ void PathManager::makeHitCoefficient(HitData hitData, VectorXd &stateR, VectorXd
     elbowAngleR = getElbowAngleParam(hitData.initialTimeR, hitData.finalTimeR, intensityR);
     elbowAngleL = getElbowAngleParam(hitData.initialTimeL, hitData.finalTimeL, intensityL);
 
-    wristAngleR = getWristAngleParam(hitData.initialTimeR, hitData.finalTimeR, intensityR);
-    wristAngleL = getWristAngleParam(hitData.initialTimeL, hitData.finalTimeL, intensityL);
+    wristAngleR = getWristAngleParam(hitData.initialTimeR, hitData.finalTimeR, intensityR, stateR(1));
+    wristAngleL = getWristAngleParam(hitData.initialTimeL, hitData.finalTimeL, intensityL, stateL(1));
 
     // 계수 행렬 구하기
     elbowCoefficientR = makeElbowCoefficient(stateR(1), elbowTimeR, elbowAngleR);
@@ -1603,7 +1596,7 @@ PathManager::ElbowAngle PathManager::getElbowAngleParam(double t1, double t2, in
     return elbowAngle;
 }
 
-PathManager::WristAngle PathManager::getWristAngleParam(double t1, double t2, int intensity)
+PathManager::WristAngle PathManager::getWristAngleParam(double t1, double t2, int intensity, int state)
 {
     WristAngle wristAngle;
     float T = (t2 - t1);        // 타격 전체 시간
@@ -1630,6 +1623,12 @@ PathManager::WristAngle PathManager::getWristAngleParam(double t1, double t2, in
     {
         wristAngle.liftAngle = wristAngle.stayAngle + wristAngle.liftAngle * intensityFactor;
     }
+
+    if (state == 1)
+    {
+        wristAngle.prevPressAngle = wristAngle.pressAngle;
+    }
+    wristAngle.pressAngle = intensity * -5.0 * M_PI / 180.0;
     
     return wristAngle;
 }
@@ -1798,7 +1797,7 @@ MatrixXd PathManager::makeWristCoefficient(int state, WristTime wT, WristAngle w
     else if (state == 1)
     {
         // Release
-        if (wA.pressAngle == wA.stayAngle)
+        if (wA.prevPressAngle == wA.stayAngle)
         {
             sol.resize(4, 1);
             sol << wA.stayAngle, 0, 0, 0;
@@ -1812,7 +1811,7 @@ MatrixXd PathManager::makeWristCoefficient(int state, WristTime wT, WristAngle w
                 1, wT.hitTime, wT.hitTime * wT.hitTime,
                 0, 1, 2 * wT.hitTime;
 
-            b << wA.pressAngle, wA.stayAngle, 0;
+            b << wA.prevPressAngle, wA.stayAngle, 0;
 
             A_1 = A.inverse();
             sol = A_1 * b;

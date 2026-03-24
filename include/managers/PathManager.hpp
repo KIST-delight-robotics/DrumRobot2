@@ -218,6 +218,8 @@ private:
         double stayAngle = 20*M_PI/180.0;
         double pressAngle = -5*M_PI/180.0;
         double liftAngle = 40*M_PI/180.0;
+
+        double prevPressAngle = -5*M_PI/180.0;
     }WristAngle;
 
     typedef struct {
@@ -302,7 +304,7 @@ private:
     PathManager::ElbowTime getElbowTimeParam(double t1, double t2, int intensity);
     PathManager::WristTime getWristTimeParam(double t1, double t2, int intensity, int state);
     PathManager::ElbowAngle getElbowAngleParam(double t1, double t2, int intensity);
-    PathManager::WristAngle getWristAngleParam(double t1, double t2, int intensity);
+    PathManager::WristAngle getWristAngleParam(double t1, double t2, int intensity, int state);
     MatrixXd makeElbowCoefficient(int state, ElbowTime eT, ElbowAngle eA);
     MatrixXd makeWristCoefficient(int state, WristTime wT, WristAngle wA);
     double getElbowAngle(double t, ElbowTime eT, MatrixXd &coefficientMatrix);

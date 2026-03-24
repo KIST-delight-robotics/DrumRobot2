@@ -138,7 +138,7 @@ class RecordingManager:
         bpm = self.bpm  # 템포
         ticks_per_beat = 480  # 1 비트(quarter note) 당 틱 수
         seconds_per_beat = 60 / bpm  # 1 비트의 시간(초 단위)
-        recording_second = 10 * seconds_per_beat    # 녹음 시간 (2마디)
+        recording_second = 8 * seconds_per_beat    # 녹음 시간 (2마디)
         
         # MIDI 입력 포트 연결
         midi_input = mido.open_input(self.input_port_name)
