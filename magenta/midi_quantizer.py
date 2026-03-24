@@ -116,7 +116,7 @@ ROBOT_MAP = {
     42: 5, 51: 6, 49: 7, 57: 8, 36: 10, 46: 11
 }
 
-def quantize_drum_midi(input_path: str) -> str:
+def quantize_drum_midi(input_path: str, bpm) -> str:
     """
     입력 MIDI를 양자화하여 .mid로 저장하고, 
     동시에 로봇 제어용 .csv 파일을 생성합니다.
@@ -125,7 +125,7 @@ def quantize_drum_midi(input_path: str) -> str:
         raise FileNotFoundError(f"Input MIDI not found: {input_path}")
 
     # --- [Step 1] MIDI 양자화 로직 ---
-    GRID_SEC = 0.15625
+    GRID_SEC = 0.6 * (100 / bpm) / 4 # 1/4박자 길이
     MIN_DUR_SEC = 0.001
     
     # 그리드 계산 함수
@@ -204,16 +204,32 @@ def quantize_drum_midi(input_path: str) -> str:
         with open(csv_output_path, 'w', newline='', encoding='utf-8') as f:
             writer = csv.writer(f)
             # 헤더 작성 (Time, ID, Velocity)
-            writer.writerow(['Time', 'ID', 'Velocity'])
+            writer.writerow(['Duration', 'ID', 'Velocity', 'Time'])
             
+            time_ex_note = 0
             for note in snapped_notes:
                 # 1. 매핑에 존재하는 피치만 저장
                 if note.pitch in ROBOT_MAP:
                     inst_id = ROBOT_MAP[note.pitch]
-                    
-                    # 2. 초(sec) 단위 시간 (소수점 4자리까지 표기 권장)
-                    # 4. 동시 입력은 루프가 돌면서 같은 시간 값으로 자연스럽게 여러 줄 생성됨
-                    writer.writerow([f"{note.start:.4f}", inst_id, note.velocity])
+                    time_cur_note = note.start
+                    duration = (time_cur_note - time_ex_note) / (bpm / 100)     # 100bpm 기준 1박자 길이로 변환
+                    if duration > 0.6:      # 한 박 이상이거나 음표 간 쉼표 존재하는 경우
+                        n = duration / 0.6
+                        m = int(n)
+                        o = n - m
+                        if abs(o) > 1e-6:
+                            for k in range(m-1):
+                                writer.writerow([0.6, 0, 0, time_ex_note + 0.6*k])    # 0.6초 간격으로 쉼표
+                            writer.writerow([o*0.6, inst_id, note.velocity, time_cur_note])
+                        else:
+                            for k in range(m-1):
+                                writer.writerow([0.6, 0, 0, time_ex_note + 0.6*k])    # 0.6초 간격으로 쉼표
+                            writer.writerow([0.6, inst_id, note.velocity, time_cur_note])
+                    else:     
+                        # 2. 초(sec) 단위 시간 (소수점 4자리까지 표기 권장)
+                        # 4. 동시 입력은 루프가 돌면서 같은 시간 값으로 자연스럽게 여러 줄 생성됨
+                        writer.writerow([duration, inst_id, note.velocity, time_cur_note])
+                    time_ex_note = time_cur_note
                     
         print(f"CSV Saved: {csv_output_path}")
         
@@ -232,7 +248,7 @@ if __name__ == "__main__":
         # 경로의 따옴표 제거 (터미널 입력 시 발생 가능성)
         in_path = in_path.strip("'").strip('"')
         
-        out_mid = quantize_drum_midi(in_path)
+        out_mid = quantize_drum_midi(in_path, 100)
         print(f"MIDI Saved: {out_mid}")
         
     except Exception as e:

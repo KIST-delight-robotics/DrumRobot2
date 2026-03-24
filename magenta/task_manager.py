@@ -72,7 +72,7 @@ class taskManager:
                     rec.record_for_time(recording_file_name, buffer_clear_flag)
 
                 # 전처리
-                quantize_midi_file = quantize_drum_midi(recording_file_name)        # 양자화
+                quantize_midi_file = quantize_drum_midi(recording_file_name, self.bpm)        # 양자화
                 base_midi = self.base_folder + match_best_from_cache(midi_path=quantize_midi_file, cache_path=self.cache_path)    # 가장 유시한 리듬
                 print(f"\n[Python] matching : {base_midi}")
 
@@ -127,5 +127,5 @@ class taskManager:
         recording_file_name = self.recording_file_path + 'soundfb.mid'
         rec.record_for_sec(recording_file_name, 5, 30) # 5초 대기 후 50초 녹음
 
-        quantize_midi_file = quantize_drum_midi(recording_file_name)
+        quantize_midi_file = quantize_drum_midi(recording_file_name, self.bpm)
         print(f"\n[Python] quantized MIDI saved at : {quantize_midi_file}")
