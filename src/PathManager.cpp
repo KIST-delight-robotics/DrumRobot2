@@ -1,6 +1,5 @@
-#include "../include/managers/PathManager.hpp" // 적절한 경로로 변경하세요.
-#include "../DynamixelSDK-3.8.4/c++/include/dynamixel_sdk/dynamixel_sdk.h"
-
+#include "../include/managers/PathManager.hpp"
+#include "../include/dxl_sdk/dynamixel_sdk.h"
 
 PathManager::PathManager(State &stateRef,
                          CanManager &canManagerRef,
@@ -1567,6 +1566,7 @@ PathManager::ElbowAngle PathManager::getElbowAngleParam(double t1, double t2, in
 
     double intensityFactor;  // 1: 0%, 2: 0%, 3: 0%, 4: 90%, 5: 100%, 6: 110%, 7: 120%  
 
+    intensity = 5;  // wristAngle.pressAngle 변화 실험을 위해 일단 고정
     if (intensity <= 3)
     {
         intensityFactor = 0;
@@ -1601,7 +1601,14 @@ PathManager::WristAngle PathManager::getWristAngleParam(double t1, double t2, in
     WristAngle wristAngle;
     float T = (t2 - t1);        // 타격 전체 시간
     double intensityFactor;
-   
+
+    if (state == 1)
+    {
+        wristAngle.prevPressAngle = wristAngle.pressAngle;
+    }
+    wristAngle.pressAngle = intensity * -5.0 * M_PI / 180.0;
+
+    intensity = 5;  // wristAngle.pressAngle 변화 실험을 위해 일단 고정
     if (intensity < 5)
     {
         intensityFactor = 0.25 * intensity - 0.25;  // 1: 0%, 2: 25%, 3: 50%, 4: 75%
@@ -1623,12 +1630,6 @@ PathManager::WristAngle PathManager::getWristAngleParam(double t1, double t2, in
     {
         wristAngle.liftAngle = wristAngle.stayAngle + wristAngle.liftAngle * intensityFactor;
     }
-
-    if (state == 1)
-    {
-        wristAngle.prevPressAngle = wristAngle.pressAngle;
-    }
-    wristAngle.pressAngle = intensity * -5.0 * M_PI / 180.0;
     
     return wristAngle;
 }
