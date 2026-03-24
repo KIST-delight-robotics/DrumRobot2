@@ -1,6 +1,5 @@
-#include "../include/managers/PathManager.hpp" // 적절한 경로로 변경하세요.
-#include "../DynamixelSDK-3.8.4/c++/include/dynamixel_sdk/dynamixel_sdk.h"
-
+#include "../include/managers/PathManager.hpp"
+#include "../include/dxl_sdk/dynamixel_sdk.h"
 
 PathManager::PathManager(State &stateRef,
                          CanManager &canManagerRef,
@@ -779,13 +778,6 @@ void PathManager::solveIKandPushCommand()
         //     func.appendToCSV(fileName, false, i, q(i));
         // }
 
-        // //* 테스트용 *// 모터 연결하면 지워야 함 (이인우)
-        // for (int i = 0; i < 7; i++)
-        // {
-        //     std::string fileName = "solveIK_v" + to_string(i);
-        //     func.appendToCSV(fileName, false, i, getVelocityRadps(false, q[i], i));
-        // }
-
         pushCommandBuffer(q, KpRatioR, KpRatioL);                           // 명령 생성 후 push
         pushDxlBuffer(q0);
 
@@ -1511,8 +1503,8 @@ void PathManager::makeHitCoefficient(HitData hitData, VectorXd &stateR, VectorXd
     elbowAngleR = getElbowAngleParam(hitData.initialTimeR, hitData.finalTimeR, intensityR);
     elbowAngleL = getElbowAngleParam(hitData.initialTimeL, hitData.finalTimeL, intensityL);
 
-    wristAngleR = getWristAngleParam(hitData.initialTimeR, hitData.finalTimeR, intensityR);
-    wristAngleL = getWristAngleParam(hitData.initialTimeL, hitData.finalTimeL, intensityL);
+    wristAngleR = getWristAngleParam(hitData.initialTimeR, hitData.finalTimeR, intensityR, stateR(1));
+    wristAngleL = getWristAngleParam(hitData.initialTimeL, hitData.finalTimeL, intensityL, stateL(1));
 
     // 계수 행렬 구하기
     elbowCoefficientR = makeElbowCoefficient(stateR(1), elbowTimeR, elbowAngleR);
@@ -1574,6 +1566,7 @@ PathManager::ElbowAngle PathManager::getElbowAngleParam(double t1, double t2, in
 
     double intensityFactor;  // 1: 0%, 2: 0%, 3: 0%, 4: 90%, 5: 100%, 6: 110%, 7: 120%  
 
+    intensity = 5;  // wristAngle.pressAngle 변화 실험을 위해 일단 고정
     if (intensity <= 3)
     {
         intensityFactor = 0;
@@ -1603,12 +1596,19 @@ PathManager::ElbowAngle PathManager::getElbowAngleParam(double t1, double t2, in
     return elbowAngle;
 }
 
-PathManager::WristAngle PathManager::getWristAngleParam(double t1, double t2, int intensity)
+PathManager::WristAngle PathManager::getWristAngleParam(double t1, double t2, int intensity, int state)
 {
     WristAngle wristAngle;
     float T = (t2 - t1);        // 타격 전체 시간
     double intensityFactor;
-   
+
+    if (state == 1)
+    {
+        wristAngle.prevPressAngle = wristAngle.pressAngle;
+    }
+    wristAngle.pressAngle = intensity * -5.0 * M_PI / 180.0;
+
+    intensity = 5;  // wristAngle.pressAngle 변화 실험을 위해 일단 고정
     if (intensity < 5)
     {
         intensityFactor = 0.25 * intensity - 0.25;  // 1: 0%, 2: 25%, 3: 50%, 4: 75%
@@ -1798,7 +1798,7 @@ MatrixXd PathManager::makeWristCoefficient(int state, WristTime wT, WristAngle w
     else if (state == 1)
     {
         // Release
-        if (wA.pressAngle == wA.stayAngle)
+        if (wA.prevPressAngle == wA.stayAngle)
         {
             sol.resize(4, 1);
             sol << wA.stayAngle, 0, 0, 0;
@@ -1812,7 +1812,7 @@ MatrixXd PathManager::makeWristCoefficient(int state, WristTime wT, WristAngle w
                 1, wT.hitTime, wT.hitTime * wT.hitTime,
                 0, 1, 2 * wT.hitTime;
 
-            b << wA.pressAngle, wA.stayAngle, 0;
+            b << wA.prevPressAngle, wA.stayAngle, 0;
 
             A_1 = A.inverse();
             sol = A_1 * b;
@@ -2782,8 +2782,6 @@ void PathManager::pushDxlBuffer(double q0)
 
     vector<vector<float>> dxlCommand = {{0.0, 0.0, dxlQ.dxl1 + (float)q0}, {0.0, 0.0, dxlQ.dxl2}};
     dxlCommandBuffer.push(dxlCommand);
-
-    func.appendToCSV("DXL_log", false, dxlQ.dxl1 + (float)q0, dxlQ.dxl2);
 }
 
 void PathManager::pushCommandBuffer(VectorXd &Qi, double kpRatioR, double kpRatioL)

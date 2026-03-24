@@ -33,7 +33,7 @@
 #include "../include/managers/TestManager.hpp"
 #include "../include/USBIO_advantech/USBIO_advantech.hpp"
 #include "../include/tasks/Functions.hpp"
-#include "../DynamixelSDK-3.8.4/c++/include/dynamixel_sdk/dynamixel_sdk.h"
+#include "../include/dxl_sdk/dynamixel_sdk.h"
 
 using namespace std;
 
