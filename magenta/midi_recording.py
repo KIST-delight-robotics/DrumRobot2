@@ -231,7 +231,7 @@ class RecordingManager:
 
         while True:
             for msg in midi_input.iter_pending():
-                print(f"[Python] Recording - Message Received: {msg}")
+                # print(f"[Python] Recording - Message Received: {msg}")
 
                 if msg.type == 'note_on' and not first_note_received:
                     first_note_received = True
@@ -250,6 +250,7 @@ class RecordingManager:
                     if msg.type == 'note_on':
                         track.append(Message('note_on', channel=9, note=msg.note, velocity=msg.velocity, time=t))
                         last_message_time = time.time()
+                        print(f"[Python] Recording - Message Received: {msg}")
                     elif msg.type == 'note_off':
                         track.append(Message('note_on', channel=9, note=msg.note, velocity=0, time=t))
                         last_message_time = time.time()

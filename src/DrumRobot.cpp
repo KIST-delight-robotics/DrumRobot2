@@ -369,15 +369,15 @@ void DrumRobot::motorSettingCmd()
 void DrumRobot::initializeFolder()
 {
     std::string syncDir = "../magenta/sync";
-    std::string recordDir = "../magenta/record";
+    // std::string recordDir = "../magenta/record";
     std::string outputMidDir = "../magenta/generated";
-    std::string outputVelDir = "../magenta/velocity";
+    // std::string outputVelDir = "../magenta/velocity";
     std::string outputCode = "../include/magenta";
 
     func.clear_directory(syncDir);
-    func.clear_directory(recordDir);
+    // func.clear_directory(recordDir);
     func.clear_directory(outputMidDir);
-    func.clear_directory(outputVelDir);
+    // func.clear_directory(outputVelDir);
     func.clear_directory(outputCode);
 }
 
@@ -878,8 +878,20 @@ void DrumRobot::runPythonInThread()
         {
             std::string pythonCmd = pythonScript + " " + pythonArgs;
 
-            if (pythonArgs == "--sync" || pythonArgs == "--soundfb")
+            if (pythonArgs == "--sync")
             {
+                pythonCmd += " --path ../magenta/ &";   // 경로 설정 & 백그라운드 실행
+
+                int ret = std::system(pythonCmd.c_str());
+                if (ret != 0)
+                    std::cerr << "Python script failed to execute with code " << ret << std::endl;
+                
+                std::cout << "\nPython script is running... \n";
+            }
+            else if (pythonArgs == "--soundfb")
+            {
+                pythonCmd += " --bpm";  
+                pythonCmd += " " + std::to_string(pathManager.bpmOfScore);
                 pythonCmd += " --path ../magenta/ &";   // 경로 설정 & 백그라운드 실행
 
                 int ret = std::system(pythonCmd.c_str());

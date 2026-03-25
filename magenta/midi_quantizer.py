@@ -112,8 +112,15 @@ import pretty_midi
 
 # 1. 로봇 모터 매핑 정의
 ROBOT_MAP = {
-    38: 1, 41: 2, 45: 3, 47: 4, 48: 4, 50: 4, 
-    42: 5, 51: 6, 49: 7, 57: 8, 36: 10, 46: 11
+    38: 1, 
+    43: 2, 
+    45: 3, 
+    47: 4, 48: 4, 50: 4, 
+    42: 5, 22: 5, 46: 5, 26: 5, 
+    51: 6, 
+    49: 7, 
+    49: 8, 
+    36: 10
 }
 
 def quantize_drum_midi(input_path: str, bpm) -> str:
@@ -205,31 +212,32 @@ def quantize_drum_midi(input_path: str, bpm) -> str:
             writer = csv.writer(f)
             # 헤더 작성 (Time, ID, Velocity)
             writer.writerow(['Duration', 'ID', 'Velocity', 'Time'])
-            
+
             time_ex_note = 0
             for note in snapped_notes:
                 # 1. 매핑에 존재하는 피치만 저장
-                if note.pitch in ROBOT_MAP:
-                    inst_id = ROBOT_MAP[note.pitch]
-                    time_cur_note = note.start
-                    duration = (time_cur_note - time_ex_note) / (bpm / 100)     # 100bpm 기준 1박자 길이로 변환
-                    if duration > 0.6:      # 한 박 이상이거나 음표 간 쉼표 존재하는 경우
-                        n = duration / 0.6
-                        m = int(n)
-                        o = n - m
-                        if abs(o) > 1e-6:
-                            for k in range(m-1):
-                                writer.writerow([0.6, 0, 0, time_ex_note + 0.6*k])    # 0.6초 간격으로 쉼표
-                            writer.writerow([o*0.6, inst_id, note.velocity, time_cur_note])
-                        else:
-                            for k in range(m-1):
-                                writer.writerow([0.6, 0, 0, time_ex_note + 0.6*k])    # 0.6초 간격으로 쉼표
-                            writer.writerow([0.6, inst_id, note.velocity, time_cur_note])
-                    else:     
-                        # 2. 초(sec) 단위 시간 (소수점 4자리까지 표기 권장)
-                        # 4. 동시 입력은 루프가 돌면서 같은 시간 값으로 자연스럽게 여러 줄 생성됨
-                        writer.writerow([duration, inst_id, note.velocity, time_cur_note])
-                    time_ex_note = time_cur_note
+                # if note.pitch in ROBOT_MAP:
+                # inst_id = ROBOT_MAP[note.pitch]
+                inst_id = note.pitch
+                time_cur_note = round(note.start, 3)
+                duration = round((time_cur_note - time_ex_note) * (bpm / 100), 3)    # 100bpm 기준 1박자 길이로 변환
+                if duration > 0.6:      # 한 박 이상이거나 음표 간 쉼표 존재하는 경우
+                    n = duration / 0.6
+                    m = int(n)
+                    o = n - m
+                    if abs(o) > 1e-6:
+                        for k in range(m-1):
+                            writer.writerow([0.6, 0, 0, time_ex_note + 0.6*(k+1)])    # 0.6초 간격으로 쉼표
+                        writer.writerow([o*0.6, inst_id, note.velocity, time_cur_note])
+                    else:
+                        for k in range(m-1):
+                            writer.writerow([0.6, 0, 0, time_ex_note + 0.6*(k+1)])    # 0.6초 간격으로 쉼표
+                        writer.writerow([0.6, inst_id, note.velocity, time_cur_note])
+                else:     
+                    # 2. 초(sec) 단위 시간 (소수점 4자리까지 표기 권장)
+                    # 4. 동시 입력은 루프가 돌면서 같은 시간 값으로 자연스럽게 여러 줄 생성됨
+                    writer.writerow([duration, inst_id, note.velocity, time_cur_note])
+                time_ex_note = time_cur_note
                     
         print(f"CSV Saved: {csv_output_path}")
         
