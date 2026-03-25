@@ -1609,12 +1609,6 @@ PathManager::WristAngle PathManager::getWristAngleParam(double t1, double t2, in
     float T = (t2 - t1);        // 타격 전체 시간
     double intensityFactor;
 
-    if (state == 1)
-    {
-        wristAngle.prevPressAngle = wristAngle.pressAngle;
-    }
-    wristAngle.pressAngle = intensity * -5.0 * M_PI / 180.0;
-
     intensity = 5;  // wristAngle.pressAngle 변화 실험을 위해 일단 고정
     if (intensity < 5)
     {

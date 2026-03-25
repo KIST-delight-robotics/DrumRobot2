@@ -8,6 +8,10 @@ deactivate
 // 파이썬 테스트 실행
 python3 magenta/script.py --record --path magenta/ --repeat 4 --bpm 96 --param 5 6 6 5 4 4 5 6 6 5 6 6
 
+// 백그라운드에서 실행 중인 파이썬 프로세스 확인
+ps aux | grep magenta
+sudo kill (PID_NUMBER)
+
 // 전자드럼 연결 확인
 aconnect -l
 
