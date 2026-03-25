@@ -1420,7 +1420,7 @@ std::string DrumRobot::selectPlayMode()
     int triggerMode = 1;
     float inputWaitMs = 3000.0; // 3s
     static std::string txtFileName = "null";
-    std::string txtPath = txtBaseFolderPath + txtFileName;;
+    std::string txtPath = txtBaseFolderPath + txtFileName;
     std::string wavFileName = "null";
 
     while(cnt < maxAttempts)
@@ -1445,7 +1445,6 @@ std::string DrumRobot::selectPlayMode()
         {
             std::cout << "\nEnter Music Code Name: ";
             std::cin >> txtFileName;
-
 
             if(txtFileName == "soundfb")
             {

@@ -125,7 +125,7 @@ class taskManager:
         rec = RecordingManager(self.device_name, self.bpm, self.base_path)
 
         recording_file_name = self.recording_file_path + 'soundfb.mid'
-        rec.record_for_sec(recording_file_name, 5, 50)
+        rec.record_for_sec(output_file=recording_file_name, wait_second=5, time_record=50)
 
         quantize_midi_file = quantize_drum_midi(recording_file_name, self.bpm)
         print(f"\n[Python] quantized MIDI saved at : {quantize_midi_file}")
