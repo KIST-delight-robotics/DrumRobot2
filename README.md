@@ -33,7 +33,7 @@ graph LR
     subgraph Brain ["🧠 AI Agent Process (Python / Jetson GPU)"]
         direction TB
         Mic((Mic Input)) --> STT["Whisper<br/>(Local STT)"]
-        STT --> LLM{"Qwen-3 30B (Q4_K_M)<br/>via Ollama Engine<br/>w/ Harness Engineering"}
+        STT --> LLM{"Qwen-3 4B classifier, Qwen-3 30B planner pipeline"}
         LLM --> TTS["MeloTTS<br/>(Local TTS)"]
         LLM --> PySocket["TCP Client Socket"]
         
