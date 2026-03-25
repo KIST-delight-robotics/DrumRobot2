@@ -854,12 +854,12 @@ void PathManager::genTaskSpaceTrajectory(MatrixXd &measureMatrix, int n)
 
         taskSpaceQueue.push(TT);
 
-        // // 데이터 저장
-        // std::string fileName;
-        // fileName = "Trajectory_R";
-        // func.appendToCSV(fileName, false, TT.trajectoryR[0], TT.trajectoryR[1], TT.trajectoryR[2]);
-        // fileName = "Trajectory_L";
-        // func.appendToCSV(fileName, false, TT.trajectoryL[0], TT.trajectoryL[1], TT.trajectoryL[2]);
+        // 데이터 저장
+        std::string fileName;
+        fileName = "Trajectory_R";
+        func.appendToCSV(fileName, false, TT.trajectoryR[0], TT.trajectoryR[1], TT.trajectoryR[2]);
+        fileName = "Trajectory_L";
+        func.appendToCSV(fileName, false, TT.trajectoryL[0], TT.trajectoryL[1], TT.trajectoryL[2]);
         // fileName = "S";
         // func.appendToCSV(fileName, false, sR, sL);
 
@@ -1173,6 +1173,13 @@ VectorXd PathManager::makeTaskSpacePath(VectorXd &Pi, VectorXd &Pf, double s)
             // Ps(2) = a * std::pow(s - 1, degree) + b;
         }
     }
+
+    // // 2차 Bézier curve
+    // double h = 0.2 * std::abs(Pi(2) - Pf(2));   // 제어점 높이 (시작점과 끝점의 높이 차이의 20%)
+    // VectorXd Pm = 0.5 * (Pf + Pi);   // 중간 제어점 (시작점과 끝점의 중간 위치)
+    // Pm(2) += h;    // 중간 제어점 높이 조절
+
+    // VectorXd Ps = std::pow(1 - s, 2) * Pi + 2 * (1 - s) * s * Pm + std::pow(s, 2) * Pf;
 
     return Ps;
 }
