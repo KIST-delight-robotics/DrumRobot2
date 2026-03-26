@@ -1,6 +1,7 @@
 // DrumRobot2/src/DrumRobot.cpp
 
 #include "../include/tasks/DrumRobot.hpp"
+#include "../include/managers/SilCommandPipeWriter.hpp"
 
 using namespace std;
 
@@ -226,6 +227,8 @@ void DrumRobot::initializeCanManager()
 
 void DrumRobot::motorSettingCmd()
 {
+    virtualMaxonMotor.clear();
+
     // Count Maxon Motors
     for (const auto &motor_pair : motors)
     {
@@ -266,6 +269,12 @@ void DrumRobot::motorSettingCmd()
         shared_ptr<GenericMotor> motor = motorPair.second;
         if (shared_ptr<MaxonMotor> maxonMotor = dynamic_pointer_cast<MaxonMotor>(motorPair.second))
         {
+            if (canManager.isSilModeEnabled() && !maxonMotor->isConected)
+            {
+                std::cout << "[SIL] Skip Maxon setup for disconnected motor [" << name << "]" << std::endl;
+                continue;
+            }
+
             // CSP Settings
             maxoncmd.getCSPMode(*maxonMotor, &frame);
             canManager.sendAndRecv(motor, frame);
@@ -512,6 +521,11 @@ void DrumRobot::maxonMotorEnable()
         shared_ptr<GenericMotor> motor = motorPair.second;
         if (shared_ptr<MaxonMotor> maxonMotor = dynamic_pointer_cast<MaxonMotor>(motor))
         {
+            if (canManager.isSilModeEnabled() && !maxonMotor->isConected)
+            {
+                continue;
+            }
+
             maxoncmd.getHomeMode(*maxonMotor, &frame);
             canManager.txFrame(motor, frame);
 
@@ -561,6 +575,11 @@ void DrumRobot::setMaxonMotorMode(string targetMode)
         shared_ptr<GenericMotor> motor = motorPair.second;
         if (shared_ptr<MaxonMotor> maxonMotor = dynamic_pointer_cast<MaxonMotor>(motorPair.second))
         {
+            if (canManager.isSilModeEnabled() && !maxonMotor->isConected)
+            {
+                continue;
+            }
+
             if (targetMode == "CSV")    // Cyclic Sync Velocity Mode
             {
                 maxoncmd.getCSVMode(*maxonMotor, &frame);
@@ -751,9 +770,27 @@ void DrumRobot::sendLoopForThread()
         {
             if (!pathManager.dxlCommandBuffer.empty())
             {
+                static SilCommandPipeWriter silWriter;
+                silWriter.setEnabled(canManager.isSilModeEnabled());
+
                 // 맨 앞 원소 꺼낸 값으로 SyncWrite 실행
                 vector<vector<float>> dxlCommand = pathManager.dxlCommandBuffer.front();
                 pathManager.dxlCommandBuffer.pop();
+
+                // 1차 command-level SIL exporter 삽입 지점:
+                // 실제로 소비되는 DXL command를 head_pan/head_tilt 값으로 pipe에 내보낸다.
+                if (dxlCommand.size() >= 2)
+                {
+                    if (dxlCommand[0].size() >= 3)
+                    {
+                        silWriter.writeDxl("head_pan", dxlCommand[0][2]);
+                    }
+                    if (dxlCommand[1].size() >= 3)
+                    {
+                        silWriter.writeDxl("head_tilt", dxlCommand[1][2]);
+                    }
+                }
+
                 dxl.syncWrite(dxlCommand);
 
                 // float des1 = (float)dxlCommand[0][2];

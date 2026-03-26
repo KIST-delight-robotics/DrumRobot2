@@ -97,6 +97,7 @@ public:
 
     bool sendMotorFrame(const std::shared_ptr<GenericMotor> &motor);
     bool setCANFrame(std::map<std::string, bool>& fixFlags, int cycleCounter);
+    bool isSilModeEnabled() const { return silModeEnabled; }
 
     //////////////////////////////////////// Receive
     void readFramesFromAllSockets();
@@ -122,6 +123,7 @@ private:
     std::map<std::string, std::shared_ptr<GenericMotor>> &motors;
     Functions &func;
     USBIO &usbio;
+    bool silModeEnabled = false;
     
     TMotorCommandParser tmotorcmd;
     MaxonCommandParser maxoncmd;

@@ -26,7 +26,7 @@ public:
     ~AgentAction();
 
     // [Main Function] LLM에서 받은 문자열 명령을 해석하고 실행하는 함수
-    // 예: "[CMD:look:10,20]" -> 고개 돌리기 실행
+    // 예: "[CMD:look:10,90]" -> 고개 돌리기 실행
     void executeCommand(std::string fullCmd);
 
     // JSON payload 또는 기존 단일 문자열 명령을 공통 포맷으로 풀어낸다.
@@ -57,7 +57,7 @@ private:
     // --- Action Policies (구체적 행동 정의) ---
     
     // 1. 시선 제어 (Look At)
-    // pan: 좌우(-90~90), tilt: 상하(-45~45)
+    // pan: 좌우(-90~90), tilt: 상하(60~120)
     void policy_lookAt(float pan, float tilt);
 
     // 2. 제스처 표현 (Body Language)

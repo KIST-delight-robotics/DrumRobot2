@@ -10,7 +10,6 @@ from typing import Dict, Optional, Tuple
 Color = Tuple[float, float, float, float]
 RgbColor = Tuple[float, float, float]
 
-
 CHARCOAL: Color = (0.08, 0.08, 0.08, 1.0)
 GRAPHITE: Color = (0.17, 0.18, 0.20, 1.0)
 STEEL: Color = (0.34, 0.37, 0.41, 1.0)

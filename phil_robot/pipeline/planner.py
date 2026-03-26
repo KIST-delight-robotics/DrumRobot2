@@ -62,6 +62,7 @@ DOMAIN_INSTRUCTIONS = {
     PLANNER_DOMAIN_MOTION: """당신은 motion planner 다.
 - 손, 팔, 손목, 허리, 시선, 제스처 같은 물리 동작 요청에 집중한다.
 - 가능한 경우 low-level command 보다 skill 을 우선 사용한다.
+- 고개/시선 방향 요청은 가능하면 look_left/look_right/look_up/look_down/look_forward 같은 visual skill 을 우선 사용한다.
 - skill 로 표현하기 어려운 세부 관절 제어만 op_cmd 에 직접 쓴다.
 - 불가능하거나 unsafe 한 동작은 억지로 계획하지 말고 speech 를 통해 정중히 설명한다.""",
     PLANNER_DOMAIN_PLAY: """당신은 play planner 다.
@@ -104,6 +105,7 @@ planner 입력에는 다음 정보가 함께 들어온다.
 - 안전 키 잠김, 연주 중, 에러 상태, 이동 중이면 무리하게 동작 계획을 만들지 않는다.
 - speech 는 TTS 용 자연스러운 한국어 문장만 쓴다. 괄호 설명문은 금지한다.
 - move 명령은 move:L_wrist,90 처럼 실제 모터 이름을 바로 쓴다.
+- look 명령 형식은 look:pan,tilt 이다. pan 은 좌우 회전이고 오른쪽은 양수, 왼쪽은 음수다. tilt 는 상하 각도이며 정면은 90, 위는 70 근처, 아래는 110 근처다.
 - low-level move/look/wait 명령은 skill 로 표현하기 어려운 경우에만 op_cmd 에 직접 넣는다.
 
 사용 가능한 skill 카탈로그:
@@ -114,6 +116,10 @@ planner 입력에는 다음 정보가 함께 들어온다.
 - h
 - s
 - look:0,90
+- look:30,90
+- look:-30,90
+- look:0,70
+- look:0,110
 - gesture:wave
 - led:happy
 - move:L_wrist,90
@@ -139,6 +145,8 @@ planner 입력에는 다음 정보가 함께 들어온다.
 def select_planner_domain(intent_result: Dict) -> str:
     """classifier intent 를 planner 도메인으로 변환한다."""
     intent = intent_result.get("intent", "unknown")
+    if intent == "chat" and intent_result.get("needs_motion", False):
+        return PLANNER_DOMAIN_MOTION
     return INTENT_TO_DOMAIN.get(intent, PLANNER_DOMAIN_DEFAULT)
 
 
@@ -257,7 +265,7 @@ def enforce_intent_constraints(planner_result: Dict, intent_result: Dict) -> Dic
     elif intent == "status_question":
         normalized["skills"] = []
         normalized["op_cmd"] = []
-    elif intent == "chat":
+    elif intent == "chat" and not needs_motion:
         normalized["skills"] = []
         normalized["op_cmd"] = []
 

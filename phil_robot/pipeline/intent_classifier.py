@@ -20,6 +20,21 @@ DEFAULT_INTENT_RESULT = {
 
 MOTION_REQUIRED_INTENTS = {"motion_request", "play_request", "stop_request"}
 IDENTITY_CHAT_KEYWORDS = ["이름", "누구", "정체", "자기소개"]
+MOTION_CHAT_KEYWORDS = [
+    "손",
+    "팔",
+    "손목",
+    "허리",
+    "고개",
+    "시선",
+    "흔들",
+    "움직",
+    "들어",
+    "돌려",
+    "봐",
+    "만세",
+    "인사",
+]
 ANGLE_STATUS_PATTERN = re.compile(r"(각도|몇\s*도|몇도)")
 AMBIGUOUS_FOLLOW_UPS = {
     "왜",
@@ -133,6 +148,18 @@ def normalize_intent_result(intent_result, user_text):
         result["needs_dialogue"] = True
         if not result.get("risk_level"):
             result["risk_level"] = "low"
+
+    # greeting 이 섞여 있어도 실제 물리 동작 요청이 보이면 motion_request 로 승격한다.
+    if (
+        result["intent"] == "chat"
+        and result.get("needs_motion", False)
+        and any(keyword in normalized_text for keyword in MOTION_CHAT_KEYWORDS)
+    ):
+        result["intent"] = "motion_request"
+        result["needs_motion"] = True
+        result["needs_dialogue"] = True
+        if result.get("risk_level") == "low":
+            result["risk_level"] = "medium"
 
     # classifier 가 intent 는 맞췄지만 motion flag 를 놓치는 경우를 코드에서 보정한다.
     if result["intent"] in MOTION_REQUIRED_INTENTS:

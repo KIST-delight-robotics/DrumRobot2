@@ -26,7 +26,7 @@ public:
 
     // For CAN communication
     uint32_t nodeId;
-    int socket;
+    int socket = -1;
     bool isConected = false;
 
     // Motors Feature

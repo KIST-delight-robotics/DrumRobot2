@@ -9,6 +9,11 @@ except ImportError:
 
 DEFAULT_RELATIVE_STEP_DEG = 15.0
 JOINT_LIMIT_EPSILON_DEG = 0.1
+LOOK_FORWARD_PAN_DEG = 0.0
+LOOK_FORWARD_TILT_DEG = 90.0
+LOOK_SIDE_PAN_DEG = 30.0
+LOOK_UP_TILT_DEG = 70.0
+LOOK_DOWN_TILT_DEG = 110.0
 
 JOINT_ALIASES = [
     ("왼쪽 손목", "L_wrist", "왼쪽 손목"),
@@ -26,6 +31,12 @@ JOINT_ALIASES = [
 
 UP_KEYWORDS = ["올려", "올리", "들어", "높여", "위로"]
 DOWN_KEYWORDS = ["내려", "내리", "낮춰", "아래로"]
+HEAD_DIRECTION_KEYWORDS = ["고개", "머리", "시선", "얼굴", "정면"]
+LOOK_RIGHT_KEYWORDS = ["오른쪽", "오른편", "우측"]
+LOOK_LEFT_KEYWORDS = ["왼쪽", "왼편", "좌측"]
+LOOK_FORWARD_KEYWORDS = ["정면", "앞", "앞쪽"]
+LOOK_UP_KEYWORDS = ["위", "위쪽", "위로", "올려다", "쳐다"]
+LOOK_DOWN_KEYWORDS = ["아래", "아래쪽", "아래로", "내려다", "숙여"]
 ABSOLUTE_DEGREE_PATTERN = re.compile(r"(-?\d+(?:\.\d+)?)\s*도로")
 RELATIVE_DEGREE_PATTERN = re.compile(r"(-?\d+(?:\.\d+)?)\s*도")
 
@@ -43,6 +54,12 @@ def resolve_motion_commands(user_text, op_cmds, robot_state):
     이 레이어는 planner를 본격 도입하기 전의 얇은 motion resolver 역할을 한다.
     """
     result = MotionResolutionResult(op_cmds=list(op_cmds))
+
+    look_op_cmd = parse_head_look_command(user_text)
+    if look_op_cmd is not None:
+        result.op_cmds = _replace_or_append_look_op_cmd(result.op_cmds, look_op_cmd)
+        result.warnings.append(f"고개 방향 해석: {look_op_cmd}")
+
     intent = parse_relative_motion_intent(user_text, robot_state=robot_state)
     if intent is None:
         return result
@@ -84,6 +101,44 @@ def resolve_motion_commands(user_text, op_cmds, robot_state):
         f"상대 이동 해석: {intent['joint_name']} {current_angle:.1f} -> {target_angle:.1f}"
     )
     return result
+
+
+def parse_head_look_command(user_text):
+    """
+    고개/시선 방향 요청을 look:pan,tilt 명령으로 정규화한다.
+    LLM 이 pan/tilt 축을 헷갈려도 이 레이어에서 의미를 바로잡는다.
+    """
+    text = (user_text or "").strip()
+    if not text:
+        return None
+
+    if not any(keyword in text for keyword in HEAD_DIRECTION_KEYWORDS):
+        return None
+
+    pan_deg = None
+    tilt_deg = None
+
+    if any(keyword in text for keyword in LOOK_RIGHT_KEYWORDS):
+        pan_deg = LOOK_SIDE_PAN_DEG
+    elif any(keyword in text for keyword in LOOK_LEFT_KEYWORDS):
+        pan_deg = -LOOK_SIDE_PAN_DEG
+    elif any(keyword in text for keyword in LOOK_FORWARD_KEYWORDS):
+        pan_deg = LOOK_FORWARD_PAN_DEG
+
+    if any(keyword in text for keyword in LOOK_UP_KEYWORDS):
+        tilt_deg = LOOK_UP_TILT_DEG
+    elif any(keyword in text for keyword in LOOK_DOWN_KEYWORDS):
+        tilt_deg = LOOK_DOWN_TILT_DEG
+
+    if pan_deg is None and tilt_deg is None:
+        return None
+
+    if pan_deg is None:
+        pan_deg = LOOK_FORWARD_PAN_DEG
+    if tilt_deg is None:
+        tilt_deg = LOOK_FORWARD_TILT_DEG
+
+    return _format_look_command(pan_deg, tilt_deg)
 
 
 def parse_relative_motion_intent(user_text, robot_state=None):
@@ -180,6 +235,20 @@ def _format_move_command(joint_name, target_angle):
     return f"move:{joint_name},{target_text}"
 
 
+def _format_look_command(pan_deg, tilt_deg):
+    if float(pan_deg).is_integer():
+        pan_text = str(int(pan_deg))
+    else:
+        pan_text = f"{pan_deg:.1f}"
+
+    if float(tilt_deg).is_integer():
+        tilt_text = str(int(tilt_deg))
+    else:
+        tilt_text = f"{tilt_deg:.1f}"
+
+    return f"look:{pan_text},{tilt_text}"
+
+
 def _replace_or_append_move_op_cmd(op_cmds, move_op_cmd):
     updated_commands = []
     replaced = False
@@ -193,6 +262,23 @@ def _replace_or_append_move_op_cmd(op_cmds, move_op_cmd):
 
     if not replaced:
         updated_commands.append(move_op_cmd)
+
+    return updated_commands
+
+
+def _replace_or_append_look_op_cmd(op_cmds, look_op_cmd):
+    updated_commands = []
+    replaced = False
+
+    for command in op_cmds:
+        if command.startswith("look:") and not replaced:
+            updated_commands.append(look_op_cmd)
+            replaced = True
+        elif not command.startswith("look:"):
+            updated_commands.append(command)
+
+    if not replaced:
+        updated_commands.append(look_op_cmd)
 
     return updated_commands
 

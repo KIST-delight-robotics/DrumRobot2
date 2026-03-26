@@ -1,11 +1,25 @@
 // CanManager.cpp
 #include "../include/managers/CanManager.hpp"
+#include "../include/managers/SilCommandPipeWriter.hpp"
+#include <cstdlib>
 
 // For Qt
 // #include "../managers/CanManager.hpp"
 CanManager::CanManager(std::map<std::string, std::shared_ptr<GenericMotor>> &motorsRef, Functions &funRef, USBIO &usbioRef)
     : motors(motorsRef), func(funRef), usbio(usbioRef)
 {
+    const char *silModeEnv = std::getenv("DRUM_SIL_MODE");
+    if (silModeEnv != nullptr)
+    {
+        silModeEnabled = std::string(silModeEnv) == "1";
+        std::cout << "[SIL] DRUM_SIL_MODE=" << silModeEnv
+                  << " -> SIL mode " << (silModeEnabled ? "enabled" : "disabled") << std::endl;
+    }
+    else
+    {
+        silModeEnabled = false;
+        std::cout << "[SIL] DRUM_SIL_MODE not set -> SIL mode disabled" << std::endl;
+    }
 }
 
 CanManager::~CanManager()
@@ -452,10 +466,15 @@ bool CanManager::setMotorsSocket()
                     std::cerr << "--------------> CAN NODE ID " << motor->nodeId << " Connected. " << "Motor [" << name << "]\n";
                     allMotorsUnConected = false;
                 }
-                else
+                else if (!silModeEnabled)
                 {
                     std::cerr << "CAN NODE ID " << motor->nodeId << " Not Connected. " << "Motor [" << name << "]\n";
                     it = motors.erase(it);
+                }
+                else
+                {
+                    std::cerr << "CAN NODE ID " << motor->nodeId << " Not Connected. " << "Motor [" << name
+                              << "] (kept for SIL mode)\n";
                 }
 
                 break;
@@ -677,6 +696,9 @@ bool CanManager::safetyCheckSendT(std::shared_ptr<TMotor> &tMotor, TMotorData &t
 
 bool CanManager::setCANFrame(std::map<std::string, bool>& fixFlags, int cycleCounter)
 {
+    static SilCommandPipeWriter silWriter;
+    silWriter.setEnabled(silModeEnabled);
+
     for (auto &motor_pair : motors)
     {
         std::shared_ptr<GenericMotor> motor = motor_pair.second;
@@ -706,12 +728,21 @@ bool CanManager::setCANFrame(std::map<std::string, bool>& fixFlags, int cycleCou
                     usbio.setUSBIO4761(0, tData.useBrake == 1); //세팅
                     usbio.outputUSBIO4761();                    //실행
                 }
-                
-                setTMotorCANFrame(tMotor, tData);
 
-                if(!safetyCheckSendT(tMotor, tData))
+                const bool useSilBypass = silModeEnabled && !tMotor->isConected;
+
+                if(!useSilBypass && !safetyCheckSendT(tMotor, tData))
                 {
                     return false;
+                }
+
+                // 1차 command-level SIL exporter 삽입 지점:
+                // commandBuffer에서 실제로 소비되는 TMotorData를 FIFO/pipe로 내보낸다.
+                silWriter.writeTMotor(motorName, *tMotor, tData);
+
+                if (!useSilBypass)
+                {
+                    setTMotorCANFrame(tMotor, tData);
                 }
             }
         }
@@ -731,7 +762,15 @@ bool CanManager::setCANFrame(std::map<std::string, bool>& fixFlags, int cycleCou
                 maxonMotor->commandBuffer.pop();
             }
 
-            setMaxonCANFrame(maxonMotor, mData);
+            // 1차 command-level SIL exporter 삽입 지점:
+            // commandBuffer에서 실제로 소비되는 MaxonData를 FIFO/pipe로 내보낸다.
+            silWriter.writeMaxon(motorName, *maxonMotor, mData);
+
+            const bool useSilBypass = silModeEnabled && !maxonMotor->isConected;
+            if (!useSilBypass)
+            {
+                setMaxonCANFrame(maxonMotor, mData);
+            }
         }
     }
     return true;
@@ -791,6 +830,11 @@ void CanManager::deactivateAllCanPorts()
 
 bool CanManager::sendMotorFrame(const std::shared_ptr<GenericMotor> &motor)
 {
+    if (silModeEnabled && !motor->isConected)
+    {
+        return true;
+    }
+
     ssize_t written = write(motor->socket, &motor->sendFrame, sizeof(motor->sendFrame));
     if (written != sizeof(motor->sendFrame))
     {

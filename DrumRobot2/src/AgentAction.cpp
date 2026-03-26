@@ -165,17 +165,18 @@ void AgentAction::policy_gesture(std::string type)
     // 2. 끄덕임 (Nod) - DXL 모터 사용
     else if (type == "nod"){
         // 끄덕임: 아래 -> 위 -> 정면
-        policy_lookAt(0, 110); // 아래
+        policy_lookAt(0, 70); // 아래
         // 연속 동작은 큐에 순차적으로 넣으면 됨 (PathManager 구조상)
-        // 실제로는 시간 지연이 필요할 수 있음. 
+        // 실제로는 시간 지연이 필요할 수 있음.
+        policy_lookAt(0, 110); // 위 
         // V1에서는 단순하게 구현.
         policy_lookAt(0, 90);  // 정면
     }
     // 3. 도리도리 (Shake) - 좌우로 고개 흔들기
     else if (type == "shake"){
-        policy_lookAt(-30, 0);
-        policy_lookAt(30, 0);
-        policy_lookAt(0, 0);
+        policy_lookAt(-30, 90);
+        policy_lookAt(30, 90);
+        policy_lookAt(0, 90);
     }
     // 4. 환호 (Hurray) - 양팔 만세
     else if (type == "hurray" || type == "happy") {
@@ -188,7 +189,7 @@ void AgentAction::policy_gesture(std::string type)
         policy_moveJoint("L_arm3", 15.0);
         
         // 고개 들기 (DXL)
-        policy_lookAt(0, 70); 
+        policy_lookAt(0, 110); 
     }
 }
 
