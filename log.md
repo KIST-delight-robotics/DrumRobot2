@@ -4,6 +4,9 @@
 최신 항목이 위로 오도록 추가합니다.
 
 ## 2026-03-26
+- 15:29 KST (UTC+9) — `drum_intheloop` URDF 폴더에서 현재 Python command-level simulator가 쓰지 않는 ROS/Gazebo 패키징 잔재를 제거해, 필요한 자산이 `URDF/STL/runtime patch` 축으로만 남도록 정리했습니다.
+  - 수정 파일: `drum_intheloop/urdf/drumrobot_RL_urdf/CMakeLists.txt`, `drum_intheloop/urdf/drumrobot_RL_urdf/package.xml`, `drum_intheloop/urdf/drumrobot_RL_urdf/config/joint_names_drumrobot_RL_urdf.yaml`, `drum_intheloop/urdf/drumrobot_RL_urdf/launch/display.launch`, `drum_intheloop/urdf/drumrobot_RL_urdf/launch/gazebo.launch`, `log.md`
+  - 메모: 현재 `drum_intheloop` 실행 경로는 `sil/urdf_tools.py`가 원본 URDF와 mesh만 직접 참조하고, ROS launch/config/package 메타파일은 사용하지 않으므로 안전한 legacy cleanup으로 판단했습니다.
 - 15:25 KST (UTC+9) — 루트 `.gitignore`에 `phil_intheloop/` 전체를 legacy mock/simulator workspace로 추가해, 앞으로 이 디렉터리 아래의 새 미추적 파일이 기본적으로 버전 관리 대상에 올라오지 않도록 정리했습니다.
   - 수정 파일: `.gitignore`, `log.md`
   - 메모: `phil_intheloop`는 이미 다수의 파일이 Git에 추적 중이므로, 이번 변경은 “새 파일 무시” 성격이고 기존 tracked 파일을 자동으로 untrack하지는 않습니다.
