@@ -4,6 +4,15 @@
 최신 항목이 위로 오도록 추가합니다.
 
 ## 2026-03-26
+- 17:48 KST (UTC+9) — `AgentSocket`의 JSON 수신 보조 함수와 루프 상태 변수를 `trimText`, `isJsonStart`, `hasFullJson`, `brace_level`, `in_quote`, `cmd_text`처럼 다시 정리해, 문자열 다듬기/JSON 시작 판별/완성 판별 의미가 이름만으로 보이게 리팩터링했습니다.
+  - 수정 파일: `DrumRobot2/include/managers/AgentSocket.hpp`, `DrumRobot2/src/AgentSocket.cpp`, `log.md`
+  - 메모: 기존 `trimPayload`, `trimmed`, `inString`, `braceDepth`, `collectingJson` 같은 이름은 유지비가 높다고 보고 교체했고, 닫는 중괄호가 먼저 나오는 비정상 케이스는 `false`로 빠지도록 판별도 약간 보강했습니다.
+- 17:48 KST (UTC+9) — `makeStateJson()`의 deadband 변수명을 `min_diff_deg`로 다시 정리하고 `wide_band` 분기 변수는 제거해, “현재값과 이전값의 최소 갱신 차이”라는 의미가 바로 읽히게 했습니다.
+  - 수정 파일: `DrumRobot2/src/DrumRobot.cpp`, `log.md`
+  - 메모: 손목/발목만 `1.0 deg`, 나머지는 `0.5 deg`라는 기존 동작은 유지했고, 이름만 읽어도 threshold 의미가 드러나도록 단순화했습니다.
+- 17:45 KST (UTC+9) — `makeStateJson()`의 관절 각도 변수명을 `curr_deg`, `prev_deg`, `dead_band_deg`로 다시 다듬고, `joint_deg_cache`가 “남은 각도”가 아니라 “마지막으로 전송에 반영한 각도 캐시”라는 뜻이 주석에서 바로 읽히게 정리했습니다.
+  - 수정 파일: `DrumRobot2/include/tasks/DrumRobot.hpp`, `DrumRobot2/src/DrumRobot.cpp`, `log.md`
+  - 메모: 동작은 그대로 두고, 라디안→도 변환값과 deadband 비교 기준의 의미가 변수명만으로 드러나도록 맞췄습니다.
 - 17:22 KST (UTC+9) — 루트 `AGENTS.md`에 변수명/표현 규칙을 추가하고, `DrumRobot2`의 `makeStateJson()`을 `auto`, 람다, 긴 변수명 없이 다시 정리해 읽는 즉시 역할이 보이도록 리팩터링했습니다.
   - 수정 파일: `AGENTS.md`, `DrumRobot2/include/tasks/DrumRobot.hpp`, `DrumRobot2/src/DrumRobot.cpp`, `log.md`
   - 메모: 새 규칙은 3단어 이하 변수명, 약어의 언더바 분리, `auto`/후행 반환형/`ptr->field` 기본 지양을 담고 있고, 함수 쪽은 `joint_list`, `live_deg`, `joint_deg_cache` 같은 짧은 이름으로 맞췄습니다.

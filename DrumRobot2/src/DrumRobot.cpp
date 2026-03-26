@@ -1057,28 +1057,28 @@ string DrumRobot::makeStateJson()
     json_stream << "\"current_angles\": {";
     for (size_t joint_idx = 0; joint_idx < joint_list.size(); ++joint_idx) {
         const string& joint_name = joint_list[joint_idx];
-        float live_deg = 0.0f;
+        float curr_deg = 0.0f;
 
         if (motors.count(joint_name) > 0) {
             shared_ptr<GenericMotor> motor_ptr = motors.at(joint_name);
             if (motor_ptr) {
-                live_deg = (*motor_ptr).jointAngle * 180.0f / M_PI;
+                curr_deg = (*motor_ptr).jointAngle * 180.0f / M_PI;
             }
         }
 
+        // 허용 오차: 0.5도 (일반 관절), 1.0도 (손목/발목) - 이보다 차이가 크면 캐시 업데이트
         if (!has_joint_cache || joint_deg_cache.count(joint_name) == 0) {
-            joint_deg_cache[joint_name] = live_deg;
+            joint_deg_cache[joint_name] = curr_deg;
         } else {
-            float last_deg = joint_deg_cache[joint_name];
-            float band_deg = 0.5f;
-            bool wide_band = (joint_name.find("wrist") != string::npos || joint_name.find("foot") != string::npos);
+            float prev_deg = joint_deg_cache[joint_name];
+            float min_diff_deg = 0.5f;
 
-            if (wide_band) {
-                band_deg = 1.0f;
+            if (joint_name.find("wrist") != string::npos || joint_name.find("foot") != string::npos) {
+                min_diff_deg = 1.0f;
             }
 
-            if (fabs(live_deg - last_deg) >= band_deg) {
-                joint_deg_cache[joint_name] = live_deg;
+            if (fabs(curr_deg - prev_deg) >= min_diff_deg) {
+                joint_deg_cache[joint_name] = curr_deg;
             }
         }
 

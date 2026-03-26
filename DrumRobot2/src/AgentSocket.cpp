@@ -1,7 +1,8 @@
 // AgentSocket.cpp
 #include "../include/managers/AgentSocket.hpp"
+#include <cctype>
 
-AgentSocket::AgentSocket(int port) : port(port), server_fd(-1), new_socket(-1), keepRunning(false) {
+AgentSocket::AgentSocket(int port) : server_fd(-1), new_socket(-1), port(port), keepRunning(false) {
     addrlen = sizeof(address);
 }
 
@@ -9,58 +10,65 @@ AgentSocket::~AgentSocket() {
     stop();
 }
 
-std::string AgentSocket::trimPayload(const std::string& payload) const {
-    size_t start = 0;
-    while (start < payload.size() && std::isspace(static_cast<unsigned char>(payload[start]))) {
-        start++;
+// 문자열 앞뒤 공백 제거 함수
+std::string AgentSocket::trimText(const std::string& text) const {
+    size_t left_idx = 0;
+    while (left_idx < text.size() && std::isspace(static_cast<unsigned char>(text[left_idx]))) {
+        left_idx++;
     }
 
-    size_t end = payload.size();
-    while (end > start && std::isspace(static_cast<unsigned char>(payload[end - 1]))) {
-        end--;
+    size_t right_idx = text.size();
+    while (right_idx > left_idx && std::isspace(static_cast<unsigned char>(text[right_idx - 1]))) {
+        right_idx--;
     }
 
-    return payload.substr(start, end - start);
+    return text.substr(left_idx, right_idx - left_idx);
 }
 
-bool AgentSocket::isJsonPayloadStart(const std::string& payload) const {
-    std::string trimmed = trimPayload(payload);
-    return !trimmed.empty() && trimmed.front() == '{';
+bool AgentSocket::isJsonStart(const std::string& text) const {
+    std::string clean_text = trimText(text);
+    return !clean_text.empty() && clean_text.front() == '{';
 }
 
-bool AgentSocket::isCompleteJsonPayload(const std::string& payload) const {
-    int braceDepth = 0;
-    bool inString = false;
-    bool escape = false;
+// JSON 문자열이 완전한지 확인하는 함수 (중괄호 짝 검사 + 문자열 내부 무시)
+bool AgentSocket::hasFullJson(const std::string& text) const {
+    int brace_level = 0;
+    bool in_quote = false;
+    bool escape_next = false;
+    bool saw_brace = false;
 
-    for (char ch : payload) {
-        if (escape) {
-            escape = false;
+    for (char ch : text) {
+        if (escape_next) {
+            escape_next = false;
             continue;
         }
 
         if (ch == '\\') {
-            escape = true;
+            escape_next = true;
             continue;
         }
 
         if (ch == '"') {
-            inString = !inString;
+            in_quote = !in_quote;
             continue;
         }
 
-        if (inString) {
+        if (in_quote) {
             continue;
         }
 
         if (ch == '{') {
-            braceDepth++;
+            brace_level++;
+            saw_brace = true;
         } else if (ch == '}') {
-            braceDepth--;
+            brace_level--;
+            if (brace_level < 0) {
+                return false;
+            }
         }
     }
 
-    return braceDepth == 0 && !payload.empty();
+    return saw_brace && brace_level == 0;
 }
 
 // 큐 비우기 함수
@@ -135,16 +143,16 @@ void AgentSocket::runServerLoop() {
         std::cout << ">>> [Agent] Brain Connected! (Python Client)" << std::endl;
 
         // 2. 데이터 수신 루프
-        char buffer[1024] = {0};
-        std::string recvBuffer = ""; // ★ TCP 스트림 조립용 누적 버퍼 추가
-        std::string jsonPayloadBuffer = "";
-        bool collectingJson = false;
+        char read_buf[1024] = {0};
+        std::string line_buf = ""; // ★ TCP 스트림 조립용 누적 버퍼 추가
+        std::string json_buf = "";
+        bool read_json = false;
 
         while (keepRunning) {
-            memset(buffer, 0, sizeof(buffer));
-            int valread = read(new_socket, buffer, sizeof(buffer) - 1); // -1 to leave space for null terminator
+            memset(read_buf, 0, sizeof(read_buf));
+            int read_len = read(new_socket, read_buf, sizeof(read_buf) - 1); // -1 to leave space for null terminator
 
-            if (valread <= 0) { // 연결 끊김
+            if (read_len <= 0) { // 연결 끊김
                 std::cout << ">>> [Agent] Brain Disconnected." << std::endl;
                 close(new_socket);
                 new_socket = -1;
@@ -152,54 +160,54 @@ void AgentSocket::runServerLoop() {
             }
 
             // ★ 받은 데이터를 무조건 누적 버퍼에 뒤이어 붙입니다.
-            recvBuffer.append(buffer, valread);
+            line_buf.append(read_buf, read_len);
 
             // ★ '\n' 구분자를 찾아서 완전한 명령어 단위로 쪼개기
-            size_t pos;
-            while ((pos = recvBuffer.find('\n')) != std::string::npos) {
+            size_t line_end = 0;
+            while ((line_end = line_buf.find('\n')) != std::string::npos) {
                 // '\n' 앞까지 잘라서 하나의 명령어로 추출
-                std::string cmd = recvBuffer.substr(0, pos);
+                std::string cmd_text = line_buf.substr(0, line_end);
 
                 // 처리한 명령어와 '\n'은 누적 버퍼에서 삭제
-                recvBuffer.erase(0, pos + 1); 
+                line_buf.erase(0, line_end + 1); 
 
                 // 혹시 모를 캐리지 리턴(\r)이나 공백 찌꺼기 제거
-                if (!cmd.empty() && cmd.back() == '\r') {
-                    cmd.pop_back();
+                if (!cmd_text.empty() && cmd_text.back() == '\r') {
+                    cmd_text.pop_back();
                 }
 
-                cmd = trimPayload(cmd);
-                if (cmd.empty()) continue; // 빈 줄은 무시
+                cmd_text = trimText(cmd_text);
+                if (cmd_text.empty()) continue; // 빈 줄은 무시
 
-                if (collectingJson || isJsonPayloadStart(cmd)) {
-                    if (!collectingJson) {
-                        jsonPayloadBuffer.clear();
-                        collectingJson = true;
+                if (read_json || isJsonStart(cmd_text)) {
+                    if (!read_json) {
+                        json_buf.clear();
+                        read_json = true;
                     }
 
-                    if (!jsonPayloadBuffer.empty()) {
-                        jsonPayloadBuffer += "\n";
+                    if (!json_buf.empty()) {
+                        json_buf += "\n";
                     }
-                    jsonPayloadBuffer += cmd;
+                    json_buf += cmd_text;
 
-                    if (!isCompleteJsonPayload(jsonPayloadBuffer)) {
+                    if (!hasFullJson(json_buf)) {
                         continue;
                     }
 
-                    cmd = jsonPayloadBuffer;
-                    jsonPayloadBuffer.clear();
-                    collectingJson = false;
+                    cmd_text = json_buf;
+                    json_buf.clear();
+                    read_json = false;
                 }
 
                 // ★ 안전장치: 셔터(게이트)가 닫혀있으면 명령 폐기
                 if (!isGateOpen.load()) {
-                    std::cout << "🚫 [Safeguard] 로봇 보호 상태: 명령 폐기 -> " << cmd << std::endl;
+                    std::cout << "🚫 [Safeguard] 로봇 보호 상태: 명령 폐기 -> " << cmd_text << std::endl;
                     continue; 
                 }
 
                 // ★ 중요: 큐에 넣을 때는 자물쇠(Mutex) 잠그기
                 std::lock_guard<std::mutex> lock(queueMutex);
-                commandQueue.push(cmd);
+                commandQueue.push(cmd_text);
                 
             }
         }
@@ -213,9 +221,9 @@ std::string AgentSocket::popCommand() {
         return ""; // 명령 없음
     }
 
-    std::string cmd = commandQueue.front();
+    std::string cmd_text = commandQueue.front();
     commandQueue.pop();
-    return cmd;
+    return cmd_text;
 }
 
 bool AgentSocket::isConnected() {

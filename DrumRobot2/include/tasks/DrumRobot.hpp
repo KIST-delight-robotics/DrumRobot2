@@ -230,7 +230,7 @@ private:
     std::string nextSongCode = "test_one"; // 기본값 설정 (빈 값이면 에러 날 수 있음)
     std::string lastExecutedCmd = "None"; // 마지막으로 실행된 명령어 저장 변수
     std::string lastErrorReason = "None"; // 마지막으로 명령어 실행 실패 시 이유 저장 변수
-    std::map<std::string, float> joint_deg_cache; // 상태 전송용 deadband 캐시
+    std::map<std::string, float> joint_deg_cache; // 마지막으로 전송에 반영한 관절 각도(deg) 캐시
     bool has_joint_cache = false;
     
     bool isLockKeyRemoved = false; // 락키 제거 여부 확인용 변수

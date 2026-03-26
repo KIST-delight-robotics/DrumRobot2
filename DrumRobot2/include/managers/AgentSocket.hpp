@@ -64,9 +64,9 @@ private:
 
     // 스레드 내부에서 돌아갈 실제 루프 함수
     void runServerLoop();
-    std::string trimPayload(const std::string& payload) const;
-    bool isJsonPayloadStart(const std::string& payload) const;
-    bool isCompleteJsonPayload(const std::string& payload) const;
+    std::string trimText(const std::string& text) const;
+    bool isJsonStart(const std::string& text) const;
+    bool hasFullJson(const std::string& text) const;
 
     // 셔터(게이트) 상태 플래그
     std::atomic<bool> isGateOpen{false};
