@@ -1183,8 +1183,8 @@ void DrumRobot::runAddStanceProcess()
 
 void DrumRobot::initializePlayState()
 {
-    measureMatrix.resize(1, 9);
-    measureMatrix = MatrixXd::Zero(1, 9);
+    measureMatrix.resize(1, 11);
+    measureMatrix = MatrixXd::Zero(1, 11);
 
     endOfScore = false;
     measureTotalTime = 0.0;     ///< 악보 총 누적 시간. [s]
@@ -1689,14 +1689,14 @@ bool DrumRobot::readMeasure(ifstream& inputFile)
         else
         {
             measureMatrix.conservativeResize(measureMatrix.rows() + 1, measureMatrix.cols());
-            for (int i = 0; i < 8; i++)
+            for (int i = 0; i < 10; i++)
             {
                 measureMatrix(measureMatrix.rows() - 1, i) = stod(items[i]);
             }
 
             // total time 누적
             measureTotalTime += measureMatrix(measureMatrix.rows() - 1, 1) * 100.0 / pathManager.bpmOfScore;
-            measureMatrix(measureMatrix.rows() - 1, 8) = measureTotalTime;
+            measureMatrix(measureMatrix.rows() - 1, 10) = measureTotalTime;
 
             // timeSum 누적
             timeSum += measureMatrix(measureMatrix.rows() - 1, 1);

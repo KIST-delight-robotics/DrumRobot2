@@ -126,8 +126,8 @@ private:
         double initialWristAngleR, finalWristAngleR;    // 손목 각도 출발 위치
         double initialWristAngleL, finalWristAngleL;    // 손목 각도 도착 위치
 
-        int initialIntensityR, finalIntensityR;    // 전체 궤적에서 출발 강도, 도착 강도
-        int initialIntensityL, finalIntensityL;
+        int initialOffsetR, finalOffsetR;    // 전체 궤적에서 출발 강도, 도착 강도
+        int initialOffsetL, finalOffsetL;
 
         VectorXd nextStateR;            // 이전 시간, 이전 악기, 상태
         VectorXd nextStateL;
@@ -164,7 +164,7 @@ private:
         double initialTimeR = 0, finalTimeR;    // 타격 궤적에서 출발 시간, 도착 시간
         double initialTimeL = 0, finalTimeL;
 
-        VectorXd nextStateR;            // 이전 시간, 이전 State, intensity
+        VectorXd nextStateR;            // 이전 시간, 이전 State, velocity
         VectorXd nextStateL;
         
     }HitData;
@@ -280,17 +280,17 @@ private:
     int getNumCommands(MatrixXd &measureMatrix);
     void genTaskSpaceTrajectory(MatrixXd &measureMatrix, int n);
     PathManager::TrajectoryData getTrajectoryData(MatrixXd &measureMatrix, VectorXd &stateR, VectorXd &stateL);
-    pair<VectorXd, VectorXd> parseTrajectoryData(VectorXd &t, VectorXd &inst, VectorXd &intensity, VectorXd &hihat, VectorXd &stateVector);
+    pair<VectorXd, VectorXd> parseTrajectoryData(VectorXd &t, VectorXd &inst, VectorXd &offset, VectorXd &hihat, VectorXd &stateVector);
     int checkOpenHihat(int instNum, int isHihat);
     pair<VectorXd, double> getTargetPosition(VectorXd &inst, char RL);
     double calTimeScaling(double ti, double tf, double t);
-    VectorXd makeTaskSpacePath(VectorXd &Pi, VectorXd &Pf, int initialIntensity, int finalIntensity, double s);
+    VectorXd makeTaskSpacePath(VectorXd &Pi, VectorXd &Pf, int initialOffset, int finalOffset, double s);
     VectorXd getWaistParams(VectorXd &pR, VectorXd &pL, double theta7, double theta8);
     void storeWaistParams(int n, VectorXd &waistParams);
 
     //////////////////////////////////// Hit Trajectory
-    VectorXd prevLine = VectorXd::Zero(9);  ///< 악보 나눌 때 시작 악보 기록
-    VectorXd hitStateR, hitStateL;          ///< [이전 시간, 이전 State, intensity]
+    VectorXd prevLine = VectorXd::Zero(11);  ///< 악보 나눌 때 시작 악보 기록
+    VectorXd hitStateR, hitStateL;          ///< [이전 시간, 이전 State, velocity]
     ElbowTime elbowTimeR, elbowTimeL;
     WristTime wristTimeR, wristTimeL;
     MatrixXd elbowCoefficientR;
@@ -304,10 +304,10 @@ private:
     PathManager::HitData getHitData(MatrixXd &measureMatrix, VectorXd &stateR, VectorXd &stateL);
     VectorXd parseHitData(VectorXd &t, VectorXd &hit, double preT, double preStatem, double hitDetectionThreshold);
     void makeHitCoefficient(HitData hitData, VectorXd &stateR, VectorXd &stateL);
-    PathManager::ElbowTime getElbowTimeParam(double t1, double t2, int intensity);
-    PathManager::WristTime getWristTimeParam(double t1, double t2, int intensity, int state);
-    PathManager::ElbowAngle getElbowAngleParam(double t1, double t2, int intensity);
-    PathManager::WristAngle getWristAngleParam(double t1, double t2, int intensity, int state);
+    PathManager::ElbowTime getElbowTimeParam(double t1, double t2, int velocity);
+    PathManager::WristTime getWristTimeParam(double t1, double t2, int velocity, int state);
+    PathManager::ElbowAngle getElbowAngleParam(double t1, double t2, int velocity);
+    PathManager::WristAngle getWristAngleParam(double t1, double t2, int velocity, int state);
     MatrixXd makeElbowCoefficient(int state, ElbowTime eT, ElbowAngle eA);
     MatrixXd makeWristCoefficient(int state, WristTime wT, WristAngle wA);
     double getElbowAngle(double t, ElbowTime eT, MatrixXd &coefficientMatrix);
