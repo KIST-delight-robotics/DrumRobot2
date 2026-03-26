@@ -33,7 +33,7 @@ graph LR
     subgraph Brain ["🧠 AI Agent Process (Python / Jetson GPU)"]
         direction TB
         Mic((Mic Input)) --> STT["Whisper<br/>(Local STT)"]
-        STT --> LLM{"Qwen-3 30B (Q4_K_M)<br/>via Ollama Engine<br/>w/ Harness Engineering"}
+        STT --> LLM{"Qwen-3 4B classifier, Qwen-3 30B planner pipeline"}
         LLM --> TTS["MeloTTS<br/>(Local TTS)"]
         LLM --> PySocket["TCP Client Socket"]
         
@@ -148,4 +148,3 @@ python phil_robot/phil_brain.py
 2. 콘솔에 [Listening...]이 뜨면 마이크에 대고 자연스럽게 명령합니다.
 (예: "필봇,안녕!" 또는 "This Is Me 연주 시작하자.")
 ---
-**💡 이 프로젝트의 세부 아키텍처와 자세한 설명은 .github/copilot-instructions.md에 상세히 기록되어 있습니다.**
