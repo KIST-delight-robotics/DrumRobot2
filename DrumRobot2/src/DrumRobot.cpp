@@ -1014,9 +1014,15 @@ void DrumRobot::runPythonInThread()
 
 string DrumRobot::makeStateJson()
 {
-    stringstream oss;
-    int currentState = static_cast<int>(state.main.load());
-    const vector<string> trackedJoints = {
+    stringstream json_stream;
+    int state_id = static_cast<int>(state.main.load());
+    const string& song_code = nextSongCode;
+    const string& last_cmd = lastExecutedCmd;
+    const string& error_msg = lastErrorReason;
+    bool lock_open = isLockKeyRemoved;
+    int repeat_now = currentIterations;
+    int repeat_max = repeatNum;
+    const vector<string> joint_list = {
         "waist",
         "R_arm1",
         "L_arm1",
@@ -1030,88 +1036,70 @@ string DrumRobot::makeStateJson()
         "L_foot"
     };
 
-    auto appendQuotedString = [&](const string& key, const string& value) {
-        oss << "\"" << key << "\": \"" << value << "\"";
-    };
-
-    auto getJointDeadbandDeg = [&](const string& jointName) -> float {
-        if (jointName.find("wrist") != string::npos || jointName.find("foot") != string::npos) {
-            return 1.0f;
-        }
-        return 0.5f;
-    };
-
-    auto appendJointAnglesJson = [&]() {
-        oss << "\"current_angles\": {";
-
-        for (size_t index = 0; index < trackedJoints.size(); ++index) {
-            const string& jointName = trackedJoints[index];
-            float measuredAngleDeg = 0.0f;
-
-            auto motorIter = motors.find(jointName);
-            if (motorIter != motors.end() && motorIter->second) {
-                measuredAngleDeg = motorIter->second->jointAngle * 180.0f / M_PI;
-            }
-
-            float angleDeg = measuredAngleDeg;
-            if (!hasBroadcastJointSnapshot || lastBroadcastJointAnglesDeg.find(jointName) == lastBroadcastJointAnglesDeg.end()) {
-                lastBroadcastJointAnglesDeg[jointName] = measuredAngleDeg;
-            } else {
-                float lastBroadcastAngle = lastBroadcastJointAnglesDeg[jointName];
-                float deadbandDeg = getJointDeadbandDeg(jointName);
-
-                if (fabs(measuredAngleDeg - lastBroadcastAngle) >= deadbandDeg) {
-                    lastBroadcastJointAnglesDeg[jointName] = measuredAngleDeg;
-                }
-            }
-
-            angleDeg = lastBroadcastJointAnglesDeg[jointName];
-            if (!hasBroadcastJointSnapshot) {
-                lastBroadcastJointAnglesDeg[jointName] = angleDeg;
-            }
-
-            oss << "\"" << jointName << "\": " << fixed << setprecision(2) << angleDeg;
-            if (index + 1 < trackedJoints.size()) {
-                oss << ", ";
-            }
-        }
-
-        oss << "}";
-    };
-    
-    oss << "{";
+    json_stream << "{";
     
     // 1. 기존 필수 데이터
-    oss << "\"state\": " << currentState << ", ";
-    oss << "\"bpm\": " << pathManager.bpmOfScore << ", ";
-    oss << "\"is_fixed\": " << (flagObj.getFixationFlag() ? "true" : "false") << ", ";
+    json_stream << "\"state\": " << state_id << ", ";
+    json_stream << "\"bpm\": " << pathManager.bpmOfScore << ", ";
+    json_stream << "\"is_fixed\": " << (flagObj.getFixationFlag() ? "true" : "false") << ", ";
     
     // 2. [추가] 곡명 및 진행률 (Context)
-    oss << "\"current_song\": \"" << nextSongCode << "\", ";
-    oss << "\"progress\": \"" << currentIterations << "/" << repeatNum << "\", ";
+    json_stream << "\"current_song\": \"" << song_code << "\", ";
+    json_stream << "\"progress\": \"" << repeat_now << "/" << repeat_max << "\", ";
 
     // 3. [추가] 잠금 키 해제 여부
-    oss << "\"is_lock_key_removed\": " << (isLockKeyRemoved ? "true" : "false") << ", ";
+    json_stream << "\"is_lock_key_removed\": " << (lock_open ? "true" : "false") << ", ";
 
     // 4. [추가] 마지막으로 실행된 명령어 및 에러 메시지 (Context)
-    appendQuotedString("last_action", lastExecutedCmd);
-    oss << ", ";
+    json_stream << "\"last_action\": \"" << last_cmd << "\", ";
 
     // 5. [추가] 현재 실측 관절 각도
-    appendJointAnglesJson();
-    oss << ", ";
+    json_stream << "\"current_angles\": {";
+    for (size_t joint_idx = 0; joint_idx < joint_list.size(); ++joint_idx) {
+        const string& joint_name = joint_list[joint_idx];
+        float live_deg = 0.0f;
+
+        if (motors.count(joint_name) > 0) {
+            shared_ptr<GenericMotor> motor_ptr = motors.at(joint_name);
+            if (motor_ptr) {
+                live_deg = (*motor_ptr).jointAngle * 180.0f / M_PI;
+            }
+        }
+
+        if (!has_joint_cache || joint_deg_cache.count(joint_name) == 0) {
+            joint_deg_cache[joint_name] = live_deg;
+        } else {
+            float last_deg = joint_deg_cache[joint_name];
+            float band_deg = 0.5f;
+            bool wide_band = (joint_name.find("wrist") != string::npos || joint_name.find("foot") != string::npos);
+
+            if (wide_band) {
+                band_deg = 1.0f;
+            }
+
+            if (fabs(live_deg - last_deg) >= band_deg) {
+                joint_deg_cache[joint_name] = live_deg;
+            }
+        }
+
+        json_stream << "\"" << joint_name << "\": " << fixed << setprecision(2) << joint_deg_cache[joint_name];
+        if (joint_idx + 1 < joint_list.size()) {
+            json_stream << ", ";
+        }
+    }
+    json_stream << "}, ";
     
     // 6. [추가] 에러 상태일 때만 에러 메시지 포함, 아니면 "None"으로 표시
-    if (currentState == 4) {
-        appendQuotedString("error_message", lastErrorReason);
+    if (state_id == 4) {
+        json_stream << "\"error_message\": \"" << error_msg << "\"";
     } else {
-        appendQuotedString("error_message", "None");
+        json_stream << "\"error_message\": \"None\"";
     }
 
-    oss << "}";
-    hasBroadcastJointSnapshot = true;
+    json_stream << "}";
+    has_joint_cache = true;
     
-    return oss.str();
+    return json_stream.str();
 }
 
 void DrumRobot::broadcastStateThread() 

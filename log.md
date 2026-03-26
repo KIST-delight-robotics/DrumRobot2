@@ -4,6 +4,12 @@
 최신 항목이 위로 오도록 추가합니다.
 
 ## 2026-03-26
+- 17:22 KST (UTC+9) — 루트 `AGENTS.md`에 변수명/표현 규칙을 추가하고, `DrumRobot2`의 `makeStateJson()`을 `auto`, 람다, 긴 변수명 없이 다시 정리해 읽는 즉시 역할이 보이도록 리팩터링했습니다.
+  - 수정 파일: `AGENTS.md`, `DrumRobot2/include/tasks/DrumRobot.hpp`, `DrumRobot2/src/DrumRobot.cpp`, `log.md`
+  - 메모: 새 규칙은 3단어 이하 변수명, 약어의 언더바 분리, `auto`/후행 반환형/`ptr->field` 기본 지양을 담고 있고, 함수 쪽은 `joint_list`, `live_deg`, `joint_deg_cache` 같은 짧은 이름으로 맞췄습니다.
+- 17:10 KST (UTC+9) — `DrumRobot2`의 state JSON 관절 각도 직렬화에서 deadband 캐시 관련 변수명을 줄이고 분기를 정리해, 실측값/캐시값/출력값의 역할이 바로 읽히도록 다듬었습니다.
+  - 수정 파일: `DrumRobot2/include/tasks/DrumRobot.hpp`, `DrumRobot2/src/DrumRobot.cpp`, `log.md`
+  - 메모: 기존 `lastBroadcastJointAnglesDeg`, `motorIter` 같은 이름과 중복 대입 흐름이 읽기 어려워 보여 `broadcastAngleCacheDeg`, `motorIt`, `reportedAngleDeg` 중심으로 정리했고, 동작은 유지했습니다.
 - 15:29 KST (UTC+9) — `drum_intheloop` URDF 폴더에서 현재 Python command-level simulator가 쓰지 않는 ROS/Gazebo 패키징 잔재를 제거해, 필요한 자산이 `URDF/STL/runtime patch` 축으로만 남도록 정리했습니다.
   - 수정 파일: `drum_intheloop/urdf/drumrobot_RL_urdf/CMakeLists.txt`, `drum_intheloop/urdf/drumrobot_RL_urdf/package.xml`, `drum_intheloop/urdf/drumrobot_RL_urdf/config/joint_names_drumrobot_RL_urdf.yaml`, `drum_intheloop/urdf/drumrobot_RL_urdf/launch/display.launch`, `drum_intheloop/urdf/drumrobot_RL_urdf/launch/gazebo.launch`, `log.md`
   - 메모: 현재 `drum_intheloop` 실행 경로는 `sil/urdf_tools.py`가 원본 URDF와 mesh만 직접 참조하고, ROS launch/config/package 메타파일은 사용하지 않으므로 안전한 legacy cleanup으로 판단했습니다.
