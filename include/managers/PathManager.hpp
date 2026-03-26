@@ -126,6 +126,9 @@ private:
         double initialWristAngleR, finalWristAngleR;    // 손목 각도 출발 위치
         double initialWristAngleL, finalWristAngleL;    // 손목 각도 도착 위치
 
+        int initialIntensityR, finalIntensityR;    // 전체 궤적에서 출발 강도, 도착 강도
+        int initialIntensityL, finalIntensityL;
+
         VectorXd nextStateR;            // 이전 시간, 이전 악기, 상태
         VectorXd nextStateL;
 
@@ -270,18 +273,18 @@ private:
 
     //////////////////////////////////// Task Space Trajectory
     double roundSum = 0.0;                  ///< 5ms 스텝 단위에서 누적되는 오차 보상
-    VectorXd measureStateR, measureStateL;  ///< [이전 시간, 이전 악기, 상태] 0 : 0 <- 0 / 1 : 0 <- 1 / 2 : 1 <- 0 / 3 : 1 <- 1
+    VectorXd measureStateR, measureStateL;  ///< [이전 시간, 이전 악기, 상태, 이전 강도] 0 : 0 <- 0 / 1 : 0 <- 1 / 2 : 1 <- 0 / 3 : 1 <- 1
     queue<TaskSpaceTrajectory> taskSpaceQueue;
     queue<WaistParameter> waistParameterQueue;
 
     int getNumCommands(MatrixXd &measureMatrix);
     void genTaskSpaceTrajectory(MatrixXd &measureMatrix, int n);
     PathManager::TrajectoryData getTrajectoryData(MatrixXd &measureMatrix, VectorXd &stateR, VectorXd &stateL);
-    pair<VectorXd, VectorXd> parseTrajectoryData(VectorXd &t, VectorXd &inst, VectorXd &hihat, VectorXd &stateVector);
+    pair<VectorXd, VectorXd> parseTrajectoryData(VectorXd &t, VectorXd &inst, VectorXd &intensity, VectorXd &hihat, VectorXd &stateVector);
     int checkOpenHihat(int instNum, int isHihat);
     pair<VectorXd, double> getTargetPosition(VectorXd &inst, char RL);
     double calTimeScaling(double ti, double tf, double t);
-    VectorXd makeTaskSpacePath(VectorXd &Pi, VectorXd &Pf, double s);
+    VectorXd makeTaskSpacePath(VectorXd &Pi, VectorXd &Pf, int initialIntensity, int finalIntensity, double s);
     VectorXd getWaistParams(VectorXd &pR, VectorXd &pL, double theta7, double theta8);
     void storeWaistParams(int n, VectorXd &waistParams);
 
