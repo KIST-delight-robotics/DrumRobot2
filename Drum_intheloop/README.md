@@ -358,7 +358,7 @@ runtime per message:
 
 현재 `PyBulletBackend.step()`은 `p.stepSimulation()` 한 줄만 호출합니다. 그리고 이 저장소 안에서는 `setTimeStep()`이나 `setRealTimeSimulation()`으로 별도 physics tick을 다시 정의하지 않습니다.
 
-그래서 현재 README에서 `timing이 없다`고 적었던 표현은 더 정확히는 아래 뜻입니다.
+정확히는 다음과 같습니다.
 
 - `resetJointState()`가 target angle을 즉시 joint state에 꽂아 넣는다.
 - 그 뒤 `stepSimulation()`을 한 번 호출한다.
