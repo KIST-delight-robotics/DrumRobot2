@@ -1184,7 +1184,8 @@ VectorXd PathManager::makeTaskSpacePath(VectorXd &Pi, VectorXd &Pf, int initialO
     //     }
     // }
 
-    float zi = Pi(2) - initialOffset * 0.01, zf = Pf(2) - finalOffset * 0.01;
+    float dzi = initialOffset * 0.01, dzf = finalOffset * 0.01;
+    float zi = Pi(2) - dzi, zf = Pf(2) - dzf;
     VectorXd Ps;
     Ps.resize(3);
 
@@ -1197,7 +1198,7 @@ VectorXd PathManager::makeTaskSpacePath(VectorXd &Pi, VectorXd &Pf, int initialO
     else
     {
         double h2_min = 0.08;   // 제어점이 타격점보다 최소한 얼마나 높이 위치해야 하는지 결정하는 상수 (조정 필요)
-        double h1 = 2.0 * initialOffset * 0.01, h2 = h2_min + 0.6 * std::abs(zi - zf);
+        double h1 = 2.0 * dzi, h2 = h2_min + 0.6 * std::abs(zi - zf);
 
         VectorXd Pi_offset = Pi, Pf_offset = Pf;
         Pi_offset(2) = zi;
