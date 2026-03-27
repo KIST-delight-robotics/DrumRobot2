@@ -216,6 +216,7 @@ private:
     bool setWaitingTime = false;
     bool runPython = false;
     std::string pythonArgs;
+    std::string soundfbCode;
     std::string pythonScript = "../magenta/magenta_env/bin/python3 ../magenta/script.py";
 
     // 마젠타 반복 생성을 위한 변수들
@@ -228,7 +229,7 @@ private:
 
     void initializePlayState();
     void setSyncTime(int waitingTime);
-    void displayPlayCommands(bool useMagenta, bool useDrumPad, float inputWaitMs, std::string txtFileName);
+    void displayPlayCommands(bool useMagenta, bool useDrumPad, bool isSoundFeedBack, float inputWaitMs, std::string txtFileName);
     void setPythonArgs();
     bool checkPreconditions(bool useMagenta, std::string txtPath);
     std::string selectPlayMode();

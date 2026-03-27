@@ -369,15 +369,15 @@ void DrumRobot::motorSettingCmd()
 void DrumRobot::initializeFolder()
 {
     std::string syncDir = "../magenta/sync";
-    // std::string recordDir = "../magenta/record";
+    std::string recordDir = "../magenta/record";
     std::string outputMidDir = "../magenta/generated";
-    // std::string outputVelDir = "../magenta/velocity";
+    std::string outputVelDir = "../magenta/velocity";
     std::string outputCode = "../include/magenta";
 
     func.clear_directory(syncDir);
-    // func.clear_directory(recordDir);
+    func.clear_directory(recordDir);
     func.clear_directory(outputMidDir);
-    // func.clear_directory(outputVelDir);
+    func.clear_directory(outputVelDir);
     func.clear_directory(outputCode);
 }
 
@@ -892,6 +892,10 @@ void DrumRobot::runPythonInThread()
             {
                 pythonCmd += " --bpm";  
                 pythonCmd += " " + std::to_string(pathManager.bpmOfScore);
+
+                pythonCmd += " --code";  
+                pythonCmd += " " + soundfbCode;
+
                 pythonCmd += " --path ../magenta/ &";   // 경로 설정 & 백그라운드 실행
 
                 int ret = std::system(pythonCmd.c_str());
@@ -1227,7 +1231,7 @@ void DrumRobot::setSyncTime(int waitingTimeMillisecond)
     setWaitingTime = true;
 }
 
-void DrumRobot::displayPlayCommands(bool useMagenta, bool useDrumPad, float inputWaitMs, std::string txtFileName)
+void DrumRobot::displayPlayCommands(bool useMagenta, bool useDrumPad, bool isSoundFeedBack, float inputWaitMs, std::string txtFileName)
 {
     int ret = system("clear");
     if (ret == -1) std::cout << "system clear error" << endl;
@@ -1271,6 +1275,15 @@ void DrumRobot::displayPlayCommands(bool useMagenta, bool useDrumPad, float inpu
         {
             std::cout << "trigger: Play After a Set Time Delay (" << inputWaitMs/1000.0 << "s)\n";
         }
+
+        if (isSoundFeedBack)
+        {
+            std::cout << "sound feedback: True\n";
+        }
+        else
+        {
+            std::cout << "sound feedback: False\n";
+        }
     }
 
     // bpm
@@ -1309,7 +1322,7 @@ void DrumRobot::displayPlayCommands(bool useMagenta, bool useDrumPad, float inpu
     if (useMagenta)
         std::cout << "args, ";
     else
-        std::cout << "code, trigger, ";
+        std::cout << "code, trigger, soundFB, ";
     std::cout << "bpm, mode, music, run, exit): ";
 }
 
@@ -1412,6 +1425,7 @@ std::string DrumRobot::selectPlayMode()
 
     bool useMagenta = false;
     bool useDrumPad = false;
+    bool isSoundFeedBack = false;
     int mode = 1;
     int triggerMode = 1;
     float inputWaitMs = 3000.0; // 3s
@@ -1421,7 +1435,7 @@ std::string DrumRobot::selectPlayMode()
 
     while(cnt < maxAttempts)
     {
-        displayPlayCommands(useMagenta, useDrumPad, inputWaitMs, txtFileName);
+        displayPlayCommands(useMagenta, useDrumPad, isSoundFeedBack, inputWaitMs, txtFileName);
         std::cin >> userInput;
 
         if (userInput == "magenta")
@@ -1430,6 +1444,18 @@ std::string DrumRobot::selectPlayMode()
                 useMagenta = false;
             else
                 useMagenta = true;
+        }
+        else if (userInput == "soundFB" && (!useMagenta))
+        {
+            if (isSoundFeedBack)
+            {
+                isSoundFeedBack = false;
+            }
+            else
+            {
+                isSoundFeedBack = true;
+                inputWaitMs = 20000.0;   // 20s 사운드 피드백 사용할 때는 대기 시간을 길게 세팅
+            }
         }
         else if (userInput == "args" && useMagenta)
         {
@@ -1441,12 +1467,6 @@ std::string DrumRobot::selectPlayMode()
         {
             std::cout << "\nEnter Music Code Name: ";
             std::cin >> txtFileName;
-
-            if(txtFileName == "soundfb")
-            {
-                runPython = true;
-                pythonArgs = "--soundfb";
-            }
 
             txtPath = txtBaseFolderPath + txtFileName;
             repeatNum = 1;
@@ -1590,6 +1610,13 @@ std::string DrumRobot::selectPlayMode()
                 }
                 else
                 {
+                    if (isSoundFeedBack)
+                    {
+                        pythonArgs = "--soundfb";
+                        soundfbCode = txtFileName;
+                        runPython = true;
+                    }
+
                     syncTime = std::chrono::system_clock::now() + std::chrono::milliseconds((int)inputWaitMs);
                     setWaitingTime = true;
                 }
