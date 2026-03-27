@@ -163,8 +163,8 @@ def modify_intensity(input_path: str) -> None:      # input_path = codeName 예)
     velo = []
     min_vel = 70.0
 
-    print({code_path})
-    print({velo_path})
+    # print({code_path})
+    # print({velo_path})
 
     try:
         with open(code_path, 'r', encoding='utf-8') as f:
@@ -186,7 +186,7 @@ def modify_intensity(input_path: str) -> None:      # input_path = codeName 예)
                 else:
                     raise ValueError(f"Unexpected row length: {len(row)}")
                 code.append(row)
-        print(code)
+        # print(code)
     except FileNotFoundError:
         print("파일을 찾을 수 없음")
     except Exception as e:
@@ -199,7 +199,7 @@ def modify_intensity(input_path: str) -> None:      # input_path = codeName 예)
             for row in reader:
                 # velo.append([float(x) for x in row])
                 velo.append([float(row[0]),row[1],row[2],float(row[3])])
-        print(velo)
+        # print(velo)
     except FileNotFoundError:
         print("파일을 찾을 수 없음")
     except Exception as e:
@@ -227,25 +227,24 @@ def modify_intensity(input_path: str) -> None:      # input_path = codeName 예)
             right_inst = code[i][2]
             left_inst = code[i][3]
 
-            print(f"elapsed_time: {elapsed_time}, i: {i}, right_inst: {right_inst}, left_inst: {left_inst}")
+            # print(f"elapsed_time: {elapsed_time}, i: {i}, right_inst: {right_inst}, left_inst: {left_inst}")
 
             if right_inst != '0':
                 for j in range(len(velo) - 1):
                     if abs(velo[j][0] - elapsed_time) > 0.2:
                         continue
                     elif abs(velo[j][0] - elapsed_time) <= 0.2:
-                        print(f"velo[j][0]: {velo[j][0]}, elapsed_time: {elapsed_time}, abs(velo[j][0] - elapsed_time): {abs(velo[j][0] - elapsed_time)}")
                         if velo[j][3] >= min_vel:
                             continue
 
                         if velo[j][2] == code[i][2]:
                             code[i][8] += 1
-                            print(f"code[i][8] : {code[i][8]}")
+                            print(f"++++++++++++++right: {code[i][8]}")
                             break
-                        elif velo[j+1][2] == code[i][2]:
-                            code[i][8] += 1
-                            # print(f"velo : {velo[j+1][2]}, code : {code[i][2]}, code[i][8] : {code[i][8]} , i : {i}, j : {j+1}")
-                            break
+                        # elif velo[j+1][2] == code[i][2]:
+                        #     code[i][8] += 1
+                        #     print(f"++++++++++++++right: {code[i][8]}")
+                        #     break
                        
             if left_inst != '0':
                 for j in range(len(velo) - 1):
@@ -257,12 +256,10 @@ def modify_intensity(input_path: str) -> None:      # input_path = codeName 예)
 
                         if velo[j][2] == code[i][3]:
                             code[i][9] += 1
-                            # print(f"velo : {velo[j][2]}, code : {code[i][3]}, code[i][9] : {code[i][9]} , i : {i}, j : {j}")
                             break
-                        elif velo[j+1][2] == code[i][3]:
-                            code[i][9] += 1
-                            # print(f"velo : {velo[j+1][2]}, code : {code[i][9]}, code[i][9] : {code[i][9]} , i : {i}, j : {j+1}")
-                            break
+                        # elif velo[j+1][2] == code[i][3]:
+                        #     code[i][9] += 1
+                        #     break
                     
             for j in range(len(velo)):
                 if velo[j][3] >= min_vel:

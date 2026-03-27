@@ -118,6 +118,10 @@ class taskManager:
                 thread.join()
 
     def sound_feedback(self, codeName):
+
+        codeName = 'solo2'
+        wait_second=3
+        time_record=50
         # 경로 설정
         self.set_path()
         print(f"bpm is {self.bpm}")

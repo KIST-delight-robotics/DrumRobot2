@@ -77,5 +77,4 @@ if record:
 elif sync:
     tm.make_sync()
 elif soundfb:
-    codeName = 'solo2'
     tm.sound_feedback(codeName)
