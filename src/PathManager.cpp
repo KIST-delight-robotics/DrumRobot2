@@ -391,16 +391,6 @@ void PathManager::pushAddStance(VectorXd &Q1, VectorXd &Q2)
                         newData.mode = tMotor->Position;
                         newData.velocityERPM = 0.0;
                     }
-                    // else if (tmotorMode == "velocityFF")
-                    // {
-                    //     newData.mode = tMotor->VelocityFF;
-                    //     newData.velocityERPM = tMotor->cwDir * Vt[can_id] * tMotor->pole * tMotor->gearRatio * 60.0 / 2.0 / M_PI;
-                    // }
-                    // else if (tmotorMode == "velocityFB")
-                    // {
-                    //     newData.mode = tMotor->VelocityFB;
-                    //     newData.velocityERPM = 0.0;
-                    // }
                     else if (tmotorMode == "velocity")
                     {
                         newData.mode = tMotor->Velocity;
@@ -444,16 +434,6 @@ void PathManager::pushAddStance(VectorXd &Q1, VectorXd &Q2)
                         newData.mode = tMotor->Position;
                         newData.velocityERPM = 0.0;
                     }
-                    // else if (tmotorMode == "velocityFF")
-                    // {
-                    //     newData.mode = tMotor->VelocityFF;
-                    //     newData.velocityERPM = 0.0;
-                    // }
-                    // else if (tmotorMode == "velocityFB")
-                    // {
-                    //     newData.mode = tMotor->VelocityFB;
-                    //     newData.velocityERPM = 0.0;
-                    // }
                     else if (tmotorMode == "velocity")
                     {
                         newData.mode = tMotor->Velocity;
@@ -1204,7 +1184,7 @@ VectorXd PathManager::makeTaskSpacePath(VectorXd &Pi, VectorXd &Pf, int initialO
     //     }
     // }
 
-    float zi = Pi(2) - initialOffset*0.01, zf = Pf(2) - finalOffset*0.01;
+    float zi = Pi(2) - initialOffset * 0.01, zf = Pf(2) - finalOffset * 0.01;
     VectorXd Ps;
     Ps.resize(3);
 
@@ -1216,18 +1196,23 @@ VectorXd PathManager::makeTaskSpacePath(VectorXd &Pi, VectorXd &Pf, int initialO
     }
     else
     {
-        double h = 0.1;   // 제어점이 끝점보다 얼마나 높이 위치할지 결정하는 상수 (조정 필요)
-        double maxZ = std::max(Pi(2), Pf(2) + h);
+        double h2_min = 0.08;   // 제어점이 타격점보다 최소한 얼마나 높이 위치해야 하는지 결정하는 상수 (조정 필요)
+        double h1 = 2.0 * initialOffset * 0.01, h2 = h2_min + 0.6 * std::abs(zi - zf);
 
         VectorXd Pi_offset = Pi, Pf_offset = Pf;
         Pi_offset(2) = zi;
         Pf_offset(2) = zf;
         
-        VectorXd Pm = 0.5 * (Pi_offset + Pf_offset);   // 중간 제어점 (시작점과 끝점의 중간 위치)
-        Pm(2) += 2 * std::max((maxZ - Pm(2)), 0.0);
+        VectorXd Pm1 = (2.0/3.0) * Pi_offset + (1.0/3.0) * Pf_offset;
+        VectorXd Pm2 = (1.0/3.0) * Pi_offset + (2.0/3.0) * Pf_offset;
+        Pm1(2) = Pi(2) + h1;
+        Pm2(2) = Pf(2) + h2;
 
-        // 2차 Bézier curve
-        Ps = std::pow(1 - s, 2) * Pi_offset + 2 * (1 - s) * s * Pm + std::pow(s, 2) * Pf_offset;
+        // 3차 Bézier curve
+        Ps = std::pow(1 - s, 3) * Pi_offset 
+            + 3 * std::pow(1 - s, 2) * s * Pm1 
+            + 3 * (1 - s) * std::pow(s, 2) * Pm2 
+            + std::pow(s, 3) * Pf_offset;
     }
 
     return Ps;
@@ -1622,7 +1607,7 @@ PathManager::ElbowAngle PathManager::getElbowAngleParam(double t1, double t2, in
 
     double intensityFactor;  // 1: 0%, 2: 0%, 3: 0%, 4: 90%, 5: 100%, 6: 110%, 7: 120%  
 
-    velocity = 5;  // wristAngle.pressAngle 변화 실험을 위해 일단 고정
+    // velocity = 5;  // 변화 실험을 위해 일단 고정
     if (velocity <= 3)
     {
         intensityFactor = 0;
@@ -1661,7 +1646,7 @@ PathManager::WristAngle PathManager::getWristAngleParam(double t1, double t2, in
     wristAngle.prevPressAngle = -5.0 * M_PI / 180.0;
     wristAngle.pressAngle = -5.0 * M_PI / 180.0;
 
-    velocity = 5;  // wristAngle.pressAngle 변화 실험을 위해 일단 고정
+    // velocity = 5;  // 변화 실험을 위해 일단 고정
     if (velocity < 5)
     {
         intensityFactor = 0.25 * velocity - 0.25;  // 1: 0%, 2: 25%, 3: 50%, 4: 75%
@@ -2853,16 +2838,6 @@ void PathManager::pushCommandBuffer(VectorXd &Qi, double kpRatioR, double kpRati
                 newData.mode = tMotor->Position;
                 newData.velocityERPM = 0.0;
             }
-            // else if (tmotorMode == "velocityFF")
-            // {
-            //     newData.mode = tMotor->VelocityFF;
-            //     newData.velocityERPM = tMotor->cwDir * getVelocityRadps(false, Qi[can_id], can_id) * tMotor->pole * tMotor->gearRatio * 60.0 / 2.0 / M_PI;
-            // }
-            // else if (tmotorMode == "velocityFB")
-            // {
-            //     newData.mode = tMotor->VelocityFB;
-            //     newData.velocityERPM = 0.0;
-            // }
             else if (tmotorMode == "velocity")
             {
                 newData.mode = tMotor->Velocity;
