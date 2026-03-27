@@ -50,22 +50,22 @@ void PathManager::initPlayStateValue()
 
     lineOfScore = 0;            // 현재 악보 읽은 줄.
 
-    measureStateR.resize(3);    // [이전 시간, 이전 악기, state]
-    measureStateR = VectorXd::Zero(3);
+    measureStateR.resize(4);    // [이전 시간, 이전 악기, state]
+    measureStateR = VectorXd::Zero(4);
     measureStateR(1) = 1.0;     // 시작 위치 SN
 
-    measureStateL.resize(3);
-    measureStateL = VectorXd::Zero(3);
+    measureStateL.resize(4);
+    measureStateL = VectorXd::Zero(4);
     measureStateL(1) = 1.0;     // 시작 위치 SN
 
     roundSum = 0.0;             // 5ms 스텝 단위에서 누적되는 오차 보상
 
     waistParameterQueue = std::queue<WaistParameter>();   // 큐 재선언해서 비우기
 
-    hitStateR = VectorXd::Zero(3);  // [이전 시간, 이전 state, intensity]
+    hitStateR = VectorXd::Zero(3);  // [이전 시간, 이전 state, velocity]
     hitStateL = VectorXd::Zero(3); 
 
-    prevLine = VectorXd::Zero(9);   // 악보 나눌 때 시작 악보 기록
+    prevLine = VectorXd::Zero(11);   // 악보 나눌 때 시작 악보 기록
 
     waistAngleT1 = readyAngle(0);   // 허리 시작 위치
     waistAngleT0 = readyAngle(0);   // 허리 이전 위치
@@ -391,16 +391,6 @@ void PathManager::pushAddStance(VectorXd &Q1, VectorXd &Q2)
                         newData.mode = tMotor->Position;
                         newData.velocityERPM = 0.0;
                     }
-                    // else if (tmotorMode == "velocityFF")
-                    // {
-                    //     newData.mode = tMotor->VelocityFF;
-                    //     newData.velocityERPM = tMotor->cwDir * Vt[can_id] * tMotor->pole * tMotor->gearRatio * 60.0 / 2.0 / M_PI;
-                    // }
-                    // else if (tmotorMode == "velocityFB")
-                    // {
-                    //     newData.mode = tMotor->VelocityFB;
-                    //     newData.velocityERPM = 0.0;
-                    // }
                     else if (tmotorMode == "velocity")
                     {
                         newData.mode = tMotor->Velocity;
@@ -444,16 +434,6 @@ void PathManager::pushAddStance(VectorXd &Q1, VectorXd &Q2)
                         newData.mode = tMotor->Position;
                         newData.velocityERPM = 0.0;
                     }
-                    // else if (tmotorMode == "velocityFF")
-                    // {
-                    //     newData.mode = tMotor->VelocityFF;
-                    //     newData.velocityERPM = 0.0;
-                    // }
-                    // else if (tmotorMode == "velocityFB")
-                    // {
-                    //     newData.mode = tMotor->VelocityFB;
-                    //     newData.velocityERPM = 0.0;
-                    // }
                     else if (tmotorMode == "velocity")
                     {
                         newData.mode = tMotor->Velocity;
@@ -805,8 +785,8 @@ int PathManager::getNumCommands(MatrixXd &measureMatrix)
     double n;
     double dt = canManager.DTSECOND;
 
-    double t1 = measureMatrix(0, 8);
-    double t2 = measureMatrix(1, 8);
+    double t1 = measureMatrix(0, 10);
+    double t2 = measureMatrix(1, 10);
 
     // 한 라인의 데이터 개수 (5ms 단위)
     n = (t2 - t1) / dt;
@@ -845,12 +825,12 @@ void PathManager::genTaskSpaceTrajectory(MatrixXd &measureMatrix, int n)
         sL = calTimeScaling(0.0, data.finalTimeL - data.initialTimeL, tL);
         
         // task space 경로
-        TT.trajectoryR = makeTaskSpacePath(data.initialPositionR, data.finalPositionR, sR);
-        TT.trajectoryL = makeTaskSpacePath(data.initialPositionL, data.finalPositionL, sL);
+        TT.trajectoryR = makeTaskSpacePath(data.initialPositionR, data.finalPositionR, data.initialOffsetR, data.finalOffsetR, sR);
+        TT.trajectoryL = makeTaskSpacePath(data.initialPositionL, data.finalPositionL, data.initialOffsetL, data.finalOffsetL, sL);
 
         // IK 풀기 위한 손목 각도
-        TT.wristAngleR = sR*(data.finalWristAngleR - data.initialWristAngleR) + data.initialWristAngleR;
-        TT.wristAngleL = sL*(data.finalWristAngleL - data.initialWristAngleL) + data.initialWristAngleL;
+        TT.wristAngleR = sR * (data.finalWristAngleR - data.initialWristAngleR) + data.initialWristAngleR;
+        TT.wristAngleL = sL * (data.finalWristAngleL - data.initialWristAngleL) + data.initialWristAngleL;
 
         taskSpaceQueue.push(TT);
 
@@ -876,19 +856,23 @@ PathManager::TrajectoryData PathManager::getTrajectoryData(MatrixXd &measureMatr
 {
     TrajectoryData data;
 
-    VectorXd measureTime = measureMatrix.col(8);
+    VectorXd measureTime = measureMatrix.col(10);
     VectorXd measureInstrumentR = measureMatrix.col(2);
     VectorXd measureInstrumentL = measureMatrix.col(3);
     VectorXd measureHihat = measureMatrix.col(7);
+    VectorXd measureOffsetR = measureMatrix.col(8);
+    VectorXd measureOffsetL = measureMatrix.col(9);
 
-    data.t1 = measureMatrix(0, 8);
-    data.t2 = measureMatrix(1, 8);
+    data.t1 = measureMatrix(0, 10);
+    data.t2 = measureMatrix(1, 10);
 
     // std::cout << "\n /// t1 -> t2 : " << data.t1 << " -> " << data.t2 << " : " << data.t2 - data.t1 <<  "\n";
 
-    // parse
-    pair<VectorXd, VectorXd> dataR = parseTrajectoryData(measureTime, measureInstrumentR, measureHihat, stateR);
-    pair<VectorXd, VectorXd> dataL = parseTrajectoryData(measureTime, measureInstrumentL, measureHihat, stateL);
+    // 오른팔, 왼팔 각각 타격 감지 및 궤적 생성에 필요한 정보 parsing
+    // [initialTime, initialOffset, initialInstrument(10), finalTime, finalOffset, finalInstrument(10)]
+    // [initialT, initialInstNum, nextState, initialOffset]
+    pair<VectorXd, VectorXd> dataR = parseTrajectoryData(measureTime, measureInstrumentR, measureOffsetR, measureHihat, stateR);
+    pair<VectorXd, VectorXd> dataL = parseTrajectoryData(measureTime, measureInstrumentL, measureOffsetL, measureHihat, stateL);
 
     // state 업데이트
     data.nextStateR = dataR.second;
@@ -898,15 +882,15 @@ PathManager::TrajectoryData PathManager::getTrajectoryData(MatrixXd &measureMatr
     data.initialTimeR = dataR.first(0);
     data.initialTimeL = dataL.first(0);
 
-    data.finalTimeR = dataR.first(11);
-    data.finalTimeL = dataL.first(11);
+    data.finalTimeR = dataR.first(12);
+    data.finalTimeL = dataL.first(12);
 
     // 악기
-    VectorXd initialInstrumentR = dataR.first.block(1, 0, 10, 1);
-    VectorXd initialInstrumentL = dataL.first.block(1, 0, 10, 1);
+    VectorXd initialInstrumentR = dataR.first.block(2, 0, 10, 1);
+    VectorXd initialInstrumentL = dataL.first.block(2, 0, 10, 1);
 
-    VectorXd finalInstrumentR = dataR.first.block(12, 0, 10, 1);
-    VectorXd finalInstrumentL = dataL.first.block(12, 0, 10, 1);
+    VectorXd finalInstrumentR = dataR.first.block(14, 0, 10, 1);
+    VectorXd finalInstrumentL = dataL.first.block(14, 0, 10, 1);
 
     pair<VectorXd, double> initialTagetR = getTargetPosition(initialInstrumentR, 'R');
     pair<VectorXd, double> initialTagetL = getTargetPosition(initialInstrumentL, 'L');
@@ -928,26 +912,34 @@ PathManager::TrajectoryData PathManager::getTrajectoryData(MatrixXd &measureMatr
     data.finalWristAngleR = finalTagetR.second;
     data.finalWristAngleL = finalTagetL.second;
 
+    // 타격 강도
+    data.initialOffsetR = dataR.first(1);
+    data.initialOffsetL= dataL.first(1);
+    data.finalOffsetR= dataR.first(13);
+    data.finalOffsetL= dataL.first(13);
+
     return data;
 }
 
-pair<VectorXd, VectorXd> PathManager::parseTrajectoryData(VectorXd &t, VectorXd &inst, VectorXd &hihat, VectorXd &stateVector)
+pair<VectorXd, VectorXd> PathManager::parseTrajectoryData(VectorXd &t, VectorXd &inst, VectorXd &offset, VectorXd &hihat, VectorXd &stateVector)
 {
     map<int, int> instrumentMapping = {
         {1, 0}, {2, 1}, {3, 2}, {4, 3}, {5, 4}, {6, 5}, {7, 6}, {8, 7}, {11, 0}, {51, 0}, {61, 0}, {71, 0}, {81, 0}, {91, 0}, {9, 8}, {10, 9}};
     //    S       FT      MT      HT      HH       R      RC      LC       S        S        S        S        S        S     Open HH   RB
 
     VectorXd initialInstrument = VectorXd::Zero(10), finalInstrument = VectorXd::Zero(10);
-    VectorXd outputVector = VectorXd::Zero(22);
+    VectorXd outputVector = VectorXd::Zero(24);
 
     VectorXd nextStateVector;
 
     bool detectHit = false;
-    double detectTime = 0, initialT, finalT;
-    int detectInst = 0, initialInstNum, finalInstNum;
-    int preState, nextState;
     const double e = 0.00001; 
     double hitDetectionThreshold = 1.2 * 100.0 / bpmOfScore;
+
+    double detectTime = 0, initialT, finalT, prevInitialT;
+    int detectInst = 0, initialInstNum, finalInstNum, prevInitialInstNum;
+    int prevState, nextState;
+    int detectOffset = 0, initialOffset, finalOffset, prevOffset;
 
     // 타격 감지
     for (int i = 1; i < t.rows(); i++)
@@ -962,27 +954,33 @@ pair<VectorXd, VectorXd> PathManager::parseTrajectoryData(VectorXd &t, VectorXd 
             detectHit = true;
             detectTime = t(i);
             detectInst = checkOpenHihat(inst(i), hihat(i));
+            detectOffset = offset(i);
 
             break;
         }
     }
 
-    // inst
-    preState = stateVector(2);
+    prevInitialT = stateVector(0);
+    prevInitialInstNum = stateVector(1);
+    prevState = stateVector(2);
+    prevOffset = stateVector(3);
 
     // 타격으로 끝나지 않음
     if (inst(0) == 0)
     {
         // 궤적 생성 중
-        if (preState == 2 || preState == 3)
+        if (prevState == 2 || prevState == 3)
         {
-            nextState = preState;
+            nextState = prevState;
 
-            initialInstNum = stateVector(1);
+            initialInstNum = prevInitialInstNum;
             finalInstNum = detectInst;
 
-            initialT = stateVector(0);
+            initialT = prevInitialT;
             finalT = detectTime;
+
+            initialOffset = prevOffset;
+            finalOffset = detectOffset;
         }
         else
         {
@@ -991,22 +989,28 @@ pair<VectorXd, VectorXd> PathManager::parseTrajectoryData(VectorXd &t, VectorXd 
             {
                 nextState = 2;
 
-                initialInstNum = stateVector(1);
+                initialInstNum = prevInitialInstNum;
                 finalInstNum = detectInst;
 
                 initialT = t(0);
                 finalT = detectTime;
+
+                initialOffset = 0;
+                finalOffset = detectOffset;
             }
             // 다음 타격 감지 못함
             else
             {
                 nextState = 0;
 
-                initialInstNum = stateVector(1);
-                finalInstNum = stateVector(1);
+                initialInstNum = prevInitialInstNum;
+                finalInstNum = prevInitialInstNum;
 
                 initialT = t(0);
                 finalT = t(1);
+
+                initialOffset = 0;
+                finalOffset = 0;
             }
         }
     }
@@ -1023,6 +1027,9 @@ pair<VectorXd, VectorXd> PathManager::parseTrajectoryData(VectorXd &t, VectorXd 
 
             initialT = t(0);
             finalT = detectTime;
+
+            initialOffset = offset(0);
+            finalOffset = detectOffset;
         }
         // 다음 타격 감지 못함
         else
@@ -1034,15 +1041,18 @@ pair<VectorXd, VectorXd> PathManager::parseTrajectoryData(VectorXd &t, VectorXd 
 
             initialT = t(0);
             finalT = t(1);
+
+            initialOffset = offset(0);
+            finalOffset = 0;
         }
     }
 
     initialInstrument(instrumentMapping[initialInstNum]) = 1.0;
     finalInstrument(instrumentMapping[finalInstNum]) = 1.0;
-    outputVector << initialT, initialInstrument, finalT, finalInstrument;
+    outputVector << initialT, initialOffset, initialInstrument, finalT, finalOffset, finalInstrument;
 
-    nextStateVector.resize(3);
-    nextStateVector << initialT, initialInstNum, nextState;
+    nextStateVector.resize(4);
+    nextStateVector << initialT, initialInstNum, nextState, initialOffset;
 
     // std::cout << "\n insti -> instf : " << initialInstNum << " -> " << finalInstNum;
     // std::cout << "\n ti -> tf : " << initialT << " -> " << finalT;
@@ -1134,52 +1144,77 @@ double PathManager::calTimeScaling(double ti, double tf, double t)
     return s;
 }
 
-VectorXd PathManager::makeTaskSpacePath(VectorXd &Pi, VectorXd &Pf, double s)
+VectorXd PathManager::makeTaskSpacePath(VectorXd &Pi, VectorXd &Pf, int initialOffset, int finalOffset, double s)
 {
-    float degree = 2.0;
+    // float degree = 2.0;
 
-    float xi = Pi(0), xf = Pf(0);
-    float yi = Pi(1), yf = Pf(1);
-    float zi = Pi(2), zf = Pf(2);
+    // float xi = Pi(0), xf = Pf(0);
+    // float yi = Pi(1), yf = Pf(1);
+    // float zi = Pi(2), zf = Pf(2);
 
+    // VectorXd Ps;
+    // Ps.resize(3);
+
+    // if (Pi == Pf)
+    // {
+    //     Ps(0) = xi;
+    //     Ps(1) = yi;
+    //     Ps(2) = zi;
+    // }
+    // else
+    // {
+    //     Ps(0) = xi + s * (xf - xi);
+    //     Ps(1) = yi + s * (yf - yi);
+
+    //     if (zi >= zf)
+    //     {
+    //         float a = zf - zi;
+    //         float b = zi;
+
+    //         Ps(2) = a * std::pow(s, degree) + b;
+    //     }
+    //     else
+    //     {
+    //         float amp = abs(zi - zf) / 2;    // sin 함수 amplitude
+    //         float a = (zi - zf) * std::pow(-1, degree);
+    //         float b = zf;
+
+    //         Ps(2) = a * std::pow(s - 1, degree) + b + (amp * sin(M_PI * s));    // sin 궤적 추가
+    //         // Ps(2) = a * std::pow(s - 1, degree) + b;
+    //     }
+    // }
+
+    float dzi = initialOffset * 0.01, dzf = finalOffset * 0.01;
+    float zi = Pi(2) - dzi, zf = Pf(2) - dzf;
     VectorXd Ps;
     Ps.resize(3);
 
     if (Pi == Pf)
     {
-        Ps(0) = xi;
-        Ps(1) = yi;
-        Ps(2) = zi;
+        Ps(0) = Pi(0);
+        Ps(1) = Pi(1);
+        Ps(2) = zi + s * (zf - zi);
     }
     else
     {
-        Ps(0) = xi + s * (xf - xi);
-        Ps(1) = yi + s * (yf - yi);
+        double h2_min = 0.08;   // 제어점이 타격점보다 최소한 얼마나 높이 위치해야 하는지 결정하는 상수 (조정 필요)
+        double h1 = 2.0 * dzi, h2 = h2_min + 0.6 * std::abs(zi - zf);
 
-        if (zi > zf)
-        {
-            float a = zf - zi;
-            float b = zi;
+        VectorXd Pi_offset = Pi, Pf_offset = Pf;
+        Pi_offset(2) = zi;
+        Pf_offset(2) = zf;
+        
+        VectorXd Pm1 = (2.0/3.0) * Pi_offset + (1.0/3.0) * Pf_offset;
+        VectorXd Pm2 = (1.0/3.0) * Pi_offset + (2.0/3.0) * Pf_offset;
+        Pm1(2) = Pi(2) + h1;
+        Pm2(2) = Pf(2) + h2;
 
-            Ps(2) = a * std::pow(s, degree) + b;
-        }
-        else
-        {
-            float amp = abs(zi - zf) / 2;    // sin 함수 amplitude
-            float a = (zi - zf) * std::pow(-1, degree);
-            float b = zf;
-
-            Ps(2) = a * std::pow(s - 1, degree) + b + (amp * sin(M_PI * s));    // sin 궤적 추가
-            // Ps(2) = a * std::pow(s - 1, degree) + b;
-        }
+        // 3차 Bézier curve
+        Ps = std::pow(1 - s, 3) * Pi_offset 
+            + 3 * std::pow(1 - s, 2) * s * Pm1 
+            + 3 * (1 - s) * std::pow(s, 2) * Pm2 
+            + std::pow(s, 3) * Pf_offset;
     }
-
-    // // 2차 Bézier curve
-    // double h = 0.2 * std::abs(Pi(2) - Pf(2));   // 제어점 높이 (시작점과 끝점의 높이 차이의 20%)
-    // VectorXd Pm = 0.5 * (Pf + Pi);   // 중간 제어점 (시작점과 끝점의 중간 위치)
-    // Pm(2) += h;    // 중간 제어점 높이 조절
-
-    // VectorXd Ps = std::pow(1 - s, 2) * Pi + 2 * (1 - s) * s * Pm + std::pow(s, 2) * Pf;
 
     return Ps;
 }
@@ -1304,7 +1339,7 @@ void PathManager::genHitTrajectory(MatrixXd &measureMatrix, int n)
             // 타격 궤적 생성
             makeHitCoefficient(hitData, hitStateR, hitStateL);
 
-            t1 = dividedMatrix(0, 8);
+            t1 = dividedMatrix(0, 10);
         }
 
         HitTrajectory HT;
@@ -1339,12 +1374,12 @@ MatrixXd PathManager::divideMatrix(MatrixXd &measureMatrix)
     std::vector<Eigen::VectorXd> newRows;
     newRows.push_back(prevLine);    // 첫 줄 저장
 
-    double prevTotalTime = prevLine(8);
+    double prevTotalTime = prevLine(10);
 
     for (int i = 0; i < measureMatrix.rows() - 1; ++i)
     {
         double duration = measureMatrix(i + 1, 1);                  // 악보 한 줄 시간
-        double endTime = measureMatrix(i + 1, 8);                   // 종료 시간 (누적)
+        double endTime = measureMatrix(i + 1, 10);                   // 종료 시간 (누적)
         int steps = static_cast<int>(round(duration / timeStep));   // 쪼개진 개수
         double sumStep = (endTime-prevTotalTime) / steps;           // 한 스텝 시간
 
@@ -1355,11 +1390,11 @@ MatrixXd PathManager::divideMatrix(MatrixXd &measureMatrix)
 
             row(0) = measureMatrix(i + 1, 0);                 
             row(1) = timeStep;                              
-            row(8) = prevTotalTime + (s + 1) * sumStep;     // 누적 시간
+            row(10) = prevTotalTime + (s + 1) * sumStep;     // 누적 시간
 
             if (s + 1 == steps) // 마지막에 line 정보 그대로 기록
             {
-                for (int j = 2; j <= 7; ++j)
+                for (int j = 2; j <= 9; ++j)
                 {
                     row(j) = measureMatrix(i + 1, j);
                 }
@@ -1388,9 +1423,9 @@ PathManager::HitData PathManager::getHitData(MatrixXd &measureMatrix, VectorXd &
 {
     HitData hitData;
 
-    VectorXd t = measureMatrix.col(8);
-    VectorXd hitR = measureMatrix.col(4);
-    VectorXd hitL = measureMatrix.col(5);
+    VectorXd t = measureMatrix.col(10);
+    VectorXd velocityR = measureMatrix.col(4);
+    VectorXd velocityL = measureMatrix.col(5);
     VectorXd nextStateR, nextStateL; 
 
     double hitDetectionThreshold = 0.5;     // 다음 타격 감지할 최대 시간
@@ -1398,8 +1433,8 @@ PathManager::HitData PathManager::getHitData(MatrixXd &measureMatrix, VectorXd &
     double preTL = stateL(0), preStateL = stateL(1);
 
     // parse
-    VectorXd dataR = parseHitData(t, hitR, preTR, preStateR, hitDetectionThreshold);
-    VectorXd dataL = parseHitData(t, hitL, preTL, preStateL, hitDetectionThreshold);
+    VectorXd dataR = parseHitData(t, velocityR, preTR, preStateR, hitDetectionThreshold);
+    VectorXd dataL = parseHitData(t, velocityL, preTL, preStateL, hitDetectionThreshold);
 
     nextStateR.resize(3);
     nextStateR << dataR(0), dataR(2), dataR(3);
@@ -1423,7 +1458,7 @@ VectorXd PathManager::parseHitData(VectorXd &t, VectorXd &hit, double preT, doub
     double t1, t2, state;
     bool detectHit = false;
     double hitTime = t(1);
-    int intensity = 0;
+    int velocity = 0;
 
     // 다음 타격 찾기
     for (int i = 1; i < t.rows(); i++)
@@ -1440,7 +1475,7 @@ VectorXd PathManager::parseHitData(VectorXd &t, VectorXd &hit, double preT, doub
         {
             detectHit = true;
             hitTime = t(i);
-            intensity = hit(i);
+            velocity = hit(i);
             break;
         }
     }
@@ -1487,31 +1522,31 @@ VectorXd PathManager::parseHitData(VectorXd &t, VectorXd &hit, double preT, doub
     }
 
     output.resize(4);
-    output << t1, t2, state, intensity;
+    output << t1, t2, state, velocity;
 
     return output;
 }
 
 void PathManager::makeHitCoefficient(HitData hitData, VectorXd &stateR, VectorXd &stateL)
 {
-    int intensityR = stateR(2);
-    int intensityL = stateL(2);
+    int velocityR = stateR(2);
+    int velocityL = stateL(2);
 
     // 타격 관련 파라미터
     ElbowAngle elbowAngleR, elbowAngleL;
     WristAngle wristAngleR, wristAngleL;
 
-    elbowTimeR = getElbowTimeParam(hitData.initialTimeR, hitData.finalTimeR, intensityR);
-    elbowTimeL = getElbowTimeParam(hitData.initialTimeL, hitData.finalTimeL, intensityL);
+    elbowTimeR = getElbowTimeParam(hitData.initialTimeR, hitData.finalTimeR, velocityR);
+    elbowTimeL = getElbowTimeParam(hitData.initialTimeL, hitData.finalTimeL, velocityL);
 
-    wristTimeR = getWristTimeParam(hitData.initialTimeR, hitData.finalTimeR, intensityR, stateR(1));
-    wristTimeL = getWristTimeParam(hitData.initialTimeL, hitData.finalTimeL, intensityL, stateL(1));
+    wristTimeR = getWristTimeParam(hitData.initialTimeR, hitData.finalTimeR, velocityR, stateR(1));
+    wristTimeL = getWristTimeParam(hitData.initialTimeL, hitData.finalTimeL, velocityL, stateL(1));
 
-    elbowAngleR = getElbowAngleParam(hitData.initialTimeR, hitData.finalTimeR, intensityR);
-    elbowAngleL = getElbowAngleParam(hitData.initialTimeL, hitData.finalTimeL, intensityL);
+    elbowAngleR = getElbowAngleParam(hitData.initialTimeR, hitData.finalTimeR, velocityR);
+    elbowAngleL = getElbowAngleParam(hitData.initialTimeL, hitData.finalTimeL, velocityL);
 
-    wristAngleR = getWristAngleParam(hitData.initialTimeR, hitData.finalTimeR, intensityR, stateR(1));
-    wristAngleL = getWristAngleParam(hitData.initialTimeL, hitData.finalTimeL, intensityL, stateL(1));
+    wristAngleR = getWristAngleParam(hitData.initialTimeR, hitData.finalTimeR, velocityR, stateR(1));
+    wristAngleL = getWristAngleParam(hitData.initialTimeL, hitData.finalTimeL, velocityL, stateL(1));
 
     // 계수 행렬 구하기
     elbowCoefficientR = makeElbowCoefficient(stateR(1), elbowTimeR, elbowAngleR);
@@ -1521,7 +1556,7 @@ void PathManager::makeHitCoefficient(HitData hitData, VectorXd &stateR, VectorXd
     wristCoefficientL = makeWristCoefficient(stateL(1), wristTimeL, wristAngleL);
 }
 
-PathManager::ElbowTime PathManager::getElbowTimeParam(double t1, double t2, int intensity)
+PathManager::ElbowTime PathManager::getElbowTimeParam(double t1, double t2, int velocity)
 {
     ElbowTime elbowTime;
     float T = t2 - t1; // 전체 타격 시간
@@ -1532,7 +1567,7 @@ PathManager::ElbowTime PathManager::getElbowTimeParam(double t1, double t2, int 
     return elbowTime;
 }
 
-PathManager::WristTime PathManager::getWristTimeParam(double t1, double t2, int intensity, int state)
+PathManager::WristTime PathManager::getWristTimeParam(double t1, double t2, int velocity, int state)
 {
     WristTime wristTime;
     float T = t2 - t1;  // 전체 타격 시간
@@ -1566,21 +1601,21 @@ PathManager::WristTime PathManager::getWristTimeParam(double t1, double t2, int 
     return wristTime;
 }
 
-PathManager::ElbowAngle PathManager::getElbowAngleParam(double t1, double t2, int intensity)
+PathManager::ElbowAngle PathManager::getElbowAngleParam(double t1, double t2, int velocity)
 {
     ElbowAngle elbowAngle;
     float T = (t2 - t1);        // 전체 타격 시간
 
     double intensityFactor;  // 1: 0%, 2: 0%, 3: 0%, 4: 90%, 5: 100%, 6: 110%, 7: 120%  
 
-    intensity = 5;  // wristAngle.pressAngle 변화 실험을 위해 일단 고정
-    if (intensity <= 3)
+    // velocity = 5;  // 변화 실험을 위해 일단 고정
+    if (velocity <= 3)
     {
         intensityFactor = 0;
     }
     else
     {
-        intensityFactor = 0.1 * intensity + 0.5;  
+        intensityFactor = 0.1 * velocity + 0.5;  
     }
 
     if (T < 0.2)
@@ -1603,7 +1638,7 @@ PathManager::ElbowAngle PathManager::getElbowAngleParam(double t1, double t2, in
     return elbowAngle;
 }
 
-PathManager::WristAngle PathManager::getWristAngleParam(double t1, double t2, int intensity, int state)
+PathManager::WristAngle PathManager::getWristAngleParam(double t1, double t2, int velocity, int state)
 {
     WristAngle wristAngle;
     float T = (t2 - t1);        // 타격 전체 시간
@@ -1612,22 +1647,22 @@ PathManager::WristAngle PathManager::getWristAngleParam(double t1, double t2, in
     wristAngle.prevPressAngle = -5.0 * M_PI / 180.0;
     wristAngle.pressAngle = -5.0 * M_PI / 180.0;
 
-    intensity = 5;  // wristAngle.pressAngle 변화 실험을 위해 일단 고정
-    if (intensity < 5)
+    // velocity = 5;  // 변화 실험을 위해 일단 고정
+    if (velocity < 5)
     {
-        intensityFactor = 0.25 * intensity - 0.25;  // 1: 0%, 2: 25%, 3: 50%, 4: 75%
+        intensityFactor = 0.25 * velocity - 0.25;  // 1: 0%, 2: 25%, 3: 50%, 4: 75%
     }
     else
     {
-        intensityFactor = intensity / 3.0 - (2.0 / 3.0);  // 5: 100%, 6: 133%, 7: 167%
+        intensityFactor = velocity / 3.0 - (2.0 / 3.0);  // 5: 100%, 6: 133%, 7: 167%
     }
 
     // Lift Angle (최고점 각도) 계산, 최대 40도 * 세기
     T < 0.5 ? wristAngle.liftAngle = (40.0 * T + 10.0) * M_PI / 180.0 : wristAngle.liftAngle = 30.0 * M_PI / 180.0;
 
-    if (intensity == 1)
+    if (velocity == 1)
     {
-        // intensity 1일 땐 아예 안들도록
+        // velocity 1일 땐 아예 안들도록
         wristAngle.liftAngle = wristAngle.stayAngle;
     }
     else
@@ -2024,8 +2059,8 @@ double PathManager::getKpRatio(double t, WristTime wT)
 void PathManager::genPedalTrajectory(MatrixXd &measureMatrix, int n)
 {
     double dt = canManager.DTSECOND;
-    double t1 = measureMatrix(0, 8);
-    double t2 = measureMatrix(1, 8);
+    double t1 = measureMatrix(0, 10);
+    double t2 = measureMatrix(1, 10);
 
     // Bass 관련 변수
     bool bassHit = measureMatrix(0, 6);
@@ -2442,8 +2477,8 @@ float PathManager::getInstAngle(int Inst)
 double PathManager::getNodIntensity(MatrixXd &measureMatrix)
 {
     VectorXd beat = measureMatrix.col(1);
-    VectorXd intensityR = measureMatrix.col(4);
-    VectorXd intensityL = measureMatrix.col(5);
+    VectorXd velocityR = measureMatrix.col(4);
+    VectorXd velocityL = measureMatrix.col(5);
     VectorXd bass = measureMatrix.col(6);
 
     int rows = measureMatrix.rows();
@@ -2455,7 +2490,7 @@ double PathManager::getNodIntensity(MatrixXd &measureMatrix)
     {
         if (i == 0) continue;   // 2번 줄부터 반영
 
-        double lineIntensity = 0.1 * intensityR(i) + 0.1 * intensityL(i) + 0.5 * bass(i);
+        double lineIntensity = 0.1 * velocityR(i) + 0.1 * velocityL(i) + 0.5 * bass(i);
         nodIntensity += lineIntensity;
         line++;
 
@@ -2804,16 +2839,6 @@ void PathManager::pushCommandBuffer(VectorXd &Qi, double kpRatioR, double kpRati
                 newData.mode = tMotor->Position;
                 newData.velocityERPM = 0.0;
             }
-            // else if (tmotorMode == "velocityFF")
-            // {
-            //     newData.mode = tMotor->VelocityFF;
-            //     newData.velocityERPM = tMotor->cwDir * getVelocityRadps(false, Qi[can_id], can_id) * tMotor->pole * tMotor->gearRatio * 60.0 / 2.0 / M_PI;
-            // }
-            // else if (tmotorMode == "velocityFB")
-            // {
-            //     newData.mode = tMotor->VelocityFB;
-            //     newData.velocityERPM = 0.0;
-            // }
             else if (tmotorMode == "velocity")
             {
                 newData.mode = tMotor->Velocity;
@@ -2918,9 +2943,9 @@ float PathManager::getVelocityRadps(bool restart, double q, int can_id)
 
 bool PathManager::detectCollision(MatrixXd &measureMatrix)
 {
-    VectorXd measureTime = measureMatrix.col(8);
-    VectorXd measureIntensityR = measureMatrix.col(4);
-    VectorXd measureIntensityL = measureMatrix.col(5);
+    VectorXd measureTime = measureMatrix.col(10);
+    VectorXd measureOffsetR = measureMatrix.col(4);
+    VectorXd measureOffsetL = measureMatrix.col(5);
 
     VectorXd stateDCR = measureStateR;
     VectorXd stateDCL = measureStateL;
@@ -2949,8 +2974,8 @@ bool PathManager::detectCollision(MatrixXd &measureMatrix)
             double sR = calTimeScaling(0.0, data.finalTimeR - data.initialTimeR, tR);
             double sL = calTimeScaling(0.0, data.finalTimeL - data.initialTimeL, tL);
             
-            VectorXd PR = makeTaskSpacePath(data.initialPositionR, data.finalPositionR, sR);
-            VectorXd PL = makeTaskSpacePath(data.initialPositionL, data.finalPositionL, sL);
+            VectorXd PR = makeTaskSpacePath(data.initialPositionR, data.finalPositionR, data.initialOffsetR, data.finalOffsetR, sR);
+            VectorXd PL = makeTaskSpacePath(data.initialPositionL, data.finalPositionL, data.initialOffsetL, data.finalOffsetL, sL);
 
             double Tr = 1.0, hitR, hitL;
             if (measureTime(i+1) - measureTime(i) < 0.5)
@@ -2958,22 +2983,22 @@ bool PathManager::detectCollision(MatrixXd &measureMatrix)
                 Tr = (measureTime(i+1) - measureTime(i))/0.5;
             }
             
-            if (measureIntensityR(i+1) == 0)
+            if (measureOffsetR(i+1) == 0)
             {
                 hitR = 10.0 * M_PI / 180.0;
             }
             else
             {
-                hitR = measureIntensityR(i+1)*Tr*15.0*sin(M_PI*j/stepSize) * M_PI / 180.0;
+                hitR = measureOffsetR(i+1)*Tr*15.0*sin(M_PI*j/stepSize) * M_PI / 180.0;
             }
 
-            if (measureIntensityL(i+1) == 0)
+            if (measureOffsetL(i+1) == 0)
             {
                 hitL = 10.0 * M_PI / 180.0;
             }
             else
             {
-                hitL = measureIntensityL(i+1)*Tr*15.0*sin(M_PI*j/stepSize) * M_PI / 180.0;
+                hitL = measureOffsetL(i+1)*Tr*15.0*sin(M_PI*j/stepSize) * M_PI / 180.0;
             }
 
             if (checkTable(PR, PL, hitR, hitL))
@@ -3000,7 +3025,7 @@ int PathManager::findDetectionRange(MatrixXd &measureMatrix)
 {
     // 뒤쪽 목표위치 없는 부분 제거
     // endIndex 까지 탐색
-    VectorXd measureTime = measureMatrix.col(8);
+    VectorXd measureTime = measureMatrix.col(10);
     VectorXd measureInstrumentR = measureMatrix.col(2);
     VectorXd measureInstrumentL = measureMatrix.col(3);
 
@@ -3247,7 +3272,7 @@ pair<int, int> PathManager::findModificationRange(VectorXd t, VectorXd instR, Ve
 bool PathManager::modifyCrash(MatrixXd &measureMatrix, int num)
 {
     // 주어진 방법으로 수정하면 True 반환
-    VectorXd t = measureMatrix.col(8);
+    VectorXd t = measureMatrix.col(10);
     VectorXd instR = measureMatrix.col(2);
     VectorXd instL = measureMatrix.col(3);
 
@@ -3310,7 +3335,7 @@ bool PathManager::modifyCrash(MatrixXd &measureMatrix, int num)
 bool PathManager::switchHands(MatrixXd &measureMatrix, int num)
 {
     // 주어진 방법으로 수정하면 True 반환
-    VectorXd t = measureMatrix.col(8);
+    VectorXd t = measureMatrix.col(10);
     VectorXd instR = measureMatrix.col(2);
     VectorXd instL = measureMatrix.col(3);
 
@@ -3402,7 +3427,7 @@ bool PathManager::switchHands(MatrixXd &measureMatrix, int num)
 bool PathManager::waitAndMove(MatrixXd &measureMatrix, int num)
 {
     // 주어진 방법으로 수정하면 True 반환
-    VectorXd t = measureMatrix.col(8);
+    VectorXd t = measureMatrix.col(10);
     VectorXd instR = measureMatrix.col(2);
     VectorXd instL = measureMatrix.col(3);
 
@@ -3486,7 +3511,7 @@ bool PathManager::waitAndMove(MatrixXd &measureMatrix, int num)
 bool PathManager::moveAndWait(MatrixXd &measureMatrix, int num)
 {
     // 주어진 방법으로 수정하면 True 반환
-    VectorXd t = measureMatrix.col(8);
+    VectorXd t = measureMatrix.col(10);
     VectorXd instR = measureMatrix.col(2);
     VectorXd instL = measureMatrix.col(3);
 
@@ -3572,7 +3597,7 @@ bool PathManager::moveAndWait(MatrixXd &measureMatrix, int num)
 bool PathManager::deleteInst(MatrixXd &measureMatrix, int num)
 {
     // 주어진 방법으로 수정하면 True 반환
-    VectorXd t = measureMatrix.col(8);
+    VectorXd t = measureMatrix.col(10);
     VectorXd instR = measureMatrix.col(2);
     VectorXd instL = measureMatrix.col(3);
 

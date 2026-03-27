@@ -1183,8 +1183,8 @@ void DrumRobot::runAddStanceProcess()
 
 void DrumRobot::initializePlayState()
 {
-    measureMatrix.resize(1, 9);
-    measureMatrix = MatrixXd::Zero(1, 9);
+    measureMatrix.resize(1, 11);
+    measureMatrix = MatrixXd::Zero(1, 11);
 
     endOfScore = false;
     measureTotalTime = 0.0;     ///< 악보 총 누적 시간. [s]
@@ -1285,18 +1285,14 @@ void DrumRobot::displayPlayCommands(bool useMagenta, bool useDrumPad, float inpu
     else
         std::cout << "CSP mode \n";
 
-    // Tmotor mode
-    std::cout << "Tmotor Mode: ";
-    if (pathManager.tmotorMode == "unknown")
-        std::cout << "unknown \n";
-    // else if (pathManager.tmotorMode == "velocityFF")
-    //     std::cout << "velocity control mode (only Feedforward) \n";
-    // else if (pathManager.tmotorMode == "velocityFB")
-    //     std::cout << "velocity control mode (only Feedback) \n";
-    else if (pathManager.tmotorMode == "velocity")
-        std::cout << "velocity control mode \n";
-    else
-        std::cout << "position control mode \n";
+    // // Tmotor mode
+    // std::cout << "Tmotor Mode: ";
+    // if (pathManager.tmotorMode == "unknown")
+    //     std::cout << "unknown \n";
+    // else if (pathManager.tmotorMode == "velocity")
+    //     std::cout << "velocity control mode \n";
+    // else
+    //     std::cout << "position control mode \n";
     
     // music
     if (playMusic)
@@ -1314,7 +1310,7 @@ void DrumRobot::displayPlayCommands(bool useMagenta, bool useDrumPad, float inpu
         std::cout << "args, ";
     else
         std::cout << "code, trigger, ";
-    std::cout << "bpm, modeM, modeT, music, run, exit): ";
+    std::cout << "bpm, mode, music, run, exit): ";
 }
 
 void DrumRobot::setPythonArgs()
@@ -1480,7 +1476,7 @@ std::string DrumRobot::selectPlayMode()
                 }
             } while (pathManager.bpmOfScore <= 0);
         }
-        else if (userInput == "modeM")
+        else if (userInput == "mode")
         {
             do
             {
@@ -1491,26 +1487,30 @@ std::string DrumRobot::selectPlayMode()
                 {
                     pathManager.maxonMode = "CST";
 
-                    // Kp 값 입력받기
-                    std::cout << "Kp: ";
-                    std::cin >> pathManager.Kp;
+                    // // Kp 값 입력받기
+                    // std::cout << "Kp: ";
+                    // std::cin >> pathManager.Kp;
+                    pathManager.Kp = 300;
 
-                    // Kd 값 입력받기
-                    std::cout << "Kd: ";
-                    std::cin >> pathManager.Kd;
+                    // // Kd 값 입력받기
+                    // std::cout << "Kd: ";
+                    // std::cin >> pathManager.Kd;
+                    pathManager.Kd = 30;
 
-                    // Kd 값 입력받기
-                    std::cout << "KdDrop: ";
-                    std::cin >> pathManager.KdDrop;
+                    // // Kd 값 입력받기
+                    // std::cout << "KdDrop: ";
+                    // std::cin >> pathManager.KdDrop;
+                    pathManager.KdDrop = 30;
 
-                    // KpMin 값 입력받기
-                    std::cout << "KpMin (0~1): ";
-                    std::cin >> pathManager.kpMin;
+                    // // KpMin 값 입력받기
+                    // std::cout << "KpMin (0~1): ";
+                    // std::cin >> pathManager.kpMin;
+                    pathManager.kpMin = 1.0;
 
-                    // KpMax 값 입력받기
-                    std::cout << "KpMax: ";
-                    std::cin >> pathManager.kpMax;
-
+                    // // KpMax 값 입력받기
+                    // std::cout << "KpMax: ";
+                    // std::cin >> pathManager.kpMax;
+                    pathManager.kpMax = 300.0;
                 }
                 else if (mode == 1)
                 {
@@ -1523,36 +1523,28 @@ std::string DrumRobot::selectPlayMode()
                 }
             } while (pathManager.maxonMode == "unknown");
         }
-        else if (userInput == "modeT")
-        {
-            do
-            {
-                std::cout << "\nEnter Tmotor Control Mode (position: 1 / velocity: 2): ";
-                std::cin >> mode;
+        // else if (userInput == "modeT")
+        // {
+        //     do
+        //     {
+        //         std::cout << "\nEnter Tmotor Control Mode (position: 1 / velocity: 2): ";
+        //         std::cin >> mode;
 
-                if (mode == 1)
-                {
-                    pathManager.tmotorMode = "position";
-                }
-                else if (mode == 2)
-                {
-                    pathManager.tmotorMode = "velocity";
-                }
-                // else if (mode == 3)
-                // {
-                //     pathManager.tmotorMode = "velocityFB";
-                // }
-                // else if (mode == 4)
-                // {
-                //     pathManager.tmotorMode = "velocityFF";
-                // }
-                else
-                {
-                    std::cout << "\nInvalid Input\n";
-                    pathManager.tmotorMode = "unknown";
-                }
-            } while (pathManager.tmotorMode == "unknown");
-        }
+        //         if (mode == 1)
+        //         {
+        //             pathManager.tmotorMode = "position";
+        //         }
+        //         else if (mode == 2)
+        //         {
+        //             pathManager.tmotorMode = "velocity";
+        //         }
+        //         else
+        //         {
+        //             std::cout << "\nInvalid Input\n";
+        //             pathManager.tmotorMode = "unknown";
+        //         }
+        //     } while (pathManager.tmotorMode == "unknown");
+        // }
         else if (userInput == "music")
         {
             if (playMusic)
@@ -1689,14 +1681,14 @@ bool DrumRobot::readMeasure(ifstream& inputFile)
         else
         {
             measureMatrix.conservativeResize(measureMatrix.rows() + 1, measureMatrix.cols());
-            for (int i = 0; i < 8; i++)
+            for (int i = 0; i < 10; i++)
             {
                 measureMatrix(measureMatrix.rows() - 1, i) = stod(items[i]);
             }
 
             // total time 누적
             measureTotalTime += measureMatrix(measureMatrix.rows() - 1, 1) * 100.0 / pathManager.bpmOfScore;
-            measureMatrix(measureMatrix.rows() - 1, 8) = measureTotalTime;
+            measureMatrix(measureMatrix.rows() - 1, 10) = measureTotalTime;
 
             // timeSum 누적
             timeSum += measureMatrix(measureMatrix.rows() - 1, 1);
