@@ -4,7 +4,7 @@ import mido
 from midi_recording import RecordingManager
 from magenta_music_vae import MagentaManager
 from midi_match import match_best_from_cache
-from midi_quantizer import quantize_drum_midi
+from midi_quantizer import quantize_drum_midi, modify_intensity
 
 from quantize_pretty_midi import quantize_midi
 
@@ -117,15 +117,17 @@ class taskManager:
             for thread in threads:
                 thread.join()
 
-    def sound_feedback(self):
+    def sound_feedback(self, codeName):
         # 경로 설정
         self.set_path()
         print(f"bpm is {self.bpm}")
         # 오브젝트 생성
         rec = RecordingManager(self.device_name, self.bpm, self.base_path)
 
-        recording_file_name = self.recording_file_path + 'soundfb.mid'
-        rec.record_for_sec(output_file=recording_file_name, wait_second=5, time_record=50)
-
+        recording_file_name = 'record/' + codeName + '.mid'
+        rec.record_for_sec(output_file=recording_file_name, wait_second=3, time_record=50)    
         quantize_midi_file = quantize_drum_midi(recording_file_name, self.bpm)
         print(f"\n[Python] quantized MIDI saved at : {quantize_midi_file}")
+
+        modify_intensity(codeName)
+        print(f"\n[Python] modified CODE saved at : include/{codeName}0.txt")

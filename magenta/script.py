@@ -62,6 +62,10 @@ for i in range(num_args):
         base_path = sys.argv[i+2]
         pass
     
+    elif arg == "--code":
+        codeName = sys.argv[i+2]
+        pass
+
     else:
         pass
 
@@ -73,4 +77,5 @@ if record:
 elif sync:
     tm.make_sync()
 elif soundfb:
-    tm.sound_feedback()
+    codeName = 'solo2'
+    tm.sound_feedback(codeName)
