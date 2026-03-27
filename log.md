@@ -3,6 +3,20 @@
 프로젝트에서 의미 있는 변경을 할 때마다 한국시간(KST, UTC+9) 기준의 날짜, 시간, 요약을 기록합니다.
 최신 항목이 위로 오도록 추가합니다.
 
+## 2026-03-27
+- 16:36 KST (UTC+9) — `Drum_intheloop`에 이번 SIL/TCP/state 디버깅 세션을 Velog용 글 초안으로 정리한 `velog.md`를 추가해, command-level viewer 성격과 `current_angles`/`k` 타이밍 한계를 한 번에 기록했습니다.
+  - 수정 파일: `Drum_intheloop/velog.md`, `log.md`
+  - 메모: real SIL과의 차이, `current_angles`의 measured vs simulator-applied 불일치, `vcan` 논의, head 보정 위치, `k` 입력과 first state snapshot 타이밍 이슈를 재사용 가능한 글 흐름으로 묶었습니다.
+- 15:16 KST (UTC+9) — Python motion macro 경로로 `팔 올려/내려/벌려`를 해석하도록 `motion_resolver`와 skill 카탈로그를 확장해, `팔 올려`는 `arm2/arm3`, `벌려`는 `arm1` 위주로 풀리고 왼팔/오른팔 지정도 함께 반영되게 했습니다.
+  - 수정 파일: `phil_robot/pipeline/skills.py`, `phil_robot/pipeline/motion_resolver.py`, `phil_robot/eval/cases_smoke.json`, `log.md`
+  - 메모: 양팔/왼팔/오른팔의 `up/down/out` skill을 `posture`로 추가했고, 자연어에 `손목`이 들어간 경우는 기존 손목 resolver와 충돌하지 않도록 팔 macro 해석에서 제외했습니다. smoke case에는 `팔 올려`, `왼팔 벌려` 기대값을 추가했습니다.
+- 12:45 KST (UTC+9) — `phil_robot` 작업 보드의 `Now` 항목이 너무 큰 umbrella로 읽히지 않도록, `gesture abstraction v1`과 `play modifier contract v1`으로 쪼개고 `failure taxonomy`는 `Next`로 내려 현재 실행 범위를 더 현실적으로 다시 정리했습니다.
+  - 수정 파일: `phil_robot/TODO.md`, `log.md`
+  - 메모: `Now`를 “금방 끝나는 일”이 아니라 “지금 당장 구현 집중할 단위”로 유지하되, 한 항목이 지나치게 큰 epic처럼 보이지 않도록 분해했습니다.
+- 12:45 KST (UTC+9) — `phil_robot` 작업 보드의 현재 우선순위를 `gesture / play abstraction uplift` 중심으로 재정렬하고, 긴 `op_cmd` 시퀀스를 상위 skill/gesture로 올리고 `AgentAction`은 저수준 실행 primitive로 두는 방향을 TODO에 명시했습니다.
+  - 수정 파일: `phil_robot/TODO.md`, `log.md`
+  - 메모: `wave / nod / shake / hurray` 계열의 상위 추상화, `arm_up / arm_down` 추가, `tempo:fast|slow`와 `strength:strong|soft`의 pre-play modifier 설계를 `Now`로 올리고, `planner latency isolation benchmark`는 `Next`로 내렸습니다.
+
 ## 2026-03-26
 - 17:48 KST (UTC+9) — `AgentSocket`의 JSON 수신 보조 함수와 루프 상태 변수를 `trimText`, `isJsonStart`, `hasFullJson`, `brace_level`, `in_quote`, `cmd_text`처럼 다시 정리해, 문자열 다듬기/JSON 시작 판별/완성 판별 의미가 이름만으로 보이게 리팩터링했습니다.
   - 수정 파일: `DrumRobot2/include/managers/AgentSocket.hpp`, `DrumRobot2/src/AgentSocket.cpp`, `log.md`

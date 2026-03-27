@@ -37,6 +37,10 @@ LOOK_LEFT_KEYWORDS = ["왼쪽", "왼편", "좌측"]
 LOOK_FORWARD_KEYWORDS = ["정면", "앞", "앞쪽"]
 LOOK_UP_KEYWORDS = ["위", "위쪽", "위로", "올려다", "쳐다"]
 LOOK_DOWN_KEYWORDS = ["아래", "아래쪽", "아래로", "내려다", "숙여"]
+ARM_KEYWORDS = ["팔", "양팔"]
+SPREAD_KEYWORDS = ["벌려", "벌리", "옆으로"]
+LEFT_ARM_KEYWORDS = ["왼팔", "왼쪽 팔", "왼손", "왼쪽 손"]
+RIGHT_ARM_KEYWORDS = ["오른팔", "오른쪽 팔", "오른손", "오른쪽 손"]
 ABSOLUTE_DEGREE_PATTERN = re.compile(r"(-?\d+(?:\.\d+)?)\s*도로")
 RELATIVE_DEGREE_PATTERN = re.compile(r"(-?\d+(?:\.\d+)?)\s*도")
 
@@ -59,6 +63,12 @@ def resolve_motion_commands(user_text, op_cmds, robot_state):
     if look_op_cmd is not None:
         result.op_cmds = _replace_or_append_look_op_cmd(result.op_cmds, look_op_cmd)
         result.warnings.append(f"고개 방향 해석: {look_op_cmd}")
+
+    arm_cmds = parse_arm_pose_commands(user_text)
+    if arm_cmds is not None:
+        result.op_cmds = _replace_move_sequence(result.op_cmds, arm_cmds)
+        result.warnings.append(f"팔 자세 해석: {' | '.join(arm_cmds)}")
+        return result
 
     intent = parse_relative_motion_intent(user_text, robot_state=robot_state)
     if intent is None:
@@ -174,6 +184,36 @@ def parse_relative_motion_intent(user_text, robot_state=None):
     }
 
 
+def parse_arm_pose_commands(user_text):
+    text = (user_text or "").strip()
+    if not text:
+        return None
+
+    if "손목" in text or "팔목" in text:
+        return None
+
+    if ABSOLUTE_DEGREE_PATTERN.search(text) or RELATIVE_DEGREE_PATTERN.search(text):
+        return None
+
+    if not any(keyword in text for keyword in ARM_KEYWORDS + LEFT_ARM_KEYWORDS + RIGHT_ARM_KEYWORDS):
+        return None
+
+    arm_side = _find_arm_side(text)
+    if arm_side == "none":
+        return None
+
+    if any(keyword in text for keyword in SPREAD_KEYWORDS):
+        return build_arm_out_cmds(arm_side)
+
+    if any(keyword in text for keyword in UP_KEYWORDS):
+        return build_arm_up_cmds(arm_side)
+
+    if any(keyword in text for keyword in DOWN_KEYWORDS):
+        return build_arm_down_cmds(arm_side)
+
+    return None
+
+
 def _find_joint(text):
     for alias, joint_name, display_name in JOINT_ALIASES:
         if alias in text:
@@ -227,6 +267,41 @@ def _find_direction(text):
     return 0
 
 
+def _find_arm_side(text):
+    left_side = any(keyword in text for keyword in LEFT_ARM_KEYWORDS)
+    right_side = any(keyword in text for keyword in RIGHT_ARM_KEYWORDS)
+
+    if left_side and not right_side:
+        return "left"
+    if right_side and not left_side:
+        return "right"
+    return "both"
+
+
+def build_arm_up_cmds(arm_side):
+    if arm_side == "left":
+        return ["move:L_arm2,70", "move:L_arm3,15"]
+    if arm_side == "right":
+        return ["move:R_arm2,70", "move:R_arm3,15"]
+    return ["move:R_arm2,70", "move:L_arm2,70", "move:R_arm3,15", "move:L_arm3,15"]
+
+
+def build_arm_down_cmds(arm_side):
+    if arm_side == "left":
+        return ["move:L_arm2,0", "move:L_arm3,20"]
+    if arm_side == "right":
+        return ["move:R_arm2,0", "move:R_arm3,20"]
+    return ["move:R_arm2,0", "move:L_arm2,0", "move:R_arm3,20", "move:L_arm3,20"]
+
+
+def build_arm_out_cmds(arm_side):
+    if arm_side == "left":
+        return ["move:L_arm1,150"]
+    if arm_side == "right":
+        return ["move:R_arm1,30"]
+    return ["move:R_arm1,30", "move:L_arm1,150"]
+
+
 def _format_move_command(joint_name, target_angle):
     if float(target_angle).is_integer():
         target_text = str(int(target_angle))
@@ -262,6 +337,24 @@ def _replace_or_append_move_op_cmd(op_cmds, move_op_cmd):
 
     if not replaced:
         updated_commands.append(move_op_cmd)
+
+    return updated_commands
+
+
+def _replace_move_sequence(op_cmds, move_cmds):
+    updated_commands = []
+    inserted = False
+
+    for command in op_cmds:
+        if command.startswith("move:"):
+            if not inserted:
+                updated_commands.extend(move_cmds)
+                inserted = True
+            continue
+        updated_commands.append(command)
+
+    if not inserted:
+        updated_commands.extend(move_cmds)
 
     return updated_commands
 

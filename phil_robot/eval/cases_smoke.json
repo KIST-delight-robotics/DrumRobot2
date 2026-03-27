@@ -76,6 +76,54 @@
     }
   },
   {
+    "id": "motion_arm_up_basic",
+    "tags": ["smoke", "motion", "arm"],
+    "user_text": "팔 올려",
+    "robot_state": {
+      "state": 0,
+      "bpm": 100,
+      "is_fixed": true,
+      "current_song": "None",
+      "progress": "0/1",
+      "last_action": "None",
+      "is_lock_key_removed": true,
+      "error_message": "None",
+      "current_angles": {
+        "waist": 0.0,
+        "L_wrist": 75.0
+      }
+    },
+    "expected": {
+      "intent": "motion_request",
+      "planner_domain": "motion",
+      "valid_commands_contains_all": ["move:R_arm2,70", "move:L_arm2,70", "move:R_arm3,15", "move:L_arm3,15"]
+    }
+  },
+  {
+    "id": "motion_left_arm_out_basic",
+    "tags": ["smoke", "motion", "arm"],
+    "user_text": "왼팔 벌려",
+    "robot_state": {
+      "state": 0,
+      "bpm": 100,
+      "is_fixed": true,
+      "current_song": "None",
+      "progress": "0/1",
+      "last_action": "None",
+      "is_lock_key_removed": true,
+      "error_message": "None",
+      "current_angles": {
+        "waist": 0.0,
+        "L_wrist": 75.0
+      }
+    },
+    "expected": {
+      "intent": "motion_request",
+      "planner_domain": "motion",
+      "valid_commands_contains_all": ["move:L_arm1,150"]
+    }
+  },
+  {
     "id": "play_tim_basic",
     "tags": ["smoke", "play"],
     "user_text": "This Is Me 연주해줘",

@@ -42,9 +42,11 @@ PRODUCTION_TO_URDF_CAN_TRANSFORM: Dict[str, Dict[str, float]] = {
     # ==========
     # left arm
     # ==========
+    # L_arm1은 기존 구현을 유지하기 위해 90도 기준 mirror를 씁니다.
+    # 기존 식: 90.0 - (target_deg - 90.0)
     "L_arm1": {
-        "reference_deg": 0.0,
-        "sign": 1.0,
+        "reference_deg": 90.0,
+        "sign": -1.0,
         "bias_deg": 0.0,
     },
     "L_arm2": {
@@ -111,5 +113,5 @@ URDF_JOINT_LIMITS_DEG: Dict[str, Tuple[float, float]] = {
     PRODUCTION_TO_URDF_JOINT["R_wrist"]: (-108.0, 135.0),
     PRODUCTION_TO_URDF_JOINT["L_wrist"]: (-108.0, 135.0),
     LOOK_JOINTS["pan"]: (-90.0, 90.0),
-    LOOK_JOINTS["tilt"]: (0.0, 120.0),
+    LOOK_JOINTS["tilt"]: (60.0, 120.0),
 }

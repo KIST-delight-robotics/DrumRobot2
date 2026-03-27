@@ -12,6 +12,17 @@
 
 ## Now
 
+- [ ] `gesture / play abstraction uplift`
+  - 목표: 긴 `op_cmd` 시퀀스를 위 계층 skill/gesture로 끌어올리고, `AgentAction`은 저수준 실행 primitive로 고정한다.
+  - 1차 범위:
+    - 기존 `wave / nod / shake / hurray` 계열을 상위 skill 카탈로그 기준으로 다시 정리
+    - `arm_up`, `arm_down` 같은 팔 동작 gesture 추가
+    - `tempo:fast|slow`, `strength:strong|soft`를 다음 연주용 pre-play modifier로 설계
+  - 원칙:
+    - planner는 긴 `move:` 나열보다 skill / symbolic command를 우선 사용
+    - calibration과 실제 joint 시퀀스는 C++ `AgentAction` 쪽에 둔다
+    - 연주 speed / intensity modifier는 `readMeasure()`에서 적용한다
+
 - [ ] `scenario eval` 확장
   - 목표: smoke(기본 확인)에서 벗어나 실제 운용에 가까운 복합 시나리오를 평가한다.
   - 범위:
@@ -41,6 +52,8 @@
     - `planner_domain_mismatch`
     - `deterministic_shortcut_miss`
 
+## Next
+
 - [ ] `planner latency isolation benchmark` 추가
   - 목표: classifier 영향 없이 planner 자체의 latency와 output variability를 따로 측정한다.
   - 조건:
@@ -51,8 +64,6 @@
     - planner input JSON 길이
     - planner response 길이
     - avg / median / p95 latency
-
-## Next
 
 - [ ] `state_adapter` 강화
   - raw state를 planner-friendly feature로 가공한다.
@@ -121,10 +132,18 @@
   - 목표: LLM이 저수준 `move:<motor>,<angle>`를 직접 만드는 비율을 더 낮춘다.
   - 방향:
     - `greet_user`
+    - `wave_hi`
+    - `nod_yes`
+    - `shake_no`
+    - `celebrate`
+    - `arm_up`
+    - `arm_down`
     - `start_play_song(TIM)`
     - `explain_joint_limit`
     - `look_at_user`
     - `return_home`
+  - 원칙:
+    - 이미 `AgentAction` 기본 제어 함수로 안정적으로 수행 가능한 긴 시퀀스부터 먼저 위 계층으로 올린다
 
 ## Later
 

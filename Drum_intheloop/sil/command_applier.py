@@ -26,7 +26,7 @@ class CommandApplier:
     def apply_dxl_command(self, motor_name: str, position: float) -> Dict[str, float]:
         spec = get_dxl_motor(motor_name)
         if motor_name == "head_tilt":
-            position = position - 90
+            position = 90.0 - position  # DXL은 tilt 방향이 반대이므로 90도 기준 mirror
         logical_joint = spec["logical_joint"]
         urdf_joint_name = LOOK_JOINTS.get(logical_joint)
         if urdf_joint_name is None:

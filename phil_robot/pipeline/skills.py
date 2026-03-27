@@ -62,6 +62,51 @@ SKILL_LIBRARY: Dict[str, Dict[str, object]] = {
         "op_cmd": ["look:0,110"],
     },
     # 자세 / 전환
+    "arm_up": {
+        "category": "posture",
+        "description": "양팔을 들어 올린다.",
+        "op_cmd": ["move:R_arm2,70", "move:L_arm2,70", "move:R_arm3,15", "move:L_arm3,15"],
+    },
+    "arm_down": {
+        "category": "posture",
+        "description": "양팔을 아래 자세로 내린다.",
+        "op_cmd": ["move:R_arm2,0", "move:L_arm2,0", "move:R_arm3,20", "move:L_arm3,20"],
+    },
+    "left_arm_up": {
+        "category": "posture",
+        "description": "왼팔을 들어 올린다.",
+        "op_cmd": ["move:L_arm2,70", "move:L_arm3,15"],
+    },
+    "right_arm_up": {
+        "category": "posture",
+        "description": "오른팔을 들어 올린다.",
+        "op_cmd": ["move:R_arm2,70", "move:R_arm3,15"],
+    },
+    "left_arm_down": {
+        "category": "posture",
+        "description": "왼팔을 아래 자세로 내린다.",
+        "op_cmd": ["move:L_arm2,0", "move:L_arm3,20"],
+    },
+    "right_arm_down": {
+        "category": "posture",
+        "description": "오른팔을 아래 자세로 내린다.",
+        "op_cmd": ["move:R_arm2,0", "move:R_arm3,20"],
+    },
+    "arms_out": {
+        "category": "posture",
+        "description": "양팔을 옆으로 벌린다.",
+        "op_cmd": ["move:R_arm1,30", "move:L_arm1,150"],
+    },
+    "left_arm_out": {
+        "category": "posture",
+        "description": "왼팔을 옆으로 벌린다.",
+        "op_cmd": ["move:L_arm1,150"],
+    },
+    "right_arm_out": {
+        "category": "posture",
+        "description": "오른팔을 옆으로 벌린다.",
+        "op_cmd": ["move:R_arm1,30"],
+    },
     "ready_pose": {
         "category": "posture",
         "description": "연주 준비 자세로 전환한다.",
