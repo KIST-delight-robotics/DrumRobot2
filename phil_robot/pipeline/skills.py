@@ -65,7 +65,14 @@ SKILL_LIBRARY: Dict[str, Dict[str, object]] = {
     "arm_up": {
         "category": "posture",
         "description": "양팔을 들어 올린다.",
-        "op_cmd": ["move:R_arm2,70", "move:L_arm2,70", "move:R_arm3,15", "move:L_arm3,15"],
+        "op_cmd": [
+            "move:R_arm2,58",
+            "move:L_arm2,58",
+            "move:R_arm3,95",
+            "move:L_arm3,95",
+            "move:R_wrist,0",
+            "move:L_wrist,0",
+        ],
     },
     "arm_down": {
         "category": "posture",
@@ -75,12 +82,12 @@ SKILL_LIBRARY: Dict[str, Dict[str, object]] = {
     "left_arm_up": {
         "category": "posture",
         "description": "왼팔을 들어 올린다.",
-        "op_cmd": ["move:L_arm2,70", "move:L_arm3,15"],
+        "op_cmd": ["move:L_arm2,58", "move:L_arm3,95", "move:L_wrist,0"],
     },
     "right_arm_up": {
         "category": "posture",
         "description": "오른팔을 들어 올린다.",
-        "op_cmd": ["move:R_arm2,70", "move:R_arm3,15"],
+        "op_cmd": ["move:R_arm2,58", "move:R_arm3,95", "move:R_wrist,0"],
     },
     "left_arm_down": {
         "category": "posture",
@@ -95,17 +102,26 @@ SKILL_LIBRARY: Dict[str, Dict[str, object]] = {
     "arms_out": {
         "category": "posture",
         "description": "양팔을 옆으로 벌린다.",
-        "op_cmd": ["move:R_arm1,30", "move:L_arm1,150"],
+        "op_cmd": [
+            "move:R_arm1,30",
+            "move:L_arm1,150",
+            "move:R_arm2,10",
+            "move:L_arm2,10",
+            "move:R_arm3,95",
+            "move:L_arm3,95",
+            "move:R_wrist,0",
+            "move:L_wrist,0",
+        ],
     },
     "left_arm_out": {
         "category": "posture",
         "description": "왼팔을 옆으로 벌린다.",
-        "op_cmd": ["move:L_arm1,150"],
+        "op_cmd": ["move:L_arm1,150", "move:L_arm2,10", "move:L_arm3,95", "move:L_wrist,0"],
     },
     "right_arm_out": {
         "category": "posture",
         "description": "오른팔을 옆으로 벌린다.",
-        "op_cmd": ["move:R_arm1,30"],
+        "op_cmd": ["move:R_arm1,30", "move:R_arm2,10", "move:R_arm3,95", "move:R_wrist,0"],
     },
     "ready_pose": {
         "category": "posture",

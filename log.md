@@ -3,7 +3,21 @@
 프로젝트에서 의미 있는 변경을 할 때마다 한국시간(KST, UTC+9) 기준의 날짜, 시간, 요약을 기록합니다.
 최신 항목이 위로 오도록 추가합니다.
 
+## 2026-03-30
+- 15:20 KST (UTC+9) — 루트 `README.md`를 현재 저장소 구조에 맞게 다시 작성하고, `Drum_intheloop/README.md`의 실제 디렉터리명/경로 표기를 맞춰 최신 실행 흐름과 문서 링크가 깨지지 않게 정리했습니다.
+  - 수정 파일: `README.md`, `Drum_intheloop/README.md`, `log.md`
+  - 메모: `phil_robot`의 pipeline/runtime/eval 구조, `DrumRobot2`의 TCP 대기 및 `DRUM_SIL_MODE` 기반 SIL export, `Drum_intheloop`의 named pipe reader 소유 모델과 command-level viewer 성격을 루트 문서에 반영했습니다.
+- 14:43 KST (UTC+9) — `phil_robot`의 fallback/차단 메시지 처리를 `failure.py`로 모아, LLM 호출 실패 JSON, classifier/planner 기본 실패 결과, motion block 메시지가 한 파일에서 관리되도록 리팩터링했습니다.
+  - 수정 파일: `phil_robot/pipeline/failure.py`, `phil_robot/pipeline/llm_interface.py`, `phil_robot/pipeline/intent_classifier.py`, `phil_robot/pipeline/planner.py`, `phil_robot/pipeline/response_parser.py`, `phil_robot/pipeline/validator.py`, `phil_robot/pipeline/command_validator.py`, `phil_robot/pipeline/llm_contract.py`, `phil_robot/docs/PROJECT_STRUCTURE.md`, `phil_robot/docs/PROJECT_STRUCTURE_KR.md`, `log.md`
+  - 메모: 기존 `llm_contract.py`는 제거했고, `llm_interface` fallback payload를 classifier/planner/parser가 모두 읽을 수 있는 공용 JSON 형태로 맞췄습니다. `python -m compileall phil_robot/pipeline`과 간단한 failure import/parsing smoke를 확인했습니다.
+
 ## 2026-03-27
+- 17:58 KST (UTC+9) — `wave` 인사 포즈를 arm1을 벌렸다 오므리는 형태로 다시 조정하고, `arm_down`은 Python posture 매크로와 resolver에서 기존 값(`arm3=20`)으로 되돌렸습니다.
+  - 수정 파일: `DrumRobot2/src/AgentAction.cpp`, `phil_robot/pipeline/skills.py`, `phil_robot/pipeline/motion_resolver.py`, `log.md`
+  - 메모: `arm_up`과 `arm_out`은 직전 값 그대로 유지했고, `wave`는 상박 고정에 가깝게 둔 채 `arm1`, `arm3`, `wrist` 변화를 반복하도록 바꿨습니다. `make -C DrumRobot2 -j2`와 resolver 출력 확인을 다시 돌렸습니다.
+- 17:45 KST (UTC+9) — `wave`와 `hurray`의 C++ gesture 값을 앞으로 찌르는 자세가 아니라 팔꿈치를 세운 포즈로 다시 잡고, Python `arm_up/down/out` 매크로도 `arm2/arm3/wrist` 중심의 새 하드코딩 값으로 조정했습니다.
+  - 수정 파일: `DrumRobot2/src/AgentAction.cpp`, `phil_robot/pipeline/skills.py`, `phil_robot/pipeline/motion_resolver.py`, `phil_robot/eval/cases_smoke.json`, `log.md`
+  - 메모: `arm_up/out`은 Python `move:` 경로를 유지했고, `wave`/`hurray`만 C++ gesture 정의를 갱신했습니다. `make -C DrumRobot2 -j2`, `python -m compileall phil_robot/pipeline`, resolver smoke 확인을 함께 돌렸습니다.
 - 16:36 KST (UTC+9) — `Drum_intheloop`에 이번 SIL/TCP/state 디버깅 세션을 Velog용 글 초안으로 정리한 `velog.md`를 추가해, command-level viewer 성격과 `current_angles`/`k` 타이밍 한계를 한 번에 기록했습니다.
   - 수정 파일: `Drum_intheloop/velog.md`, `log.md`
   - 메모: real SIL과의 차이, `current_angles`의 measured vs simulator-applied 불일치, `vcan` 논의, head 보정 위치, `k` 입력과 first state snapshot 타이밍 이슈를 재사용 가능한 글 흐름으로 묶었습니다.

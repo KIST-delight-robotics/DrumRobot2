@@ -1,19 +1,13 @@
 import json
-import re
 
 try:
-    from .llm_contract import FALLBACK_MESSAGE
+    from .failure import FALLBACK_MESSAGE, sanitize_message
 except ImportError:
-    from llm_contract import FALLBACK_MESSAGE
+    from failure import FALLBACK_MESSAGE, sanitize_message
 
 
 def _sanitize_message(message):
-    if not isinstance(message, str):
-        return FALLBACK_MESSAGE
-
-    clean_msg = re.sub(r'\([^)]*\)', '', message)
-    sanitized = re.sub(r'\s+', ' ', clean_msg).strip()
-    return sanitized or FALLBACK_MESSAGE
+    return sanitize_message(message)
 
 def parse_llm_response(response_text):
     """

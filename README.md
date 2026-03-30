@@ -1,150 +1,163 @@
-# 🥁 Phil Robot: AI-Powered Humanoid Drummer
-> **Jetson AGX Orin 기반의 로컬 AI 에이전트와 실시간 C++ 모터 제어 시스템의 통합 아키텍처**
+# Phil Robot / Drum Robot Project
 
-![Phil Robot Preview](./docs/DrumRobot.jpg)
-*(https://www.youtube.com/watch?v=SHXWN2f2ou8)*
+Jetson AGX Orin 기반의 로컬 AI brain, C++ 로봇 제어기, command-level SIL viewer를 한 저장소에 모아 둔 드럼 로봇 프로젝트입니다.
 
----
+![Phil Robot](./docs/DrumRobot.jpg)
 
-[pybullet 1](./phil_intheloop/artifacts/Simulation_intheloop.png)
-[pybullet 2](./phil_intheloop/artifacts/SIL2.png)
-pybullet 시뮬레이터에 적용된 관절 매핑과 제어 로직을 보여주는 스크린샷입니다.
-
-
-## 📖 Project Overview
-**Phil Robot**은 KIST에서 개발한 휴머노이드 드럼 로봇 '필(Phil)'에게 AI 기반의 인지/대화 능력을 부여하는 프로젝트입니다. 
-외부 API에 전혀 사용하지 않고, 엣지 디바이스(Jetson AGX Orin) 내에서 독립적으로 구동되는 **On-Device AI 파이프라인(Whisper ↔ Qwen 30B ↔ MeloTTS)** 과 실시간성이 요구되는 **C++ 하드웨어 제어 시스템(CAN 통신)** 으로 이루어진 Heterogeneous 시스템을 **TCP 소켓 통신** 으로 통합했습니다.
-
-## 🏗️ System Architecture
-Python(AI Brain)과 C++(Robot Body)을 분리하여, AI 연산이 실시간 모터 제어 루프를 방해하지 않도록 비동기 IPC 구조를 채택했습니다.
-
-```mermaid
----
-config:
-  layout: dagre
----
-graph LR
-    %% Styling Definitions
-    classDef pythonBox fill:#E1F5FE,stroke:#0288D1,stroke-width:3px,color:#000;
-    classDef cppBox fill:#E8F5E9,stroke:#388E3C,stroke-width:3px,color:#000;
-    classDef hardware fill:#FFF3E0,stroke:#F57C00,stroke-width:3px,color:#000;
-    classDef highlight fill:#FCE4EC,stroke:#C2185B,stroke-width:3px,stroke-dasharray: 5 5,color:#000;
-
-    subgraph Brain ["🧠 AI Agent Process (Python / Jetson GPU)"]
-        direction TB
-        Mic((Mic Input)) --> STT["Whisper<br/>(Local STT)"]
-        STT --> LLM{"Qwen-3 4B classifier, Qwen-3 30B planner pipeline"}
-        LLM --> TTS["MeloTTS<br/>(Local TTS)"]
-        LLM --> PySocket["TCP Client Socket"]
-        
-        class Mic,STT,LLM,TTS,PySocket pythonBox;
-    end
-
-    subgraph Body ["🦾 Robot Control Process (C++ / Real-time CPU)"]
-        direction TB
-        CppSocket["Agent Socket Server"] --> MutexQueue[/"Command Queue<br/>(Protected by std::mutex)"/]
-        MutexQueue --> ActionDispatcher["AgentAction<br/>(Regex Command Parser)"]
-        ActionDispatcher --> CanManager["CAN Manager"]
-        CanManager --> Motors(("Robot Joints<br/>(Maxon / T-Motor)"))
-        
-        class CppSocket,MutexQueue,ActionDispatcher,CanManager cppBox;
-        class Motors hardware;
-    end
-
-    %% IPC Connection (Asymmetric Communication)
-    PySocket ==>|"1. Command (Low Latency)<br/>⚡ Regex Parsed Text"| CppSocket
-    CppSocket -.->|"2. State Feedback<br/>📦 JSON Format"| PySocket
-    
-    class PySocket,CppSocket highlight;
-
-    %% TTS Output
-    TTS -.->|"Audio Feedback"| Speaker((Speaker))
-    class Speaker hardware;
-```
-
----
-
-## 📂 1. Directory Structure (핵심 모듈 구조)
-
-불필요한 데이터 로그 및 외부 의존성(SDK, 3rd party)을 제외한 프로젝트의 핵심 폴더 및 파일 구조입니다. 크게 **C++ Body(`DrumRobot2`)** 와 **Python Brain(`phil_robot`)** 으로 나뉘어 있습니다.
+현재 저장소의 공식 표현은 아래 흐름입니다.
 
 ```text
-📦 ROBOT_PROJECT
-├── 📂 DrumRobot2                   # 🦾 [C++ Body] 실시간 로봇 모터 제어 및 소켓 서버
-│   ├── 📂 include                  # 모터, 매니저, 시스템 상태 관리를 위한 헤더 파일
-│   ├── 📂 src                      # C++ 핵심 동작 소스 코드
-│   │   ├── main.cpp                # 프로그램 엔트리 포인트 및 멀티스레드 스폰
-│   │   ├── DrumRobot.cpp           # 로봇 라이프사이클 및 상태 머신(State Machine) 관리
-│   │   ├── AgentSocket.cpp         # [IPC] Python AI와 통신하는 TCP 소켓 서버
-│   │   ├── AgentAction.cpp         # [Parsing] 수신된 [CMD] 정규식 파싱 및 물리적 모션 매핑
-│   │   ├── CanManager.cpp          # 로봇 관절 모터(Maxon/T-Motor) CAN 통신 제어
-│   │   └── PathManager.cpp         # IK/FK 기반 역운동학 및 드럼 타격 궤적(Path) 생성
-│   ├── 📂 magenta                  # [AI Music] Google Magenta 기반 MIDI 패턴 생성 및 처리
-│   ├── 📜 Makefile                 # ARM cpu 환경 최적화 빌드 스크립트
-│   └── 📂 scripts                  # CAN 네트워크 초기화(ipup/down) 쉘 스크립트
-│
-├── 📂 phil_robot                   # 🧠 [Python Brain] On-Device AI 에이전트 (클라이언트)
-│   ├── 🐍 phil_brain.py            # AI 메인 파이프라인 (STT 입력 ↔ LLM 추론 ↔ TTS 출력)
-│   ├── 🐍 phil_client.py           # [IPC] C++ 소켓 서버로 제어 명령 전송 및 상태 피드백 수신
-│   ├── 🐍 response_parser.py       # LLM 출력에서 자연어 대화와 제어 커맨드(Harness) 분리
-│   ├── 🐍 melo_engine.py           # 로컬 VRAM을 활용한 MeloTTS 기반 음성 합성 모듈
-│   ├── 📜 init_phil.sh             # AI 파이프라인 초기화 및 모델 Warm-up 실행 스크립트
-│   └── 📂 MeloTTS                  # 로컬 TTS 엔진 서브모듈
-│
-├── 📂 docs                         # 각종 에셋 보관
-└── 📜 README.md
+LLM 플래너 -> 로봇 제어기 -> command-level 시뮬레이터
 ```
----
 
-## ✨ 2. Key Technical Highlights (핵심 엔지니어링)
+- `phil_robot/`는 Whisper STT, Ollama 기반 Qwen classifier/planner, MeloTTS를 묶은 Python brain입니다.
+- `DrumRobot2/`는 CAN/TMotor/Maxon/DXL 제어와 상태머신을 담당하는 C++ body입니다.
+- `Drum_intheloop/`는 `DrumRobot2`의 command-level 출력을 `/tmp/drum_command.pipe`로 받아 PyBullet에 적용하는 느슨한 SIL 경로입니다.
+- `legacy/phil_intheloop/`는 이전 simulator 경로를 보관하는 legacy 영역입니다.
 
-### 1️⃣ Harness Engineering 기반의 비결정적 출력 제어
-LLM의 자유로운 자연어 출력을 C++ 제어부가 정확하게 파싱할 수 있도록, 시스템 프롬프팅을 통해 모든 제어 명령을 표준화된 프로토콜로 강제(Harness)했습니다.
-* **통신 포맷:** `[CMD:action:params] >> speech text`
+## 현재 구조
 
-### 2️⃣ State-Aware Context Injection (상태 인식형 프롬프팅)
-LLM이 로봇의 현재 물리적 상태를 인지하고 맥락에 맞는 대답을 하도록 설계했습니다.
-* **Playing (연주 중):** 사용자의 무리한 요구나 추가 동작 지시를 정중히 거절합니다.
-* **Error (에러 상태):** 물리적 한계나 오류 상황(예: 관절 각도 초과, 충돌 위험)에 대해 사과 및 상황 설명을 진행합니다.
+```text
+robot_project/
+├── DrumRobot2/          # 실시간 C++ 로봇 제어기
+├── Drum_intheloop/      # named pipe 기반 PyBullet SIL
+├── phil_robot/          # Python LLM brain / STT / TTS / eval
+├── DrumRobot_data/      # 저장/생성 데이터와 코드 산출물
+├── docs/                # 루트 문서 자산
+├── legacy/              # 이전 intheloop 자산 보관
+├── ppt/                 # 발표 자료
+└── log.md               # 작업 로그
+```
 
-### 3️⃣ Model Warm-up & Latency 최적화
-GPU Stalling(병목 현상)을 방지하기 위해, 파이프라인 초기화 시 더미(Dummy) 데이터를 주입하여 VRAM에 모델을 미리 상주(Pre-loading)시킵니다.
-* **Whisper:** 첫 전사(Transcription) 전에 1초(16,000 samples) 분량의 Zero-padded 오디오를 주입합니다.
-* **MeloTTS:** 시작 시 빈 텍스트로 `.speak()`를 호출하여 초기 음성 합성의 지연시간(Latency Spike)을 완벽히 제거했습니다.
+### `DrumRobot2/`
 
-### 4️⃣ 비대칭(Asymmetric) IPC 프로토콜 최적화 & 동시성 제어
-* **비대칭 통신:** AI에서 로봇으로 가는 명령 전송은 초경량 정규식 기반 텍스트로 레이턴시를 최소화하고, 로봇에서 AI로 오는 상태 피드백은 `JSON` 포맷으로 확장성을 확보했습니다.
-* **동시성 제어:** C++ `std::mutex`를 활용해 Command Queue의 데이터 레이스(Data Race)를 원천 차단하여 모터의 지터링(Jittering)을 방지했습니다.
+- `src/main.cpp`: 제어기 엔트리포인트입니다. `initializeDrumRobot()`가 끝난 뒤에야 state/send/recv/music/python/broadcast thread를 시작합니다.
+- `src/DrumRobot.cpp`: 로봇 상태머신, brain 대기, 초기 자세, state JSON broadcast, Magenta 연동 경로를 담당합니다.
+- `src/AgentSocket.cpp`: TCP server를 열고 brain 명령 큐와 state JSON 송신을 처리합니다.
+- `src/CanManager.cpp`: CAN 포트 초기화, 하드웨어 송수신, `DRUM_SIL_MODE` 판별을 담당합니다.
+- `src/SilCommandPipeWriter.cpp`: SIL 모드일 때 command-level NDJSON을 `/tmp/drum_command.pipe`로 내보냅니다.
+- `include/codes/*.txt`: 현재 드럼 악보 txt 파일 위치입니다. 첫 줄은 `bpm <number>` 형식이며, 이후 줄은 상대 대기시간과 손/발 악기 번호, velocity를 담습니다.
 
----
+### `phil_robot/`
 
-## 🚀 3. Build & Run (실행 방법)
+- `phil_brain.py`: 마이크 녹음, Whisper STT, 상태 스냅샷 조회, LLM 턴 실행, 검증된 명령 전송, TTS 재생을 묶는 메인 엔트리포인트입니다.
+- `pipeline/`: classifier, planner, validator, skill expansion, motion resolver 같은 판단 계층입니다.
+- `runtime/`: TCP client와 MeloTTS 같은 런타임 계층입니다.
+- `eval/`: smoke case와 오프라인 평가 러너가 있습니다.
+- `init_phil.sh`: `jetson_clocks`와 Ollama keep-alive를 이용해 Jetson 런타임을 예열합니다.
 
-> ⚠️ **필수 주의사항 (Connection Order)**
-> TCP 연결 구조상, **C++(Server)** 가 먼저 실행되어 대기 상태(`'o'` 키 입력 입력 대기)가 된 후 **Python(Client)** 을 실행해야 합니다.
- 
-### Step 1. C++ Backend (DrumRobot Body)
-루트 디렉토리에서 프로젝트를 빌드하고 서버를 실행합니다.
+현재 기본 모델 설정은 아래 파일에 있습니다.
+
+- classifier: `qwen3:4b-instruct-2507-q4_K_M`
+- planner: `qwen3:30b-a3b-instruct-2507-q4_K_M`
+
+### `Drum_intheloop/`
+
+- `run_sil.py`: SIL reader 진입점입니다.
+- `sil/SilCommandPipeReader.py`: FIFO 생성/삭제, NDJSON parse, startup pose 적용을 담당합니다.
+- `sil/command_applier.py`: production motor 이름과 각도 의미를 URDF joint target으로 바꿉니다.
+- `sil/joint_map.py`: CAN joint 의미 보정을 정의합니다.
+- `sil/urdf_tools.py`: 체크인된 URDF/STL 원본을 건드리지 않고 runtime URDF patch를 적용합니다.
+- 현재 backend는 `resetJointState()` 기반 즉시 반영 viewer에 가깝고, frame-accurate simulator는 아닙니다.
+
+## 빠른 시작
+
+### 1. Python brain 환경
+
 ```bash
-cd DrumRobot2
+cd /home/shy/robot_project/phil_robot
+conda env create -f environment.yml
+conda activate drum4
+```
+
+추가로 Ollama 서버와 `phil_robot/config.py`에 적힌 Qwen 모델이 준비되어 있어야 합니다. `init_phil.sh`는 Jetson 환경에서 `jetson_clocks`와 Ollama keep-alive를 실행합니다.
+
+### 2. C++ 제어기 빌드
+
+```bash
+cd /home/shy/robot_project/DrumRobot2
 make clean
 make
-./bin/main.out
 ```
-1. 프로그램이 켜지면 터미널에서 소켓이 연결되며 모터 초기화를 진행합니다.
-2. 로봇의 **물리적 안전 키(Lock Key)** 를 뽑습니다.
-3. 키를 제거한 후 'k'를 누르고 대기 상태(0: Idle/Ready)로 진입합니다.
 
-### Step 2. Python AI Brain (Client)
-새로운 터미널 창을 열고 AI 파이프라인을 실행합니다.
+`Makefile`은 `opencv4`, `sfml`, `realsense2`, USBIO 라이브러리, Dynamixel 라이브러리가 있는 Jetson/Ubuntu 계열 환경을 전제로 합니다.
+
+실행은 상대경로 의존성 때문에 `DrumRobot2/bin` 기준으로 하는 편이 안전합니다. CSV 로그는 `../../DrumRobot_data/`, 악보/음원/마젠타 산출물은 `../include/...`, `../magenta/...`를 전제로 합니다.
+
+## 실행 모드
+
+### 하드웨어 + brain
+
+터미널 1:
+
 ```bash
-conda activate drum4
-cd phil_robot
-./init_phil.sh
-python phil_robot/phil_brain.py
+cd /home/shy/robot_project/DrumRobot2/bin
+sudo ./main.out
 ```
-1. TTS 엔진과 STT 모델이 VRAM에 로딩(Warm-up)됩니다.
 
-2. 콘솔에 [Listening...]이 뜨면 마이크에 대고 자연스럽게 명령합니다.
-(예: "필봇,안녕!" 또는 "This Is Me 연주 시작하자.")
----
+터미널 2:
+
+```bash
+cd /home/shy/robot_project/phil_robot
+conda activate drum4
+./init_phil.sh
+python phil_brain.py
+```
+
+주의:
+
+- `DrumRobot2`는 brain TCP 연결이 성공할 때까지 `initializeDrumRobot()` 안에서 대기합니다.
+- brain이 연결되면 C++ 쪽이 내부적으로 `initializePos("o")`를 호출해 초기 자세 절차를 진행합니다.
+- 그 다음에도 안전 키를 제거하고 C++ 터미널에서 `k`를 입력해 gate를 열기 전까지 명령은 폐기될 수 있습니다.
+- state broadcast는 TCP `9999` 경로이며, SIL pipe와는 별개입니다.
+
+### command-level SIL
+
+터미널 1:
+
+```bash
+cd /home/shy/robot_project/Drum_intheloop
+python -m pip install -r requirements.txt
+python run_sil.py --mode gui
+```
+
+터미널 2:
+
+```bash
+cd /home/shy/robot_project/DrumRobot2/bin
+sudo env DRUM_SIL_MODE=1 ./main.out
+```
+
+터미널 3:
+
+```bash
+cd /home/shy/robot_project/phil_robot
+conda activate drum4
+python phil_brain.py
+```
+
+중요:
+
+- `Drum_intheloop` reader가 `/tmp/drum_command.pipe`를 만들고 종료 시 정리합니다.
+- `DrumRobot2` writer는 FIFO를 만들지 않으며, `DRUM_SIL_MODE=1`일 때만 export를 시도합니다.
+- reader를 먼저 띄워야 writer가 pipe를 열 수 있습니다.
+- 현재 SIL은 command-level viewer이므로 actuator interpolation이나 frame-accurate CAN 재현은 아직 범위 밖입니다.
+- TCP brain 연결이 별도로 필요하므로, pipe reader만 실행해도 `main.out`의 전체 동작이 자동으로 시작되지는 않습니다.
+
+## 평가와 보조 문서
+
+- 오프라인 LLM 평가: `python phil_robot/eval/run_eval.py --suite smoke`
+- Python brain 구조 문서: `phil_robot/docs/PROJECT_STRUCTURE_KR.md`
+- LLM 파이프라인 문서: `phil_robot/docs/LLM_PIPELINE_ARCHITECTURE_KR.md`
+- SIL 상세 문서: `Drum_intheloop/README.md`
+
+## 현재 문서화해 둘 제한 사항
+
+- `main.cpp`는 `initializeDrumRobot()`가 끝난 뒤에야 주요 thread를 시작하므로, brain TCP 연결이 안 되면 이후 경로가 함께 지연될 수 있습니다.
+- `openCSVFile()`은 startup 초기에 메타데이터를 기록하므로, CSV가 생겼다고 body trajectory 생성까지 성공한 것은 아닙니다.
+- `legacy/phil_intheloop/`는 현재 공식 경로가 아니라 이전 자산 보관용입니다.
+
+## 참고 이미지
+
+- SIL GUI 예시: [Simulation_intheloop.png](./Drum_intheloop/artifacts/Simulation_intheloop.png)
+- SIL GUI 예시 2: [SIL2.png](./Drum_intheloop/artifacts/SIL2.png)

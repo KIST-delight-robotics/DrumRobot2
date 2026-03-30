@@ -11,23 +11,26 @@ from typing import Dict, List
 try:
     from .command_validator import (
         ValidationResult,
-        build_motion_block_message,
         has_actionable_motion_command,
         user_text_requests_motion,
         validate_commands,
     )
+    from .failure import build_motion_block_message
     from .motion_resolver import resolve_motion_commands
     from .skills import expand_skills
+    from .song_modifier import parse_song_modifier
+
 except ImportError:
     from command_validator import (
         ValidationResult,
-        build_motion_block_message,
         has_actionable_motion_command,
         user_text_requests_motion,
         validate_commands,
     )
+    from failure import build_motion_block_message
     from motion_resolver import resolve_motion_commands
     from skills import expand_skills
+    from song_modifier import parse_song_modifier
 
 
 @dataclass

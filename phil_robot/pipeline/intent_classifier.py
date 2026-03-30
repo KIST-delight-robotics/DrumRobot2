@@ -2,8 +2,10 @@ import json
 import re
 
 try:
+    from .failure import build_classifier_failure_result
     from .state_adapter import build_classifier_state_summary, detect_joint_angle_query
 except (ImportError, ValueError):
+    from pipeline.failure import build_classifier_failure_result
     from pipeline.state_adapter import build_classifier_state_summary, detect_joint_angle_query
 
 try:
@@ -11,12 +13,7 @@ try:
 except (ImportError, ValueError):
     from config import CLASSIFIER_MODEL
 
-DEFAULT_INTENT_RESULT = {
-    "intent": "unknown",
-    "needs_motion": False,
-    "needs_dialogue": True,
-    "risk_level": "medium",
-}
+DEFAULT_INTENT_RESULT = build_classifier_failure_result()
 
 MOTION_REQUIRED_INTENTS = {"motion_request", "play_request", "stop_request"}
 IDENTITY_CHAT_KEYWORDS = ["이름", "누구", "정체", "자기소개"]
@@ -95,17 +92,17 @@ def parse_intent_response(response_text):
     classifier 출력은 planner 앞단에서 바로 쓰이므로 실패 시 보수적 기본값을 사용한다.
     """
     if not isinstance(response_text, str):
-        return dict(DEFAULT_INTENT_RESULT)
+        return build_classifier_failure_result()
 
     try:
         response_data = json.loads(response_text)
     except json.JSONDecodeError:
-        return dict(DEFAULT_INTENT_RESULT)
+        return build_classifier_failure_result()
 
     if not isinstance(response_data, dict):
-        return dict(DEFAULT_INTENT_RESULT)
+        return build_classifier_failure_result()
 
-    result = dict(DEFAULT_INTENT_RESULT)
+    result = build_classifier_failure_result()
     if isinstance(response_data.get("intent"), str):
         result["intent"] = response_data["intent"].strip() or DEFAULT_INTENT_RESULT["intent"]
     if isinstance(response_data.get("needs_motion"), bool):

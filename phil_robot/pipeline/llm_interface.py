@@ -1,9 +1,9 @@
 import ollama
 
 try:
-    from .llm_contract import build_fallback_response_json
+    from .failure import build_llm_call_failure_json
 except ImportError:
-    from llm_contract import build_fallback_response_json
+    from failure import build_llm_call_failure_json
 
 
 def call_json_llm(model_name, system_prompt, user_input_json):
@@ -22,4 +22,4 @@ def call_json_llm(model_name, system_prompt, user_input_json):
         )
         return response["message"]["content"]
     except Exception as exc:
-        return build_fallback_response_json(f"LLM call failed: {exc}")
+        return build_llm_call_failure_json(f"LLM call failed: {exc}")

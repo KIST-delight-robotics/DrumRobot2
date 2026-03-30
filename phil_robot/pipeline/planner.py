@@ -6,15 +6,14 @@ speech 와 skill/command plan 만 생성한다.
 """
 
 import json
-import re
 from typing import Dict, List, Set
 
 try:
-    from .llm_contract import FALLBACK_MESSAGE
+    from .failure import FALLBACK_MESSAGE, build_planner_failure_result, sanitize_message
     from .state_adapter import build_planner_state_summary
     from .skills import describe_skills_for_prompt, filter_skills_by_allowed_categories
 except ImportError:
-    from llm_contract import FALLBACK_MESSAGE
+    from failure import FALLBACK_MESSAGE, build_planner_failure_result, sanitize_message
     from state_adapter import build_planner_state_summary
     from skills import describe_skills_for_prompt, filter_skills_by_allowed_categories
 
@@ -173,11 +172,7 @@ def build_planner_input_json(robot_state: Dict, user_text: str, intent_result: D
 
 
 def _sanitize_speech(speech: str) -> str:
-    if not isinstance(speech, str):
-        return FALLBACK_MESSAGE
-    clean_msg = re.sub(r"\([^)]*\)", "", speech)
-    sanitized = re.sub(r"\s+", " ", clean_msg).strip()
-    return sanitized or FALLBACK_MESSAGE
+    return sanitize_message(speech)
 
 
 def parse_plan_response(response_text: str) -> Dict:
@@ -185,12 +180,7 @@ def parse_plan_response(response_text: str) -> Dict:
     planner JSON 응답을 읽어 skill/op_cmd/speech 구조로 정리한다.
     실패 시에도 이후 validator/executor 가 처리할 수 있는 기본형을 반환한다.
     """
-    result = {
-        "skills": [],
-        "op_cmd": [],
-        "speech": FALLBACK_MESSAGE,
-        "reason": "",
-    }
+    result = build_planner_failure_result()
 
     if not isinstance(response_text, str):
         return result
@@ -227,7 +217,7 @@ def enforce_intent_constraints(planner_result: Dict, intent_result: Dict) -> Dic
     normalized = {
         "skills": list(planner_result.get("skills", [])),
         "op_cmd": list(planner_result.get("op_cmd", planner_result.get("commands", []))),
-        "speech": planner_result.get("speech", FALLBACK_MESSAGE),
+        "speech": sanitize_message(planner_result.get("speech", FALLBACK_MESSAGE)),
         "reason": planner_result.get("reason", ""),
     }
 

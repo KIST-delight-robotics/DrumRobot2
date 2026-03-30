@@ -65,7 +65,7 @@ LLM 제어 파이프라인의 핵심 로직을 모은 계층이다.
 - `command_validator.py`
 - `command_executor.py`
 - `llm_interface.py`
-- `llm_contract.py`
+- `failure.py`
 - `response_parser.py`
 
 ### `runtime/`

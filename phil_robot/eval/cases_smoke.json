@@ -96,7 +96,14 @@
     "expected": {
       "intent": "motion_request",
       "planner_domain": "motion",
-      "valid_commands_contains_all": ["move:R_arm2,70", "move:L_arm2,70", "move:R_arm3,15", "move:L_arm3,15"]
+      "valid_commands_contains_all": [
+        "move:R_arm2,58",
+        "move:L_arm2,58",
+        "move:R_arm3,95",
+        "move:L_arm3,95",
+        "move:R_wrist,0",
+        "move:L_wrist,0"
+      ]
     }
   },
   {
@@ -120,7 +127,12 @@
     "expected": {
       "intent": "motion_request",
       "planner_domain": "motion",
-      "valid_commands_contains_all": ["move:L_arm1,150"]
+      "valid_commands_contains_all": [
+        "move:L_arm1,150",
+        "move:L_arm2,10",
+        "move:L_arm3,95",
+        "move:L_wrist,0"
+      ]
     }
   },
   {

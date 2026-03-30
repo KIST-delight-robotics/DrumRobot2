@@ -264,24 +264,3 @@ def has_actionable_motion_command(commands):
         if command in {"r", "h"}:
             return True
     return False
-
-
-def build_motion_block_message(robot_state):
-    """
-    LLM이 거절형 대사를 만들지 못했을 때 Python 측 안전장치로 사용하는 메시지.
-    명령 validator와 같은 기준으로 사용자 대사도 보수적으로 맞춘다.
-    """
-    if not robot_state.get("is_lock_key_removed", False):
-        return "아직 안전 키가 해제되지 않아 움직일 수 없습니다. 안전 키를 먼저 확인해 주세요."
-
-    current_state = robot_state.get("state", 0)
-    if current_state == 2:
-        return "지금은 연주 중이라 다른 동작을 할 수 없습니다."
-    if current_state == 4:
-        error_detail = robot_state.get("error_detail", "원인을 아직 확인 중입니다.")
-        return f"지금은 에러 상태라 동작할 수 없습니다. 원인은 {error_detail} 입니다."
-
-    if not robot_state.get("is_fixed", True):
-        return "지금은 자세를 이동 중이라 다른 동작을 할 수 없습니다."
-
-    return "지금은 해당 동작을 수행할 수 없습니다."

@@ -132,35 +132,27 @@ void AgentAction::policy_gesture(std::string type)
 {
     std::cout << "[Action] Perform Gesture: " << type << std::endl;
 
-    // 1. 인사 (Wave) - [추가됨] 어깨를 들고 팔꿈치를 흔듦
+    // 1. 인사 (Wave) - 어깨를 살짝 벌린 상태에서 팔을 열고 오므리며 손을 흔든다.
     if (type == "wave" || type == "hi")
     {
-        // (1) 시선 처리: 움직이는 오른손을 바라봄 (자연스러움 유도)
-        policy_lookAt(30, 100); // 오른쪽 아래를 바라보도록
-
-        // (2) 안전을 위해 손목 살짝 들기 (드럼 충돌 방지)
+        policy_lookAt(20, 95);
+        policy_moveJoint("R_arm1", 48.0);
+        policy_moveJoint("R_arm2", 20.0);
+        policy_moveJoint("R_arm3", 100.0);
         policy_moveJoint("R_wrist", 0.0);
 
-        // (3) 팔 바깥으로 돌리기 (R_arm1: 어깨 roll 모터, Max 150도)
-        policy_moveJoint("R_arm1", 30.0);
-
-        // (4) 팔 위로 들기 (R_arm2: 어깨 pitch 모터, Max 90도)
-        policy_moveJoint("R_arm2", 70.0); 
-        
-        // (5) 팔꿈치와 손목 굽혔다 폈다 반복 (R_arm3, R_wrist)
-        // moveJoint 명령은 큐(Queue)에 쌓이므로 순차적으로 실행됩니다.
-        // 1. 팔꿈치, 손목 굽히기
-        policy_moveJoint("R_arm3", 75.0); // 안쪽으로 굽힘
-        policy_moveJoint("R_wrist", 45.0); // 손목도 함께 굽힘
-        // 2. 팔꿈치, 손목 펴기
-        policy_moveJoint("R_arm3", 45.0); // 바깥쪽으로 폄
-        policy_moveJoint("R_wrist", 0.0); // 손목 원위치
-        // 3. 팔꿈치, 손목 굽히기
-        policy_moveJoint("R_arm3", 75.0); // 다시 굽힘
-        policy_moveJoint("R_wrist", 45.0); // 손목도 함께 굽힘
-        // 4. 팔꿈치, 손목 펴기 (마무리)
-        policy_moveJoint("R_arm3", 45.0); // 다시 폄
-        policy_moveJoint("R_wrist", 0.0); // 손목 원위치
+        policy_moveJoint("R_arm1", 32.0);
+        policy_moveJoint("R_arm3", 85.0);
+        policy_moveJoint("R_wrist", -10.0);
+        policy_moveJoint("R_arm1", 58.0);
+        policy_moveJoint("R_arm3", 110.0);
+        policy_moveJoint("R_wrist", 20.0);
+        policy_moveJoint("R_arm1", 32.0);
+        policy_moveJoint("R_arm3", 85.0);
+        policy_moveJoint("R_wrist", -10.0);
+        policy_moveJoint("R_arm1", 48.0);
+        policy_moveJoint("R_arm3", 100.0);
+        policy_moveJoint("R_wrist", 0.0);
     }
     // 2. 끄덕임 (Nod) - DXL 모터 사용
     else if (type == "nod"){
@@ -178,18 +170,17 @@ void AgentAction::policy_gesture(std::string type)
         policy_lookAt(30, 90);
         policy_lookAt(0, 90);
     }
-    // 4. 환호 (Hurray) - 양팔 만세
+    // 4. 환호 (Hurray) - 양팔을 조금 벌리고 팔꿈치를 세워 만세 느낌을 만든다.
     else if (type == "hurray" || type == "happy") {
-        // 양쪽 팔 들어 올림
-        policy_moveJoint("R_arm2", 70.0);
-        policy_moveJoint("L_arm2", 70.0);
-        
-        // 양쪽 팔꿈치 펴기
-        policy_moveJoint("R_arm3", 15.0);
-        policy_moveJoint("L_arm3", 15.0);
-        
-        // 고개 들기 (DXL)
-        policy_lookAt(0, 110); 
+        policy_moveJoint("R_arm1", 60.0);
+        policy_moveJoint("L_arm1", 120.0);
+        policy_moveJoint("R_arm2", 65.0);
+        policy_moveJoint("L_arm2", 65.0);
+        policy_moveJoint("R_arm3", 95.0);
+        policy_moveJoint("L_arm3", 95.0);
+        policy_moveJoint("R_wrist", 0.0);
+        policy_moveJoint("L_wrist", 0.0);
+        policy_lookAt(0, 105);
     }
 }
 

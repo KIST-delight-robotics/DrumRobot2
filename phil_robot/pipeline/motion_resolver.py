@@ -280,10 +280,17 @@ def _find_arm_side(text):
 
 def build_arm_up_cmds(arm_side):
     if arm_side == "left":
-        return ["move:L_arm2,70", "move:L_arm3,15"]
+        return ["move:L_arm2,58", "move:L_arm3,95", "move:L_wrist,0"]
     if arm_side == "right":
-        return ["move:R_arm2,70", "move:R_arm3,15"]
-    return ["move:R_arm2,70", "move:L_arm2,70", "move:R_arm3,15", "move:L_arm3,15"]
+        return ["move:R_arm2,58", "move:R_arm3,95", "move:R_wrist,0"]
+    return [
+        "move:R_arm2,58",
+        "move:L_arm2,58",
+        "move:R_arm3,95",
+        "move:L_arm3,95",
+        "move:R_wrist,0",
+        "move:L_wrist,0",
+    ]
 
 
 def build_arm_down_cmds(arm_side):
@@ -296,10 +303,19 @@ def build_arm_down_cmds(arm_side):
 
 def build_arm_out_cmds(arm_side):
     if arm_side == "left":
-        return ["move:L_arm1,150"]
+        return ["move:L_arm1,150", "move:L_arm2,10", "move:L_arm3,95", "move:L_wrist,0"]
     if arm_side == "right":
-        return ["move:R_arm1,30"]
-    return ["move:R_arm1,30", "move:L_arm1,150"]
+        return ["move:R_arm1,30", "move:R_arm2,10", "move:R_arm3,95", "move:R_wrist,0"]
+    return [
+        "move:R_arm1,30",
+        "move:L_arm1,150",
+        "move:R_arm2,10",
+        "move:L_arm2,10",
+        "move:R_arm3,95",
+        "move:L_arm3,95",
+        "move:R_wrist,0",
+        "move:L_wrist,0",
+    ]
 
 
 def _format_move_command(joint_name, target_angle):
