@@ -119,15 +119,14 @@ class taskManager:
 
     def sound_feedback(self, codeName):
 
-        codeName = 'soundfb'
         # 경로 설정
         self.set_path()
         print(f"bpm is {self.bpm}")
         # 오브젝트 생성
         rec = RecordingManager(self.device_name, self.bpm, self.base_path)
 
-        recording_file_name = 'record/' + codeName + '.mid'
-        rec.record_for_sec(output_file=recording_file_name, wait_second=3, time_record=10)    
+        recording_file_name = '../magenta/record/' + codeName + '.mid'
+        rec.record_for_sec(output_file=recording_file_name, wait_second=3, time_record=40)    
         quantize_midi_file = quantize_drum_midi(recording_file_name, self.bpm)
         print(f"\n[Python] quantized MIDI saved at : {quantize_midi_file}")
 

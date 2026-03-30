@@ -156,7 +156,7 @@ def quantize_drum_midi(input_path: str, bpm) -> str:    #input_path = 'record/co
 
 def modify_intensity(input_path: str) -> None:      # input_path = codeName 예) velocity/solo2.csv 면 input_path = "solo2"
     # code 파일을 열고 drum_velocity 파일과 비교하여 intensity를 수정하는 함수
-    code_path = os.path.join("../magenta/codes", input_path + "0.txt" )    # 악보 번호가 "1.txt"인 경우는 아직 구현 안함
+    code_path = os.path.join("../include/codes", input_path + "0.txt" )    # 악보 번호가 "1.txt"인 경우는 아직 구현 안함
     velo_path = os.path.join("../magenta/velocity", input_path + ".csv" )
 
     code = []
@@ -180,6 +180,8 @@ def modify_intensity(input_path: str) -> None:      # input_path = codeName 예)
                     row[8] = 0
                     row.append(0)
                 elif len(row) == 10:
+                    row[8] = float(row[8])
+                    row[9] = float(row[9])
                     pass
                 elif len(row) < 8:
                     pass
@@ -339,7 +341,6 @@ def modify_intensity(input_path: str) -> None:      # input_path = codeName 예)
     with open(output_path, "w", encoding="utf-8") as f:
 
         for row in code:
-
             line = '\t'.join(map(str, row))
             f.write(line + '\n')
 
