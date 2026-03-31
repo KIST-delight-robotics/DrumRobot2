@@ -141,7 +141,6 @@ python phil_brain.py
 - `Drum_intheloop` reader가 `/tmp/drum_command.pipe`를 만들고 종료 시 정리합니다.
 - `DrumRobot2` writer는 FIFO를 만들지 않으며, `DRUM_SIL_MODE=1`일 때만 export를 시도합니다.
 - reader를 먼저 띄워야 writer가 pipe를 열 수 있습니다.
-- 현재 SIL은 command-level viewer이므로 actuator interpolation이나 frame-accurate CAN 재현은 아직 범위 밖입니다.
 - TCP brain 연결이 별도로 필요하므로, pipe reader만 실행해도 `main.out`의 전체 동작이 자동으로 시작되지는 않습니다.
 
 ## 평가와 보조 문서
