@@ -207,10 +207,18 @@ private:
     void runAddStanceProcess();
     
     //////////////////////////////////////////////////////////////// Play State
+    struct PlayModifier
+    {
+        double tempo_scale = 1.0;
+        int velocity_delta = 0;
+    };
+
     MatrixXd measureMatrix;     ///< 궤적을 생성하기 위해 읽은 악보 부분 (마디)
     const double measureThreshold = 2.4;     ///< 한번에 읽을 악보의 크기. [s]
     double measureTotalTime = 0.0;     ///< 악보를 읽는 동안 누적 시간. [s]
     bool endOfScore = false;           ///< 악보의 종료 코드 확인
+    PlayModifier pending_modifier;
+    PlayModifier active_modifier;
 
     std::string txtBaseFolderPath = "../include/codes/";    // 악보 폴더 경로
     std::string wavBaseFolderPath = "../include/music/";    // 음악 폴더 경로
@@ -250,6 +258,10 @@ private:
     bool checkPreconditions(bool useMagenta, std::string txtPath);
     std::string selectPlayMode();
     std::string trimWhitespace(const std::string &str);
+    bool handleModifier(const std::string &command);
+    bool hasPlayModifier(const PlayModifier &modifier) const;
+    double applyTempoScale(double bpm) const;
+    double applyVelocityDelta(double value) const;
     bool readMeasure(std::ifstream& inputFile);  // 한번에 읽을 악보의 크기(measureThreshold)만큼 읽으면 true 반환
     void runPlayProcess();
 

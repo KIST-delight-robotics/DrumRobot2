@@ -3,6 +3,37 @@
 프로젝트에서 의미 있는 변경을 할 때마다 한국시간(KST, UTC+9) 기준의 날짜, 시간, 요약을 기록합니다.
 최신 항목이 위로 오도록 추가합니다.
 
+## 2026-04-01
+- 17:19 KST (UTC+9) — 블로그 3편 초안 `txt3.md`를 추가해, Python `PlayModifier` transport contract가 C++ `idealStateRoutine()`, `runPlayProcess()`, `readMeasure()`를 거쳐 실제 연주에 적용되는 흐름과 `pending/active` modifier 분리를 글로 정리했습니다.
+  - 수정 파일: `txt3.md`, `log.md`
+  - 메모: `txt1.md`의 모션 보정 편, `txt2.md`의 Python `PlayModifier` 설계 편 다음 자연스러운 후속으로, `AgentSocket`은 transport 계층이고 최종 적용 지점은 `readMeasure()`라는 점을 중심으로 이어 쓸 수 있게 구성했습니다.
+- 14:32 KST (UTC+9) — `play_modifier.py`의 `str | None` 타입 힌트를 현재 실행 Python과 호환되는 `Optional[str]`로 바꿔, import 시 `TypeError`가 나던 문제를 바로잡았습니다.
+  - 수정 파일: `phil_robot/pipeline/play_modifier.py`, `log.md`
+  - 메모: 실행 환경이 `|` union annotation을 평가해버리는 Python 버전이라서 최소 수정으로 호환만 맞췄습니다.
+- 14:15 KST (UTC+9) — `DrumRobot2`가 brain에서 먼저 보내는 `tempo_scale:*`, `velocity_delta:*` modifier를 pending next-play 설정으로 저장하고, 이번 연주에서 `readMeasure()`가 BPM과 양손 velocity 컬럼에 실제 반영하도록 연결했습니다.
+  - 수정 파일: `DrumRobot2/include/tasks/DrumRobot.hpp`, `DrumRobot2/src/DrumRobot.cpp`, `log.md`
+  - 메모: `AgentSocket` transport는 그대로 두고 `idealStateRoutine()`에서 modifier를 해석하도록 붙였으며, `p:`가 시작되면 modifier를 1회 소비해 `runPlayProcess()`와 `readMeasure()` 경로에 적용되도록 정리했습니다. `make -C DrumRobot2 -j2` 빌드도 통과했습니다.
+- 13:56 KST (UTC+9) — `modifier layer`를 기술 종류가 아니라 결정 경계로 설명하는 한국어 로드맵 문서 `phil_robot/docs/DECISION_LAYER_ROADMAP_KR.md`를 추가해, interrupt/classifier/planner/modifier resolver/validator/executor/C++ apply의 책임과 향후 ML/LLM 확장 지점을 한눈에 보이도록 정리했습니다.
+  - 수정 파일: `phil_robot/docs/DECISION_LAYER_ROADMAP_KR.md`, `log.md`
+  - 메모: `play modifier resolver`가 parser보다 넓은 책임 이름이라는 점, classifier는 ML/DL 후보가 강하고 validator/executor/C++ apply는 deterministic 경계를 유지하는 편이 좋다는 점, 그리고 단계별 future roadmap을 같은 문서에 함께 남겼습니다.
+- 11:36 KST (UTC+9) — 통합 초안 `txt.md`를 바탕으로 모션/gesture 보정 편 `txt1.md`와 `PlayModifier` 설계 편 `txt2.md`를 분리해, 블로그를 2편 연재 형태로 바로 다듬을 수 있게 초안을 나눴습니다.
+  - 수정 파일: `txt1.md`, `txt2.md`, `log.md`
+  - 메모: `txt1.md`는 arm 포즈와 `wave/hurray` 보정, Python/C++ 역할 분리를 중심으로 두고, `txt2.md`는 `PlayModifier`, validator gate, executor transport contract, `readMeasure()` 적용 예정 지점을 독립 글로 정리했습니다.
+- 11:34 KST (UTC+9) — 루트 `txt.md` 초안에 validator의 modifier gate, executor의 `requested_op_cmds`와 transport command 분리, 그리고 아직 남은 C++ `processInput()/readMeasure()` 연결 지점을 더 명확히 보강했습니다.
+  - 수정 파일: `txt.md`, `log.md`
+  - 메모: `PlayModifier` 객체와 실제 TCP 전송 문자열을 다른 층으로 설명하고, Python 쪽 파싱/보관/직렬화는 끝났지만 C++ parser/apply는 아직 남았다는 점이 글만 읽어도 드러나도록 덧썼습니다.
+- 11:27 KST (UTC+9) — 모션 시뮬레이터 기반 gesture 보정부터 `SongModifier`/`PlayModifier` 설계 흐름까지를 Velog에 바로 복붙할 수 있는 루트 `txt.md` 초안으로 정리했습니다.
+  - 수정 파일: `txt.md`, `log.md`
+  - 메모: 1번 요구사항의 joint 튜닝 시행착오, `wave`/`hurray` 보정, Python/C++ 역할 분리, `play_modifier` parser와 transport contract, C++ `readMeasure()` 적용 예정 지점까지 한 글 흐름으로 묶었습니다.
+
+## 2026-03-31
+- 17:56 KST (UTC+9) — `executor`가 validator의 `valid_op_cmds`와 실제 TCP 전송 문자열을 분리해 보이도록 `requested_transport_cmds`/`executed_transport_cmds`를 추가하고, optional `play_modifier`를 `tempo_scale:*`, `velocity_delta:*` transport 명령으로 serialize한 뒤 `p:`보다 먼저 보내도록 정리했습니다.
+  - 수정 파일: `phil_robot/pipeline/executor.py`, `log.md`
+  - 메모: 지금 C++는 아직 이 modifier transport prefix를 처리하지 않으므로, 이번 변경은 Python 측 transport contract를 먼저 고정하는 단계입니다. `requested_op_cmds`는 plan 관점의 validator 통과 명령으로 유지했습니다.
+- 16:04 KST (UTC+9) — `play_modifier`를 explicit 키워드만 파싱하는 순수 parser로 다듬고, `validator`가 `play_request` 의도와 실제로 살아남은 `p:` 명령이 모두 있을 때만 optional `play_modifier`를 `ValidatedPlan`에 싣도록 연결했습니다.
+  - 수정 파일: `phil_robot/pipeline/play_modifier.py`, `phil_robot/pipeline/validator.py`, `log.md`
+  - 메모: 기본 metadata는 non-identity modifier에서만 채우도록 바꿨고, `brain_pipeline`은 그대로 둔 채 `ValidatedPlan` 확장만으로 후속 executor/C++ 연결 준비를 마쳤습니다.
+
 ## 2026-03-30
 - 15:20 KST (UTC+9) — 루트 `README.md`를 현재 저장소 구조에 맞게 다시 작성하고, `Drum_intheloop/README.md`의 실제 디렉터리명/경로 표기를 맞춰 최신 실행 흐름과 문서 링크가 깨지지 않게 정리했습니다.
   - 수정 파일: `README.md`, `Drum_intheloop/README.md`, `log.md`

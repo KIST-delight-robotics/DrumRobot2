@@ -155,7 +155,7 @@ def main():
             brain_result = run_brain_turn(
                 user_text=user_text,
                 raw_robot_state=robot_state,
-                classifier_model_name=CLASSIFIER_MODEL,     # classifier은 현재 고정
+                classifier_model_name=CLASSIFIER_MODEL,     # classifier 모델은 현재 고정
                 planner_model_name=PLANNER_MODEL,
             )
 

@@ -1415,6 +1415,11 @@ void DrumRobot::idealStateRoutine()
 
                 lastExecutedCmd = command; // 마지막으로 실행된 명령어 저장
 
+                if (handleModifier(command))
+                {
+                    continue;
+                }
+
                 // (A) 상태 제어 명령 (r, p, h, s, t, u) -> 기존 상태 머신(processInput)으로
                 // p:TIM 처럼 콜론이 붙은 곡 선택 명령도 포함
                 if (command == "r" || command == "h" || command == "s" || command == "t" || command == "u" || 
@@ -1911,13 +1916,104 @@ string DrumRobot::selectPlayMode()
 
 string DrumRobot::trimWhitespace(const string &str)
 {
-    size_t first = str.find_first_not_of(" \t");
+    size_t first = str.find_first_not_of(" \t"); // 문자열의 시작에서 공백과 탭을 건너뛴 첫 번째 위치를 찾음
+    // 만약 문자열이 모두 공백과 탭으로 이루어져 있다면, 첫 번째 위치는 npos가 됨
     if (string::npos == first)
     {
         return str;
     }
-    size_t last = str.find_last_not_of(" \t");
+    size_t last = str.find_last_not_of(" \t"); // 문자열의 끝에서 공백과 탭을 건너뛴 마지막 위치를 찾음
     return str.substr(first, (last - first + 1));
+}
+
+bool DrumRobot::handleModifier(const string &command)
+{
+    size_t delimiter_pos = command.find(':');
+    if (delimiter_pos == string::npos)
+    {
+        return false;
+    }
+
+    string key = command.substr(0, delimiter_pos);
+    string value_text = command.substr(delimiter_pos + 1);
+
+    try
+    {
+        if (key == "tempo_scale")
+        {
+            double scale = stod(value_text);
+            if (scale <= 0.0)
+            {
+                cout << ">>> [Modifier] tempo_scale는 0보다 커야 합니다: " << value_text << endl;
+                return true;
+            }
+
+            pending_modifier.tempo_scale = scale;
+
+            ostringstream scale_text;
+            scale_text << fixed << setprecision(2) << scale;
+            cout << ">>> [Modifier] tempo_scale 설정: " << scale_text.str() << endl;
+            return true;
+        }
+
+        if (key == "velocity_delta")
+        {
+            int delta = stoi(value_text);
+            pending_modifier.velocity_delta = delta;
+            cout << ">>> [Modifier] velocity_delta 설정: " << delta << endl;
+            return true;
+        }
+    }
+    catch (const exception &error)
+    {
+        cout << ">>> [Modifier] 파싱 실패: " << command << " (" << error.what() << ")" << endl;
+        return true;
+    }
+
+    return false;
+}
+
+bool DrumRobot::hasPlayModifier(const PlayModifier &modifier) const
+{
+    if (fabs(modifier.tempo_scale - 1.0) > 0.0001)
+    {
+        return true;
+    }
+
+    return modifier.velocity_delta != 0;
+}
+
+double DrumRobot::applyTempoScale(double bpm) const
+{
+    if (active_modifier.tempo_scale <= 0.0)
+    {
+        return bpm;
+    }
+
+    return bpm * active_modifier.tempo_scale;
+}
+
+double DrumRobot::applyVelocityDelta(double value) const
+{
+    if (value <= 0.0)
+    {
+        return 0.0;
+    }
+
+    double next_value = value + static_cast<double>(active_modifier.velocity_delta);
+
+    if (next_value < 1.0)
+    {
+        next_value = 1.0;
+    }
+
+    // 현재 코드 악보는 0~8 강세 스케일을 사용하므로 범위를 유지한다.
+    if (next_value > 8.0)
+    {
+        next_value = 8.0;
+    }
+
+    return next_value;
 }
 
 bool DrumRobot::readMeasure(ifstream& inputFile)
@@ -1953,7 +2049,8 @@ bool DrumRobot::readMeasure(ifstream& inputFile)
         if (items[0] == "bpm")                          // bpm 변경 코드
         {
             // cout << "\n bpm : " << pathManager.bpmOfScore;
-            pathManager.bpmOfScore = stod(items[1]);
+            double score_bpm = stod(items[1]);
+            pathManager.bpmOfScore = applyTempoScale(score_bpm);
             // cout << " -> " << pathManager.bpmOfScore << "\n";
         }
         else if (items[0] == "end")                     // 종료 코드
@@ -1971,7 +2068,13 @@ bool DrumRobot::readMeasure(ifstream& inputFile)
             measureMatrix.conservativeResize(measureMatrix.rows() + 1, measureMatrix.cols());
             for (int i = 0; i < 8; i++)
             {
-                measureMatrix(measureMatrix.rows() - 1, i) = stod(items[i]);
+                double cell_value = stod(items[i]);
+                if (i == 4 || i == 5)
+                {
+                    cell_value = applyVelocityDelta(cell_value);
+                }
+
+                measureMatrix(measureMatrix.rows() - 1, i) = cell_value;
             }
 
             // total time 누적
@@ -2040,6 +2143,17 @@ void DrumRobot::runPlayProcess()
         return;
     }
 
+    active_modifier = pending_modifier;
+    pending_modifier = PlayModifier();
+
+    if (hasPlayModifier(active_modifier))
+    {
+        ostringstream modifier_text;
+        modifier_text << fixed << setprecision(2) << active_modifier.tempo_scale;
+        cout << ">>> [Modifier] 이번 연주 적용: tempo_scale=" << modifier_text.str()
+             << ", velocity_delta=" << active_modifier.velocity_delta << endl;
+    }
+
     // (4) 연주 설정 강제 주입 (기존에 키보드로 입력받던 값들)
     bool useMagenta = false; // Magenta 뇌는 아직 안 씀
     repeatNum = 1;           // 1번만 연주
@@ -2057,6 +2171,7 @@ void DrumRobot::runPlayProcess()
     if (pathManager.bpmOfScore <= 0) {
         pathManager.bpmOfScore = 100.0; // 기본 100 BPM
     }
+    pathManager.bpmOfScore = applyTempoScale(pathManager.bpmOfScore);
 
     // 2. 모터 제어 모드 확정 (CSP: 위치 제어)
     // (InitializePos에서 이미 했지만, 안전을 위해 확실히 고정)

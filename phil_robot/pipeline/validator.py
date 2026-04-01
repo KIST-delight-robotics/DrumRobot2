@@ -17,8 +17,8 @@ try:
     )
     from .failure import build_motion_block_message
     from .motion_resolver import resolve_motion_commands
+    from .play_modifier import PlayModifier, parse_play_modifier
     from .skills import expand_skills
-    from .song_modifier import parse_song_modifier
 
 except ImportError:
     from command_validator import (
@@ -29,8 +29,8 @@ except ImportError:
     )
     from failure import build_motion_block_message
     from motion_resolver import resolve_motion_commands
+    from play_modifier import PlayModifier, parse_play_modifier
     from skills import expand_skills
-    from song_modifier import parse_song_modifier
 
 
 @dataclass
@@ -50,6 +50,7 @@ class ValidatedPlan:
     warnings: List[str] = field(default_factory=list)
     speech: str = ""
     reason: str = ""
+    play_modifier: PlayModifier = field(default_factory=PlayModifier)
 
 
 def build_partial_execution_message(valid_op_cmds: List[str], rejected_op_cmds: List[str]) -> str:
@@ -81,6 +82,13 @@ def build_validated_plan(
 
     resolution = resolve_motion_commands(user_text, expanded_op_cmds, robot_state)
     validation = validate_commands(resolution.op_cmds, robot_state)
+    parsed_modifier = parse_play_modifier(user_text)
+    has_play_intent = classifier_result.get("intent") == "play_request"
+    has_valid_play = any(command.startswith("p:") for command in validation.valid_commands)
+    if has_play_intent and has_valid_play and not parsed_modifier.is_identity():
+        play_modifier = parsed_modifier
+    else:
+        play_modifier = None
 
     warnings = list(skill_warnings)
     warnings.extend(resolution.warnings)
@@ -112,4 +120,5 @@ def build_validated_plan(
         warnings=warnings,
         speech=speech,
         reason=planner_result.get("reason", ""),
+        play_modifier=play_modifier,
     )
