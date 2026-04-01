@@ -27,7 +27,7 @@
 
 ## Now
 
-- [ ] `READY -> snare` 자세 mismatch를 층별로 분리
+- [x] `READY -> snare` 자세 mismatch를 층별로 분리
   - 목표: READY/시작 자세가 스네어 방향으로 모이지 않는 원인이 startup preset인지,
     joint 의미 매핑인지, visual frame patch인지 분리한다.
   - 확인 포인트:
