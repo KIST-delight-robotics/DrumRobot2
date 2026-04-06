@@ -1,0 +1,188 @@
+{
+  "metadata": {
+    "generated_at": "2026-04-02T16:32:55+09:00",
+    "suite": "planner_latency_isolation",
+    "cases_path": "/tmp/planner_latency_cases_qwen30.json",
+    "classifier_model": "qwen3:4b-instruct-2507-q4_K_M",
+    "planner_model": "qwen3:30b-a3b-instruct-2507-q4_K_M",
+    "json_production_path": true,
+    "planner_benchmark_mode": "json_only_fixed_classifier_fixture",
+    "fixed_classifier_result": true,
+    "fixed_planner_input_json": true,
+    "warmup_runs_per_case": 1,
+    "measured_runs_per_case": 2,
+    "cold_condition_note": "cold run is recorded from the first planner-enabled case before per-case warm-up."
+  },
+  "summary": {
+    "measured_cases": 2,
+    "measured_runs": 4,
+    "avg_latency_sec": 1.5844232439994812,
+    "median_latency_sec": 1.5775940418243408,
+    "p95_latency_sec": 1.8148107528686523,
+    "avg_input_chars": 867.5,
+    "avg_response_chars": 91.75,
+    "cold_run_case": "chat_greeting_basic",
+    "cold_run_latency_sec": 1.5786221027374268
+  },
+  "cold_run": {
+    "case_id": "chat_greeting_basic",
+    "planner_wall_sec": 1.5786221027374268,
+    "planner_response_chars": 78
+  },
+  "results": [
+    {
+      "id": "chat_greeting_basic",
+      "tags": [
+        "smoke",
+        "chat"
+      ],
+      "user_text": "안녕",
+      "planner_domain": "chat",
+      "classifier_result": {
+        "intent": "chat",
+        "needs_motion": false,
+        "needs_dialogue": true,
+        "risk_level": "low"
+      },
+      "planner_input_json": "{\n  \"robot_state\": {\n    \"state\": 0,\n    \"can_move\": true,\n    \"is_fixed\": true,\n    \"busy\": false,\n    \"current_song\": \"test_one\",\n    \"current_song_label\": \"Test Beat\",\n    \"bpm\": 100,\n    \"progress\": \"1/1\",\n    \"last_action\": \"None\",\n    \"error_detail\": \"None\",\n    \"current_angles\": {\n      \"waist\": 0.0,\n      \"R_arm1\": null,\n      \"L_arm1\": null,\n      \"R_arm2\": null,\n      \"R_arm3\": null,\n      \"L_arm2\": null,\n      \"L_arm3\": null,\n      \"R_wrist\": null,\n      \"L_wrist\": 75.0,\n      \"R_foot\": null,\n      \"L_foot\": null\n    }\n  },\n  \"intent_result\": {\n    \"intent\": \"chat\",\n    \"needs_motion\": false,\n    \"needs_dialogue\": true,\n    \"risk_level\": \"low\"\n  },\n  \"planner_domain\": \"chat\",\n  \"user_text\": \"안녕\",\n  \"response_schema\": {\n    \"skills\": [\n      \"wave_hi\"\n    ],\n    \"op_cmd\": [],\n    \"speech\": \"안녕하세요!\",\n    \"reason\": \"simple greeting\"\n  }\n}",
+      "planner_input_chars": 858,
+      "warm_runs": [
+        {
+          "planner_wall_sec": 1.4558868408203125,
+          "planner_response_chars": 81,
+          "planner_raw_response_text": "{\n  \"skills\": [],\n  \"op_cmd\": [],\n  \"speech\": \"안녕하세요!\",\n  \"reason\": \"간단한 인사 응답\"\n}",
+          "valid_op_cmds": [],
+          "speech": "안녕하세요!",
+          "planner_parse_ok": true,
+          "planner_is_fallback": false,
+          "planner_metrics": {
+            "wall_sec": 1.4558868408203125,
+            "prompt_tokens": 1481,
+            "prompt_sec": 0.032625867,
+            "prompt_tps": 45393.42969797553,
+            "eval_tokens": 37,
+            "eval_sec": 1.118300659,
+            "eval_tps": 33.085914509865276,
+            "meta_sec": 1.150926526,
+            "overhead_sec": 0.3049603148203126,
+            "error": ""
+          }
+        },
+        {
+          "planner_wall_sec": 1.3676941394805908,
+          "planner_response_chars": 78,
+          "planner_raw_response_text": "{\n  \"skills\": [],\n  \"op_cmd\": [],\n  \"speech\": \"안녕하세요!\",\n  \"reason\": \"간단한 인사\"\n}",
+          "valid_op_cmds": [],
+          "speech": "안녕하세요!",
+          "planner_parse_ok": true,
+          "planner_is_fallback": false,
+          "planner_metrics": {
+            "wall_sec": 1.3676941394805908,
+            "prompt_tokens": 1481,
+            "prompt_sec": 0.03310139,
+            "prompt_tps": 44741.32355166958,
+            "eval_tokens": 34,
+            "eval_sec": 1.02608183,
+            "eval_tps": 33.135758772767666,
+            "meta_sec": 1.05918322,
+            "overhead_sec": 0.30851091948059084,
+            "error": ""
+          }
+        }
+      ],
+      "summary": {
+        "runs": 2,
+        "avg_latency_sec": 1.4117904901504517,
+        "median_latency_sec": 1.4117904901504517,
+        "p95_latency_sec": 1.4558868408203125,
+        "min_latency_sec": 1.3676941394805908,
+        "max_latency_sec": 1.4558868408203125,
+        "avg_response_chars": 79.5,
+        "unique_raw_response_count": 2,
+        "unique_valid_command_count": 1,
+        "unique_speech_count": 1
+      }
+    },
+    {
+      "id": "motion_wave_allowed",
+      "tags": [
+        "smoke",
+        "motion"
+      ],
+      "user_text": "손 흔들어줘",
+      "planner_domain": "motion",
+      "classifier_result": {
+        "intent": "motion_request",
+        "needs_motion": true,
+        "needs_dialogue": false,
+        "risk_level": "medium"
+      },
+      "planner_input_json": "{\n  \"robot_state\": {\n    \"state\": 0,\n    \"can_move\": true,\n    \"is_fixed\": true,\n    \"busy\": false,\n    \"current_song\": \"test_one\",\n    \"current_song_label\": \"Test Beat\",\n    \"bpm\": 100,\n    \"progress\": \"1/1\",\n    \"last_action\": \"None\",\n    \"error_detail\": \"None\",\n    \"current_angles\": {\n      \"waist\": 0.0,\n      \"R_arm1\": null,\n      \"L_arm1\": null,\n      \"R_arm2\": null,\n      \"R_arm3\": null,\n      \"L_arm2\": null,\n      \"L_arm3\": null,\n      \"R_wrist\": null,\n      \"L_wrist\": 75.0,\n      \"R_foot\": null,\n      \"L_foot\": null\n    }\n  },\n  \"intent_result\": {\n    \"intent\": \"motion_request\",\n    \"needs_motion\": true,\n    \"needs_dialogue\": false,\n    \"risk_level\": \"medium\"\n  },\n  \"planner_domain\": \"motion\",\n  \"user_text\": \"손 흔들어줘\",\n  \"response_schema\": {\n    \"skills\": [\n      \"wave_hi\"\n    ],\n    \"op_cmd\": [],\n    \"speech\": \"안녕하세요!\",\n    \"reason\": \"simple greeting\"\n  }\n}",
+      "planner_input_chars": 877,
+      "warm_runs": [
+        {
+          "planner_wall_sec": 1.6993012428283691,
+          "planner_response_chars": 101,
+          "planner_raw_response_text": "{\n  \"skills\": [\"wave_hi\"],\n  \"op_cmd\": [],\n  \"speech\": \"안녕하세요!\",\n  \"reason\": \"사용자 요청에 따라 인사 제스처 수행\"\n}",
+          "valid_op_cmds": [
+            "look:0,90",
+            "gesture:wave",
+            "led:happy"
+          ],
+          "speech": "안녕하세요!",
+          "planner_parse_ok": true,
+          "planner_is_fallback": false,
+          "planner_metrics": {
+            "wall_sec": 1.6993012428283691,
+            "prompt_tokens": 1533,
+            "prompt_sec": 0.039905351,
+            "prompt_tps": 38415.900664549976,
+            "eval_tokens": 44,
+            "eval_sec": 1.34719949,
+            "eval_tps": 32.66034490556406,
+            "meta_sec": 1.387104841,
+            "overhead_sec": 0.31219640182836916,
+            "error": ""
+          }
+        },
+        {
+          "planner_wall_sec": 1.8148107528686523,
+          "planner_response_chars": 107,
+          "planner_raw_response_text": "{\n  \"skills\": [\"wave_hi\"],\n  \"op_cmd\": [],\n  \"speech\": \"안녕하세요!\",\n  \"reason\": \"손 흔들기 요청에 따라 wave_hi 스킬 실행\"\n}",
+          "valid_op_cmds": [
+            "look:0,90",
+            "gesture:wave",
+            "led:happy"
+          ],
+          "speech": "안녕하세요!",
+          "planner_parse_ok": true,
+          "planner_is_fallback": false,
+          "planner_metrics": {
+            "wall_sec": 1.8148107528686523,
+            "prompt_tokens": 1533,
+            "prompt_sec": 0.040760302,
+            "prompt_tps": 37610.12369339167,
+            "eval_tokens": 47,
+            "eval_sec": 1.456696587,
+            "eval_tps": 32.26478349674338,
+            "meta_sec": 1.497456889,
+            "overhead_sec": 0.3173538638686524,
+            "error": ""
+          }
+        }
+      ],
+      "summary": {
+        "runs": 2,
+        "avg_latency_sec": 1.7570559978485107,
+        "median_latency_sec": 1.7570559978485107,
+        "p95_latency_sec": 1.8148107528686523,
+        "min_latency_sec": 1.6993012428283691,
+        "max_latency_sec": 1.8148107528686523,
+        "avg_response_chars": 104.0,
+        "unique_raw_response_count": 2,
+        "unique_valid_command_count": 1,
+        "unique_speech_count": 1
+      }
+    }
+  ]
+}

@@ -79,6 +79,8 @@ class BrainTurnResult:
     classifier_duration_sec: float = 0.0
     planner_duration_sec: float = 0.0
     llm_duration_sec: float = 0.0
+    classifier_metrics: Dict = field(default_factory=dict)
+    planner_metrics: Dict = field(default_factory=dict)
 
 
 def run_brain_turn(
@@ -86,6 +88,7 @@ def run_brain_turn(
     raw_robot_state,
     classifier_model_name=CLASSIFIER_MODEL,
     planner_model_name=PLANNER_MODEL,
+    capture_metrics: bool = False,
 ):
     """
     한 턴의 LLM 처리 파이프라인.
@@ -95,11 +98,20 @@ def run_brain_turn(
 
     classifier_input_json = build_classifier_input_json(adapted_state, user_text)
     classifier_start_time = time.time()
-    classifier_raw_response_text = call_json_llm(
-        model_name=classifier_model_name,
-        system_prompt=CLASSIFIER_SYSTEM_PROMPT,
-        user_input_json=classifier_input_json,
-    )
+    if capture_metrics:
+        classifier_raw_response_text, classifier_metrics = call_json_llm(
+            model_name=classifier_model_name,
+            system_prompt=CLASSIFIER_SYSTEM_PROMPT,
+            user_input_json=classifier_input_json,
+            capture_metrics=True,
+        )
+    else:
+        classifier_raw_response_text = call_json_llm(
+            model_name=classifier_model_name,
+            system_prompt=CLASSIFIER_SYSTEM_PROMPT,
+            user_input_json=classifier_input_json,
+        )
+        classifier_metrics = {}
     classifier_duration_sec = time.time() - classifier_start_time
     classifier_result = parse_intent_response(classifier_raw_response_text)
     classifier_result = normalize_intent_result(classifier_result, user_text)
@@ -136,6 +148,8 @@ def run_brain_turn(
             classifier_duration_sec=classifier_duration_sec,
             planner_duration_sec=0.0,
             llm_duration_sec=classifier_duration_sec,
+            classifier_metrics=classifier_metrics,
+            planner_metrics={},
         )
 
     # Shortcut path:
@@ -168,6 +182,8 @@ def run_brain_turn(
             classifier_duration_sec=classifier_duration_sec,
             planner_duration_sec=0.0,
             llm_duration_sec=classifier_duration_sec,
+            classifier_metrics=classifier_metrics,
+            planner_metrics={},
         )
 
     # Planner path:
@@ -176,11 +192,20 @@ def run_brain_turn(
     planner_system_prompt = get_planner_system_prompt(planner_domain)
     planner_input_json = build_planner_input_json(adapted_state, user_text, classifier_result, planner_domain)
     planner_start_time = time.time()
-    planner_raw_response_text = call_json_llm(
-        model_name=planner_model_name,
-        system_prompt=planner_system_prompt,
-        user_input_json=planner_input_json,
-    )
+    if capture_metrics:
+        planner_raw_response_text, planner_metrics = call_json_llm(
+            model_name=planner_model_name,
+            system_prompt=planner_system_prompt,
+            user_input_json=planner_input_json,
+            capture_metrics=True,
+        )
+    else:
+        planner_raw_response_text = call_json_llm(
+            model_name=planner_model_name,
+            system_prompt=planner_system_prompt,
+            user_input_json=planner_input_json,
+        )
+        planner_metrics = {}
     planner_duration_sec = time.time() - planner_start_time
 
     planner_result = parse_plan_response(planner_raw_response_text)
@@ -205,4 +230,6 @@ def run_brain_turn(
         classifier_duration_sec=classifier_duration_sec,
         planner_duration_sec=planner_duration_sec,
         llm_duration_sec=classifier_duration_sec + planner_duration_sec,
+        classifier_metrics=classifier_metrics,
+        planner_metrics=planner_metrics,
     )

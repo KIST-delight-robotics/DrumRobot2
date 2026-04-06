@@ -3,7 +3,145 @@
 프로젝트에서 의미 있는 변경을 할 때마다 한국시간(KST, UTC+9) 기준의 날짜, 시간, 요약을 기록합니다.
 최신 항목이 위로 오도록 추가합니다.
 
+## 2026-04-06
+- 10:26 KST (UTC+9) — `phil_robot` 온라인 STT 전환을 다른 agent가 그대로 구현할 수 있도록 handoff용 `PLAN.md`를 새로 작성하고, 침묵 임계값/echo 차단/복합 발화 acceptance 범위를 결정 완료 수준으로 고정했습니다.
+  - 수정 파일: `phil_robot/PLAN.md`, `log.md`
+  - 메모: `post-silence commit 300ms`, `final-only planner`, `is_speaking` 기반 self-echo 차단, `복합 발화는 STT final text 안정성만 검증` 기준을 문서에 명시했고, `smalll -> small` 선행 수정도 계획에 포함했습니다.
+
+## 2026-04-03
+- 18:02 KST (UTC+9) — latency/KV cache 블로그 초안에서 JSON 출력 형식 비교 해석을 다듬어, `legacy_str`가 평균상 더 빠르긴 했지만 JSON이 압도적으로 느린 것은 아니었다는 뉘앙스로 정정했습니다.
+  - 수정 파일: `txt5.md`, `txt6.md`, `log.md`
+  - 메모: `avg_wall_sec 3.95 vs 4.88`, `avg_eval_tokens 37.30 vs 57.10` 수치는 유지하고, 결론을 `JSON 포기`가 아니라 `JSON 유지 + compact prompt/schema 최적화` 쪽으로 더 정확하게 표현했습니다.
+
+## 2026-04-03
+- 17:52 KST (UTC+9) — 응답 지연 최적화 회고와 KV cache 친화적 prompt/schema 정리 글을 블로그 초안 `txt5.md`, `txt6.md`로 추가했습니다.
+  - 수정 파일: `txt5.md`, `txt6.md`, `log.md`
+  - 메모: `log.md`와 실제 수정 파일 흐름을 바탕으로 cold start, STT/TTS 벤치, compact schema, prompt 순서 재배열, KV cache 관점의 의도와 효과를 각각 한 문서씩 분리해 정리했습니다.
+
+## 2026-04-03
+- 17:32 KST (UTC+9) — planner 출력 스키마도 `s/c/t/r` compact JSON으로 줄이고, parser가 compact/legacy planner 응답을 모두 long-form 내부 구조로 복원하도록 확장했습니다.
+  - 수정 파일: `phil_robot/pipeline/planner.py`, `phil_robot/tests/test_planner_benchmark.py`, `log.md`
+  - 메모: drum4 live probe에서 `그대에게 연주해줘`와 `손 흔들어줘`의 planner raw가 각각 `{"s":[...],"c":[],"t":"...","r":"..."}` 형태로 출력되는 것을 확인했고, 단위 테스트 20건도 통과했습니다.
+
+## 2026-04-03
+- 17:12 KST (UTC+9) — classifier 출력 스키마를 `i/m/d/r` compact JSON과 `C/M/P/Q/X/U`, `1/0`, `L/M/H` 코드로 줄여 eval 토큰을 낮추고, parser가 compact/legacy/truncated 응답을 모두 읽도록 확장했습니다.
+  - 수정 파일: `phil_robot/pipeline/intent_classifier.py`, `phil_robot/tests/test_intent_classifier.py`, `log.md`
+  - 메모: drum4 live 재현에서 classifier raw가 `{"i":"P","m":1,"d":1,"r":"M"}` 형태로 출력되고 `eval_tokens`가 `34 -> 18`로 줄어든 것을 확인했으며, 단위 테스트 7건도 통과했습니다.
+
+## 2026-04-03
+- 17:00 KST (UTC+9) — Ollama 요청에서 `num_predict`를 아예 보내지 않도록 바꿔 classifier/planner 출력 개수 상한을 제거하고, 관련 테스트를 무제한 옵션 기준으로 갱신했습니다.
+  - 수정 파일: `phil_robot/config.py`, `phil_robot/tests/test_llm_interface.py`, `log.md`
+  - 메모: 더 이상 `PHIL_CLASSIFIER_NUM_PREDICT`나 `PHIL_PLANNER_NUM_PREDICT`로 출력 개수를 자르지 않으며, drum4에서 `그대에게 연주해줘` live 재현과 단위 테스트 6건이 모두 정상 통과하는 것을 다시 확인했습니다.
+
+## 2026-04-03
+- 16:44 KST (UTC+9) — classifier JSON이 `num_predict=24`에서 잘려 `unknown`으로 추락하던 문제를 막기 위해 classifier 출력 상한을 늘리고, 잘린 JSON에서도 핵심 필드를 회수하는 parser와 play 요청 보정 테스트를 추가했습니다.
+  - 수정 파일: `phil_robot/config.py`, `phil_robot/pipeline/intent_classifier.py`, `phil_robot/phil_brain.py`, `phil_robot/tests/test_intent_classifier.py`, `log.md`
+  - 메모: drum4에서 `그대에게 연주해줘`와 `This Is Me 연주해줘`를 다시 돌려 `play_request -> play -> ['r', 'p:TY_short'/'p:TIM']` 경로가 복구된 것을 확인했고, 새 단위 테스트 6건도 통과했습니다. 디버그 로그의 `Phil's Brain` 표기는 `Planner Reason`으로 바꿔 미실행 reason이 실제 실행처럼 보이던 혼선을 줄였습니다.
+
+## 2026-04-03
+- 15:37 KST (UTC+9) — `phil_robot/eval` 문서 지침을 더 구체화해 실험 목적, 고정/변경 포인트, 경량화 기법 설명을 반드시 넣도록 하고, 기존 `eval_docs`도 같은 기준의 쉬운 한국어 설명으로 다시 정리했습니다.
+  - 수정 파일: `phil_robot/eval/AGENTS.md`, `phil_robot/eval/eval_docs/*.md`, `phil_robot/eval/eval_docs/reports/*.md`, `log.md`
+  - 메모: `스크리닝`, `회귀`, `mismatch`, `blocker`, `happy path`, `edge case 정합성` 같은 추상 표현 대신, 실제로 어떤 상황에서 무엇이 기대와 달랐는지 풀어서 쓰도록 규칙을 강화했습니다. voice/planner/format 문서에는 fp16, stream 길이, JSON-only 고정, 입력 고정 같은 비교 항목도 앞쪽 섹션에 드러내도록 맞췄습니다.
+
+## 2026-04-03
+- 15:15 KST (UTC+9) — `phil_robot/eval` 전용 문서화 지침을 새로 만들고, 평가 JSON 20개를 사람용 해설 마크다운으로 `eval_docs` 아래에 일괄 정리했습니다.
+  - 수정 파일: `phil_robot/eval/AGENTS.md`, `phil_robot/eval/eval_docs/*.md`, `phil_robot/eval/eval_docs/reports/*.md`, `log.md`
+  - 메모: 입력 케이스/manifest JSON과 결과 리포트 JSON을 구분해 해설하도록 규칙을 세웠고, 각 문서는 한눈에 보기, 표 중심 상세, 특이 케이스, 종합 총평까지 포함하도록 맞췄습니다.
+
+## 2026-04-03
+- 16:23 KST (UTC+9) — STT/TTS 런타임 설정을 다시 원래 방식으로 돌리고, `melo_engine.py`의 구두점 기준 스트리밍 분할은 유지한 채 환경변수 의존을 제거했습니다.
+  - 수정 파일: `phil_robot/config.py`, `phil_robot/phil_brain.py`, `phil_robot/runtime/melo_engine.py`, `phil_robot/eval/run_voice_io_benchmark.py`, `phil_robot/tests/test_melo_engine.py`, `log.md`
+  - 메모: STT는 다시 `small + fp16=True` 고정으로, TTS는 `stream=True` 고정으로 복원했고, drum4에서 관련 테스트 13건과 `py_compile`을 다시 통과했습니다.
+
+## 2026-04-03
+- 14:52 KST (UTC+9) — STT/TTS 설정을 자동 비교하는 voice I/O 벤치 스크립트를 추가하고, drum4 실측 결과에 맞춰 기본값을 `STT fp16 off / prompt 비움 / TTS stream min_len=18`로 조정했습니다.
+  - 수정 파일: `phil_robot/config.py`, `phil_robot/phil_brain.py`, `phil_robot/runtime/melo_engine.py`, `phil_robot/eval/run_voice_io_benchmark.py`, `phil_robot/tests/test_melo_engine.py`, `log.md`
+  - 메모: `cases_smoke.json` 기반 문장과 보강 probe 문장을 사용해 `/home/shy/robot_project/phil_robot/eval/reports/voice_io_benchmark_20260403_145124.json`을 생성했고, 새 기본값 반영 후 drum4에서 관련 테스트 13건을 다시 통과했습니다.
+
+## 2026-04-03
+- 14:17 KST (UTC+9) — MeloTTS 응답 발화에 문장 단위 스트리밍 경로를 추가해, 여러 문장 답변에서 첫 음성이 더 빨리 나오도록 하고 실패 시 기존 `aplay` 방식으로 안전하게 fallback 하도록 했습니다.
+  - 수정 파일: `phil_robot/runtime/melo_engine.py`, `phil_robot/phil_brain.py`, `phil_robot/tests/test_melo_engine.py`, `log.md`
+  - 메모: 너무 짧은 조각으로 잘라 억양이 깨지는 문제를 줄이기 위해 최소 길이 기반 chunk 분할을 사용했고, drum4 환경에서 새 TTS 테스트 3건과 planner 회귀 테스트 10건을 통과했습니다.
+
+## 2026-04-03
+- 14:01 KST (UTC+9) — planner 프롬프트와 입력 JSON의 순서를 KV cache 친화적으로 재배열해, 공통 규칙이 앞에 고정되고 `user_text`가 마지막에 오도록 리팩터링했습니다.
+  - 수정 파일: `phil_robot/pipeline/planner.py`, `phil_robot/tests/test_planner_benchmark.py`, `log.md`
+  - 메모: system prompt는 `shared rules -> domain rules` 순서로 바꿨고, planner input JSON은 `planner_domain -> response_schema -> robot_state -> intent_result -> user_text` 순서 회귀 테스트를 추가했습니다.
+
+## 2026-04-02
+- 18:08 KST (UTC+9) — `python phil_brain.py` 직접 실행 경로에서 `llm_interface.py`가 상대 import 실패 후 올바른 fallback 모듈을 찾도록 import 예외 처리와 fallback 경로를 고쳤습니다.
+  - 수정 파일: `phil_robot/pipeline/llm_interface.py`, `phil_robot/tests/test_llm_interface.py`, `log.md`
+  - 메모: `ValueError: attempted relative import beyond top-level package`와 이어진 `ModuleNotFoundError: No module named 'failure'`를 함께 수정했고, `pipeline.llm_interface` top-level import regression test를 추가했습니다.
+
+## 2026-04-02
+- 17:58 KST (UTC+9) — `phil_robot`의 Ollama 호출 경로에 `think=false`, `keep_alive`, 모델별 `num_ctx`/`num_predict` 기본값을 넣고, runtime 로그에서 `load/prompt_eval/eval` 시간을 바로 보이도록 정리했습니다.
+  - 수정 파일: `phil_robot/config.py`, `phil_robot/pipeline/llm_interface.py`, `phil_robot/phil_brain.py`, `phil_robot/init_phil.sh`, `phil_robot/tests/test_llm_interface.py`, `log.md`
+  - 메모: classifier와 planner를 둘 다 preload하도록 startup 스크립트를 넓혔고, 새 테스트로 Ollama 옵션 전달과 `load_duration` 포함 메트릭 계산을 검증했습니다. live probe에서는 warm classifier 호출 기준 `load_sec` 약 `0.14s`, `prompt_sec` 약 `0.57s`, `eval_sec` 약 `1.07s`가 확인됐습니다.
+
+## 2026-04-02
+- 17:36 KST (UTC+9) — `txt4.md`를 다시 정리해 리포트 파일 경로 나열을 걷어내고, 실제 benchmark JSON의 `summary`, 실패 `failed_checks`, 수정 후 `actual` 조각을 그대로 인용하는 Velog용 형식으로 바꿨습니다.
+  - 수정 파일: `txt4.md`, `log.md`
+  - 메모: 초기 screening, JSON-only benchmark, latency isolation, targeted fix, final smoke를 모두 ` ```json ` 블록 중심으로 재구성했고, `motion_blocked_while_playing`의 `led:happy` 잔존과 수정 후 `valid_op_cmds: []`를 문서 안에서 바로 확인할 수 있게 했습니다.
+
+## 2026-04-02
+- 17:23 KST (UTC+9) — `txt4.md`의 로컬 마크다운 링크를 모두 제거하고, Velog에 그대로 붙여넣기 쉬운 fenced code block 경로 표기로 다시 정리했습니다.
+  - 수정 파일: `txt4.md`, `log.md`
+  - 메모: 파일 참조는 `[label](path)` 대신 ```text fenced block```으로 통일했고, 기존 벤치마크 수치와 결론은 유지한 채 외부 플랫폼에서 링크가 깨지지 않도록 문서 형식을 다듬었습니다.
+
+## 2026-04-02
+- 17:15 KST (UTC+9) — `DrumRobot2`의 `AgentAction`에서 Arduino head LED를 바꾸는 `led` command 경로를 제거하고, 오늘 planner benchmark/latency/fix loop 결과를 Velog용 정리 문서 `txt4.md`로 작성했습니다.
+  - 수정 파일: `DrumRobot2/include/tasks/AgentAction.hpp`, `DrumRobot2/src/AgentAction.cpp`, `txt4.md`, `log.md`
+  - 메모: Python 쪽 LED 제거와 맞춰 C++ controller에서도 `policy_emotion()`과 `led` routing을 없앴고, `make -C DrumRobot2 -j2` 빌드가 통과했습니다. 문서에는 초기 multi-model screening, JSON-only benchmark, latency isolation, wrist/LED 수정 루프, final smoke `13/13` 결과와 산출물 경로를 함께 정리했습니다.
+
+## 2026-04-02
+- 17:02 KST (UTC+9) — LED 명령을 실행 경로와 smoke 기준에서 제거하고, 관련 skill/prompt/example/eval 기대값을 정리한 뒤 qwen3 4b + qwen3 30b-a3b 조합으로 targeted 5건과 full smoke 13건을 다시 검증했습니다.
+  - 수정 파일: `phil_robot/pipeline/skills.py`, `phil_robot/pipeline/planner.py`, `phil_robot/pipeline/command_validator.py`, `phil_robot/pipeline/response_parser.py`, `phil_robot/eval/cases_smoke.json`, `phil_robot/eval/README.md`, `phil_robot/eval/run_format_compare.py`, `phil_robot/tests/test_planner_benchmark.py`, `phil_robot/tests/test_stt_llm_format_compare.py`, `phil_robot/docs/LLM_PIPELINE_ARCHITECTURE_KR.md`, `phil_robot/docs/LLM_PIPELINE_ARCHITECTURE.md`, `log.md`
+  - 메모: social/play/idle skill에서 `led:*`를 제거했고 planner 허용 prefix 에서도 LED를 뺐습니다. validator 는 `led:`를 항상 reject 하도록 바꿨고, smoke 기대값도 `play`/`stop`/blocked motion에 맞게 갱신했습니다. `/tmp/targeted_led_removed_report.json`은 `5/5`, `/tmp/smoke_led_removed_report.json`은 `13/13`으로 통과했습니다.
+
+## 2026-04-02
+- 16:54 KST (UTC+9) — motion blocked 상태에서 planner가 `skills/op_cmd=[]`를 더 강하게 따르도록 프롬프트를 조이고, validator의 양쪽 손목 상한을 `90도`로 낮춘 뒤 관련 smoke 케이스만 다시 실행했습니다.
+  - 수정 파일: `phil_robot/pipeline/planner.py`, `phil_robot/pipeline/command_validator.py`, `log.md`
+  - 메모: targeted smoke 5건 중 `relative_wrist_raise_blocked`는 wrist limit 조정으로 해결됐고, `motion_blocked_while_playing`는 planner가 여전히 `wave_hi`를 생성해 `led:happy`가 남는 것을 확인했습니다. 즉 손목 한계 문제와 blocked-state social skill 잔류 문제는 별개 축입니다.
+
+## 2026-04-02
+- 16:33 KST (UTC+9) — planner benchmark를 `JSON-only fixed fixture` 기준으로 다시 정리하고, planner latency isolation 러너를 추가한 뒤 shortcut 플래그 버그를 고쳐 실제 `planner_input_json` 기반 dt 집계가 채워지도록 검증했습니다.
+  - 수정 파일: `phil_robot/eval/planner_json_benchmark.py`, `phil_robot/eval/run_planner_benchmark.py`, `phil_robot/eval/run_planner_latency_isolation.py`, `phil_robot/eval/planner_benchmark_round1_manifest.json`, `phil_robot/eval/README.md`, `phil_robot/eval/PLANNER_MODEL_BENCHMARK_PLAN_KR.md`, `phil_robot/TODO.md`, `phil_robot/tests/test_planner_benchmark.py`, `log.md`
+  - 메모: planner benchmark는 이제 `legacy_str` 비교를 후보 선정 경로에서 제외하고, 케이스당 한 번 고정한 `classifier_result`/`planner_input_json` 위에서 planner pass rate, skill/command/speech quality, avg/median/p95 latency를 비교합니다. `python -m py_compile`, `python -m unittest phil_robot.tests.test_planner_benchmark` 8건, 단일-model JSON benchmark, 2-case latency isolation 실측으로 리포트 구조와 dt 집계를 다시 확인했습니다.
+
+## 2026-04-02
+- 14:48 KST (UTC+9) — planner round-1 벤치를 `config.py` 수정 없이 돌릴 수 있도록 model override, Ollama timing 메타데이터 수집, round batch runner/manifest, gate 테스트를 추가했습니다.
+  - 수정 파일: `phil_robot/eval/run_eval.py`, `phil_robot/pipeline/brain_pipeline.py`, `phil_robot/pipeline/llm_interface.py`, `phil_robot/eval/run_planner_benchmark.py`, `phil_robot/eval/planner_benchmark_round1_manifest.json`, `phil_robot/tests/test_planner_benchmark.py`, `phil_robot/eval/README.md`, `phil_robot/eval/PLANNER_MODEL_BENCHMARK_PLAN_KR.md`, `log.md`
+  - 메모: `run_eval.py`는 `--classifier-model`/`--planner-model`/`--capture-llm-metrics`를 지원하게 했고, 새 batch runner는 `prep -> smoke -> latency` 흐름에서 `pass`만 latency 로 넘기며 `hold_review`/`fail`은 raw report 와 round summary 만 남기고 계속 진행합니다. baseline smoke 의 default vs CLI override 결과가 둘 다 `11/13`으로 같음을 확인했고, 새 단위 테스트 5건도 통과했습니다.
+
+## 2026-04-02
+- 14:16 KST (UTC+9) — `phil_robot/eval`에 planner 후보 7개 모델의 향후 비교 순서, 게이트, 기록 항목, 저장 규칙을 정리한 실행 계획서와 README 링크를 추가했습니다.
+  - 수정 파일: `phil_robot/eval/PLANNER_MODEL_BENCHMARK_PLAN_KR.md`, `phil_robot/eval/README.md`, `log.md`
+  - 메모: `qwen3`, `nemotron-cascade-2`, `gpt-oss`, `mistral-small3.2`, `exaone3.5`, `lfm2` 후보군에 대해 correctness-first benchmark 절차와 latency/finalist 추가 비교 흐름을 고정해 이후 round report를 같은 규칙으로 쌓을 수 있게 했습니다.
+
+## 2026-04-02
+- 11:14 KST (UTC+9) — smoke 케이스 10개를 사용해 planner의 `legacy_str` 대 `json` 출력 형식을 실제 Qwen 30B A3B 모델로 벤치하는 스크립트를 추가하고, warm-up을 제외한 평균 비교 리포트를 `phil_robot/docs`에 생성했습니다.
+  - 수정 파일: `phil_robot/eval/run_format_compare.py`, `phil_robot/docs/FORMAT_COMPARE_BENCHMARK_KR.md`, `phil_robot/docs/format_compare_benchmark_smoke_20260402_111228.json`, `log.md`
+  - 메모: classifier는 케이스마다 한 번만 실행해 공유하고 planner 단계만 두 형식으로 비교했으며, 초기 모델 로드 편향을 피하려고 classifier/두 planner 모드에 사전 warm-up 1회씩을 넣었습니다. 최종 평균은 `legacy_str` 약 3.95초, `json` 약 4.88초였습니다.
+
+## 2026-04-02
+- 10:59 KST (UTC+9) — 비교 스크립트의 LLM 속도 로그를 더 풀어 `prompt_eval_sec`, `eval_sec`, `meta_sec`, `overhead_sec`까지 함께 보이도록 바꿨습니다.
+  - 수정 파일: `phil_robot/tests/test_stt_llm_format_compare.py`, `log.md`
+  - 메모: 기존 `prompt_tps`와 `eval_tps`만으로는 Ollama 내부 prefill/decode 시간과 전체 wall-clock 차이를 읽기 어려워, 내부 메타데이터 합과 외부 `time.time()` 기준 차이까지 바로 보이게 정리했습니다.
+
+## 2026-04-02
+- 10:54 KST (UTC+9) — 비교 스크립트에 Ollama 응답 메타데이터 기반 `token/sec` 로그를 추가해 prompt/output 토큰 수와 TPS를 함께 확인할 수 있게 했습니다.
+  - 수정 파일: `phil_robot/tests/test_stt_llm_format_compare.py`, `log.md`
+  - 메모: `prompt_eval_count`, `prompt_eval_duration`, `eval_count`, `eval_duration`가 있으면 `tok/s`를 계산하고, 메타데이터가 없는 환경에서는 `N/A`로 표시되도록 안전하게 처리했습니다.
+
+## 2026-04-02
+- 10:40 KST (UTC+9) — `phil_robot/tests`에 STT와 planner LLM만으로 legacy 문자열 출력과 JSON 출력을 직접 비교하는 테스트 스크립트를 추가했습니다.
+  - 수정 파일: `phil_robot/tests/test_stt_llm_format_compare.py`, `log.md`
+  - 메모: `0` 입력 시 `[CMD:...]` / `[SAY:...]` 기반 legacy str 모드, `1` 입력 시 현행 planner JSON 모드로 분기하며, 로봇 연결과 TTS 없이 Whisper STT와 `qwen3:30b-a3b-instruct-2507-q4_K_M` 호출 결과를 콘솔 로그로 바로 비교할 수 있게 했습니다.
+
 ## 2026-04-01
+- 17:30 KST (UTC+9) — `phil_robot/TODO.md`의 `gesture / play abstraction uplift`를 현재 기준 완료 처리로 바꾸고, baseline uplift와 pre-play modifier/`readMeasure()` 적용 경로는 정리되었으며 이후 확장 판단은 `DECISION_LAYER_ROADMAP_KR.md`를 중심으로 본다는 메모를 남겼습니다.
+  - 수정 파일: `phil_robot/TODO.md`, `log.md`
+  - 메모: 원칙과 우선순위 기준이 바뀌어 기존 TODO 첫 항목은 사실상 닫고, 다음 구조 논의는 roadmap 문서 쪽에서 이어가기로 반영했습니다.
 - 17:19 KST (UTC+9) — 블로그 3편 초안 `txt3.md`를 추가해, Python `PlayModifier` transport contract가 C++ `idealStateRoutine()`, `runPlayProcess()`, `readMeasure()`를 거쳐 실제 연주에 적용되는 흐름과 `pending/active` modifier 분리를 글로 정리했습니다.
   - 수정 파일: `txt3.md`, `log.md`
   - 메모: `txt1.md`의 모션 보정 편, `txt2.md`의 Python `PlayModifier` 설계 편 다음 자연스러운 후속으로, `AgentSocket`은 transport 계층이고 최종 적용 지점은 `readMeasure()`라는 점을 중심으로 이어 쓸 수 있게 구성했습니다.

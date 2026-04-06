@@ -16,7 +16,39 @@ except (ImportError, ValueError):
 DEFAULT_INTENT_RESULT = build_classifier_failure_result()
 
 MOTION_REQUIRED_INTENTS = {"motion_request", "play_request", "stop_request"}
+INTENT_CODE_MAP = {
+    "C": "chat",
+    "M": "motion_request",
+    "P": "play_request",
+    "Q": "status_question",
+    "X": "stop_request",
+    "U": "unknown",
+}
+RISK_CODE_MAP = {
+    "L": "low",
+    "M": "medium",
+    "H": "high",
+}
 IDENTITY_CHAT_KEYWORDS = ["이름", "누구", "정체", "자기소개"]
+PLAY_ACTION_KEYWORDS = [
+    "연주",
+    "재생",
+    "틀어",
+    "쳐",
+    "치자",
+    "시작해",
+    "시작해줘",
+]
+PLAY_SONG_KEYWORDS = [
+    "this is me",
+    "그대에게",
+    "baby i need you",
+    "test beat",
+    "test_one",
+    "tim",
+    "ty_short",
+    "bi",
+]
 MOTION_CHAT_KEYWORDS = [
     "손",
     "팔",
@@ -45,14 +77,25 @@ AMBIGUOUS_FOLLOW_UPS = {
 
 CLASSIFIER_SYSTEM_PROMPT = """당신은 로봇 에이전트의 1차 intent classifier 다.
 반드시 JSON 객체 하나만 출력한다. 설명문, 코드블록, 마크다운은 절대 출력하지 않는다.
+가능하면 공백 없는 한 줄 JSON 으로 출력한다.
 
 출력 스키마:
-{
-  "intent": "chat | motion_request | play_request | status_question | stop_request | unknown",
-  "needs_motion": true,
-  "needs_dialogue": true,
-  "risk_level": "low | medium | high"
-}
+{"i":"C|M|P|Q|X|U","m":1,"d":1,"r":"L|M|H"}
+
+코드 의미:
+- i: intent
+  - C = chat
+  - M = motion_request
+  - P = play_request
+  - Q = status_question
+  - X = stop_request
+  - U = unknown
+- m: motion 필요 여부. 1 또는 0 만 사용한다.
+- d: dialogue 필요 여부. 1 또는 0 만 사용한다.
+- r: risk_level
+  - L = low
+  - M = medium
+  - H = high
 
 분류 기준:
 - chat: 일반 대화, 인사, 감정 표현, 상식 질문, 이름/정체/자기소개 질문
@@ -63,9 +106,9 @@ CLASSIFIER_SYSTEM_PROMPT = """당신은 로봇 에이전트의 1차 intent class
 - unknown: 의도를 분명히 정할 수 없는 경우
 
 판단 규칙:
-- 물리 동작이 필요하면 needs_motion=true
-- 사용자에게 말로 응답해야 하면 needs_dialogue=true
-- 안전/상태 제약이 강하게 얽히거나 물리 동작이면 risk_level 을 낮게 잡지 말고 최소 medium 이상을 고려한다.
+- 물리 동작이 필요하면 m=1
+- 사용자에게 말로 응답해야 하면 d=1
+- 안전/상태 제약이 강하게 얽히거나 물리 동작이면 r 을 낮게 잡지 말고 최소 M 이상을 고려한다.
 """
 
 
@@ -97,22 +140,105 @@ def parse_intent_response(response_text):
     try:
         response_data = json.loads(response_text)
     except json.JSONDecodeError:
-        return build_classifier_failure_result()
+        return extract_partial_intent_response(response_text)
 
     if not isinstance(response_data, dict):
         return build_classifier_failure_result()
 
+    return parse_intent_payload(response_data)
+
+
+def parse_intent_payload(response_data):
     result = build_classifier_failure_result()
-    if isinstance(response_data.get("intent"), str):
-        result["intent"] = response_data["intent"].strip() or DEFAULT_INTENT_RESULT["intent"]
-    if isinstance(response_data.get("needs_motion"), bool):
-        result["needs_motion"] = response_data["needs_motion"]
-    if isinstance(response_data.get("needs_dialogue"), bool):
-        result["needs_dialogue"] = response_data["needs_dialogue"]
-    if isinstance(response_data.get("risk_level"), str):
-        result["risk_level"] = response_data["risk_level"].strip() or DEFAULT_INTENT_RESULT["risk_level"]
+
+    raw_intent = read_str_field(response_data, "intent", "i")
+    if raw_intent:
+        result["intent"] = decode_intent(raw_intent)
+
+    raw_motion = read_bool_field(response_data, "needs_motion", "m")
+    if raw_motion is not None:
+        result["needs_motion"] = raw_motion
+
+    raw_dialogue = read_bool_field(response_data, "needs_dialogue", "d")
+    if raw_dialogue is not None:
+        result["needs_dialogue"] = raw_dialogue
+
+    raw_risk = read_str_field(response_data, "risk_level", "r")
+    if raw_risk:
+        result["risk_level"] = decode_risk(raw_risk)
 
     return result
+
+
+def read_str_field(response_data, long_key, short_key):
+    raw_value = response_data.get(long_key)
+    if not isinstance(raw_value, str):
+        raw_value = response_data.get(short_key)
+    if not isinstance(raw_value, str):
+        return ""
+    return raw_value.strip()
+
+
+def read_bool_field(response_data, long_key, short_key):
+    raw_value = response_data.get(long_key)
+    if raw_value is None:
+        raw_value = response_data.get(short_key)
+
+    if isinstance(raw_value, bool):
+        return raw_value
+    if isinstance(raw_value, int):
+        if raw_value in {0, 1}:
+            return bool(raw_value)
+        return None
+    if isinstance(raw_value, str):
+        raw_text = raw_value.strip().upper()
+        if raw_text in {"1", "TRUE", "T"}:
+            return True
+        if raw_text in {"0", "FALSE", "F"}:
+            return False
+    return None
+
+
+def decode_intent(raw_intent):
+    upper_text = raw_intent.upper()
+    return INTENT_CODE_MAP.get(upper_text, raw_intent or DEFAULT_INTENT_RESULT["intent"])
+
+
+def decode_risk(raw_risk):
+    upper_text = raw_risk.upper()
+    return RISK_CODE_MAP.get(upper_text, raw_risk.lower() or DEFAULT_INTENT_RESULT["risk_level"])
+
+
+def extract_partial_intent_response(response_text):
+    """
+    모델 출력이 중간에서 끊겨도
+    앞부분의 핵심 필드는 최대한 회수한다.
+    """
+    if not isinstance(response_text, str):
+        return build_classifier_failure_result()
+
+    partial_data = {}
+
+    intent_match = re.search(r'"(?:intent|i)"\s*:\s*"([^"]+)"', response_text, re.IGNORECASE)
+    if intent_match:
+        partial_data["i"] = intent_match.group(1).strip()
+
+    motion_match = re.search(r'"(?:needs_motion|m)"\s*:\s*(true|false|0|1|"0"|"1"|"T"|"F")', response_text, re.IGNORECASE)
+    if motion_match:
+        partial_data["m"] = motion_match.group(1).strip().strip('"')
+
+    dialogue_match = re.search(r'"(?:needs_dialogue|d)"\s*:\s*(true|false|0|1|"0"|"1"|"T"|"F")', response_text, re.IGNORECASE)
+    if dialogue_match:
+        partial_data["d"] = dialogue_match.group(1).strip().strip('"')
+
+    risk_match = re.search(r'"(?:risk_level|r)"\s*:\s*"([^"]+)"', response_text, re.IGNORECASE)
+    if risk_match:
+        partial_data["r"] = risk_match.group(1).strip()
+
+    if partial_data:
+        return parse_intent_payload(partial_data)
+
+    return build_classifier_failure_result()
 
 
 def normalize_intent_result(intent_result, user_text):
@@ -146,6 +272,13 @@ def normalize_intent_result(intent_result, user_text):
         if not result.get("risk_level"):
             result["risk_level"] = "low"
 
+    if result["intent"] in {"unknown", "chat"} and looks_like_play_request(normalized_text):
+        result["intent"] = "play_request"
+        result["needs_motion"] = True
+        result["needs_dialogue"] = True
+        if result.get("risk_level") == "low":
+            result["risk_level"] = "medium"
+
     # greeting 이 섞여 있어도 실제 물리 동작 요청이 보이면 motion_request 로 승격한다.
     if (
         result["intent"] == "chat"
@@ -163,6 +296,22 @@ def normalize_intent_result(intent_result, user_text):
         result["needs_motion"] = True
 
     return result
+
+
+def looks_like_play_request(user_text):
+    normalized_text = (user_text or "").strip().lower()
+    if not normalized_text:
+        return False
+
+    if any(keyword in normalized_text for keyword in PLAY_ACTION_KEYWORDS):
+        return True
+
+    has_song_keyword = any(keyword in normalized_text for keyword in PLAY_SONG_KEYWORDS)
+    has_request_suffix = any(keyword in normalized_text for keyword in ["해줘", "해", "주세요"])
+    if has_song_keyword and has_request_suffix:
+        return True
+
+    return False
 
 
 def is_ambiguous_follow_up(user_text):

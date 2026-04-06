@@ -1,0 +1,300 @@
+{
+  "metadata": {
+    "generated_at": "2026-04-02T16:26:41+09:00",
+    "suite": "smoke",
+    "cases_path": "/tmp/cases_planner_bench_mini.json",
+    "classifier_model": "qwen3:4b-instruct-2507-q4_K_M",
+    "planner_model": "qwen3:30b-a3b-instruct-2507-q4_K_M",
+    "requested_planner_tag": "qwen3:30b-a3b-q4_K_M",
+    "resolved_planner_tag": "qwen3:30b-a3b-instruct-2507-q4_K_M",
+    "resolved_planner_id": "19e422b02313",
+    "ollama_version": "ollama version is 0.14.1",
+    "python_path": "/home/shy/miniforge3/envs/drum4/bin/python",
+    "python_version": "Python 3.8.20",
+    "warmup_excluded": true,
+    "json_production_path": true,
+    "planner_benchmark_mode": "json_only_fixed_classifier_fixture",
+    "fixed_classifier_result": true,
+    "fixed_planner_input_json": true
+  },
+  "summary": {
+    "total_cases": 2,
+    "passed_cases": 0,
+    "failed_cases": 2,
+    "layer_summary": {
+      "classifier": {
+        "passed": 2,
+        "total": 2
+      },
+      "planner": {
+        "passed": 3,
+        "total": 3
+      },
+      "validator": {
+        "passed": 1,
+        "total": 2
+      },
+      "e2e": {
+        "passed": 0,
+        "total": 2
+      }
+    },
+    "quality_summary": {
+      "skill_selection": {
+        "passed": 1,
+        "total": 1,
+        "pass_rate": 1.0
+      },
+      "valid_command": {
+        "passed": 1,
+        "total": 2,
+        "pass_rate": 0.5
+      },
+      "speech": {
+        "passed": 0,
+        "total": 2,
+        "pass_rate": 0.0
+      }
+    },
+    "planner_latency": {
+      "measured_cases": 0,
+      "avg_planner_sec": null,
+      "median_planner_sec": null,
+      "p95_planner_sec": null,
+      "min_planner_sec": null,
+      "max_planner_sec": null,
+      "slowest_case": "",
+      "avg_input_chars": null,
+      "avg_response_chars": null
+    }
+  },
+  "results": [
+    {
+      "id": "chat_greeting_basic",
+      "tags": [
+        "smoke",
+        "chat"
+      ],
+      "user_text": "안녕",
+      "passed": false,
+      "checks": [
+        {
+          "name": "classifier.intent",
+          "passed": true,
+          "expected": "chat",
+          "actual": "chat"
+        },
+        {
+          "name": "planner.domain",
+          "passed": true,
+          "expected": "chat",
+          "actual": "chat"
+        },
+        {
+          "name": "planner.skills_exact",
+          "passed": true,
+          "expected": [],
+          "actual": []
+        },
+        {
+          "name": "validator.valid_op_cmds_exact",
+          "passed": true,
+          "expected": [],
+          "actual": []
+        },
+        {
+          "name": "e2e.speech_contains_any",
+          "passed": false,
+          "expected": [
+            "안녕",
+            "반가",
+            "안녕하세요"
+          ],
+          "actual": ""
+        }
+      ],
+      "failed_checks": [
+        {
+          "name": "e2e.speech_contains_any",
+          "expected": [
+            "안녕",
+            "반가",
+            "안녕하세요"
+          ],
+          "actual": ""
+        }
+      ],
+      "actual": {
+        "intent": "chat",
+        "needs_motion": false,
+        "needs_dialogue": true,
+        "risk_level": "low",
+        "planner_domain": "chat",
+        "skills": [],
+        "raw_op_cmds": [],
+        "expanded_op_cmds": [],
+        "resolved_op_cmds": [],
+        "valid_op_cmds": [],
+        "rejected_op_cmds": [],
+        "speech": "",
+        "reason": "",
+        "classifier_raw_response_text": "{\n  \"intent\": \"chat\",\n  \"needs_motion\": false,\n  \"needs_dialogue\": true,\n  \"risk_level\": \"low\"\n}",
+        "planner_raw_response_text": "",
+        "planner_called": false,
+        "planner_parse_ok": true,
+        "planner_is_fallback": false
+      },
+      "durations_sec": {
+        "classifier": 6.046563148498535,
+        "planner": 0.0,
+        "total": 6.046563148498535
+      },
+      "llm_metrics": {
+        "classifier": {
+          "wall_sec": 6.046563148498535,
+          "prompt_tokens": 407,
+          "prompt_sec": 0.427707608,
+          "prompt_tps": 951.5846629503957,
+          "eval_tokens": 33,
+          "eval_sec": 1.217601567,
+          "eval_tps": 27.10246183512016,
+          "meta_sec": 1.645309175,
+          "overhead_sec": 4.401253973498536,
+          "error": ""
+        },
+        "planner": {}
+      },
+      "benchmark_fixture": {
+        "classifier_result": {
+          "intent": "chat",
+          "needs_motion": false,
+          "needs_dialogue": true,
+          "risk_level": "low"
+        },
+        "planner_domain": "chat",
+        "planner_input_json": "",
+        "planner_input_chars": 0,
+        "planner_response_chars": 0,
+        "planner_enabled": false,
+        "shortcut_reason": ""
+      }
+    },
+    {
+      "id": "motion_wave_allowed",
+      "tags": [
+        "smoke",
+        "motion"
+      ],
+      "user_text": "손 흔들어줘",
+      "passed": false,
+      "checks": [
+        {
+          "name": "classifier.intent",
+          "passed": true,
+          "expected": "motion_request",
+          "actual": "motion_request"
+        },
+        {
+          "name": "planner.domain",
+          "passed": true,
+          "expected": "motion",
+          "actual": "motion"
+        },
+        {
+          "name": "validator.valid_op_cmds_contains_all",
+          "passed": false,
+          "expected": [
+            "gesture:wave"
+          ],
+          "actual": []
+        },
+        {
+          "name": "e2e.speech_contains_any",
+          "passed": false,
+          "expected": [
+            "인사",
+            "손",
+            "흔들",
+            "안녕",
+            "안녕하세요"
+          ],
+          "actual": "지금은 해당 동작을 수행할 수 없습니다."
+        }
+      ],
+      "failed_checks": [
+        {
+          "name": "validator.valid_op_cmds_contains_all",
+          "expected": [
+            "gesture:wave"
+          ],
+          "actual": []
+        },
+        {
+          "name": "e2e.speech_contains_any",
+          "expected": [
+            "인사",
+            "손",
+            "흔들",
+            "안녕",
+            "안녕하세요"
+          ],
+          "actual": "지금은 해당 동작을 수행할 수 없습니다."
+        }
+      ],
+      "actual": {
+        "intent": "motion_request",
+        "needs_motion": true,
+        "needs_dialogue": false,
+        "risk_level": "medium",
+        "planner_domain": "motion",
+        "skills": [],
+        "raw_op_cmds": [],
+        "expanded_op_cmds": [],
+        "resolved_op_cmds": [],
+        "valid_op_cmds": [],
+        "rejected_op_cmds": [],
+        "speech": "지금은 해당 동작을 수행할 수 없습니다.",
+        "reason": "",
+        "classifier_raw_response_text": "{\n  \"intent\": \"motion_request\",\n  \"needs_motion\": true,\n  \"needs_dialogue\": false,\n  \"risk_level\": \"medium\"\n}",
+        "planner_raw_response_text": "",
+        "planner_called": false,
+        "planner_parse_ok": true,
+        "planner_is_fallback": false
+      },
+      "durations_sec": {
+        "classifier": 1.569807529449463,
+        "planner": 0.0,
+        "total": 1.569807529449463
+      },
+      "llm_metrics": {
+        "classifier": {
+          "wall_sec": 1.569807529449463,
+          "prompt_tokens": 412,
+          "prompt_sec": 0.051180153,
+          "prompt_tps": 8049.995473831428,
+          "eval_tokens": 34,
+          "eval_sec": 1.216947145,
+          "eval_tps": 27.938764752186504,
+          "meta_sec": 1.268127298,
+          "overhead_sec": 0.3016802314494629,
+          "error": ""
+        },
+        "planner": {}
+      },
+      "benchmark_fixture": {
+        "classifier_result": {
+          "intent": "motion_request",
+          "needs_motion": true,
+          "needs_dialogue": false,
+          "risk_level": "medium"
+        },
+        "planner_domain": "motion",
+        "planner_input_json": "",
+        "planner_input_chars": 0,
+        "planner_response_chars": 0,
+        "planner_enabled": false,
+        "shortcut_reason": ""
+      }
+    }
+  ]
+}

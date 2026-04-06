@@ -1,0 +1,71 @@
+{
+  "round_name": "planner_model_round1",
+  "suite": "smoke",
+  "cases_path": "cases_smoke.json",
+  "classifier_model": "qwen3:4b-instruct-2507-q4_K_M",
+  "auto_pull": true,
+  "stop_before_compare": true,
+  "json_production_path": true,
+  "planner_benchmark_mode": "json_only_fixed_classifier_fixture",
+  "fixed_classifier_result": true,
+  "fixed_planner_input_json": true,
+  "candidates": [
+    {
+      "order": 1,
+      "family": "qwen3_moe",
+      "requested_tag": "qwen3:30b-a3b-q4_K_M",
+      "pull_tags": [
+        "qwen3:30b-a3b-instruct-2507-q4_K_M",
+        "qwen3:30b-a3b-q4_K_M"
+      ]
+    },
+    {
+      "order": 2,
+      "family": "qwen3_dense",
+      "requested_tag": "qwen3:32b-q4_K_M",
+      "pull_tags": [
+        "qwen3:32b-q4_K_M"
+      ]
+    },
+    {
+      "order": 3,
+      "family": "nemotron_moe",
+      "requested_tag": "nemotron-cascade-2:30b-a3b-q4_K_M",
+      "pull_tags": [
+        "nemotron-cascade-2:30b-a3b-q4_K_M"
+      ]
+    },
+    {
+      "order": 4,
+      "family": "gpt_oss",
+      "requested_tag": "gpt-oss:20b",
+      "pull_tags": [
+        "gpt-oss:20b"
+      ]
+    },
+    {
+      "order": 5,
+      "family": "mistral_small",
+      "requested_tag": "mistral-small3.2:24b-instruct-2506-q4_K_M",
+      "pull_tags": [
+        "mistral-small3.2:24b-instruct-2506-q4_K_M"
+      ]
+    },
+    {
+      "order": 6,
+      "family": "exaone",
+      "requested_tag": "exaone3.5:32b-instruct-q4_K_M",
+      "pull_tags": [
+        "exaone3.5:32b-instruct-q4_K_M"
+      ]
+    },
+    {
+      "order": 7,
+      "family": "lfm2",
+      "requested_tag": "lfm2:24b-q4_K_M",
+      "pull_tags": [
+        "lfm2:24b-q4_K_M"
+      ]
+    }
+  ]
+}

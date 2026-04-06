@@ -19,10 +19,10 @@ except ImportError:
 
 
 PLANNER_RESPONSE_SCHEMA_EXAMPLE = {
-    "skills": ["wave_hi"],
-    "op_cmd": [],
-    "speech": "안녕하세요!",
-    "reason": "simple greeting",
+    "s": ["wave_hi"],
+    "c": [],
+    "t": "안녕하세요!",
+    "r": "simple greeting",
 }
 
 SKILL_CATALOG_TEXT = describe_skills_for_prompt()
@@ -92,17 +92,18 @@ DOMAIN_INSTRUCTIONS = {
 PLANNER_SHARED_RULES = f"""반드시 JSON 객체 하나만 출력한다. 설명문, 코드블록, 마크다운은 절대 출력하지 않는다.
 
 planner 입력에는 다음 정보가 함께 들어온다.
+- planner_domain: 현재 planner 도메인
+- response_schema: 출력해야 할 JSON 형식 예시
 - robot_state: 현재 로봇 상태 요약
 - intent_result: 1차 classifier 결과
-- planner_domain: 현재 planner 도메인
 - user_text: 사용자 발화
 
 공통 규칙:
 - 당신의 이름은 필(Phil)이며, KIST에서 개발된 지능형 휴머노이드 드럼 로봇이다.
 - intent_result 를 반드시 따른다.
 - intent_result.needs_motion 이 false 면 skills 와 op_cmd 를 모두 빈 배열로 둔다.
-- 안전 키 잠김, 연주 중, 에러 상태, 이동 중이면 무리하게 동작 계획을 만들지 않는다.
-- speech 는 TTS 용 자연스러운 한국어 문장만 쓴다. 괄호 설명문은 금지한다.
+- motion_request 에서 robot_state.can_move=false 이거나 robot_state.state 가 2 또는 4 이거나 robot_state.is_fixed=false 이면 skills 와 op_cmd 를 반드시 [] 로 두고 speech 로만 설명한다.
+- speech 는 TTS 용 한국어 문장만 쓴다. 괄호 설명문은 금지한다.
 - move 명령은 move:L_wrist,90 처럼 실제 모터 이름을 바로 쓴다.
 - look 명령 형식은 look:pan,tilt 이다. pan 은 좌우 회전이고 오른쪽은 양수, 왼쪽은 음수다. tilt 는 상하 각도이며 정면은 90, 위는 70 근처, 아래는 110 근처다.
 - low-level move/look/wait 명령은 skill 로 표현하기 어려운 경우에만 op_cmd 에 직접 넣는다.
@@ -120,24 +121,24 @@ planner 입력에는 다음 정보가 함께 들어온다.
 - look:0,70
 - look:0,110
 - gesture:wave
-- led:happy
 - move:L_wrist,90
 - wait:2
 - p:TIM
 
 출력 스키마:
 {{
-  "skills": ["미리 정의된 skill 이름"],
-  "op_cmd": ["skill 로 표현하기 어려운 low-level 명령"],
-  "speech": "사용자에게 TTS 로 말할 문장",
-  "reason": "planner 내부 판단 요약"
+  "s": ["미리 정의된 skill"],
+  "c": ["low-level 명령"],
+  "t": "출력될 문장",
+  "r": "planner 판단 이유"
 }}
 
 출력 규칙:
-- skills 는 문자열 배열이다. 없으면 [] 를 사용한다.
-- op_cmd 는 문자열 배열이다. 없으면 [] 를 사용한다.
-- speech 는 반드시 비어 있지 않은 문자열이어야 한다.
-- reason 은 짧은 문자열이면 충분하다.
+- 가능한 한 공백 없는 한 줄 JSON 으로 출력한다.
+- s 는 skill 는 문자열 배열이다. 없으면 [] 를 사용한다.
+- c 는 low-level command 문자열 배열이다. 없으면 [] 를 사용한다.
+- t 는 TTS 로 읽을 한국어 문장이다.
+- r 는 짧은 판단 이유다.
 """
 
 
@@ -152,7 +153,7 @@ def select_planner_domain(intent_result: Dict) -> str:
 def get_planner_system_prompt(planner_domain: str) -> str:
     """도메인별 planner system prompt 를 생성한다."""
     domain_instruction = DOMAIN_INSTRUCTIONS.get(planner_domain, DOMAIN_INSTRUCTIONS[PLANNER_DOMAIN_DEFAULT])
-    return f"{domain_instruction}\n\n{PLANNER_SHARED_RULES}"
+    return f"{PLANNER_SHARED_RULES}\n\n도메인 규칙:\n{domain_instruction}"
 
 
 def build_planner_input_json(robot_state: Dict, user_text: str, intent_result: Dict, planner_domain: str) -> str:
@@ -160,11 +161,11 @@ def build_planner_input_json(robot_state: Dict, user_text: str, intent_result: D
     state_summary = build_planner_state_summary(robot_state)
     return json.dumps(
         {
+            "planner_domain": planner_domain,
+            "response_schema": PLANNER_RESPONSE_SCHEMA_EXAMPLE,
             "robot_state": state_summary,
             "intent_result": intent_result,
-            "planner_domain": planner_domain,
             "user_text": user_text,
-            "response_schema": PLANNER_RESPONSE_SCHEMA_EXAMPLE,
         },
         ensure_ascii=False,
         indent=2,
@@ -193,10 +194,13 @@ def parse_plan_response(response_text: str) -> Dict:
     if not isinstance(response_data, dict):
         return result
 
-    raw_skills = response_data.get("skills", [])
-    raw_op_cmds = response_data.get("op_cmd", response_data.get("commands", []))
-    raw_speech = response_data.get("speech", FALLBACK_MESSAGE)
-    raw_reason = response_data.get("reason", "")
+    raw_skills = response_data.get("skills", response_data.get("s", []))
+    raw_op_cmds = response_data.get(
+        "op_cmd",
+        response_data.get("commands", response_data.get("c", [])),
+    )
+    raw_speech = response_data.get("speech", response_data.get("t", FALLBACK_MESSAGE))
+    raw_reason = response_data.get("reason", response_data.get("r", ""))
 
     if isinstance(raw_skills, list):
         result["skills"] = [skill.strip() for skill in raw_skills if isinstance(skill, str) and skill.strip()]
@@ -238,17 +242,17 @@ def enforce_intent_constraints(planner_result: Dict, intent_result: Dict) -> Dic
         )
 
     if intent == "play_request":
-        allowed_prefixes = ("r", "p:", "led:", "wait:")
+        allowed_prefixes = ("r", "p:", "wait:")
         normalized["op_cmd"] = [
             command for command in normalized["op_cmd"] if command.startswith(allowed_prefixes)
         ]
     elif intent == "stop_request":
-        allowed_prefixes = ("h", "s", "led:", "wait:")
+        allowed_prefixes = ("h", "s", "wait:")
         normalized["op_cmd"] = [
             command for command in normalized["op_cmd"] if command.startswith(allowed_prefixes)
         ]
     elif intent == "motion_request":
-        allowed_prefixes = ("move:", "look:", "gesture:", "led:", "wait:", "r", "h")
+        allowed_prefixes = ("move:", "look:", "gesture:", "wait:", "r", "h")
         normalized["op_cmd"] = [
             command for command in normalized["op_cmd"] if command.startswith(allowed_prefixes)
         ]

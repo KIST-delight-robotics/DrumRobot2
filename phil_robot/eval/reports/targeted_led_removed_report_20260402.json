@@ -1,0 +1,439 @@
+{
+  "metadata": {
+    "generated_at": "2026-04-02T17:01:03+09:00",
+    "suite": "targeted_motion_fix_cases",
+    "cases_path": "/tmp/targeted_motion_fix_cases.json",
+    "classifier_model": "qwen3:4b-instruct-2507-q4_K_M",
+    "planner_model": "qwen3:30b-a3b-instruct-2507-q4_K_M",
+    "capture_llm_metrics": false,
+    "json_production_path": true
+  },
+  "summary": {
+    "total_cases": 5,
+    "passed_cases": 5,
+    "failed_cases": 0,
+    "layer_summary": {
+      "classifier": {
+        "passed": 5,
+        "total": 5
+      },
+      "planner": {
+        "passed": 5,
+        "total": 5
+      },
+      "validator": {
+        "passed": 5,
+        "total": 5
+      },
+      "e2e": {
+        "passed": 4,
+        "total": 4
+      }
+    }
+  },
+  "results": [
+    {
+      "id": "motion_wave_allowed",
+      "tags": [
+        "smoke",
+        "motion"
+      ],
+      "user_text": "손 흔들어줘",
+      "passed": true,
+      "checks": [
+        {
+          "name": "classifier.intent",
+          "passed": true,
+          "expected": "motion_request",
+          "actual": "motion_request"
+        },
+        {
+          "name": "planner.domain",
+          "passed": true,
+          "expected": "motion",
+          "actual": "motion"
+        },
+        {
+          "name": "validator.valid_op_cmds_contains_all",
+          "passed": true,
+          "expected": [
+            "gesture:wave"
+          ],
+          "actual": [
+            "look:0,90",
+            "gesture:wave"
+          ]
+        },
+        {
+          "name": "e2e.speech_contains_any",
+          "passed": true,
+          "expected": [
+            "인사",
+            "손",
+            "흔들",
+            "안녕",
+            "안녕하세요"
+          ],
+          "actual": "안녕하세요!"
+        }
+      ],
+      "failed_checks": [],
+      "actual": {
+        "intent": "motion_request",
+        "needs_motion": true,
+        "needs_dialogue": false,
+        "risk_level": "medium",
+        "planner_domain": "motion",
+        "skills": [
+          "wave_hi"
+        ],
+        "raw_op_cmds": [],
+        "expanded_op_cmds": [
+          "look:0,90",
+          "gesture:wave"
+        ],
+        "resolved_op_cmds": [
+          "look:0,90",
+          "gesture:wave"
+        ],
+        "valid_op_cmds": [
+          "look:0,90",
+          "gesture:wave"
+        ],
+        "rejected_op_cmds": [],
+        "speech": "안녕하세요!",
+        "reason": "사용자 요청에 따라 인사 제스처 수행",
+        "classifier_raw_response_text": "{\n  \"intent\": \"motion_request\",\n  \"needs_motion\": true,\n  \"needs_dialogue\": false,\n  \"risk_level\": \"medium\"\n}",
+        "planner_raw_response_text": "{\n  \"skills\": [\"wave_hi\"],\n  \"op_cmd\": [],\n  \"speech\": \"안녕하세요!\",\n  \"reason\": \"사용자 요청에 따라 인사 제스처 수행\"\n}",
+        "planner_called": true,
+        "planner_parse_ok": true,
+        "planner_is_fallback": false
+      },
+      "durations_sec": {
+        "classifier": 6.251285076141357,
+        "planner": 20.00557279586792,
+        "total": 26.256857872009277
+      },
+      "llm_metrics": {
+        "classifier": {},
+        "planner": {}
+      }
+    },
+    {
+      "id": "motion_wave_blocked_by_lock",
+      "tags": [
+        "smoke",
+        "motion",
+        "safety"
+      ],
+      "user_text": "손 흔들어줘",
+      "passed": true,
+      "checks": [
+        {
+          "name": "classifier.intent",
+          "passed": true,
+          "expected": "motion_request",
+          "actual": "motion_request"
+        },
+        {
+          "name": "planner.domain",
+          "passed": true,
+          "expected": "motion",
+          "actual": "motion"
+        },
+        {
+          "name": "validator.valid_op_cmds_any_of",
+          "passed": true,
+          "expected": [
+            [],
+            [
+              "led:happy"
+            ]
+          ],
+          "actual": []
+        },
+        {
+          "name": "e2e.speech_contains_any",
+          "passed": true,
+          "expected": [
+            "안전 키",
+            "움직일 수 없습니다",
+            "확인"
+          ],
+          "actual": "아직 안전 키가 해제되지 않아 움직일 수 없습니다. 안전 키를 먼저 확인해 주세요."
+        }
+      ],
+      "failed_checks": [],
+      "actual": {
+        "intent": "motion_request",
+        "needs_motion": true,
+        "needs_dialogue": false,
+        "risk_level": "high",
+        "planner_domain": "motion",
+        "skills": [
+          "wave_hi"
+        ],
+        "raw_op_cmds": [],
+        "expanded_op_cmds": [
+          "look:0,90",
+          "gesture:wave"
+        ],
+        "resolved_op_cmds": [
+          "look:0,90",
+          "gesture:wave"
+        ],
+        "valid_op_cmds": [],
+        "rejected_op_cmds": [
+          "look:0,90",
+          "gesture:wave"
+        ],
+        "speech": "아직 안전 키가 해제되지 않아 움직일 수 없습니다. 안전 키를 먼저 확인해 주세요.",
+        "reason": "손 흔들기 요청에 따라 wave_hi 스킬 사용",
+        "classifier_raw_response_text": "{\n  \"intent\": \"motion_request\",\n  \"needs_motion\": true,\n  \"needs_dialogue\": false,\n  \"risk_level\": \"high\"\n}",
+        "planner_raw_response_text": "{\n  \"skills\": [\"wave_hi\"],\n  \"op_cmd\": [],\n  \"speech\": \"안녕하세요!\",\n  \"reason\": \"손 흔들기 요청에 따라 wave_hi 스킬 사용\"\n}",
+        "planner_called": true,
+        "planner_parse_ok": true,
+        "planner_is_fallback": false
+      },
+      "durations_sec": {
+        "classifier": 2.8975658416748047,
+        "planner": 4.100572347640991,
+        "total": 6.998138189315796
+      },
+      "llm_metrics": {
+        "classifier": {},
+        "planner": {}
+      }
+    },
+    {
+      "id": "relative_wrist_raise_success",
+      "tags": [
+        "smoke",
+        "motion",
+        "relative"
+      ],
+      "user_text": "왼쪽 손목 더 올려",
+      "passed": true,
+      "checks": [
+        {
+          "name": "classifier.intent",
+          "passed": true,
+          "expected": "motion_request",
+          "actual": "motion_request"
+        },
+        {
+          "name": "planner.domain",
+          "passed": true,
+          "expected": "motion",
+          "actual": "motion"
+        },
+        {
+          "name": "validator.valid_op_cmds_contains_prefixes",
+          "passed": true,
+          "expected": [
+            "move:L_wrist,"
+          ],
+          "actual": [
+            "move:L_wrist,65"
+          ]
+        }
+      ],
+      "failed_checks": [],
+      "actual": {
+        "intent": "motion_request",
+        "needs_motion": true,
+        "needs_dialogue": true,
+        "risk_level": "medium",
+        "planner_domain": "motion",
+        "skills": [],
+        "raw_op_cmds": [
+          "move:L_wrist,90"
+        ],
+        "expanded_op_cmds": [
+          "move:L_wrist,90"
+        ],
+        "resolved_op_cmds": [
+          "move:L_wrist,65"
+        ],
+        "valid_op_cmds": [
+          "move:L_wrist,65"
+        ],
+        "rejected_op_cmds": [],
+        "speech": "왼쪽 손목을 더 올려드릴게요.",
+        "reason": "사용자 요청에 따라 왼쪽 손목 각도를 직접 조정",
+        "classifier_raw_response_text": "{\n  \"intent\": \"motion_request\",\n  \"needs_motion\": true,\n  \"needs_dialogue\": true,\n  \"risk_level\": \"medium\"\n}",
+        "planner_raw_response_text": "{\n  \"skills\": [],\n  \"op_cmd\": [\n    \"move:L_wrist,90\"\n  ],\n  \"speech\": \"왼쪽 손목을 더 올려드릴게요.\",\n  \"reason\": \"사용자 요청에 따라 왼쪽 손목 각도를 직접 조정\"\n}",
+        "planner_called": true,
+        "planner_parse_ok": true,
+        "planner_is_fallback": false
+      },
+      "durations_sec": {
+        "classifier": 2.8994829654693604,
+        "planner": 4.978705644607544,
+        "total": 7.878188610076904
+      },
+      "llm_metrics": {
+        "classifier": {},
+        "planner": {}
+      }
+    },
+    {
+      "id": "relative_wrist_raise_blocked",
+      "tags": [
+        "smoke",
+        "motion",
+        "relative",
+        "limit"
+      ],
+      "user_text": "거기서 50도 더 올리고 2초 있다",
+      "passed": true,
+      "checks": [
+        {
+          "name": "classifier.intent",
+          "passed": true,
+          "expected": "motion_request",
+          "actual": "motion_request"
+        },
+        {
+          "name": "planner.domain",
+          "passed": true,
+          "expected": "motion",
+          "actual": "motion"
+        },
+        {
+          "name": "validator.valid_op_cmds_exact",
+          "passed": true,
+          "expected": [],
+          "actual": []
+        },
+        {
+          "name": "e2e.speech_contains_any",
+          "passed": true,
+          "expected": [
+            "한계",
+            "벗어나",
+            "움직일 수 없습니다"
+          ],
+          "actual": "왼쪽 손목은 현재 50.1도에서 50.0도를 더 올리면 한계 -108.0도에서 90.0도를 벗어나 움직일 수 없습니다."
+        }
+      ],
+      "failed_checks": [],
+      "actual": {
+        "intent": "motion_request",
+        "needs_motion": true,
+        "needs_dialogue": false,
+        "risk_level": "medium",
+        "planner_domain": "motion",
+        "skills": [],
+        "raw_op_cmds": [
+          "move:L_wrist,140",
+          "wait:2"
+        ],
+        "expanded_op_cmds": [
+          "move:L_wrist,140",
+          "wait:2"
+        ],
+        "resolved_op_cmds": [],
+        "valid_op_cmds": [],
+        "rejected_op_cmds": [],
+        "speech": "왼쪽 손목은 현재 50.1도에서 50.0도를 더 올리면 한계 -108.0도에서 90.0도를 벗어나 움직일 수 없습니다.",
+        "reason": "user requested to move wrist 50 degrees up and wait for 2 seconds",
+        "classifier_raw_response_text": "{\n  \"intent\": \"motion_request\",\n  \"needs_motion\": true,\n  \"needs_dialogue\": false,\n  \"risk_level\": \"medium\"\n}",
+        "planner_raw_response_text": "{\n  \"skills\": [],\n  \"op_cmd\": [\n    \"move:L_wrist,140\",\n    \"wait:2\"\n  ],\n  \"speech\": \"알겠습니다. 손목을 50도 더 올리고 2초 기다리겠습니다.\",\n  \"reason\": \"user requested to move wrist 50 degrees up and wait for 2 seconds\"\n}",
+        "planner_called": true,
+        "planner_parse_ok": true,
+        "planner_is_fallback": false
+      },
+      "durations_sec": {
+        "classifier": 2.97998309135437,
+        "planner": 6.411838531494141,
+        "total": 9.39182162284851
+      },
+      "llm_metrics": {
+        "classifier": {},
+        "planner": {}
+      }
+    },
+    {
+      "id": "motion_blocked_while_playing",
+      "tags": [
+        "smoke",
+        "motion",
+        "state"
+      ],
+      "user_text": "손 흔들어줘",
+      "passed": true,
+      "checks": [
+        {
+          "name": "classifier.intent",
+          "passed": true,
+          "expected": "motion_request",
+          "actual": "motion_request"
+        },
+        {
+          "name": "planner.domain",
+          "passed": true,
+          "expected": "motion",
+          "actual": "motion"
+        },
+        {
+          "name": "validator.valid_op_cmds_exact",
+          "passed": true,
+          "expected": [],
+          "actual": []
+        },
+        {
+          "name": "e2e.speech_contains_any",
+          "passed": true,
+          "expected": [
+            "연주 중",
+            "지금은",
+            "할 수 없습니다"
+          ],
+          "actual": "지금은 연주 중이라 다른 동작을 할 수 없습니다."
+        }
+      ],
+      "failed_checks": [],
+      "actual": {
+        "intent": "motion_request",
+        "needs_motion": true,
+        "needs_dialogue": false,
+        "risk_level": "medium",
+        "planner_domain": "motion",
+        "skills": [
+          "wave_hi"
+        ],
+        "raw_op_cmds": [],
+        "expanded_op_cmds": [
+          "look:0,90",
+          "gesture:wave"
+        ],
+        "resolved_op_cmds": [
+          "look:0,90",
+          "gesture:wave"
+        ],
+        "valid_op_cmds": [],
+        "rejected_op_cmds": [
+          "look:0,90",
+          "gesture:wave"
+        ],
+        "speech": "지금은 연주 중이라 다른 동작을 할 수 없습니다.",
+        "reason": "사용자 요청에 따라 인사 제스처 수행",
+        "classifier_raw_response_text": "{\n  \"intent\": \"motion_request\",\n  \"needs_motion\": true,\n  \"needs_dialogue\": false,\n  \"risk_level\": \"medium\"\n}",
+        "planner_raw_response_text": "{\n  \"skills\": [\"wave_hi\"],\n  \"op_cmd\": [],\n  \"speech\": \"안녕하세요!\",\n  \"reason\": \"사용자 요청에 따라 인사 제스처 수행\"\n}",
+        "planner_called": true,
+        "planner_parse_ok": true,
+        "planner_is_fallback": false
+      },
+      "durations_sec": {
+        "classifier": 3.2312777042388916,
+        "planner": 5.267084360122681,
+        "total": 8.498362064361572
+      },
+      "llm_metrics": {
+        "classifier": {},
+        "planner": {}
+      }
+    }
+  ]
+}

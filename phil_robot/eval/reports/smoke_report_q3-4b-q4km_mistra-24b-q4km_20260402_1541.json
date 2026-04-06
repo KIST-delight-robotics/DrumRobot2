@@ -1,0 +1,1476 @@
+{
+  "metadata": {
+    "generated_at": "2026-04-02T15:41:04+09:00",
+    "suite": "smoke",
+    "cases_path": "/home/shy/robot_project/phil_robot/eval/cases_smoke.json",
+    "classifier_model": "qwen3:4b-instruct-2507-q4_K_M",
+    "planner_model": "mistral-small3.2:24b-instruct-2506-q4_K_M",
+    "requested_planner_tag": "mistral-small3.2:24b-instruct-2506-q4_K_M",
+    "resolved_planner_tag": "mistral-small3.2:24b-instruct-2506-q4_K_M",
+    "resolved_planner_id": "5a408ab55df5",
+    "ollama_version": "ollama version is 0.14.1",
+    "python_path": "/home/shy/miniforge3/envs/drum4/bin/python",
+    "python_version": "Python 3.8.20",
+    "warmup_excluded": true,
+    "json_production_path": true
+  },
+  "summary": {
+    "total_cases": 13,
+    "passed_cases": 11,
+    "failed_cases": 2,
+    "layer_summary": {
+      "classifier": {
+        "passed": 13,
+        "total": 13
+      },
+      "planner": {
+        "passed": 17,
+        "total": 17
+      },
+      "validator": {
+        "passed": 11,
+        "total": 13
+      },
+      "e2e": {
+        "passed": 9,
+        "total": 10
+      }
+    }
+  },
+  "results": [
+    {
+      "id": "chat_greeting_basic",
+      "tags": [
+        "smoke",
+        "chat"
+      ],
+      "user_text": "안녕",
+      "passed": true,
+      "checks": [
+        {
+          "name": "classifier.intent",
+          "passed": true,
+          "expected": "chat",
+          "actual": "chat"
+        },
+        {
+          "name": "planner.domain",
+          "passed": true,
+          "expected": "chat",
+          "actual": "chat"
+        },
+        {
+          "name": "planner.skills_exact",
+          "passed": true,
+          "expected": [],
+          "actual": []
+        },
+        {
+          "name": "validator.valid_op_cmds_exact",
+          "passed": true,
+          "expected": [],
+          "actual": []
+        },
+        {
+          "name": "e2e.speech_contains_any",
+          "passed": true,
+          "expected": [
+            "안녕",
+            "반가",
+            "안녕하세요"
+          ],
+          "actual": "안녕하세요!"
+        }
+      ],
+      "failed_checks": [],
+      "actual": {
+        "intent": "chat",
+        "needs_motion": false,
+        "needs_dialogue": true,
+        "risk_level": "low",
+        "planner_domain": "chat",
+        "skills": [],
+        "raw_op_cmds": [],
+        "expanded_op_cmds": [],
+        "resolved_op_cmds": [],
+        "valid_op_cmds": [],
+        "rejected_op_cmds": [],
+        "speech": "안녕하세요!",
+        "reason": "simple greeting",
+        "classifier_raw_response_text": "{\n  \"intent\": \"chat\",\n  \"needs_motion\": false,\n  \"needs_dialogue\": true,\n  \"risk_level\": \"low\"\n}",
+        "planner_raw_response_text": "{\n  \"skills\": [\"wave_hi\"],\n  \"op_cmd\": [],\n  \"speech\": \"안녕하세요!\",\n  \"reason\": \"simple greeting\"\n}",
+        "planner_called": true,
+        "planner_parse_ok": true,
+        "planner_is_fallback": false
+      },
+      "durations_sec": {
+        "classifier": 1.5998563766479492,
+        "planner": 6.336583375930786,
+        "total": 7.936439752578735
+      },
+      "llm_metrics": {
+        "classifier": {
+          "wall_sec": 1.5998239517211914,
+          "prompt_tokens": 407,
+          "prompt_sec": 0.040293261,
+          "prompt_tps": 10100.944671616428,
+          "eval_tokens": 33,
+          "eval_sec": 1.244797257,
+          "eval_tps": 26.51034119365833,
+          "meta_sec": 1.285090518,
+          "overhead_sec": 0.31473343372119134,
+          "error": ""
+        },
+        "planner": {
+          "wall_sec": 6.336551666259766,
+          "prompt_tokens": 1326,
+          "prompt_sec": 0.161277269,
+          "prompt_tps": 8221.86541365603,
+          "eval_tokens": 37,
+          "eval_sec": 5.843197944,
+          "eval_tps": 6.332148996936326,
+          "meta_sec": 6.004475213,
+          "overhead_sec": 0.33207645325976554,
+          "error": ""
+        }
+      }
+    },
+    {
+      "id": "motion_wave_allowed",
+      "tags": [
+        "smoke",
+        "motion"
+      ],
+      "user_text": "손 흔들어줘",
+      "passed": true,
+      "checks": [
+        {
+          "name": "classifier.intent",
+          "passed": true,
+          "expected": "motion_request",
+          "actual": "motion_request"
+        },
+        {
+          "name": "planner.domain",
+          "passed": true,
+          "expected": "motion",
+          "actual": "motion"
+        },
+        {
+          "name": "validator.valid_op_cmds_contains_all",
+          "passed": true,
+          "expected": [
+            "gesture:wave"
+          ],
+          "actual": [
+            "look:0,90",
+            "gesture:wave",
+            "led:happy"
+          ]
+        },
+        {
+          "name": "e2e.speech_contains_any",
+          "passed": true,
+          "expected": [
+            "인사",
+            "손",
+            "흔들",
+            "안녕",
+            "안녕하세요"
+          ],
+          "actual": "안녕하세요!"
+        }
+      ],
+      "failed_checks": [],
+      "actual": {
+        "intent": "motion_request",
+        "needs_motion": true,
+        "needs_dialogue": false,
+        "risk_level": "medium",
+        "planner_domain": "motion",
+        "skills": [
+          "wave_hi"
+        ],
+        "raw_op_cmds": [],
+        "expanded_op_cmds": [
+          "look:0,90",
+          "gesture:wave",
+          "led:happy"
+        ],
+        "resolved_op_cmds": [
+          "look:0,90",
+          "gesture:wave",
+          "led:happy"
+        ],
+        "valid_op_cmds": [
+          "look:0,90",
+          "gesture:wave",
+          "led:happy"
+        ],
+        "rejected_op_cmds": [],
+        "speech": "안녕하세요!",
+        "reason": "사용자의 요청에 따라 인사 제스처 수행",
+        "classifier_raw_response_text": "{\n  \"intent\": \"motion_request\",\n  \"needs_motion\": true,\n  \"needs_dialogue\": false,\n  \"risk_level\": \"medium\"\n}",
+        "planner_raw_response_text": "{\n  \"skills\": [\"wave_hi\"],\n  \"op_cmd\": [],\n  \"speech\": \"안녕하세요!\",\n  \"reason\": \"사용자의 요청에 따라 인사 제스처 수행\"\n}",
+        "planner_called": true,
+        "planner_parse_ok": true,
+        "planner_is_fallback": false
+      },
+      "durations_sec": {
+        "classifier": 1.6628375053405762,
+        "planner": 13.856091737747192,
+        "total": 15.518929243087769
+      },
+      "llm_metrics": {
+        "classifier": {
+          "wall_sec": 1.6628062725067139,
+          "prompt_tokens": 412,
+          "prompt_sec": 0.055831846,
+          "prompt_tps": 7379.3010533808965,
+          "eval_tokens": 34,
+          "eval_sec": 1.295382679,
+          "eval_tps": 26.247070113865558,
+          "meta_sec": 1.351214525,
+          "overhead_sec": 0.3115917475067138,
+          "error": ""
+        },
+        "planner": {
+          "wall_sec": 13.856063604354858,
+          "prompt_tokens": 1370,
+          "prompt_sec": 6.216464346,
+          "prompt_tps": 220.38250744276044,
+          "eval_tokens": 46,
+          "eval_sec": 7.276281791,
+          "eval_tps": 6.321910190022766,
+          "meta_sec": 13.492746137000001,
+          "overhead_sec": 0.36331746735485737,
+          "error": ""
+        }
+      }
+    },
+    {
+      "id": "motion_wave_blocked_by_lock",
+      "tags": [
+        "smoke",
+        "motion",
+        "safety"
+      ],
+      "user_text": "손 흔들어줘",
+      "passed": true,
+      "checks": [
+        {
+          "name": "classifier.intent",
+          "passed": true,
+          "expected": "motion_request",
+          "actual": "motion_request"
+        },
+        {
+          "name": "planner.domain",
+          "passed": true,
+          "expected": "motion",
+          "actual": "motion"
+        },
+        {
+          "name": "validator.valid_op_cmds_any_of",
+          "passed": true,
+          "expected": [
+            [],
+            [
+              "led:happy"
+            ]
+          ],
+          "actual": [
+            "led:happy"
+          ]
+        },
+        {
+          "name": "e2e.speech_contains_any",
+          "passed": true,
+          "expected": [
+            "안전 키",
+            "움직일 수 없습니다",
+            "확인"
+          ],
+          "actual": "아직 안전 키가 해제되지 않아 움직일 수 없습니다. 안전 키를 먼저 확인해 주세요."
+        }
+      ],
+      "failed_checks": [],
+      "actual": {
+        "intent": "motion_request",
+        "needs_motion": true,
+        "needs_dialogue": false,
+        "risk_level": "high",
+        "planner_domain": "motion",
+        "skills": [
+          "wave_hi"
+        ],
+        "raw_op_cmds": [],
+        "expanded_op_cmds": [
+          "look:0,90",
+          "gesture:wave",
+          "led:happy"
+        ],
+        "resolved_op_cmds": [
+          "look:0,90",
+          "gesture:wave",
+          "led:happy"
+        ],
+        "valid_op_cmds": [
+          "led:happy"
+        ],
+        "rejected_op_cmds": [
+          "look:0,90",
+          "gesture:wave"
+        ],
+        "speech": "아직 안전 키가 해제되지 않아 움직일 수 없습니다. 안전 키를 먼저 확인해 주세요.",
+        "reason": "사용자의 요청에 따라 인사 동작 수행",
+        "classifier_raw_response_text": "{\n  \"intent\": \"motion_request\",\n  \"needs_motion\": true,\n  \"needs_dialogue\": false,\n  \"risk_level\": \"high\"\n}",
+        "planner_raw_response_text": "{\n  \"skills\": [\"wave_hi\"],\n  \"op_cmd\": [],\n  \"speech\": \"안녕하세요!\",\n  \"reason\": \"사용자의 요청에 따라 인사 동작 수행\"\n}",
+        "planner_called": true,
+        "planner_parse_ok": true,
+        "planner_is_fallback": false
+      },
+      "durations_sec": {
+        "classifier": 1.697516918182373,
+        "planner": 9.071837663650513,
+        "total": 10.769354581832886
+      },
+      "llm_metrics": {
+        "classifier": {
+          "wall_sec": 1.6974892616271973,
+          "prompt_tokens": 412,
+          "prompt_sec": 0.099718197,
+          "prompt_tps": 4131.6430941887165,
+          "eval_tokens": 34,
+          "eval_sec": 1.276150571,
+          "eval_tps": 26.6426241327913,
+          "meta_sec": 1.3758687680000001,
+          "overhead_sec": 0.32162049362719713,
+          "error": ""
+        },
+        "planner": {
+          "wall_sec": 9.0718092918396,
+          "prompt_tokens": 1370,
+          "prompt_sec": 1.675802632,
+          "prompt_tps": 817.5187064630413,
+          "eval_tokens": 44,
+          "eval_sec": 7.035999421,
+          "eval_tps": 6.253553669813471,
+          "meta_sec": 8.711802053,
+          "overhead_sec": 0.36000723883960006,
+          "error": ""
+        }
+      }
+    },
+    {
+      "id": "motion_arm_up_basic",
+      "tags": [
+        "smoke",
+        "motion",
+        "arm"
+      ],
+      "user_text": "팔 올려",
+      "passed": true,
+      "checks": [
+        {
+          "name": "classifier.intent",
+          "passed": true,
+          "expected": "motion_request",
+          "actual": "motion_request"
+        },
+        {
+          "name": "planner.domain",
+          "passed": true,
+          "expected": "motion",
+          "actual": "motion"
+        },
+        {
+          "name": "validator.valid_op_cmds_contains_all",
+          "passed": true,
+          "expected": [
+            "move:R_arm2,58",
+            "move:L_arm2,58",
+            "move:R_arm3,95",
+            "move:L_arm3,95",
+            "move:R_wrist,0",
+            "move:L_wrist,0"
+          ],
+          "actual": [
+            "move:R_arm2,58",
+            "move:L_arm2,58",
+            "move:R_arm3,95",
+            "move:L_arm3,95",
+            "move:R_wrist,0",
+            "move:L_wrist,0"
+          ]
+        }
+      ],
+      "failed_checks": [],
+      "actual": {
+        "intent": "motion_request",
+        "needs_motion": true,
+        "needs_dialogue": false,
+        "risk_level": "medium",
+        "planner_domain": "motion",
+        "skills": [
+          "arm_up"
+        ],
+        "raw_op_cmds": [],
+        "expanded_op_cmds": [
+          "move:R_arm2,58",
+          "move:L_arm2,58",
+          "move:R_arm3,95",
+          "move:L_arm3,95",
+          "move:R_wrist,0",
+          "move:L_wrist,0"
+        ],
+        "resolved_op_cmds": [
+          "move:R_arm2,58",
+          "move:L_arm2,58",
+          "move:R_arm3,95",
+          "move:L_arm3,95",
+          "move:R_wrist,0",
+          "move:L_wrist,0"
+        ],
+        "valid_op_cmds": [
+          "move:R_arm2,58",
+          "move:L_arm2,58",
+          "move:R_arm3,95",
+          "move:L_arm3,95",
+          "move:R_wrist,0",
+          "move:L_wrist,0"
+        ],
+        "rejected_op_cmds": [],
+        "speech": "팔을 들어 올립니다.",
+        "reason": "사용자의 팔 올리기 요청에 따라 양팔을 들어 올린다.",
+        "classifier_raw_response_text": "{\n  \"intent\": \"motion_request\",\n  \"needs_motion\": true,\n  \"needs_dialogue\": false,\n  \"risk_level\": \"medium\"\n}",
+        "planner_raw_response_text": "{\n  \"skills\": [\"arm_up\"],\n  \"op_cmd\": [],\n  \"speech\": \"팔을 들어 올립니다.\",\n  \"reason\": \"사용자의 팔 올리기 요청에 따라 양팔을 들어 올린다.\"\n}",
+        "planner_called": true,
+        "planner_parse_ok": true,
+        "planner_is_fallback": false
+      },
+      "durations_sec": {
+        "classifier": 1.6946561336517334,
+        "planner": 10.280974864959717,
+        "total": 11.97563099861145
+      },
+      "llm_metrics": {
+        "classifier": {
+          "wall_sec": 1.694624900817871,
+          "prompt_tokens": 407,
+          "prompt_sec": 0.087308026,
+          "prompt_tps": 4661.656191837392,
+          "eval_tokens": 34,
+          "eval_sec": 1.293134256,
+          "eval_tps": 26.29270691905636,
+          "meta_sec": 1.3804422820000002,
+          "overhead_sec": 0.3141826188178709,
+          "error": ""
+        },
+        "planner": {
+          "wall_sec": 10.280945539474487,
+          "prompt_tokens": 1366,
+          "prompt_sec": 1.711645118,
+          "prompt_tps": 798.0626273722705,
+          "eval_tokens": 51,
+          "eval_sec": 8.212343385,
+          "eval_tps": 6.210164091914673,
+          "meta_sec": 9.923988503,
+          "overhead_sec": 0.35695703647448696,
+          "error": ""
+        }
+      }
+    },
+    {
+      "id": "motion_left_arm_out_basic",
+      "tags": [
+        "smoke",
+        "motion",
+        "arm"
+      ],
+      "user_text": "왼팔 벌려",
+      "passed": true,
+      "checks": [
+        {
+          "name": "classifier.intent",
+          "passed": true,
+          "expected": "motion_request",
+          "actual": "motion_request"
+        },
+        {
+          "name": "planner.domain",
+          "passed": true,
+          "expected": "motion",
+          "actual": "motion"
+        },
+        {
+          "name": "validator.valid_op_cmds_contains_all",
+          "passed": true,
+          "expected": [
+            "move:L_arm1,150",
+            "move:L_arm2,10",
+            "move:L_arm3,95",
+            "move:L_wrist,0"
+          ],
+          "actual": [
+            "move:L_arm1,150",
+            "move:L_arm2,10",
+            "move:L_arm3,95",
+            "move:L_wrist,0"
+          ]
+        }
+      ],
+      "failed_checks": [],
+      "actual": {
+        "intent": "motion_request",
+        "needs_motion": true,
+        "needs_dialogue": false,
+        "risk_level": "medium",
+        "planner_domain": "motion",
+        "skills": [
+          "left_arm_out"
+        ],
+        "raw_op_cmds": [],
+        "expanded_op_cmds": [
+          "move:L_arm1,150",
+          "move:L_arm2,10",
+          "move:L_arm3,95",
+          "move:L_wrist,0"
+        ],
+        "resolved_op_cmds": [
+          "move:L_arm1,150",
+          "move:L_arm2,10",
+          "move:L_arm3,95",
+          "move:L_wrist,0"
+        ],
+        "valid_op_cmds": [
+          "move:L_arm1,150",
+          "move:L_arm2,10",
+          "move:L_arm3,95",
+          "move:L_wrist,0"
+        ],
+        "rejected_op_cmds": [],
+        "speech": "왼팔을 벌립니다.",
+        "reason": "사용자의 요청에 따라 왼팔을 벌리는 동작을 계획",
+        "classifier_raw_response_text": "{\n  \"intent\": \"motion_request\",\n  \"needs_motion\": true,\n  \"needs_dialogue\": false,\n  \"risk_level\": \"medium\"\n}",
+        "planner_raw_response_text": "{\n  \"skills\": [\"left_arm_out\"],\n  \"op_cmd\": [],\n  \"speech\": \"왼팔을 벌립니다.\",\n  \"reason\": \"사용자의 요청에 따라 왼팔을 벌리는 동작을 계획\"\n}",
+        "planner_called": true,
+        "planner_parse_ok": true,
+        "planner_is_fallback": false
+      },
+      "durations_sec": {
+        "classifier": 1.672119140625,
+        "planner": 9.310110330581665,
+        "total": 10.982229471206665
+      },
+      "llm_metrics": {
+        "classifier": {
+          "wall_sec": 1.672090768814087,
+          "prompt_tokens": 408,
+          "prompt_sec": 0.05578602,
+          "prompt_tps": 7313.660304140715,
+          "eval_tokens": 34,
+          "eval_sec": 1.31137129,
+          "eval_tps": 25.927058384814874,
+          "meta_sec": 1.36715731,
+          "overhead_sec": 0.30493345881408684,
+          "error": ""
+        },
+        "planner": {
+          "wall_sec": 9.310081243515015,
+          "prompt_tokens": 1369,
+          "prompt_sec": 0.411550348,
+          "prompt_tps": 3326.445978366661,
+          "eval_tokens": 53,
+          "eval_sec": 8.551994959,
+          "eval_tps": 6.197384382719209,
+          "meta_sec": 8.963545307,
+          "overhead_sec": 0.34653593651501424,
+          "error": ""
+        }
+      }
+    },
+    {
+      "id": "play_tim_basic",
+      "tags": [
+        "smoke",
+        "play"
+      ],
+      "user_text": "This Is Me 연주해줘",
+      "passed": true,
+      "checks": [
+        {
+          "name": "classifier.intent",
+          "passed": true,
+          "expected": "play_request",
+          "actual": "play_request"
+        },
+        {
+          "name": "planner.domain",
+          "passed": true,
+          "expected": "play",
+          "actual": "play"
+        },
+        {
+          "name": "planner.skills_any_of",
+          "passed": true,
+          "expected": [
+            [
+              "play_tim"
+            ],
+            [
+              "ready_pose",
+              "play_tim"
+            ]
+          ],
+          "actual": [
+            "ready_pose",
+            "play_tim"
+          ]
+        },
+        {
+          "name": "validator.valid_op_cmds_any_of",
+          "passed": true,
+          "expected": [
+            [
+              "r",
+              "p:TIM",
+              "led:play"
+            ]
+          ],
+          "actual": [
+            "r",
+            "p:TIM",
+            "led:play"
+          ]
+        },
+        {
+          "name": "e2e.speech_contains_any",
+          "passed": true,
+          "expected": [
+            "This Is Me",
+            "연주"
+          ],
+          "actual": "This Is Me 연주 시작합니다."
+        }
+      ],
+      "failed_checks": [],
+      "actual": {
+        "intent": "play_request",
+        "needs_motion": true,
+        "needs_dialogue": true,
+        "risk_level": "medium",
+        "planner_domain": "play",
+        "skills": [
+          "ready_pose",
+          "play_tim"
+        ],
+        "raw_op_cmds": [],
+        "expanded_op_cmds": [
+          "r",
+          "p:TIM",
+          "led:play"
+        ],
+        "resolved_op_cmds": [
+          "r",
+          "p:TIM",
+          "led:play"
+        ],
+        "valid_op_cmds": [
+          "r",
+          "p:TIM",
+          "led:play"
+        ],
+        "rejected_op_cmds": [],
+        "speech": "This Is Me 연주 시작합니다.",
+        "reason": "play_tim skill 실행",
+        "classifier_raw_response_text": "{\n  \"intent\": \"play_request\",\n  \"needs_motion\": true,\n  \"needs_dialogue\": true,\n  \"risk_level\": \"medium\"\n}",
+        "planner_raw_response_text": "{\n  \"skills\": [\"ready_pose\", \"play_tim\"],\n  \"op_cmd\": [],\n  \"speech\": \"This Is Me 연주 시작합니다.\",\n  \"reason\": \"play_tim skill 실행\"\n}",
+        "planner_called": true,
+        "planner_parse_ok": true,
+        "planner_is_fallback": false
+      },
+      "durations_sec": {
+        "classifier": 1.6834688186645508,
+        "planner": 14.047762155532837,
+        "total": 15.731230974197388
+      },
+      "llm_metrics": {
+        "classifier": {
+          "wall_sec": 1.6834404468536377,
+          "prompt_tokens": 410,
+          "prompt_sec": 0.056242024,
+          "prompt_tps": 7289.922567509306,
+          "eval_tokens": 34,
+          "eval_sec": 1.331121456,
+          "eval_tps": 25.54237244598963,
+          "meta_sec": 1.3873634799999999,
+          "overhead_sec": 0.2960769668536378,
+          "error": ""
+        },
+        "planner": {
+          "wall_sec": 14.047733306884766,
+          "prompt_tokens": 1317,
+          "prompt_sec": 6.289414368,
+          "prompt_tps": 209.39946439223067,
+          "eval_tokens": 46,
+          "eval_sec": 7.421234894,
+          "eval_tps": 6.198429325716475,
+          "meta_sec": 13.710649262,
+          "overhead_sec": 0.3370840448847652,
+          "error": ""
+        }
+      }
+    },
+    {
+      "id": "status_question_basic",
+      "tags": [
+        "smoke",
+        "status"
+      ],
+      "user_text": "왜 멈췄어?",
+      "passed": true,
+      "checks": [
+        {
+          "name": "classifier.intent",
+          "passed": true,
+          "expected": "status_question",
+          "actual": "status_question"
+        },
+        {
+          "name": "planner.domain",
+          "passed": true,
+          "expected": "status",
+          "actual": "status"
+        },
+        {
+          "name": "planner.skills_exact",
+          "passed": true,
+          "expected": [],
+          "actual": []
+        },
+        {
+          "name": "validator.valid_op_cmds_exact",
+          "passed": true,
+          "expected": [],
+          "actual": []
+        },
+        {
+          "name": "e2e.speech_contains_any",
+          "passed": true,
+          "expected": [
+            "에러",
+            "멈췄",
+            "관절",
+            "한계"
+          ],
+          "actual": "오른팔 관절의 한계치를 넘어서서 멈췄어요."
+        }
+      ],
+      "failed_checks": [],
+      "actual": {
+        "intent": "status_question",
+        "needs_motion": false,
+        "needs_dialogue": true,
+        "risk_level": "medium",
+        "planner_domain": "status",
+        "skills": [],
+        "raw_op_cmds": [],
+        "expanded_op_cmds": [],
+        "resolved_op_cmds": [],
+        "valid_op_cmds": [],
+        "rejected_op_cmds": [],
+        "speech": "오른팔 관절의 한계치를 넘어서서 멈췄어요.",
+        "reason": "에러 상태 설명",
+        "classifier_raw_response_text": "{\n  \"intent\": \"status_question\",\n  \"needs_motion\": false,\n  \"needs_dialogue\": true,\n  \"risk_level\": \"medium\"\n}",
+        "planner_raw_response_text": "{\n  \"skills\": [],\n  \"op_cmd\": [],\n  \"speech\": \"오른팔 관절의 한계치를 넘어서서 멈췄어요.\",\n  \"reason\": \"에러 상태 설명\"\n}",
+        "planner_called": true,
+        "planner_parse_ok": true,
+        "planner_is_fallback": false
+      },
+      "durations_sec": {
+        "classifier": 1.732128381729126,
+        "planner": 15.06789493560791,
+        "total": 16.800023317337036
+      },
+      "llm_metrics": {
+        "classifier": {
+          "wall_sec": 1.7321012020111084,
+          "prompt_tokens": 420,
+          "prompt_sec": 0.106073169,
+          "prompt_tps": 3959.5309912914927,
+          "eval_tokens": 34,
+          "eval_sec": 1.318462059,
+          "eval_tps": 25.78762109073326,
+          "meta_sec": 1.424535228,
+          "overhead_sec": 0.3075659740111083,
+          "error": ""
+        },
+        "planner": {
+          "wall_sec": 15.067864179611206,
+          "prompt_tokens": 1437,
+          "prompt_sec": 6.934129571,
+          "prompt_tps": 207.23581601501056,
+          "eval_tokens": 48,
+          "eval_sec": 7.804039648,
+          "eval_tps": 6.150660704587953,
+          "meta_sec": 14.738169219,
+          "overhead_sec": 0.3296949606112065,
+          "error": ""
+        }
+      }
+    },
+    {
+      "id": "stop_request_basic",
+      "tags": [
+        "smoke",
+        "stop"
+      ],
+      "user_text": "종료해",
+      "passed": true,
+      "checks": [
+        {
+          "name": "classifier.intent",
+          "passed": true,
+          "expected": "stop_request",
+          "actual": "stop_request"
+        },
+        {
+          "name": "planner.domain",
+          "passed": true,
+          "expected": "stop",
+          "actual": "stop"
+        },
+        {
+          "name": "validator.valid_op_cmds_any_of",
+          "passed": true,
+          "expected": [
+            [
+              "s"
+            ],
+            [
+              "h",
+              "led:idle"
+            ],
+            [
+              "h"
+            ],
+            [
+              "s",
+              "led:idle"
+            ],
+            [
+              "h",
+              "led:idle",
+              "s"
+            ]
+          ],
+          "actual": [
+            "h",
+            "led:idle"
+          ]
+        },
+        {
+          "name": "e2e.speech_contains_any",
+          "passed": true,
+          "expected": [
+            "종료",
+            "안녕히",
+            "중단"
+          ],
+          "actual": "종료합니다."
+        }
+      ],
+      "failed_checks": [],
+      "actual": {
+        "intent": "stop_request",
+        "needs_motion": true,
+        "needs_dialogue": true,
+        "risk_level": "medium",
+        "planner_domain": "stop",
+        "skills": [
+          "idle_home"
+        ],
+        "raw_op_cmds": [],
+        "expanded_op_cmds": [
+          "h",
+          "led:idle"
+        ],
+        "resolved_op_cmds": [
+          "h",
+          "led:idle"
+        ],
+        "valid_op_cmds": [
+          "h",
+          "led:idle"
+        ],
+        "rejected_op_cmds": [],
+        "speech": "종료합니다.",
+        "reason": "사용자 요청에 따라 시스템 종료",
+        "classifier_raw_response_text": "{\n  \"intent\": \"stop_request\",\n  \"needs_motion\": false,\n  \"needs_dialogue\": true,\n  \"risk_level\": \"medium\"\n}",
+        "planner_raw_response_text": "{\n  \"skills\": [\"idle_home\"],\n  \"op_cmd\": [],\n  \"speech\": \"종료합니다.\",\n  \"reason\": \"사용자 요청에 따라 시스템 종료\"\n}",
+        "planner_called": true,
+        "planner_parse_ok": true,
+        "planner_is_fallback": false
+      },
+      "durations_sec": {
+        "classifier": 1.6857388019561768,
+        "planner": 12.925293922424316,
+        "total": 14.611032724380493
+      },
+      "llm_metrics": {
+        "classifier": {
+          "wall_sec": 1.6857101917266846,
+          "prompt_tokens": 406,
+          "prompt_sec": 0.099352815,
+          "prompt_tps": 4086.4468711832674,
+          "eval_tokens": 34,
+          "eval_sec": 1.275437211,
+          "eval_tps": 26.657525518910077,
+          "meta_sec": 1.374790026,
+          "overhead_sec": 0.31092016572668446,
+          "error": ""
+        },
+        "planner": {
+          "wall_sec": 12.92526626586914,
+          "prompt_tokens": 1312,
+          "prompt_sec": 5.964448937,
+          "prompt_tps": 219.9700280542447,
+          "eval_tokens": 42,
+          "eval_sec": 6.613937588,
+          "eval_tps": 6.350226236818853,
+          "meta_sec": 12.578386524999999,
+          "overhead_sec": 0.34687974086914153,
+          "error": ""
+        }
+      }
+    },
+    {
+      "id": "relative_wrist_raise_success",
+      "tags": [
+        "smoke",
+        "motion",
+        "relative"
+      ],
+      "user_text": "왼쪽 손목 더 올려",
+      "passed": true,
+      "checks": [
+        {
+          "name": "classifier.intent",
+          "passed": true,
+          "expected": "motion_request",
+          "actual": "motion_request"
+        },
+        {
+          "name": "planner.domain",
+          "passed": true,
+          "expected": "motion",
+          "actual": "motion"
+        },
+        {
+          "name": "validator.valid_op_cmds_contains_prefixes",
+          "passed": true,
+          "expected": [
+            "move:L_wrist,"
+          ],
+          "actual": [
+            "move:L_wrist,65"
+          ]
+        }
+      ],
+      "failed_checks": [],
+      "actual": {
+        "intent": "motion_request",
+        "needs_motion": true,
+        "needs_dialogue": false,
+        "risk_level": "medium",
+        "planner_domain": "motion",
+        "skills": [],
+        "raw_op_cmds": [
+          "move:L_wrist,70"
+        ],
+        "expanded_op_cmds": [
+          "move:L_wrist,70"
+        ],
+        "resolved_op_cmds": [
+          "move:L_wrist,65"
+        ],
+        "valid_op_cmds": [
+          "move:L_wrist,65"
+        ],
+        "rejected_op_cmds": [],
+        "speech": "왼쪽 손목을 더 올립니다.",
+        "reason": "사용자 요청에 따라 왼쪽 손목 각도를 70도로 조정",
+        "classifier_raw_response_text": "{\n  \"intent\": \"motion_request\",\n  \"needs_motion\": true,\n  \"needs_dialogue\": false,\n  \"risk_level\": \"medium\"\n}",
+        "planner_raw_response_text": "{\n  \"skills\": [],\n  \"op_cmd\": [\"move:L_wrist,70\"],\n  \"speech\": \"왼쪽 손목을 더 올립니다.\",\n  \"reason\": \"사용자 요청에 따라 왼쪽 손목 각도를 70도로 조정\"\n}",
+        "planner_called": true,
+        "planner_parse_ok": true,
+        "planner_is_fallback": false
+      },
+      "durations_sec": {
+        "classifier": 1.641005516052246,
+        "planner": 16.303269624710083,
+        "total": 17.94427514076233
+      },
+      "llm_metrics": {
+        "classifier": {
+          "wall_sec": 1.640974521636963,
+          "prompt_tokens": 418,
+          "prompt_sec": 0.069241958,
+          "prompt_tps": 6036.802136646684,
+          "eval_tokens": 34,
+          "eval_sec": 1.270874087,
+          "eval_tps": 26.7532404254616,
+          "meta_sec": 1.340116045,
+          "overhead_sec": 0.30085847663696286,
+          "error": ""
+        },
+        "planner": {
+          "wall_sec": 16.30324149131775,
+          "prompt_tokens": 1377,
+          "prompt_sec": 6.368650678,
+          "prompt_tps": 216.21534444599664,
+          "eval_tokens": 61,
+          "eval_sec": 9.59614866,
+          "eval_tps": 6.356716862283373,
+          "meta_sec": 15.964799338,
+          "overhead_sec": 0.3384421533177484,
+          "error": ""
+        }
+      }
+    },
+    {
+      "id": "relative_wrist_raise_blocked",
+      "tags": [
+        "smoke",
+        "motion",
+        "relative",
+        "limit"
+      ],
+      "user_text": "거기서 50도 더 올리고 2초 있다",
+      "passed": false,
+      "checks": [
+        {
+          "name": "classifier.intent",
+          "passed": true,
+          "expected": "motion_request",
+          "actual": "motion_request"
+        },
+        {
+          "name": "planner.domain",
+          "passed": true,
+          "expected": "motion",
+          "actual": "motion"
+        },
+        {
+          "name": "validator.valid_op_cmds_exact",
+          "passed": false,
+          "expected": [],
+          "actual": [
+            "move:L_wrist,100.1",
+            "wait:2"
+          ]
+        },
+        {
+          "name": "e2e.speech_contains_any",
+          "passed": false,
+          "expected": [
+            "한계",
+            "벗어나",
+            "움직일 수 없습니다"
+          ],
+          "actual": "왼손을 50도 더 올리고 2초간 유지합니다."
+        }
+      ],
+      "failed_checks": [
+        {
+          "name": "validator.valid_op_cmds_exact",
+          "expected": [],
+          "actual": [
+            "move:L_wrist,100.1",
+            "wait:2"
+          ]
+        },
+        {
+          "name": "e2e.speech_contains_any",
+          "expected": [
+            "한계",
+            "벗어나",
+            "움직일 수 없습니다"
+          ],
+          "actual": "왼손을 50도 더 올리고 2초간 유지합니다."
+        }
+      ],
+      "actual": {
+        "intent": "motion_request",
+        "needs_motion": true,
+        "needs_dialogue": false,
+        "risk_level": "medium",
+        "planner_domain": "motion",
+        "skills": [],
+        "raw_op_cmds": [
+          "move:L_wrist,100",
+          "wait:2"
+        ],
+        "expanded_op_cmds": [
+          "move:L_wrist,100",
+          "wait:2"
+        ],
+        "resolved_op_cmds": [
+          "move:L_wrist,100.1",
+          "wait:2"
+        ],
+        "valid_op_cmds": [
+          "move:L_wrist,100.1",
+          "wait:2"
+        ],
+        "rejected_op_cmds": [],
+        "speech": "왼손을 50도 더 올리고 2초간 유지합니다.",
+        "reason": "사용자의 요청에 따라 왼손을 50도 더 올리고 2초간 유지",
+        "classifier_raw_response_text": "{\n  \"intent\": \"motion_request\",\n  \"needs_motion\": true,\n  \"needs_dialogue\": false,\n  \"risk_level\": \"medium\"\n}",
+        "planner_raw_response_text": "{\n  \"skills\": [],\n  \"op_cmd\": [\"move:L_wrist,100\", \"wait:2\"],\n  \"speech\": \"왼손을 50도 더 올리고 2초간 유지합니다.\",\n  \"reason\": \"사용자의 요청에 따라 왼손을 50도 더 올리고 2초간 유지\"\n}",
+        "planner_called": true,
+        "planner_parse_ok": true,
+        "planner_is_fallback": false
+      },
+      "durations_sec": {
+        "classifier": 1.6377925872802734,
+        "planner": 14.370338439941406,
+        "total": 16.00813102722168
+      },
+      "llm_metrics": {
+        "classifier": {
+          "wall_sec": 1.6377625465393066,
+          "prompt_tokens": 425,
+          "prompt_sec": 0.060656978,
+          "prompt_tps": 7006.613484766748,
+          "eval_tokens": 34,
+          "eval_sec": 1.266430125,
+          "eval_tps": 26.847118785965392,
+          "meta_sec": 1.327087103,
+          "overhead_sec": 0.31067544353930665,
+          "error": ""
+        },
+        "planner": {
+          "wall_sec": 14.370306730270386,
+          "prompt_tokens": 1384,
+          "prompt_sec": 0.913868146,
+          "prompt_tps": 1514.4416686999834,
+          "eval_tokens": 80,
+          "eval_sec": 13.092122234,
+          "eval_tps": 6.110544842931689,
+          "meta_sec": 14.00599038,
+          "overhead_sec": 0.36431635027038567,
+          "error": ""
+        }
+      }
+    },
+    {
+      "id": "motion_blocked_while_playing",
+      "tags": [
+        "smoke",
+        "motion",
+        "state"
+      ],
+      "user_text": "손 흔들어줘",
+      "passed": false,
+      "checks": [
+        {
+          "name": "classifier.intent",
+          "passed": true,
+          "expected": "motion_request",
+          "actual": "motion_request"
+        },
+        {
+          "name": "planner.domain",
+          "passed": true,
+          "expected": "motion",
+          "actual": "motion"
+        },
+        {
+          "name": "validator.valid_op_cmds_exact",
+          "passed": false,
+          "expected": [],
+          "actual": [
+            "led:happy"
+          ]
+        },
+        {
+          "name": "e2e.speech_contains_any",
+          "passed": true,
+          "expected": [
+            "연주 중",
+            "지금은",
+            "할 수 없습니다"
+          ],
+          "actual": "지금은 연주 중이라 다른 동작을 할 수 없습니다."
+        }
+      ],
+      "failed_checks": [
+        {
+          "name": "validator.valid_op_cmds_exact",
+          "expected": [],
+          "actual": [
+            "led:happy"
+          ]
+        }
+      ],
+      "actual": {
+        "intent": "motion_request",
+        "needs_motion": true,
+        "needs_dialogue": false,
+        "risk_level": "medium",
+        "planner_domain": "motion",
+        "skills": [
+          "wave_hi"
+        ],
+        "raw_op_cmds": [],
+        "expanded_op_cmds": [
+          "look:0,90",
+          "gesture:wave",
+          "led:happy"
+        ],
+        "resolved_op_cmds": [
+          "look:0,90",
+          "gesture:wave",
+          "led:happy"
+        ],
+        "valid_op_cmds": [
+          "led:happy"
+        ],
+        "rejected_op_cmds": [
+          "look:0,90",
+          "gesture:wave"
+        ],
+        "speech": "지금은 연주 중이라 다른 동작을 할 수 없습니다.",
+        "reason": "사용자의 요청에 따라 인사 제스처 수행",
+        "classifier_raw_response_text": "{\n  \"intent\": \"motion_request\",\n  \"needs_motion\": true,\n  \"needs_dialogue\": false,\n  \"risk_level\": \"medium\"\n}",
+        "planner_raw_response_text": "{\n  \"skills\": [\"wave_hi\"],\n  \"op_cmd\": [],\n  \"speech\": \"안녕하세요!\",\n  \"reason\": \"사용자의 요청에 따라 인사 제스처 수행\"\n}",
+        "planner_called": true,
+        "planner_parse_ok": true,
+        "planner_is_fallback": false
+      },
+      "durations_sec": {
+        "classifier": 1.7290089130401611,
+        "planner": 9.495408296585083,
+        "total": 11.224417209625244
+      },
+      "llm_metrics": {
+        "classifier": {
+          "wall_sec": 1.7289812564849854,
+          "prompt_tokens": 415,
+          "prompt_sec": 0.103303282,
+          "prompt_tps": 4017.297340078702,
+          "eval_tokens": 34,
+          "eval_sec": 1.312307046,
+          "eval_tps": 25.908570790375837,
+          "meta_sec": 1.4156103279999999,
+          "overhead_sec": 0.3133709284849855,
+          "error": ""
+        },
+        "planner": {
+          "wall_sec": 9.495380640029907,
+          "prompt_tokens": 1373,
+          "prompt_sec": 1.714261025,
+          "prompt_tps": 800.9282017013716,
+          "eval_tokens": 46,
+          "eval_sec": 7.441551466,
+          "eval_tps": 6.181506667013085,
+          "meta_sec": 9.155812491,
+          "overhead_sec": 0.3395681490299065,
+          "error": ""
+        }
+      }
+    },
+    {
+      "id": "chat_general_knowledge",
+      "tags": [
+        "smoke",
+        "chat"
+      ],
+      "user_text": "계란 반숙은 몇 분 삶아야 해?",
+      "passed": true,
+      "checks": [
+        {
+          "name": "classifier.intent",
+          "passed": true,
+          "expected": "chat",
+          "actual": "chat"
+        },
+        {
+          "name": "planner.domain",
+          "passed": true,
+          "expected": "chat",
+          "actual": "chat"
+        },
+        {
+          "name": "validator.valid_op_cmds_exact",
+          "passed": true,
+          "expected": [],
+          "actual": []
+        },
+        {
+          "name": "e2e.speech_contains_any",
+          "passed": true,
+          "expected": [
+            "분",
+            "반숙",
+            "삶"
+          ],
+          "actual": "계란 반숙은 보통 6분에서 7분 정도 삶으면 좋아요."
+        }
+      ],
+      "failed_checks": [],
+      "actual": {
+        "intent": "chat",
+        "needs_motion": false,
+        "needs_dialogue": true,
+        "risk_level": "low",
+        "planner_domain": "chat",
+        "skills": [],
+        "raw_op_cmds": [],
+        "expanded_op_cmds": [],
+        "resolved_op_cmds": [],
+        "valid_op_cmds": [],
+        "rejected_op_cmds": [],
+        "speech": "계란 반숙은 보통 6분에서 7분 정도 삶으면 좋아요.",
+        "reason": "계란 반숙 조리 시간 안내",
+        "classifier_raw_response_text": "{\n  \"intent\": \"chat\",\n  \"needs_motion\": false,\n  \"needs_dialogue\": true,\n  \"risk_level\": \"low\"\n}",
+        "planner_raw_response_text": "{\n  \"skills\": [],\n  \"op_cmd\": [],\n  \"speech\": \"계란 반숙은 보통 6분에서 7분 정도 삶으면 좋아요.\",\n  \"reason\": \"계란 반숙 조리 시간 안내\"\n}",
+        "planner_called": true,
+        "planner_parse_ok": true,
+        "planner_is_fallback": false
+      },
+      "durations_sec": {
+        "classifier": 1.690828561782837,
+        "planner": 15.354435205459595,
+        "total": 17.04526376724243
+      },
+      "llm_metrics": {
+        "classifier": {
+          "wall_sec": 1.6907877922058105,
+          "prompt_tokens": 416,
+          "prompt_sec": 0.106419632,
+          "prompt_tps": 3909.0531716929822,
+          "eval_tokens": 33,
+          "eval_sec": 1.278582232,
+          "eval_tps": 25.809837782885754,
+          "meta_sec": 1.385001864,
+          "overhead_sec": 0.30578592820581063,
+          "error": ""
+        },
+        "planner": {
+          "wall_sec": 15.354404211044312,
+          "prompt_tokens": 1332,
+          "prompt_sec": 6.291498305,
+          "prompt_tps": 211.71427463334587,
+          "eval_tokens": 54,
+          "eval_sec": 8.716401087,
+          "eval_tps": 6.195217436762729,
+          "meta_sec": 15.007899391999999,
+          "overhead_sec": 0.34650481904431274,
+          "error": ""
+        }
+      }
+    },
+    {
+      "id": "chat_identity_name",
+      "tags": [
+        "smoke",
+        "chat",
+        "identity"
+      ],
+      "user_text": "이름이 뭔데?",
+      "passed": true,
+      "checks": [
+        {
+          "name": "classifier.intent",
+          "passed": true,
+          "expected": "chat",
+          "actual": "chat"
+        },
+        {
+          "name": "planner.domain",
+          "passed": true,
+          "expected": "chat",
+          "actual": "chat"
+        },
+        {
+          "name": "planner.skills_exact",
+          "passed": true,
+          "expected": [],
+          "actual": []
+        },
+        {
+          "name": "validator.valid_op_cmds_exact",
+          "passed": true,
+          "expected": [],
+          "actual": []
+        },
+        {
+          "name": "e2e.speech_contains_any",
+          "passed": true,
+          "expected": [
+            "필",
+            "이름",
+            "드럼",
+            "로봇"
+          ],
+          "actual": "저는 필이에요. KIST에서 개발된 드럼 로봇이에요."
+        }
+      ],
+      "failed_checks": [],
+      "actual": {
+        "intent": "chat",
+        "needs_motion": false,
+        "needs_dialogue": true,
+        "risk_level": "low",
+        "planner_domain": "chat",
+        "skills": [],
+        "raw_op_cmds": [],
+        "expanded_op_cmds": [],
+        "resolved_op_cmds": [],
+        "valid_op_cmds": [],
+        "rejected_op_cmds": [],
+        "speech": "저는 필이에요. KIST에서 개발된 드럼 로봇이에요.",
+        "reason": "user asks for name",
+        "classifier_raw_response_text": "{\n  \"intent\": \"chat\",\n  \"needs_motion\": false,\n  \"needs_dialogue\": true,\n  \"risk_level\": \"low\"\n}",
+        "planner_raw_response_text": "{\n  \"skills\": [],\n  \"op_cmd\": [],\n  \"speech\": \"저는 필이에요. KIST에서 개발된 드럼 로봇이에요.\",\n  \"reason\": \"user asks for name\"\n}",
+        "planner_called": true,
+        "planner_parse_ok": true,
+        "planner_is_fallback": false
+      },
+      "durations_sec": {
+        "classifier": 1.6640243530273438,
+        "planner": 9.352517127990723,
+        "total": 11.016541481018066
+      },
+      "llm_metrics": {
+        "classifier": {
+          "wall_sec": 1.6639952659606934,
+          "prompt_tokens": 412,
+          "prompt_sec": 0.086475533,
+          "prompt_tps": 4764.35340386974,
+          "eval_tokens": 33,
+          "eval_sec": 1.272230739,
+          "eval_tps": 25.938690984576187,
+          "meta_sec": 1.358706272,
+          "overhead_sec": 0.3052889939606933,
+          "error": ""
+        },
+        "planner": {
+          "wall_sec": 9.352486610412598,
+          "prompt_tokens": 1328,
+          "prompt_sec": 1.488610672,
+          "prompt_tps": 892.1069994854906,
+          "eval_tokens": 47,
+          "eval_sec": 7.518872585,
+          "eval_tps": 6.250937154296783,
+          "meta_sec": 9.007483257,
+          "overhead_sec": 0.34500335341259714,
+          "error": ""
+        }
+      }
+    }
+  ]
+}

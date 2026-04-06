@@ -15,6 +15,7 @@ if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
 from phil_robot.pipeline.brain_pipeline import run_brain_turn  # noqa: E402
+from phil_robot.pipeline.failure import FALLBACK_MESSAGE  # noqa: E402
 from phil_robot.config import CLASSIFIER_MODEL, PLANNER_MODEL  # noqa: E402
 
 
@@ -86,8 +87,8 @@ def abbreviate_model_name(model_name: str) -> str:
     return "-".join(parts)
 
 
-def build_report_path(
-    suite_name: str,
+def build_named_report_path(
+    report_name: str,
     classifier_model_name: str,
     planner_model_name: str,
     report_dir: str = DEFAULT_REPORT_DIR,
@@ -96,7 +97,7 @@ def build_report_path(
     표준 리포트 파일명을 생성한다.
 
     규칙:
-    - <suite>_report_<classifier약어>_<planner약어>_<YYYYMMDD_HHMM>.json
+    - <report>_report_<classifier약어>_<planner약어>_<YYYYMMDD_HHMM>.json
     - 동일 분에 같은 조합으로 다시 저장하면 _1, _2 ... 를 뒤에 붙인다.
     """
     os.makedirs(report_dir, exist_ok=True)
@@ -104,7 +105,7 @@ def build_report_path(
     classifier_alias = abbreviate_model_name(classifier_model_name)
     planner_alias = abbreviate_model_name(planner_model_name)
     timestamp = datetime.now().astimezone().strftime("%Y%m%d_%H%M")
-    stem = f"{suite_name}_report_{classifier_alias}_{planner_alias}_{timestamp}"
+    stem = f"{report_name}_report_{classifier_alias}_{planner_alias}_{timestamp}"
     candidate = os.path.join(report_dir, f"{stem}.json")
 
     collision_index = 1
@@ -113,6 +114,20 @@ def build_report_path(
         collision_index += 1
 
     return candidate
+
+
+def build_report_path(
+    suite_name: str,
+    classifier_model_name: str,
+    planner_model_name: str,
+    report_dir: str = DEFAULT_REPORT_DIR,
+) -> str:
+    return build_named_report_path(
+        report_name=suite_name,
+        classifier_model_name=classifier_model_name,
+        planner_model_name=planner_model_name,
+        report_dir=report_dir,
+    )
 
 
 def _list_equals(actual: List[Any], expected: List[Any]) -> bool:
@@ -139,29 +154,7 @@ def _text_contains_any(actual: str, candidates: List[str]) -> bool:
     return any(candidate.lower() in lowered for candidate in candidates)
 
 
-def evaluate_case(case: Dict[str, Any]) -> Dict[str, Any]:
-    user_text = case["user_text"]
-    robot_state = case["robot_state"]
-    expected = case.get("expected", {})
-
-    result = run_brain_turn(user_text, robot_state)
-
-    actual = {
-        "intent": result.classifier_result.get("intent"),
-        "needs_motion": result.classifier_result.get("needs_motion"),
-        "needs_dialogue": result.classifier_result.get("needs_dialogue"),
-        "risk_level": result.classifier_result.get("risk_level"),
-        "planner_domain": result.planner_domain,
-        "skills": list(result.validated_plan.skills),
-        "raw_op_cmds": list(result.validated_plan.raw_op_cmds),
-        "expanded_op_cmds": list(result.validated_plan.expanded_op_cmds),
-        "resolved_op_cmds": list(result.validated_plan.resolved_op_cmds),
-        "valid_op_cmds": list(result.validated_plan.valid_op_cmds),
-        "rejected_op_cmds": list(result.validated_plan.rejected_op_cmds),
-        "speech": result.validated_plan.speech,
-        "reason": result.validated_plan.reason,
-    }
-
+def evaluate_actual(expected: Dict[str, Any], actual: Dict[str, Any]) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]], bool]:
     checks: List[Tuple[str, bool, Any, Any]] = []
 
     def add_check(name: str, passed: bool, expected_value: Any, actual_value: Any) -> None:
@@ -248,6 +241,15 @@ def evaluate_case(case: Dict[str, Any]) -> Dict[str, Any]:
         )
 
     passed = all(check[1] for check in checks)
+    check_rows = [
+        {
+            "name": name,
+            "passed": ok,
+            "expected": expected_value,
+            "actual": actual_value,
+        }
+        for name, ok, expected_value, actual_value in checks
+    ]
     failed_checks = [
         {
             "name": name,
@@ -257,21 +259,101 @@ def evaluate_case(case: Dict[str, Any]) -> Dict[str, Any]:
         for name, ok, expected_value, actual_value in checks
         if not ok
     ]
+    return check_rows, failed_checks, passed
+
+
+def _loads_json_obj(raw_text: str) -> bool:
+    if not isinstance(raw_text, str) or not raw_text.strip():
+        return False
+
+    try:
+        json_obj = json.loads(raw_text)
+    except json.JSONDecodeError:
+        return False
+
+    return isinstance(json_obj, dict)
+
+
+def build_report_meta(
+    suite_name: str,
+    cases_path: str,
+    classifier_name: str,
+    planner_name: str,
+    extra_meta: Dict[str, Any] = None,
+) -> Dict[str, Any]:
+    meta_obj = {
+        "generated_at": datetime.now().astimezone().isoformat(timespec="seconds"),
+        "suite": suite_name,
+        "cases_path": os.path.abspath(cases_path),
+        "classifier_model": classifier_name,
+        "planner_model": planner_name,
+    }
+    if extra_meta:
+        meta_obj.update(extra_meta)
+    return meta_obj
+
+
+def evaluate_case(
+    case: Dict[str, Any],
+    classifier_name: str = CLASSIFIER_MODEL,
+    planner_name: str = PLANNER_MODEL,
+    capture_metrics: bool = False,
+) -> Dict[str, Any]:
+    user_text = case["user_text"]
+    robot_state = case["robot_state"]
+    expected = case.get("expected", {})
+
+    result = run_brain_turn(
+        user_text,
+        robot_state,
+        classifier_model_name=classifier_name,
+        planner_model_name=planner_name,
+        capture_metrics=capture_metrics,
+    )
+    planner_called = bool(result.planner_raw_response_text)
+    planner_parse_ok = True
+    if planner_called:
+        planner_parse_ok = _loads_json_obj(result.planner_raw_response_text)
+
+    planner_is_fallback = False
+    if planner_called:
+        planner_reason = result.planner_result.get("reason", "")
+        planner_speech = result.planner_result.get("speech", "")
+        planner_is_fallback = (
+            not planner_parse_ok
+            or planner_speech == FALLBACK_MESSAGE
+            or (isinstance(planner_reason, str) and planner_reason.startswith("LLM call failed:"))
+        )
+
+    actual = {
+        "intent": result.classifier_result.get("intent"),
+        "needs_motion": result.classifier_result.get("needs_motion"),
+        "needs_dialogue": result.classifier_result.get("needs_dialogue"),
+        "risk_level": result.classifier_result.get("risk_level"),
+        "planner_domain": result.planner_domain,
+        "skills": list(result.validated_plan.skills),
+        "raw_op_cmds": list(result.validated_plan.raw_op_cmds),
+        "expanded_op_cmds": list(result.validated_plan.expanded_op_cmds),
+        "resolved_op_cmds": list(result.validated_plan.resolved_op_cmds),
+        "valid_op_cmds": list(result.validated_plan.valid_op_cmds),
+        "rejected_op_cmds": list(result.validated_plan.rejected_op_cmds),
+        "speech": result.validated_plan.speech,
+        "reason": result.validated_plan.reason,
+        "classifier_raw_response_text": result.classifier_raw_response_text,
+        "planner_raw_response_text": result.planner_raw_response_text,
+        "planner_called": planner_called,
+        "planner_parse_ok": planner_parse_ok,
+        "planner_is_fallback": planner_is_fallback,
+    }
+
+    checks, failed_checks, passed = evaluate_actual(expected, actual)
 
     return {
         "id": case["id"],
         "tags": case.get("tags", []),
         "user_text": user_text,
         "passed": passed,
-        "checks": [
-            {
-                "name": name,
-                "passed": ok,
-                "expected": expected_value,
-                "actual": actual_value,
-            }
-            for name, ok, expected_value, actual_value in checks
-        ],
+        "checks": checks,
         "failed_checks": failed_checks,
         "actual": actual,
         "durations_sec": {
@@ -279,7 +361,30 @@ def evaluate_case(case: Dict[str, Any]) -> Dict[str, Any]:
             "planner": result.planner_duration_sec,
             "total": result.llm_duration_sec,
         },
+        "llm_metrics": {
+            "classifier": dict(result.classifier_metrics),
+            "planner": dict(result.planner_metrics),
+        },
     }
+
+
+def run_cases(
+    cases: List[Dict[str, Any]],
+    classifier_name: str = CLASSIFIER_MODEL,
+    planner_name: str = PLANNER_MODEL,
+    capture_metrics: bool = False,
+) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
+    results = [
+        evaluate_case(
+            case,
+            classifier_name=classifier_name,
+            planner_name=planner_name,
+            capture_metrics=capture_metrics,
+        )
+        for case in cases
+    ]
+    summary = summarize_results(results)
+    return results, summary
 
 
 def summarize_results(results: List[Dict[str, Any]]) -> Dict[str, Any]:
@@ -350,6 +455,21 @@ def main() -> int:
     parser.add_argument("--cases", help="Explicit JSON case file to run.")
     parser.add_argument("--report", help="Explicit JSON report output path.")
     parser.add_argument(
+        "--classifier-model",
+        default=CLASSIFIER_MODEL,
+        help="Override classifier model tag without editing config.py.",
+    )
+    parser.add_argument(
+        "--planner-model",
+        default=PLANNER_MODEL,
+        help="Override planner model tag without editing config.py.",
+    )
+    parser.add_argument(
+        "--capture-llm-metrics",
+        action="store_true",
+        help="Include Ollama timing/token metadata in per-case results.",
+    )
+    parser.add_argument(
         "--save-report",
         action="store_true",
         help="Generate a report filename automatically using the standard naming rule.",
@@ -365,26 +485,33 @@ def main() -> int:
     suite_name = infer_suite_name(args.suite, cases_path)
     cases = load_cases(cases_path)
 
-    results = [evaluate_case(case) for case in cases]
-    summary = summarize_results(results)
+    results, summary = run_cases(
+        cases,
+        classifier_name=args.classifier_model,
+        planner_name=args.planner_model,
+        capture_metrics=args.capture_llm_metrics,
+    )
     print_results(results, summary)
 
     report_path = args.report
     if args.save_report:
         report_path = build_report_path(
             suite_name=suite_name,
-            classifier_model_name=CLASSIFIER_MODEL,
-            planner_model_name=PLANNER_MODEL,
+            classifier_model_name=args.classifier_model,
+            planner_model_name=args.planner_model,
         )
 
     if report_path:
-        metadata = {
-            "generated_at": datetime.now().astimezone().isoformat(timespec="seconds"),
-            "suite": suite_name,
-            "cases_path": os.path.abspath(cases_path),
-            "classifier_model": CLASSIFIER_MODEL,
-            "planner_model": PLANNER_MODEL,
-        }
+        metadata = build_report_meta(
+            suite_name=suite_name,
+            cases_path=cases_path,
+            classifier_name=args.classifier_model,
+            planner_name=args.planner_model,
+            extra_meta={
+                "capture_llm_metrics": args.capture_llm_metrics,
+                "json_production_path": True,
+            },
+        )
         save_report(report_path, results, summary, metadata)
         print(f"\nSaved report to: {report_path}")
 

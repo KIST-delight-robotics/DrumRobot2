@@ -1,9 +1,12 @@
 # 파일명: melo_engine.py
 import os
+import queue
 import re
 import sys
+import threading
 import time
 
+import sounddevice as sd
 import torch
 
 THIRD_PARTY_MELO_DIR = os.path.join(
@@ -27,7 +30,6 @@ if THIRD_PARTY_TORCHAUDIO_DIR not in sys.path:
 from melo.api import TTS
 
 ARTIFACT_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "artifacts")
-
 DIGIT_WORDS = {
     "0": "영",
     "1": "일",
@@ -146,6 +148,8 @@ class TTS_Engine:
             # 최초 1회 모델 로딩
             self.model = TTS(language="KR", device=self.device)
             self.speaker_ids = self.model.hps.data.spk2id
+            self.speaker_id = self.speaker_ids["KR"]
+            self.sample_rate = self.model.hps.data.sampling_rate
             print(f"[TTS] 로딩 완료 (장치: {self.device})")
 
             # 첫 합성 버벅임 완화를 위한 워밍업
@@ -177,18 +181,33 @@ class TTS_Engine:
 
         return normalized
 
-    def speak(self, text, output_path=None, play=True):
-        if not self.model:
-            return
+    def _split_stream_text(self, clean_text):
+        """구두점 기준으로 끊어서 스트리밍용 chunk 를 만든다."""
+        word_list = [word.strip() for word in re.split(r"[.?!,]+", clean_text) if word.strip()]
+        if len(word_list) >= 2:
+            return word_list
+        return [clean_text]
 
+    def _render_audio(self, text):
+        return self.model.tts_to_file(
+            text,
+            self.speaker_id,
+            output_path=None,
+            speed=1.0,
+            quiet=True,
+        )
+
+    def _play_audio(self, audio_data):
+        sd.play(audio_data, self.sample_rate)
+        sd.wait()
+
+    def _speak_file(self, clean_text, output_path=None, play=True):
         if output_path is None:
             os.makedirs(ARTIFACT_DIR, exist_ok=True)
             output_path = os.path.join(ARTIFACT_DIR, "temp_speech.wav")
 
-        clean_text = self.preprocess(text)
-
         inference_start = time.time()
-        self.model.tts_to_file(clean_text, self.speaker_ids["KR"], output_path, speed=1.0)
+        self.model.tts_to_file(clean_text, self.speaker_id, output_path, speed=1.0)
         inference_end = time.time()
         print(f"  └ [TTS Inference] {inference_end - inference_start:.2f}s (텍스트 → 오디오 파일)")
 
@@ -197,3 +216,78 @@ class TTS_Engine:
             os.system(f"aplay -q {output_path}")
             play_end = time.time()
             print(f"  └ [TTS Playback] {play_end - play_start:.2f}s (오디오 장치 재생)")
+
+    def _speak_stream(self, clean_text):
+        chunk_list = self._split_stream_text(clean_text)
+        if len(chunk_list) < 2:
+            self._speak_file(clean_text, play=True)
+            return
+
+        audio_q = queue.Queue(maxsize=2)
+        stop_sig = object()
+        error_box = {"exc": None}
+
+        def synth_worker():
+            try:
+                for chunk_text in chunk_list:
+                    synth_start = time.time()
+                    audio_data = self._render_audio(chunk_text)
+                    synth_sec = time.time() - synth_start
+                    audio_q.put((chunk_text, audio_data, synth_sec))
+            except Exception as exc:
+                error_box["exc"] = exc
+            finally:
+                audio_q.put(stop_sig)
+
+        worker = threading.Thread(target=synth_worker, daemon=True)
+        worker.start()
+
+        stream_start = time.time()
+        first_audio_sec = None
+        total_synth_sec = 0.0
+        total_play_sec = 0.0
+        chunk_count = 0
+
+        while True:
+            item = audio_q.get()
+            if item is stop_sig:
+                break
+
+            _, audio_data, synth_sec = item
+            chunk_count += 1
+            total_synth_sec += synth_sec
+
+            if first_audio_sec is None:
+                first_audio_sec = time.time() - stream_start
+
+            play_start = time.time()
+            self._play_audio(audio_data)
+            total_play_sec += time.time() - play_start
+
+        worker.join()
+
+        if error_box["exc"] is not None:
+            raise error_box["exc"]
+
+        if first_audio_sec is None:
+            first_audio_sec = time.time() - stream_start
+
+        print(
+            f"  └ [TTS Stream] first_audio={first_audio_sec:.2f}s, "
+            f"chunks={chunk_count}, synth_total={total_synth_sec:.2f}s, "
+            f"play_total={total_play_sec:.2f}s"
+        )
+
+    def speak(self, text, output_path=None, play=True, stream=False):
+        if not self.model:
+            return
+
+        clean_text = self.preprocess(text)
+        if stream and play and output_path is None:
+            try:
+                self._speak_stream(clean_text)
+                return
+            except Exception as exc:
+                print(f"  └ [TTS Stream Fallback] {exc}")
+
+        self._speak_file(clean_text, output_path=output_path, play=play)

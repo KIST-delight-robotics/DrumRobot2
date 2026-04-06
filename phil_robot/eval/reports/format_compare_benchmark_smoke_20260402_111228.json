@@ -1,0 +1,525 @@
+{
+  "metadata": {
+    "generated_at": "2026-04-02T11:12:28+09:00",
+    "cases_path": "/home/shy/robot_project/phil_robot/eval/cases_smoke.json",
+    "case_count": 10,
+    "classifier_model": "qwen3:4b-instruct-2507-q4_K_M",
+    "planner_model": "qwen3:30b-a3b-instruct-2507-q4_K_M",
+    "temperature": 0,
+    "notes": [
+      "Classifier ran once per case and planner compared legacy_str vs json with shared intent_result.",
+      "One warm-up call was executed for classifier and both planner modes before timed runs.",
+      "Prompt/output token metrics come from Ollama prompt_eval_* and eval_* metadata."
+    ]
+  },
+  "summary": {
+    "legacy_str": {
+      "cases": 10,
+      "parse_ok_rate": 1.0,
+      "avg_wall_sec": 3.945422148704529,
+      "avg_prompt_tokens": 1461.4,
+      "avg_prompt_sec": 2.4796271666000003,
+      "avg_prompt_tps": 597.471317435333,
+      "avg_eval_tokens": 37.3,
+      "avg_eval_sec": 1.3082523465,
+      "avg_eval_tps": 29.81846183919661,
+      "avg_meta_sec": 3.7878795131000005,
+      "avg_overhead_sec": 0.15754263560452886,
+      "avg_output_chars": 64.7,
+      "avg_cmd_count": 2.5
+    },
+    "json": {
+      "cases": 10,
+      "parse_ok_rate": 1.0,
+      "avg_wall_sec": 4.88033766746521,
+      "avg_prompt_tokens": 1529.4,
+      "avg_prompt_sec": 2.5255682946,
+      "avg_prompt_tps": 611.9598829409944,
+      "avg_eval_tokens": 57.1,
+      "avg_eval_sec": 2.0305015901,
+      "avg_eval_tps": 28.30147050469746,
+      "avg_meta_sec": 4.5560698847,
+      "avg_overhead_sec": 0.32426778276520984,
+      "avg_output_chars": 126.2,
+      "avg_cmd_count": 1.1
+    }
+  },
+  "results": [
+    {
+      "id": "chat_greeting_basic",
+      "tags": [
+        "smoke",
+        "chat"
+      ],
+      "user_text": "안녕",
+      "planner_domain": "chat",
+      "intent_result": {
+        "intent": "chat",
+        "needs_motion": false,
+        "needs_dialogue": true,
+        "risk_level": "low"
+      },
+      "legacy_str": {
+        "wall_sec": 2.641641616821289,
+        "prompt_tokens": 1421,
+        "prompt_sec": 2.276876415,
+        "prompt_tps": 624.1006277892338,
+        "eval_tokens": 8,
+        "eval_sec": 0.225067128,
+        "eval_tps": 35.54495083795622,
+        "meta_sec": 2.501943543,
+        "overhead_sec": 0.13969807382128918,
+        "raw_text": "[SAY:안녕하세요!]",
+        "output_chars": 12,
+        "parse_ok": true,
+        "cmd_count": 0,
+        "speech": "안녕하세요!"
+      },
+      "json": {
+        "wall_sec": 4.011091947555542,
+        "prompt_tokens": 1489,
+        "prompt_sec": 2.461389603,
+        "prompt_tps": 604.9428331805625,
+        "eval_tokens": 34,
+        "eval_sec": 1.230776614,
+        "eval_tps": 27.624834282072246,
+        "meta_sec": 3.6921662170000005,
+        "overhead_sec": 0.3189257305555415,
+        "raw_text": "{\n  \"skills\": [],\n  \"op_cmd\": [],\n  \"speech\": \"안녕하세요!\",\n  \"reason\": \"간단한 인사\"\n}",
+        "output_chars": 78,
+        "parse_ok": true,
+        "cmd_count": 0,
+        "speech": "안녕하세요!"
+      }
+    },
+    {
+      "id": "motion_wave_allowed",
+      "tags": [
+        "smoke",
+        "motion"
+      ],
+      "user_text": "손 흔들어줘",
+      "planner_domain": "motion",
+      "intent_result": {
+        "intent": "motion_request",
+        "needs_motion": true,
+        "needs_dialogue": false,
+        "risk_level": "medium"
+      },
+      "legacy_str": {
+        "wall_sec": 3.352484941482544,
+        "prompt_tokens": 1473,
+        "prompt_sec": 2.285831515,
+        "prompt_tps": 644.4044499053991,
+        "eval_tokens": 26,
+        "eval_sec": 0.910811848,
+        "eval_tps": 28.54596155846229,
+        "meta_sec": 3.1966433629999997,
+        "overhead_sec": 0.1558415784825442,
+        "raw_text": "[CMD:wave_hi]\n[SAY:안녕하세요! 손을 흔들어드렸어요!]",
+        "output_chars": 38,
+        "parse_ok": true,
+        "cmd_count": 1,
+        "speech": "안녕하세요! 손을 흔들어드렸어요!"
+      },
+      "json": {
+        "wall_sec": 3.94328236579895,
+        "prompt_tokens": 1541,
+        "prompt_sec": 2.276231034,
+        "prompt_tps": 676.9963052880511,
+        "eval_tokens": 44,
+        "eval_sec": 1.359751403,
+        "eval_tps": 32.35885611364212,
+        "meta_sec": 3.635982437,
+        "overhead_sec": 0.3072999287989502,
+        "raw_text": "{\n  \"skills\": [\"wave_hi\"],\n  \"op_cmd\": [],\n  \"speech\": \"안녕하세요!\",\n  \"reason\": \"사용자 요청에 따라 인사 제스처 수행\"\n}",
+        "output_chars": 101,
+        "parse_ok": true,
+        "cmd_count": 1,
+        "speech": "안녕하세요!"
+      }
+    },
+    {
+      "id": "motion_wave_blocked_by_lock",
+      "tags": [
+        "smoke",
+        "motion",
+        "safety"
+      ],
+      "user_text": "손 흔들어줘",
+      "planner_domain": "motion",
+      "intent_result": {
+        "intent": "motion_request",
+        "needs_motion": true,
+        "needs_dialogue": false,
+        "risk_level": "high"
+      },
+      "legacy_str": {
+        "wall_sec": 4.0972514152526855,
+        "prompt_tokens": 1473,
+        "prompt_sec": 2.534883702,
+        "prompt_tps": 581.0917474587952,
+        "eval_tokens": 44,
+        "eval_sec": 1.398574772,
+        "eval_tps": 31.460598947511976,
+        "meta_sec": 3.933458474,
+        "overhead_sec": 0.1637929412526855,
+        "raw_text": "[CMD:look:0,90]\n[CMD:gesture:wave]\n[SAY:안녕하세요!](주어진 상태에서 손 흔들기 동작을 수행합니다.)",
+        "output_chars": 74,
+        "parse_ok": true,
+        "cmd_count": 2,
+        "speech": "안녕하세요!"
+      },
+      "json": {
+        "wall_sec": 4.024457216262817,
+        "prompt_tokens": 1541,
+        "prompt_sec": 2.172439002,
+        "prompt_tps": 709.3409750889751,
+        "eval_tokens": 44,
+        "eval_sec": 1.53572604,
+        "eval_tps": 28.650943497708745,
+        "meta_sec": 3.708165042,
+        "overhead_sec": 0.3162921742628173,
+        "raw_text": "{\n  \"skills\": [\"wave_hi\"],\n  \"op_cmd\": [],\n  \"speech\": \"안녕하세요!\",\n  \"reason\": \"사용자 요청에 따라 인사 제스처 수행\"\n}",
+        "output_chars": 101,
+        "parse_ok": true,
+        "cmd_count": 1,
+        "speech": "안녕하세요!"
+      }
+    },
+    {
+      "id": "motion_arm_up_basic",
+      "tags": [
+        "smoke",
+        "motion",
+        "arm"
+      ],
+      "user_text": "팔 올려",
+      "planner_domain": "motion",
+      "intent_result": {
+        "intent": "motion_request",
+        "needs_motion": true,
+        "needs_dialogue": false,
+        "risk_level": "medium"
+      },
+      "legacy_str": {
+        "wall_sec": 3.062478542327881,
+        "prompt_tokens": 1468,
+        "prompt_sec": 2.404045565,
+        "prompt_tps": 610.6373445546569,
+        "eval_tokens": 17,
+        "eval_sec": 0.516539922,
+        "eval_tps": 32.9112993516114,
+        "meta_sec": 2.9205854870000003,
+        "overhead_sec": 0.14189305532788055,
+        "raw_text": "[CMD:arm_up]\n[SAY:팔을 올렸어요.]",
+        "output_chars": 27,
+        "parse_ok": true,
+        "cmd_count": 1,
+        "speech": "팔을 올렸어요."
+      },
+      "json": {
+        "wall_sec": 4.317165851593018,
+        "prompt_tokens": 1536,
+        "prompt_sec": 2.385941059,
+        "prompt_tps": 643.7711418754708,
+        "eval_tokens": 53,
+        "eval_sec": 1.614512591,
+        "eval_tps": 32.82724476442315,
+        "meta_sec": 4.00045365,
+        "overhead_sec": 0.3167122015930177,
+        "raw_text": "{\n  \"skills\": [\"arm_up\"],\n  \"op_cmd\": [],\n  \"speech\": \"팔을 올려보겠습니다.\",\n  \"reason\": \"사용자 요청에 따라 양팔을 들어 올리는 동작 수행\"\n}",
+        "output_chars": 112,
+        "parse_ok": true,
+        "cmd_count": 1,
+        "speech": "팔을 올려보겠습니다."
+      }
+    },
+    {
+      "id": "motion_left_arm_out_basic",
+      "tags": [
+        "smoke",
+        "motion",
+        "arm"
+      ],
+      "user_text": "왼팔 벌려",
+      "planner_domain": "motion",
+      "intent_result": {
+        "intent": "motion_request",
+        "needs_motion": true,
+        "needs_dialogue": false,
+        "risk_level": "medium"
+      },
+      "legacy_str": {
+        "wall_sec": 4.272655725479126,
+        "prompt_tokens": 1469,
+        "prompt_sec": 2.498551103,
+        "prompt_tps": 587.9407462333581,
+        "eval_tokens": 45,
+        "eval_sec": 1.611939488,
+        "eval_tps": 27.916680703587307,
+        "meta_sec": 4.110490591,
+        "overhead_sec": 0.1621651344791264,
+        "raw_text": "[CMD:look:0,90]\n[CMD:left_arm_out]\n[CMD:wait:1]\n[CMD:look:0,90]\n[SAY:왼팔을 벌렸어요.]",
+        "output_chars": 79,
+        "parse_ok": true,
+        "cmd_count": 4,
+        "speech": "왼팔을 벌렸어요."
+      },
+      "json": {
+        "wall_sec": 4.97126841545105,
+        "prompt_tokens": 1537,
+        "prompt_sec": 2.487142994,
+        "prompt_tps": 617.978139458756,
+        "eval_tokens": 56,
+        "eval_sec": 2.164111746,
+        "eval_tps": 25.876667461145047,
+        "meta_sec": 4.651254740000001,
+        "overhead_sec": 0.3200136754510492,
+        "raw_text": "{\n  \"skills\": [\"left_arm_out\"],\n  \"op_cmd\": [],\n  \"speech\": \"왼팔을 옆으로 벌리겠습니다.\",\n  \"reason\": \"사용자 요청에 따라 왼팔을 옆으로 벌림\"\n}",
+        "output_chars": 116,
+        "parse_ok": true,
+        "cmd_count": 1,
+        "speech": "왼팔을 옆으로 벌리겠습니다."
+      }
+    },
+    {
+      "id": "play_tim_basic",
+      "tags": [
+        "smoke",
+        "play"
+      ],
+      "user_text": "This Is Me 연주해줘",
+      "planner_domain": "play",
+      "intent_result": {
+        "intent": "play_request",
+        "needs_motion": true,
+        "needs_dialogue": true,
+        "risk_level": "medium"
+      },
+      "legacy_str": {
+        "wall_sec": 5.926571369171143,
+        "prompt_tokens": 1407,
+        "prompt_sec": 2.627863821,
+        "prompt_tps": 535.4158722975927,
+        "eval_tokens": 85,
+        "eval_sec": 3.114990549,
+        "eval_tps": 27.2874022129176,
+        "meta_sec": 5.74285437,
+        "overhead_sec": 0.1837169991711427,
+        "raw_text": "[CMD:look:0,90]\n[CMD:move:L_wrist,90]\n[CMD:move:R_wrist,90]\n[CMD:wait:1]\n[CMD:look:0,90]\n[CMD:ready_pose]\n[CMD:wait:1]\n[CMD:p:TIM]\n[SAY:This Is Me를 연주해드릴게요.]",
+        "output_chars": 157,
+        "parse_ok": true,
+        "cmd_count": 8,
+        "speech": "This Is Me를 연주해드릴게요."
+      },
+      "json": {
+        "wall_sec": 5.191363334655762,
+        "prompt_tokens": 1475,
+        "prompt_sec": 2.519437709,
+        "prompt_tps": 585.4480921401498,
+        "eval_tokens": 59,
+        "eval_sec": 2.346692697,
+        "eval_tps": 25.14176657021403,
+        "meta_sec": 4.866130406,
+        "overhead_sec": 0.3252329286557618,
+        "raw_text": "{\n  \"skills\": [\"ready_pose\", \"play_tim\"],\n  \"op_cmd\": [],\n  \"speech\": \"알겠습니다. This Is Me를 연주하겠습니다.\",\n  \"reason\": \"사용자 요청에 따라 연주 시작 및 준비 자세로 전환\"\n}",
+        "output_chars": 145,
+        "parse_ok": true,
+        "cmd_count": 2,
+        "speech": "알겠습니다. This Is Me를 연주하겠습니다."
+      }
+    },
+    {
+      "id": "status_question_basic",
+      "tags": [
+        "smoke",
+        "status"
+      ],
+      "user_text": "왜 멈췄어?",
+      "planner_domain": "status",
+      "intent_result": {
+        "intent": "status_question",
+        "needs_motion": false,
+        "needs_dialogue": true,
+        "risk_level": "medium"
+      },
+      "legacy_str": {
+        "wall_sec": 3.654481887817383,
+        "prompt_tokens": 1536,
+        "prompt_sec": 2.223276818,
+        "prompt_tps": 690.8721341239658,
+        "eval_tokens": 40,
+        "eval_sec": 1.273201064,
+        "eval_tps": 31.416876038677266,
+        "meta_sec": 3.4964778819999998,
+        "overhead_sec": 0.15800400581738305,
+        "raw_text": "[SAY:죄송합니다. 오른팔 2번 관절의 한계를 초과하여 연주가 멈췄습니다. 현재 상태를 점검 중입니다.]",
+        "output_chars": 59,
+        "parse_ok": true,
+        "cmd_count": 0,
+        "speech": "죄송합니다. 오른팔 2번 관절의 한계를 초과하여 연주가 멈췄습니다. 현재 상태를 점검 중입니다."
+      },
+      "json": {
+        "wall_sec": 5.691801071166992,
+        "prompt_tokens": 1604,
+        "prompt_sec": 2.78160816,
+        "prompt_tps": 576.6448427444935,
+        "eval_tokens": 67,
+        "eval_sec": 2.573213883,
+        "eval_tps": 26.037478051333828,
+        "meta_sec": 5.354822043,
+        "overhead_sec": 0.33697902816699177,
+        "raw_text": "{\n  \"skills\": [],\n  \"op_cmd\": [],\n  \"speech\": \"죄송합니다. 오른팔 두 번째 관절에서 한계 초과 오류가 발생하여 연주를 멈췄습니다. 현재 상태를 점검 중입니다.\",\n  \"reason\": \"error state explanation\"\n}",
+        "output_chars": 151,
+        "parse_ok": true,
+        "cmd_count": 0,
+        "speech": "죄송합니다. 오른팔 두 번째 관절에서 한계 초과 오류가 발생하여 연주를 멈췄습니다. 현재 상태를 점검 중입니다."
+      }
+    },
+    {
+      "id": "stop_request_basic",
+      "tags": [
+        "smoke",
+        "stop"
+      ],
+      "user_text": "종료해",
+      "planner_domain": "stop",
+      "intent_result": {
+        "intent": "stop_request",
+        "needs_motion": true,
+        "needs_dialogue": true,
+        "risk_level": "medium"
+      },
+      "legacy_str": {
+        "wall_sec": 5.190793514251709,
+        "prompt_tokens": 1402,
+        "prompt_sec": 2.748545088,
+        "prompt_tps": 510.0880484446322,
+        "eval_tokens": 61,
+        "eval_sec": 2.278159145,
+        "eval_tps": 26.776004711470673,
+        "meta_sec": 5.026704233,
+        "overhead_sec": 0.16408928125170874,
+        "raw_text": "[CMD:look:0,90]\n[CMD:move:L_wrist,90]\n[CMD:move:R_wrist,90]\n[CMD:wait:1]\n[CMD:led:happy]\n[CMD:shutdown_system]\n[SAY:종료합니다.]",
+        "output_chars": 123,
+        "parse_ok": true,
+        "cmd_count": 6,
+        "speech": "종료합니다."
+      },
+      "json": {
+        "wall_sec": 5.012267351150513,
+        "prompt_tokens": 1470,
+        "prompt_sec": 2.825864621,
+        "prompt_tps": 520.1947712129979,
+        "eval_tokens": 48,
+        "eval_sec": 1.869231279,
+        "eval_tps": 25.67900534260212,
+        "meta_sec": 4.6950959,
+        "overhead_sec": 0.3171714511505126,
+        "raw_text": "{\n  \"skills\": [\"idle_home\", \"shutdown_system\"],\n  \"op_cmd\": [],\n  \"speech\": \"안녕히 가세요. 종료합니다.\",\n  \"reason\": \"stop_request intent with shutdown system\"\n}",
+        "output_chars": 151,
+        "parse_ok": true,
+        "cmd_count": 2,
+        "speech": "안녕히 가세요. 종료합니다."
+      }
+    },
+    {
+      "id": "relative_wrist_raise_success",
+      "tags": [
+        "smoke",
+        "motion",
+        "relative"
+      ],
+      "user_text": "왼쪽 손목 더 올려",
+      "planner_domain": "motion",
+      "intent_result": {
+        "intent": "motion_request",
+        "needs_motion": true,
+        "needs_dialogue": true,
+        "risk_level": "medium"
+      },
+      "legacy_str": {
+        "wall_sec": 4.418308258056641,
+        "prompt_tokens": 1479,
+        "prompt_sec": 3.122386666,
+        "prompt_tps": 473.6761196507108,
+        "eval_tokens": 27,
+        "eval_sec": 1.140829409,
+        "eval_tps": 23.666991565081577,
+        "meta_sec": 4.263216075,
+        "overhead_sec": 0.15509218305664074,
+        "raw_text": "[CMD:move:L_wrist,90]\n[SAY:왼쪽 손목을 더 올렸습니다.]",
+        "output_chars": 43,
+        "parse_ok": true,
+        "cmd_count": 1,
+        "speech": "왼쪽 손목을 더 올렸습니다."
+      },
+      "json": {
+        "wall_sec": 6.015883684158325,
+        "prompt_tokens": 1547,
+        "prompt_sec": 3.051008741,
+        "prompt_tps": 507.0454172127198,
+        "eval_tokens": 70,
+        "eval_sec": 2.626935266,
+        "eval_tps": 26.64702130501605,
+        "meta_sec": 5.677944007,
+        "overhead_sec": 0.3379396771583254,
+        "raw_text": "{\n  \"skills\": [],\n  \"op_cmd\": [\n    \"move:L_wrist,90\"\n  ],\n  \"speech\": \"왼쪽 손목을 더 올려드릴게요.\",\n  \"reason\": \"사용자 요청에 따라 왼쪽 손목 각도를 직접 조정\"\n}",
+        "output_chars": 133,
+        "parse_ok": true,
+        "cmd_count": 1,
+        "speech": "왼쪽 손목을 더 올려드릴게요."
+      }
+    },
+    {
+      "id": "relative_wrist_raise_blocked",
+      "tags": [
+        "smoke",
+        "motion",
+        "relative",
+        "limit"
+      ],
+      "user_text": "거기서 50도 더 올리고 2초 있다",
+      "planner_domain": "motion",
+      "intent_result": {
+        "intent": "motion_request",
+        "needs_motion": true,
+        "needs_dialogue": false,
+        "risk_level": "medium"
+      },
+      "legacy_str": {
+        "wall_sec": 2.8375542163848877,
+        "prompt_tokens": 1486,
+        "prompt_sec": 2.074010973,
+        "prompt_tps": 716.4860838949862,
+        "eval_tokens": 20,
+        "eval_sec": 0.61241014,
+        "eval_tps": 32.65785246468975,
+        "meta_sec": 2.686421113,
+        "overhead_sec": 0.1511331033848875,
+        "raw_text": "[CMD:move:L_wrist,140]\n[CMD:wait:2]",
+        "output_chars": 35,
+        "parse_ok": true,
+        "cmd_count": 2,
+        "speech": ""
+      },
+      "json": {
+        "wall_sec": 5.624795436859131,
+        "prompt_tokens": 1554,
+        "prompt_sec": 2.294620023,
+        "prompt_tps": 677.2363112077664,
+        "eval_tokens": 96,
+        "eval_sec": 2.984064382,
+        "eval_tps": 32.17088765881727,
+        "meta_sec": 5.278684405,
+        "overhead_sec": 0.34611103185913095,
+        "raw_text": "{\n  \"skills\": [],\n  \"op_cmd\": [\n    \"move:L_wrist,100\",\n    \"wait:2\"\n  ],\n  \"speech\": \"알겠습니다. 왼손목을 50도 더 올리고 2초 기다리겠습니다.\",\n  \"reason\": \"사용자 요청에 따라 왼손목 각도를 100도로 조정하고 2초 대기\"\n}",
+        "output_chars": 174,
+        "parse_ok": true,
+        "cmd_count": 2,
+        "speech": "알겠습니다. 왼손목을 50도 더 올리고 2초 기다리겠습니다."
+      }
+    }
+  ]
+}

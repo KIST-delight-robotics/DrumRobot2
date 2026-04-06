@@ -71,7 +71,7 @@
     "expected": {
       "intent": "motion_request",
       "planner_domain": "motion",
-      "valid_commands_any_of": [[], ["led:happy"]],
+      "valid_commands_exact": [],
       "speech_contains_any": ["안전 키", "움직일 수 없습니다", "확인"]
     }
   },
@@ -157,7 +157,7 @@
       "intent": "play_request",
       "planner_domain": "play",
       "skills_any_of": [["play_tim"], ["ready_pose", "play_tim"]],
-      "valid_commands_any_of": [["r", "p:TIM", "led:play"]],
+      "valid_commands_any_of": [["r", "p:TIM"]],
       "speech_contains_any": ["This Is Me", "연주"]
     }
   },
@@ -208,7 +208,7 @@
     "expected": {
       "intent": "stop_request",
       "planner_domain": "stop",
-      "valid_commands_any_of": [["s"], ["h", "led:idle"], ["h"], ["s", "led:idle"], ["h", "led:idle", "s"]],
+      "valid_commands_any_of": [["s"], ["h"], ["h", "s"]],
       "speech_contains_any": ["종료", "안녕히", "중단"]
     }
   },
