@@ -61,7 +61,7 @@ def parse_llm_response(response_text):
 # (테스트용 코드 - 직접 실행 시에만 작동)
 if __name__ == "__main__":
     test_text = json.dumps({
-        "op_cmd": ["look:0,0", "gesture:wave", "led:beat"],
+        "op_cmd": ["look:0,0", "gesture:wave"],
         "message": "안녕! (반갑게 손을 흔들며) 만나서 정말 반가워요! 🥁🔥",
         "thinking": "1. 의도: 반가움을 표시하는 인사."
     }, ensure_ascii=False)

@@ -1,5 +1,13 @@
 # Phil Robot 평가 파이프라인
 
+## 관련 문서
+- planner 후보군의 향후 비교 절차는 [PLANNER_MODEL_BENCHMARK_PLAN_KR.md](/home/shy/robot_project/phil_robot/eval/PLANNER_MODEL_BENCHMARK_PLAN_KR.md)에 정리되어 있습니다.
+- round-1 자동 실행 manifest 는 [planner_benchmark_round1_manifest.json](/home/shy/robot_project/phil_robot/eval/planner_benchmark_round1_manifest.json)에 있습니다.
+
+현재 planner benchmark 기본 원칙:
+- planner benchmark 는 `JSON production path`만 사용합니다.
+- `legacy_str` 대 `json` 비교 스크립트는 과거 형식 비교 실험용이며, planner 모델 후보 선정용 benchmark 에서는 사용하지 않습니다.
+
 ## 목적
 이 디렉토리는 `phil_robot`의 Python LLM 제어 스택을 위한 오프라인 평가 파이프라인을 담고 있습니다.
 
@@ -75,7 +83,7 @@
     "intent": "play_request",
     "planner_domain": "play",
     "skills_any_of": [["play_tim"], ["ready_pose", "play_tim"]],
-    "valid_commands_any_of": [["r", "p:TIM", "led:play"]],
+    "valid_commands_any_of": [["r", "p:TIM"]],
     "speech_contains_any": ["This Is Me", "연주"]
   }
 }
@@ -86,6 +94,15 @@
 
 ```bash
 /home/shy/miniforge3/envs/drum4/bin/python phil_robot/eval/run_eval.py --suite smoke
+```
+
+`config.py`를 바꾸지 않고 모델만 임시 override 하려면:
+
+```bash
+/home/shy/miniforge3/envs/drum4/bin/python phil_robot/eval/run_eval.py \
+  --suite smoke \
+  --classifier-model qwen3:4b-instruct-2507-q4_K_M \
+  --planner-model qwen3:30b-a3b-instruct-2507-q4_K_M
 ```
 
 혹은 파일을 직접 지정:
@@ -133,6 +150,33 @@ python run_eval.py --suite smoke --report reports/smoke_report_q3-4b-q4km_q3-30b
 ```bash
 python run_eval.py --suite smoke --save-report
 ```
+
+planner round-1 전체 배치를 순차 실행하려면:
+
+```bash
+/home/shy/miniforge3/envs/drum4/bin/python phil_robot/eval/run_planner_benchmark.py
+```
+
+기본 동작:
+- manifest 의 후보 순서를 그대로 따라 prep -> smoke 를 순차 실행합니다.
+- classifier 는 케이스당 한 번만 실행해 `classifier_result` 와 `planner_input_json` 을 고정하고, 각 planner 모델은 같은 JSON fixture 위에서만 비교합니다.
+- `config.py`는 수정하지 않고 benchmark 러너 내부에서 classifier/planner 모델을 주입합니다.
+- round summary 는 `PLANNER_MODEL_BENCHMARK_ROUND1.json`, `PLANNER_MODEL_BENCHMARK_ROUND1_KR.md`에 저장됩니다.
+
+planner latency isolation benchmark 를 따로 실행하려면:
+
+```bash
+/home/shy/miniforge3/envs/drum4/bin/python phil_robot/eval/run_planner_latency_isolation.py \
+  --suite smoke \
+  --classifier-model qwen3:4b-instruct-2507-q4_K_M \
+  --planner-model qwen3:30b-a3b-instruct-2507-q4_K_M \
+  --save-report
+```
+
+기본 동작:
+- classifier 는 케이스당 한 번만 실행해 fixture 를 만들고, 같은 `planner_input_json` 위에서 planner 만 반복 호출합니다.
+- 기본값은 case 당 warm-up `1`회 제외, warm run `3`회 측정입니다.
+- 리포트에는 planner input 길이, response 길이, avg / median / p95 latency 와 output variability 가 들어갑니다.
 
 ## 리포트 파일명 규칙
 자동 생성되는 리포트 파일명은 다음 규칙을 따릅니다.

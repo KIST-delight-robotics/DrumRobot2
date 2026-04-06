@@ -102,7 +102,6 @@ Whisper STT
   - `p:<song_code>`
   - `look:pan,tilt`
   - `gesture:<name>`
-  - `led:<emotion>`
   - `move:<motor>,<angle>`
   - `wait:<seconds>`
 - relative motion interpretation:

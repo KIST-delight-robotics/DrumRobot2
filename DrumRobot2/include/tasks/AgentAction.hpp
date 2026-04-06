@@ -64,15 +64,11 @@ private:
     // type: "nod"(끄덕임), "shake"(도리도리), "home"(정면)
     void policy_gesture(std::string type);
 
-    // 3. 감정 표현 (LED Expression)
-    // emotion: "happy", "thinking", "angry", "idle"
-    void policy_emotion(std::string emotion);
-
-    // 4. 자세 변경 (Pose Change)
+    // 3. 자세 변경 (Pose Change)
     // pose: "ready", "home", "shutdown"
     // void policy_pose(std::string pose);
 
-    // 5. 개별 관절 이동 (Joint Move)
+    // 4. 개별 관절 이동 (Joint Move)
     // motorName: 모터 이름, angleDeg: 목표 각도 (도 단위)
     void policy_moveJoint(std::string motorName, float angleDeg);
 };

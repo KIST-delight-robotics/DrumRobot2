@@ -12,7 +12,7 @@
 
 ## Now
 
-- [ ] `gesture / play abstraction uplift`
+- [x] `gesture / play abstraction uplift`
   - 목표: 긴 `op_cmd` 시퀀스를 위 계층 skill/gesture로 끌어올리고, `AgentAction`은 저수준 실행 primitive로 고정한다.
   - 1차 범위:
     - 기존 `wave / nod / shake / hurray` 계열을 상위 skill 카탈로그 기준으로 다시 정리
@@ -22,6 +22,9 @@
     - planner는 긴 `move:` 나열보다 skill / symbolic command를 우선 사용
     - calibration과 실제 joint 시퀀스는 C++ `AgentAction` 쪽에 둔다
     - 연주 speed / intensity modifier는 `readMeasure()`에서 적용한다
+  - 메모:
+    - 현재 기준으로 baseline uplift와 pre-play modifier/readMeasure 적용 경로까지는 사실상 정리 완료로 본다.
+    - 이후 확장 기준과 계층 재정리는 `phil_robot/docs/DECISION_LAYER_ROADMAP_KR.md`를 중심으로 따라간다.
 
 - [ ] `scenario eval` 확장
   - 목표: smoke(기본 확인)에서 벗어나 실제 운용에 가까운 복합 시나리오를 평가한다.
@@ -54,7 +57,7 @@
 
 ## Next
 
-- [ ] `planner latency isolation benchmark` 추가
+- [x] `planner latency isolation benchmark` 추가
   - 목표: classifier 영향 없이 planner 자체의 latency와 output variability를 따로 측정한다.
   - 조건:
     - 동일 `classifier_result`
@@ -64,6 +67,8 @@
     - planner input JSON 길이
     - planner response 길이
     - avg / median / p95 latency
+  - 메모:
+    - `eval/run_planner_latency_isolation.py`를 추가해 JSON production planner path만 대상으로 같은 fixture 위에서 planner만 반복 측정하도록 구성했다.
 
 - [ ] `state_adapter` 강화
   - raw state를 planner-friendly feature로 가공한다.
@@ -101,7 +106,7 @@
     - 직전 confirmed target
     - 직전 clarification state
 
-- [ ] `planner model benchmark` 설계
+- [x] `planner model benchmark` 설계
   - 목표: 여러 planner 모델을 같은 조건에서 비교해 planner 후보를 고른다.
   - 비교 조건:
     - 동일 `cases`
@@ -113,6 +118,8 @@
     - valid command quality
     - speech quality
     - avg / median / p95 planner latency
+  - 메모:
+    - `eval/run_planner_benchmark.py`를 JSON-only fixed fixture 방식으로 바꿔, classifier 를 케이스당 한 번만 실행하고 모든 planner 모델을 같은 `planner_input_json` 위에서 비교하도록 정리했다.
 
 - [ ] `classifier prefilter` 도입
   - 목표: 자주 나오는 저모호도 발화를 rule-based shortcut으로 먼저 처리해 classifier latency를 줄인다.

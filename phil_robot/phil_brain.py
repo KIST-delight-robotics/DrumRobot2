@@ -51,7 +51,7 @@ def warm_up_stt_model(stt_model):
     print("🔥 모델 예열 중... (잠시만 기다려주세요)")
     try:
         dummy_audio = np.zeros(16000, dtype=np.float32)
-        stt_model.transcribe(dummy_audio, fp16=False)
+        stt_model.transcribe(dummy_audio, fp16=False, language="ko")
     except Exception:
         pass
 
@@ -74,7 +74,7 @@ def load_runtime():
     print(f"[{time.strftime('%H:%M:%S')}] TTS 로드 후: {tts_mem:.2f} MB (증가량: {tts_mem - base_mem:.2f} MB)")
 
     print("[STT] Whisper 모델 로딩 중...")
-    stt_model = whisper.load_model("small", device="cuda")
+    stt_model = whisper.load_model("smalll", device="cuda")
 
     stt_mem = get_mem_usage()
     print(f"[{time.strftime('%H:%M:%S')}] STT 로드 후: {stt_mem:.2f} MB (증가량: {stt_mem - tts_mem:.2f} MB)")
@@ -96,6 +96,30 @@ def transcribe_user_speech(stt_model, audio_data):
     return user_text
 
 
+def format_metric(value):
+    if not isinstance(value, (int, float)):
+        return "N/A"
+    return f"{value:.2f}s"
+
+
+def print_llm_metrics(label, metric_obj):
+    if not metric_obj:
+        return
+
+    prompt_tok = metric_obj.get("prompt_tokens")
+    eval_tok = metric_obj.get("eval_tokens")
+
+    print(
+        f"[{label} LLM] wall={format_metric(metric_obj.get('wall_sec'))}, "
+        f"load={format_metric(metric_obj.get('load_sec'))}, "
+        f"prompt_eval={format_metric(metric_obj.get('prompt_sec'))}, "
+        f"eval={format_metric(metric_obj.get('eval_sec'))}, "
+        f"prompt_tok={prompt_tok if isinstance(prompt_tok, int) else 'N/A'}, "
+        f"eval_tok={eval_tok if isinstance(eval_tok, int) else 'N/A'}, "
+        f"overhead={format_metric(metric_obj.get('overhead_sec'))}"
+    )
+
+
 def debug_brain_result(brain_result):
     """LLM 입력, 내부 thinking, validator 경고를 한 곳에서 출력"""
     print(f"🧭 [Classifier 입력]\n{brain_result.classifier_input_json}")
@@ -107,9 +131,11 @@ def debug_brain_result(brain_result):
         f"⏱️ LLM 처리 시간: 총 {brain_result.llm_duration_sec:.2f}초 "
         f"(classifier {brain_result.classifier_duration_sec:.2f}초 + planner {brain_result.planner_duration_sec:.2f}초)"
     )
+    print_llm_metrics("Classifier", brain_result.classifier_metrics)
+    print_llm_metrics("Planner", brain_result.planner_metrics)
 
     if brain_result.validated_plan.reason:
-        print(f"\n[Phil's Brain 🧠]\n{brain_result.validated_plan.reason}\n")
+        print(f"\n[Planner Reason]\n{brain_result.validated_plan.reason}\n")
 
     if brain_result.validated_plan.expanded_op_cmds:
         print(f"[Planner Expanded] {brain_result.validated_plan.expanded_op_cmds}")
@@ -157,13 +183,14 @@ def main():
                 raw_robot_state=robot_state,
                 classifier_model_name=CLASSIFIER_MODEL,     # classifier 모델은 현재 고정
                 planner_model_name=PLANNER_MODEL,
+                capture_metrics=True,
             )
 
             debug_brain_result(brain_result)
             execute_validated_plan(bot, brain_result.validated_plan)
 
             print(f"🤖 Phil: {brain_result.validated_plan.speech}")
-            tts.speak(brain_result.validated_plan.speech)
+            tts.speak(brain_result.validated_plan.speech, stream=True)
 
     except KeyboardInterrupt:
         print("\n종료합니다.")

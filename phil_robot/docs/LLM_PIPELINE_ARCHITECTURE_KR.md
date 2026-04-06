@@ -101,7 +101,6 @@ Whisper STT
   - `p:<song_code>`
   - `look:pan,tilt`
   - `gesture:<name>`
-  - `led:<emotion>`
   - `move:<motor>,<angle>`
   - `wait:<seconds>`
 - 상대 모션 해석

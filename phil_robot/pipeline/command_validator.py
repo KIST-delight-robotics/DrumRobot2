@@ -20,15 +20,14 @@ JOINT_LIMITS = {
     "R_arm3": (0.0, 140.1),
     "L_arm2": (-60.0, 90.0),
     "L_arm3": (0.0, 140.1),
-    "R_wrist": (-108.0, 135.0),
-    "L_wrist": (-108.0, 135.0),
+    "R_wrist": (-108.0, 90.0),
+    "L_wrist": (-108.0, 90.0),
     "R_foot": (-90.0, 200.0),
     "L_foot": (-90.0, 200.0),
 }
 
 PLAY_CODES = {"TIM", "TY_short", "BI", "test_one"}
 GESTURES = {"hi", "nod", "shake", "wave", "hurray", "happy"}
-LEDS = {"happy", "thinking", "angry", "idle", "play"}
 SIMPLE_COMMANDS = {"r", "h", "s", "t", "u"}
 MOTION_KEYWORDS = [
     "손",
@@ -163,10 +162,7 @@ def validate_gesture_command(command, robot_state):
 
 
 def validate_led_command(command):
-    _, _, emotion = command.partition(":")
-    if emotion not in LEDS:
-        return False, f"led 값 차단: {command}"
-    return True, ""
+    return False, f"LED 명령은 현재 사용하지 않음: {command}"
 
 
 def validate_move_command(command, robot_state):

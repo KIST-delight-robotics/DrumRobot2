@@ -4,6 +4,7 @@
 *.so
 *.a
 txt*.md
+AGENTS.md
 
 # --- [2] DrumRobot2: 빈 폴더 구조 유지 ---
 # obj 폴더 비우기 (단, .gitkeep은 제외)

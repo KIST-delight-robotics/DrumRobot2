@@ -13,7 +13,7 @@ SKILL_LIBRARY: Dict[str, Dict[str, object]] = {
     "wave_hi": {
         "category": "social",
         "description": "정면을 보고 손을 흔들며 밝게 인사한다.",
-        "op_cmd": ["look:0,90", "gesture:wave", "led:happy"],
+        "op_cmd": ["look:0,90", "gesture:wave"],
     },
     "nod_yes": {
         "category": "social",
@@ -28,12 +28,12 @@ SKILL_LIBRARY: Dict[str, Dict[str, object]] = {
     "happy_react": {
         "category": "social",
         "description": "기쁜 제스처와 표정으로 반응한다.",
-        "op_cmd": ["gesture:happy", "led:happy"],
+        "op_cmd": ["gesture:happy"],
     },
     "celebrate": {
         "category": "social",
         "description": "만세 동작으로 크게 기쁨을 표현한다.",
-        "op_cmd": ["gesture:hurray", "led:happy"],
+        "op_cmd": ["gesture:hurray"],
     },
     # 시선 계열
     "look_forward": {
@@ -131,28 +131,28 @@ SKILL_LIBRARY: Dict[str, Dict[str, object]] = {
     "idle_home": {
         "category": "posture",
         "description": "휴식 자세로 돌아가 표정을 idle 로 맞춘다.",
-        "op_cmd": ["h", "led:idle"],
+        "op_cmd": ["h"],
     },
     # 연주 묶음
     "play_tim": {
         "category": "play",
         "description": "This Is Me 연주를 시작한다.",
-        "op_cmd": ["r", "p:TIM", "led:play"],
+        "op_cmd": ["r", "p:TIM"],
     },
     "play_ty_short": {
         "category": "play",
         "description": "그대에게 연주를 시작한다.",
-        "op_cmd": ["r", "p:TY_short", "led:play"],
+        "op_cmd": ["r", "p:TY_short"],
     },
     "play_bi": {
         "category": "play",
         "description": "Baby I Need You 연주를 시작한다.",
-        "op_cmd": ["r", "p:BI", "led:play"],
+        "op_cmd": ["r", "p:BI"],
     },
     "play_test_one": {
         "category": "play",
         "description": "테스트 비트를 연주한다.",
-        "op_cmd": ["r", "p:test_one", "led:play"],
+        "op_cmd": ["r", "p:test_one"],
     },
     # 시스템
     "shutdown_system": {

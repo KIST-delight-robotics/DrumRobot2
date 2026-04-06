@@ -53,19 +53,14 @@ void AgentAction::executeCommand(std::string fullCmd)
     {
         policy_gesture(tokens[1]);
     }
-    // (3) ex)감정표현: led:happy
-    else if (action == "led" && tokens.size() >= 2)
-    {
-        policy_emotion(tokens[1]);
-    }
     /*
-    // (4) ex)자세변경: pose:ready
+    // (3) ex)자세변경: pose:ready
     else if (action == "pose" && tokens.size() >= 2)
     {
         policy_pose(tokens[1]);
     }
     */
-    // (5) ex)개별 관절 이동: move:R_arm1,45
+    // (4) ex)개별 관절 이동: move:R_arm1,45
     else if (action == "move" && tokens.size() >= 2)
     {
         // tokens[1]은 "R_arm1,45" 형태
@@ -181,24 +176,6 @@ void AgentAction::policy_gesture(std::string type)
         policy_moveJoint("R_wrist", 0.0);
         policy_moveJoint("L_wrist", 0.0);
         policy_lookAt(0, 105);
-    }
-}
-
-void AgentAction::policy_emotion(std::string emotion)
-{
-    std::cout << "[Action] Express Emotion: " << emotion << std::endl;
-
-    if (emotion == "happy" || emotion == "play") {
-        arduino.setHeadLED(Arduino::PLAYING); // 화려한 색
-    }
-    else if (emotion == "thinking" || emotion == "idle"|| emotion == "angry") {
-        arduino.setHeadLED(Arduino::IDLE); // 대기 색
-    }
-    else if (emotion == "off") {
-        arduino.setHeadLED(Arduino::POWER_OFF);
-    }
-    else {
-        arduino.setHeadLED(Arduino::POWER_ON);
     }
 }
 
