@@ -12,8 +12,8 @@ SKILL_LIBRARY: Dict[str, Dict[str, object]] = {
     # 사회적 반응 / 인사
     "wave_hi": {
         "category": "social",
-        "description": "정면을 보고 손을 흔들며 밝게 인사한다.",
-        "op_cmd": ["look:0,90", "gesture:wave"],
+        "description": "손을 흔들며 밝게 인사한다.",
+        "op_cmd": ["gesture:wave"],
     },
     "nod_yes": {
         "category": "social",
@@ -193,6 +193,9 @@ def filter_skills_by_allowed_categories(skill_names: List[str], allowed_categori
     """허용 카테고리에 맞는 skill 만 남긴다."""
     filtered: List[str] = []
     for skill_name in skill_names:
+        if _is_direct_op_cmd(skill_name):
+            filtered.append(skill_name)
+            continue
         metadata = SKILL_LIBRARY.get(skill_name)
         if not metadata:
             continue
@@ -214,12 +217,23 @@ def expand_skills(skill_names: List[str]) -> Tuple[List[str], List[str]]:
 
     for skill_name in skill_names:
         metadata = SKILL_LIBRARY.get(skill_name)
+        if _is_direct_op_cmd(skill_name):
+            op_cmds.append(skill_name)
+            continue
         if metadata is None:
             warnings.append(f"알 수 없는 skill 무시: {skill_name}")
             continue
         op_cmds.extend(list(metadata["op_cmd"]))
 
     return _deduplicate_consecutive_op_cmds(op_cmds), warnings
+
+
+def _is_direct_op_cmd(skill_name: str) -> bool:
+    if skill_name in {"r", "h", "s", "t", "u"}:
+        return True
+
+    direct_prefixes = ("move:", "look:", "gesture:", "wait:", "p:")
+    return skill_name.startswith(direct_prefixes)
 
 
 def _deduplicate_consecutive_op_cmds(op_cmds: List[str]) -> List[str]:

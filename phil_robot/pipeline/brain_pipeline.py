@@ -24,7 +24,15 @@ try:
     )
     
     # raw state 정리 + 관절 각도 질문 shortcut 처리
-    from .state_adapter import adapt_robot_state, build_joint_angle_answer, detect_joint_angle_query
+    from .state_adapter import (
+        adapt_robot_state,
+        detect_identity_confirmation_query,
+        build_joint_angle_answer,
+        build_repertoire_answer,
+        detect_joint_angle_query,
+        detect_repertoire_query,
+        detect_wave_play_request,
+    )
     
     # planner 결과를 최종 실행 가능 계획으로 검증/정리
     from .validator import ValidatedPlan, build_validated_plan
@@ -51,7 +59,15 @@ except (ImportError, ValueError):
     )
     
     # raw state 정리 + 관절 각도 질문 shortcut 처리
-    from pipeline.state_adapter import adapt_robot_state, build_joint_angle_answer, detect_joint_angle_query
+    from pipeline.state_adapter import (
+        adapt_robot_state,
+        detect_identity_confirmation_query,
+        build_joint_angle_answer,
+        build_repertoire_answer,
+        detect_joint_angle_query,
+        detect_repertoire_query,
+        detect_wave_play_request,
+    )
     
     # planner 결과를 최종 실행 가능 계획으로 검증/정리
     from pipeline.validator import ValidatedPlan, build_validated_plan
@@ -115,9 +131,21 @@ def run_brain_turn(
     classifier_duration_sec = time.time() - classifier_start_time
     classifier_result = parse_intent_response(classifier_raw_response_text)
     classifier_result = normalize_intent_result(classifier_result, user_text)
+    if detect_repertoire_query(user_text):
+        classifier_result["intent"] = "chat"
+        classifier_result["needs_motion"] = False
+        classifier_result["needs_dialogue"] = True
+        classifier_result["risk_level"] = "low"
+    wave_play_request = detect_wave_play_request(user_text)
+    if wave_play_request is not None:
+        classifier_result["intent"] = "play_request"
+        classifier_result["needs_motion"] = True
+        classifier_result["needs_dialogue"] = True
+        classifier_result["risk_level"] = "medium"
 
     planner_domain = select_planner_domain(classifier_result)
     joint_angle_query = detect_joint_angle_query(user_text)
+    identity_query = detect_identity_confirmation_query(user_text)
 
     # Shortcut path:
     # history 가 없는 상태에서 "왜?" 같은 초단문을 planner 로 넘기면
@@ -128,6 +156,113 @@ def run_brain_turn(
             "op_cmd": [],
             "speech": "무엇이 왜 그런지 조금만 더 구체적으로 말씀해 주세요.",
             "reason": "맥락 없는 초단문 후속 질문은 clarification 으로 직접 응답",
+        }
+        validated_plan = build_validated_plan(
+            user_text=user_text,
+            robot_state=adapted_state,
+            classifier_result=classifier_result,
+            planner_result=planner_result,
+        )
+        return BrainTurnResult(
+            classifier_input_json=classifier_input_json,
+            classifier_result=classifier_result,
+            planner_domain=planner_domain,
+            planner_input_json="",
+            classifier_raw_response_text=classifier_raw_response_text,
+            planner_raw_response_text="",
+            planner_result=planner_result,
+            adapted_state=adapted_state,
+            validated_plan=validated_plan,
+            classifier_duration_sec=classifier_duration_sec,
+            planner_duration_sec=0.0,
+            llm_duration_sec=classifier_duration_sec,
+            classifier_metrics=classifier_metrics,
+            planner_metrics={},
+        )
+
+    # Shortcut path:
+    # 지원 곡 목록 질문은 실행 가능 명령이 필요 없고,
+    # 안전 키 상태와 무관하게 고정된 repertoire 답변을 주는 편이 더 안정적이다.
+    if detect_repertoire_query(user_text):
+        planner_result = {
+            "skills": [],
+            "op_cmd": [],
+            "speech": build_repertoire_answer(),
+            "reason": "지원 곡 목록 질문은 고정 repertoire 응답으로 직접 처리",
+        }
+        validated_plan = build_validated_plan(
+            user_text=user_text,
+            robot_state=adapted_state,
+            classifier_result=classifier_result,
+            planner_result=planner_result,
+        )
+        return BrainTurnResult(
+            classifier_input_json=classifier_input_json,
+            classifier_result=classifier_result,
+            planner_domain=planner_domain,
+            planner_input_json="",
+            classifier_raw_response_text=classifier_raw_response_text,
+            planner_raw_response_text="",
+            planner_result=planner_result,
+            adapted_state=adapted_state,
+            validated_plan=validated_plan,
+            classifier_duration_sec=classifier_duration_sec,
+            planner_duration_sec=0.0,
+            llm_duration_sec=classifier_duration_sec,
+            classifier_metrics=classifier_metrics,
+            planner_metrics={},
+        )
+
+    # Shortcut path:
+    # 이름 확인형 질문은 필의 정체성이 고정돼 있으므로,
+    # yes/no 몸짓과 발화를 deterministic 하게 고정하는 편이 더 안정적이다.
+    if identity_query is not None and classifier_result.get("intent") == "motion_request":
+        if identity_query["is_robot_name"]:
+            planner_result = {
+                "skills": ["nod_yes"],
+                "op_cmd": [],
+                "speech": "네, 제 이름은 필이에요.",
+                "reason": "이름 확인 질문은 필의 정체성을 기준으로 직접 응답",
+            }
+        else:
+            planner_result = {
+                "skills": ["shake_no"],
+                "op_cmd": [],
+                "speech": "아니요, 제 이름은 필이에요.",
+                "reason": "이름 확인 질문은 필의 정체성을 기준으로 직접 응답",
+            }
+        validated_plan = build_validated_plan(
+            user_text=user_text,
+            robot_state=adapted_state,
+            classifier_result=classifier_result,
+            planner_result=planner_result,
+        )
+        return BrainTurnResult(
+            classifier_input_json=classifier_input_json,
+            classifier_result=classifier_result,
+            planner_domain=planner_domain,
+            planner_input_json="",
+            classifier_raw_response_text=classifier_raw_response_text,
+            planner_raw_response_text="",
+            planner_result=planner_result,
+            adapted_state=adapted_state,
+            validated_plan=validated_plan,
+            classifier_duration_sec=classifier_duration_sec,
+            planner_duration_sec=0.0,
+            llm_duration_sec=classifier_duration_sec,
+            classifier_metrics=classifier_metrics,
+            planner_metrics={},
+        )
+
+    # Shortcut path:
+    # 손 인사 후 특정 곡 재생 요청은 현재 skill 조합이 정해져 있으므로,
+    # planner 자유생성 대신 고정 시퀀스로 처리해 wave/play 동시 성공률을 높인다.
+    if wave_play_request is not None:
+        planner_result = {
+            "skills": ["wave_hi", wave_play_request["play_skill"]],
+            "op_cmd": [],
+            "speech": f"손을 흔들며 인사하고, {wave_play_request['song_label']}를 연주할게요.",
+            "reason": "손 인사 후 곡 재생 복합 요청은 고정 skill 시퀀스로 직접 처리",
         }
         validated_plan = build_validated_plan(
             user_text=user_text,

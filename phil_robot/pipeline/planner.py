@@ -19,7 +19,7 @@ except ImportError:
 
 
 PLANNER_RESPONSE_SCHEMA_EXAMPLE = {
-    "s": ["wave_hi"],
+    "s": [],
     "c": [],
     "t": "안녕하세요!",
     "r": "simple greeting",
@@ -62,6 +62,10 @@ DOMAIN_INSTRUCTIONS = {
 - 손, 팔, 손목, 허리, 시선, 제스처 같은 물리 동작 요청에 집중한다.
 - 가능한 경우 low-level command 보다 skill 을 우선 사용한다.
 - 고개/시선 방향 요청은 가능하면 look_left/look_right/look_up/look_down/look_forward 같은 visual skill 을 우선 사용한다.
+- 사용자가 손목, 허리, 특정 팔 같은 관절을 직접 말하면 그 관절 동작에 집중하고 unrelated social skill 로 치환하지 않는다.
+- 사용자가 짧게 "준비", "준비 자세"를 말하면 ready_pose 를 우선 고려한다.
+- 사용자가 "맞지?", "~이니?"처럼 예/아니오 확인을 몸짓으로 기대하는 질문을 하면 긍정은 nod_yes, 부정은 shake_no 를 우선 고려한다.
+- 이런 확인형 질문에서는 speech 에도 짧게 네/아니요와 핵심 내용(예: 이름은 필)을 함께 넣는다.
 - skill 로 표현하기 어려운 세부 관절 제어만 op_cmd 에 직접 쓴다.
 - 불가능하거나 unsafe 한 동작은 억지로 계획하지 말고 speech 를 통해 정중히 설명한다.""",
     PLANNER_DOMAIN_PLAY: """당신은 play planner 다.
@@ -106,6 +110,8 @@ planner 입력에는 다음 정보가 함께 들어온다.
 - speech 는 TTS 용 한국어 문장만 쓴다. 괄호 설명문은 금지한다.
 - move 명령은 move:L_wrist,90 처럼 실제 모터 이름을 바로 쓴다.
 - look 명령 형식은 look:pan,tilt 이다. pan 은 좌우 회전이고 오른쪽은 양수, 왼쪽은 음수다. tilt 는 상하 각도이며 정면은 90, 위는 70 근처, 아래는 110 근처다.
+- 사용자가 고개/시선/얼굴/정면/앞쪽을 직접 요청한 경우가 아니면 look_forward skill 이나 look:0,90 명령을 추가하지 않는다.
+- 단순 인사, 손 흔들기, 팔 동작, 허리 동작, 연주 요청에 기본 시선 정렬을 습관적으로 덧붙이지 않는다.
 - low-level move/look/wait 명령은 skill 로 표현하기 어려운 경우에만 op_cmd 에 직접 넣는다.
 
 사용 가능한 skill 카탈로그:
@@ -115,7 +121,6 @@ planner 입력에는 다음 정보가 함께 들어온다.
 - r
 - h
 - s
-- look:0,90
 - look:30,90
 - look:-30,90
 - look:0,70

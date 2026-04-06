@@ -99,6 +99,8 @@ def build_validated_plan(
     # planner 가 거절 대사를 만들지 못해도 validator 가 최종 사용자 메시지를 보수적으로 보정한다.
     if resolution.message_override:
         speech = resolution.message_override
+    elif resolution.speech_override and has_actionable_motion_command(validation.valid_commands):
+        speech = resolution.speech_override
     elif has_actionable_motion_command(validation.valid_commands) and validation.rejected_commands:
         speech = build_partial_execution_message(validation.valid_commands, validation.rejected_commands)
     elif classifier_result.get("needs_motion", False) and not has_actionable_motion_command(validation.valid_commands):

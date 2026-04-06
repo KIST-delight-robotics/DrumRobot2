@@ -9,6 +9,21 @@ SONG_LABELS = {
     "test_one": "Test Beat",
     "None": "None",
 }
+PLAY_SKILL_BY_SONG = {
+    "TIM": "play_tim",
+    "TY_short": "play_ty_short",
+    "BI": "play_bi",
+    "test_one": "play_test_one",
+}
+SONG_QUERY_ALIASES = {
+    "TIM": ["this is me", "tim"],
+    "TY_short": ["그대에게", "ty_short"],
+    "BI": ["baby i need you", "bi"],
+    "test_one": ["test beat", "테스트 비트", "test_one"],
+}
+WAVE_REQUEST_KEYWORDS = ["손흔들", "손 흔들", "인사", "wave"]
+PLAY_REQUEST_SUFFIXES = ["해줘", "해주세요", "해", "줘", "틀어", "연주", "쳐", "시작"]
+ROBOT_NAME_ALIASES = {"필", "phil"}
 
 DEFAULT_CURRENT_ANGLES = {
     "waist": None,
@@ -41,6 +56,17 @@ JOINT_QUERY_ALIASES = [
 ]
 
 ANGLE_QUERY_PATTERN = re.compile(r"(각도|몇\s*도|몇도)")
+REPERTOIRE_QUERY_PATTERNS = [
+    re.compile(r"(무슨|어떤)\s*노래.*연주할\s*수\s*있"),
+    re.compile(r"(무슨|어떤)\s*곡.*연주할\s*수\s*있"),
+    re.compile(r"연주할\s*수\s*있는\s*(노래|곡)"),
+    re.compile(r"(노래|곡)\s*(목록|리스트)"),
+    re.compile(r"레퍼토리"),
+]
+AVAILABLE_SONG_CODES = ["TIM", "test_one", "TY_short", "BI"]
+IDENTITY_CONFIRMATION_PATTERN = re.compile(
+    r"(?:너의\s*)?이름(?:은)?\s*([A-Za-z가-힣]+)\s*(맞(?:지|죠|니|나요)|이니|인가|인가요)"
+)
 
 
 def adapt_robot_state(raw_state):
@@ -147,3 +173,66 @@ def build_joint_angle_answer(robot_state: Dict, joint_info: Dict):
         return f"{joint_info['display_name']}의 현재 각도는 아직 확인할 수 없습니다."
 
     return f"현재 {joint_info['display_name']} 각도는 {float(angle_value):.1f}도입니다."
+
+
+def detect_repertoire_query(user_text: str) -> bool:
+    text = (user_text or "").strip()
+    if not text:
+        return False
+
+    return any(pattern.search(text) for pattern in REPERTOIRE_QUERY_PATTERNS)
+
+
+def build_repertoire_answer() -> str:
+    song_names = [SONG_LABELS[song_code] for song_code in AVAILABLE_SONG_CODES]
+    return "저는 " + ", ".join(song_names) + "를 연주할 수 있어요."
+
+
+def detect_song_request_code(user_text: str):
+    text = (user_text or "").strip().lower()
+    if not text:
+        return None
+
+    for song_code, alias_list in SONG_QUERY_ALIASES.items():
+        if any(alias in text for alias in alias_list):
+            return song_code
+
+    return None
+
+
+def detect_wave_play_request(user_text: str):
+    text = (user_text or "").strip().lower()
+    if not text:
+        return None
+
+    song_code = detect_song_request_code(text)
+    if song_code is None:
+        return None
+
+    has_wave = any(keyword in text for keyword in WAVE_REQUEST_KEYWORDS)
+    has_play_suffix = any(keyword in text for keyword in PLAY_REQUEST_SUFFIXES)
+    if not has_wave or not has_play_suffix:
+        return None
+
+    return {
+        "song_code": song_code,
+        "song_label": SONG_LABELS[song_code],
+        "play_skill": PLAY_SKILL_BY_SONG[song_code],
+    }
+
+
+def detect_identity_confirmation_query(user_text: str):
+    text = (user_text or "").strip()
+    if not text:
+        return None
+
+    match_obj = IDENTITY_CONFIRMATION_PATTERN.search(text)
+    if match_obj is None:
+        return None
+
+    candidate_name = match_obj.group(1).strip()
+    normalized_name = candidate_name.lower()
+    return {
+        "candidate_name": candidate_name,
+        "is_robot_name": normalized_name in ROBOT_NAME_ALIASES,
+    }

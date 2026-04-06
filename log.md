@@ -4,6 +4,69 @@
 최신 항목이 위로 오도록 추가합니다.
 
 ## 2026-04-06
+- 16:35 KST (UTC+9) — `phil_robot` 루트에 새 `AGENTS.md`를 추가하고, prompt/shortcut/identity 응답을 손볼 때 공통으로 따를 페르소나 작성 규칙을 정리했습니다.
+  - 수정 파일: `phil_robot/AGENTS.md`, `log.md`
+  - 메모: 필의 정체성, 톤, 능력/제약을 분리해서 쓰고, 검증되지 않은 능력 과장 금지, 이름 확인형 yes/no 일관성 유지, 재사용 가능한 패턴 중심 작성 같은 기준을 `phil_robot` 범위 전체에 걸어두었습니다.
+- 16:23 KST (UTC+9) — `모펫이니?` 같은 이름 확인형 yes/no 질문과 `손흔들고 This Is Me 연주해줘.` 같은 wave+play 복합 요청을 deterministic shortcut으로 고정하고, TODO 케이스 23 문구도 `This Is Me` 기준으로 바꿨습니다.
+  - 수정 파일: `phil_robot/pipeline/state_adapter.py`, `phil_robot/pipeline/brain_pipeline.py`, `phil_robot/eval/cases_scenario_eval.json`, `phil_robot/eval/eval_docs/cases_scenario_eval.md`, `phil_robot/tests/test_planner_benchmark.py`, `log.md`
+  - 메모: 이제 `scenario_12_key_out_name_no_shake`는 planner를 거치지 않고 `gesture:shake + "아니요, 제 이름은 필이에요."`로 직접 처리되고, `scenario_23_todo_play_and_wave_greatest_showman`은 실제 문구를 `손흔들고 This Is Me 연주해줘.`로 바꾼 뒤 `gesture:wave + r + p:TIM` 고정 시퀀스로 처리됩니다. targeted eval 두 건 모두 `planner_called=False` 상태로 통과 확인했습니다.
+- 16:16 KST (UTC+9) — `scenario_09_key_out_right_wrist_up` 손목 기본 상대 이동폭을 다시 원래 15도로 되돌리고, 대응 테스트와 eval 기대값도 `move:R_wrist,35` 기준으로 복원했습니다.
+  - 수정 파일: `phil_robot/pipeline/motion_resolver.py`, `phil_robot/tests/test_planner_benchmark.py`, `phil_robot/eval/cases_scenario_eval.json`, `phil_robot/eval/eval_docs/cases_scenario_eval.md`, `log.md`
+  - 메모: 사용자 확인대로 `현재 20도에서 15도 더 올리기 -> 35도`는 원래 의도와 맞는 결과라 보고 되돌렸습니다. 실제 targeted eval에서도 `valid_op_cmds=['move:R_wrist,35']`, `speech='오른쪽 손목을 15도 더 올려드릴게요.'`로 다시 확인했습니다.
+- 16:14 KST (UTC+9) — `scenario_09_key_out_right_wrist_up` 기준이 너무 느슨해 `move:R_wrist,35` 같은 약한 상승도 통과하던 문제를 줄이기 위해, 무각도 손목 올리기 기본치를 30도로 키우고 케이스 기대값도 `move:R_wrist,50`으로 조였습니다.
+  - 수정 파일: `phil_robot/pipeline/motion_resolver.py`, `phil_robot/tests/test_planner_benchmark.py`, `phil_robot/eval/cases_scenario_eval.json`, `phil_robot/eval/eval_docs/cases_scenario_eval.md`, `log.md`
+  - 메모: 이제 이 케이스는 접두사만 맞으면 통과가 아니라 실제로 `20 -> 50도` 수준의 눈에 띄는 손목 상승과 대응 발화까지 맞아야 통과합니다. 실제 eval 한 건을 다시 돌려 `valid_op_cmds=['move:R_wrist,50']`, `speech='오른쪽 손목을 30도 더 올려드릴게요.'`로 통과 확인했습니다.
+- 16:12 KST (UTC+9) — 곡 목록 질문(`너 무슨 노래 연주할 수 있니?`)이 안전 키 차단 문구로 잘못 빠지지 않도록 repertoire 질의를 classifier에서 `chat`으로 고정하고, brain에서 지원 곡 목록을 deterministic shortcut으로 직접 응답하게 바꿨습니다.
+  - 수정 파일: `phil_robot/pipeline/state_adapter.py`, `phil_robot/pipeline/intent_classifier.py`, `phil_robot/pipeline/brain_pipeline.py`, `phil_robot/tests/test_intent_classifier.py`, `phil_robot/tests/test_planner_benchmark.py`, `log.md`
+  - 메모: 이제 이 질문은 `play_request`로 올라가지 않아 `아직 안전 키가 해제되지 않아...`로 덮이지 않고, 실제 eval에서도 `chat / chat / valid_op_cmds=[] / "저는 This Is Me, Test Beat, 그대에게, Baby I Need You를 연주할 수 있어요." / planner_called=False`로 통과하는 것을 확인했습니다.
+- 16:00 KST (UTC+9) — `오른 쪽 손목 들어봐`, `준비`, `양팔 올렸다가 3초 뒤에 양팔 내려` 시나리오가 실제 eval 경로에서 통과하도록 motion/classifier/skill 필터를 보강하고, scenario 기대 문구도 정상 발화 기준으로 다듬었습니다.
+  - 수정 파일: `phil_robot/pipeline/intent_classifier.py`, `phil_robot/pipeline/planner.py`, `phil_robot/pipeline/skills.py`, `phil_robot/pipeline/validator.py`, `phil_robot/pipeline/motion_resolver.py`, `phil_robot/tests/test_intent_classifier.py`, `phil_robot/tests/test_planner_benchmark.py`, `phil_robot/eval/cases_scenario_eval.json`, `phil_robot/eval/eval_docs/cases_scenario_eval.md`, `log.md`
+  - 메모: `준비`는 `motion_request`로 승격하고 `ready_pose`를 더 강하게 유도했으며, `오른 쪽` 같은 띄어쓰기 변형과 planner fallback greeting은 resolver/speech override로 복구되게 했습니다. 또 `wait:3`가 skill category 필터에서 사라지지 않게 고쳐 `/home/shy/miniforge3/envs/drum4/bin/python`으로 해당 3개 케이스를 다시 태웠을 때 모두 통과하는 것까지 확인했습니다.
+- 15:47 KST (UTC+9) — `너 무슨 노래 연주할 수 있니?` 케이스는 분류 label(`chat` vs `status`)보다 실제 목록 응답 품질이 더 중요하다고 보고, `scenario_07_song_list_question`에서 intent/domain 강제를 제거했습니다.
+  - 수정 파일: `phil_robot/eval/cases_scenario_eval.json`, `phil_robot/eval/eval_docs/cases_scenario_eval.md`, `log.md`
+  - 메모: 이제 이 항목은 `valid_commands_exact=[]`와 곡 목록 발화만 확인하므로, 실제로는 잘 대답했는데 분류 라벨 차이 때문에 실패하는 일이 줄어듭니다.
+- 15:46 KST (UTC+9) — `너의 이름 필 맞지?`, `너의 이름은 모펫이니?` 같은 확인형 identity 질문을 classifier가 motion 쪽으로 올리고, motion planner도 긍정은 `nod_yes`, 부정은 `shake_no`를 우선 고려하도록 prompt와 정규화 규칙을 보강했습니다.
+  - 수정 파일: `phil_robot/pipeline/intent_classifier.py`, `phil_robot/pipeline/planner.py`, `phil_robot/tests/test_intent_classifier.py`, `phil_robot/tests/test_planner_benchmark.py`, `log.md`
+  - 메모: 기존에는 identity keyword 규칙이 이런 문장을 무조건 `chat + needs_motion=false`로 눌러버렸고, 그 때문에 말은 맞아도 끄덕/도리도리 동작이 빠졌습니다. 이제는 확인형 종결 표현을 따로 감지해 motion 의도로 승격합니다.
+- 15:43 KST (UTC+9) — `cases_scenario_eval.json`을 다시 정리해 사용자 지정 21개 케이스를 `scenario_01~21`로 앞쪽에 정확히 배치하고, TODO 예시 7개는 뒤 `scenario_22~28`로 유지했습니다.
+  - 수정 파일: `phil_robot/eval/cases_scenario_eval.json`, `phil_robot/eval/eval_docs/cases_scenario_eval.md`, `log.md`
+  - 메모: 이제 `scenario` suite를 열면 먼저 보이는 21개가 사용자가 직접 준 테스트 케이스와 1:1로 대응하며, `scenario_15`까지 포함해 첫 21개에는 intent/domain 미채점 항목이 남지 않도록 채웠습니다.
+- 15:31 KST (UTC+9) — `look:0,90`를 후처리로 지우는 대신 planner prompt와 skill 정의를 바꿔, 사용자가 고개/시선 방향을 직접 말하지 않으면 `look_forward`나 `look:0,90`를 기본값처럼 생성하지 않도록 조정했습니다.
+  - 수정 파일: `phil_robot/pipeline/planner.py`, `phil_robot/pipeline/skills.py`, `phil_robot/tests/test_planner_benchmark.py`, `log.md`
+  - 메모: planner 예시 JSON은 더 이상 `wave_hi`로 시작하지 않게 바꿨고, `wave_hi` skill에서도 정면 보기 명령을 제거해 불필요한 출력 토큰과 실행 명령이 함께 줄어들도록 맞췄습니다.
+- 15:21 KST (UTC+9) — `scenario_02_todo_play_and_wave_greatest_showman`의 사용자 문구를 `손흔들고 위대한 쇼맨 연주해줘.`로 바꾸고, 대응 scenario 케이스 문서도 다시 생성했습니다.
+  - 수정 파일: `phil_robot/eval/cases_scenario_eval.json`, `phil_robot/eval/eval_docs/cases_scenario_eval.md`, `log.md`
+  - 메모: `위대한 쇼맨을 먼저 연주하고 나서 손을 흔드는` 해석은 애초에 불가능한 흐름이므로, 2번 문항은 `먼저 손을 흔들고 그다음 연주`로 읽히게 사용자 발화를 명확히 바꿨습니다.
+- 15:14 KST (UTC+9) — `scenario_eval` 케이스 정의를 다듬어 빠진 intent/domain을 보강하고, 느슨한 말 비교는 `speech_contains_all`로 강화했으며 입력 케이스 문서의 빈 기대값 표시는 `기록 없음` 대신 `미채점`으로 바꿨습니다.
+  - 수정 파일: `phil_robot/eval/cases_scenario_eval.json`, `phil_robot/eval/run_eval.py`, `phil_robot/eval/generate_case_docs.py`, `phil_robot/eval/eval_docs/cases_scenario_eval.md`, `phil_robot/tests/test_planner_benchmark.py`, `log.md`
+  - 메모: compound/sequence 케이스 몇 건은 JSON 기대값이 비어 있거나 `speech_contains_any`가 너무 느슨해 엉뚱한 답도 통과할 수 있어, `scenario_02`, `07`, `18`, `19`, `21`, `26`, `27`, `28` 중심으로 기준을 다시 조였습니다.
+- 15:09 KST (UTC+9) — `scenario_01_todo_greet_and_nod`의 기대 intent를 `chat`에서 `motion_request`로 바로잡고, 대응 scenario 케이스 문서도 다시 생성했습니다.
+  - 수정 파일: `phil_robot/eval/cases_scenario_eval.json`, `phil_robot/eval/eval_docs/cases_scenario_eval.md`, `log.md`
+  - 메모: `안녕 하고 고개 끄덕여`는 현재 평가 기준상 인사+동작 복합 요청이므로 `classifier.intent`를 `motion_request`로 보는 쪽이 자연스러워, 정상 결과가 오답 처리되지 않게 수정했습니다.
+- 14:28 KST (UTC+9) — `run_eval.py`가 저장한 report JSON으로 대응 Markdown 리포트를 바로 생성하도록 연결하고, 결과 요약에 통과/실패 개수·케이스 목록·실제 최종 발화가 먼저 보이게 정리했습니다.
+  - 수정 파일: `phil_robot/eval/run_eval.py`, `phil_robot/tests/test_planner_benchmark.py`, `phil_robot/eval/README.md`, `log.md`
+  - 메모: 이제 `--report`나 `--save-report`로 저장하면 `reports/*.json`과 짝이 맞는 `eval_docs/reports/*.md`가 함께 생성되며, 상세 표에는 각 케이스의 실제 응답이 그대로 들어갑니다.
+- 14:14 KST (UTC+9) — `cases_*.json`에서 `eval_docs/cases_*.md`를 직접 생성하는 `generate_case_docs.py`를 추가하고, smoke/scenario 케이스 문서도 JSON 기준 표로 다시 생성했습니다.
+  - 수정 파일: `phil_robot/eval/generate_case_docs.py`, `phil_robot/eval/eval_docs/cases_smoke.md`, `phil_robot/eval/eval_docs/cases_scenario_eval.md`, `phil_robot/eval/AGENTS.md`, `log.md`
+  - 메모: 입력 케이스 문서는 이제 수동 해설 대신 `case id / tags / 사용자 발화 / 기대 intent / 기대 domain / LLM 응답` 표를 JSON에서 직접 뽑아 쓰며, `핵심 확인 포인트` 같은 수동 열은 없앴습니다.
+- 14:14 KST (UTC+9) — 입력 케이스 해설 문서의 상세표에서 `핵심 확인 포인트` 열을 제거하고 `LLM 응답` 중심 표로 정리해, 표만 봐도 기대 답변이 바로 읽히도록 바꿨습니다.
+  - 수정 파일: `phil_robot/eval/eval_docs/cases_smoke.md`, `phil_robot/eval/eval_docs/cases_scenario_eval.md`, `phil_robot/eval/AGENTS.md`, `log.md`
+  - 메모: 결과 리포트는 실제 최종 발화를, 입력 케이스 문서는 기대 `LLM 응답`을 바로 보여주는 역할로 더 분명하게 나눴습니다.
+- 14:08 KST (UTC+9) — `phil_robot/eval/AGENTS.md`에 결과 해설 문서의 `결과 요약` 규칙을 강화해, 앞으로는 통과/실패 개수와 케이스 목록, 바로 고칠 항목이 먼저 드러나도록 기준을 명시했습니다.
+  - 수정 파일: `phil_robot/eval/AGENTS.md`, `log.md`
+  - 메모: `결과 요약`에서 감상문보다 사실 정리를 우선하고, 입력 케이스 문서에는 기대 말 응답, 실행 결과 문서에는 실제 최종 발화가 보이도록 규칙을 분명히 했습니다.
+- 14:08 KST (UTC+9) — `cases_smoke.md`와 `cases_scenario_eval.md` 상세표에 각 케이스의 기대 말 응답 열을 추가해, 명령 기대값뿐 아니라 어떤 식으로 답해야 하는지도 한눈에 읽히게 정리했습니다.
+  - 수정 파일: `phil_robot/eval/eval_docs/cases_smoke.md`, `phil_robot/eval/eval_docs/cases_scenario_eval.md`, `log.md`
+  - 메모: 결과 리포트는 실제 최종 발화를 보여주고, 입력 케이스 해설 문서는 기대 말 응답을 보여주도록 역할을 맞췄습니다.
+- 14:08 KST (UTC+9) — `run_eval.py` 기본 summary에 classifier/planner/total 평균 지연, 중앙값, p95를 다시 포함시키고, 콘솔 출력과 단위 테스트도 함께 보강했습니다.
+  - 수정 파일: `phil_robot/eval/run_eval.py`, `phil_robot/tests/test_planner_benchmark.py`, `log.md`
+  - 메모: 다음 smoke/scenario 실행부터 저장되는 JSON report의 `summary.latency_summary`에 단계별 요약이 남고, 터미널에도 `avg / median / p95`가 같이 보여 이후 해설 리포트에서 바로 인용하기 쉬운 형태로 맞췄습니다.
+- 14:02 KST (UTC+9) — `run_eval.py`가 `--scenario` 별칭도 받도록 보완해, `--suite scenario` 대신 자연스럽게 친 실행 명령도 바로 동작하게 했습니다.
+  - 수정 파일: `phil_robot/eval/run_eval.py`, `phil_robot/eval/README.md`, `log.md`
+  - 메모: 사용 흐름상 `python eval/run_eval.py --scenario`를 먼저 치기 쉬워 보여 argparse alias를 추가했고, README에도 짧은 실행 예시를 같이 적었습니다.
+- 13:15 KST (UTC+9) — `phil_robot`의 `scenario eval` TODO 예시 7개와 운영 확인용 21개 시나리오를 새 suite JSON으로 정리하고, 대응 해설 문서와 실행 엔트리를 함께 추가했습니다.
+  - 수정 파일: `phil_robot/eval/cases_scenario_eval.json`, `phil_robot/eval/eval_docs/cases_scenario_eval.md`, `phil_robot/eval/run_eval.py`, `phil_robot/eval/README.md`, `log.md`
+  - 메모: 일부 케이스는 현재 파이프라인보다 앞선 목표 동작을 고정하는 성격이라 기대값을 완전히 빡빡하게 두기보다, 복합 명령·상태 제약·순차 동작의 핵심 확인 포인트가 드러나도록 작성했습니다.
 - 10:26 KST (UTC+9) — `phil_robot` 온라인 STT 전환을 다른 agent가 그대로 구현할 수 있도록 handoff용 `PLAN.md`를 새로 작성하고, 침묵 임계값/echo 차단/복합 발화 acceptance 범위를 결정 완료 수준으로 고정했습니다.
   - 수정 파일: `phil_robot/PLAN.md`, `log.md`
   - 메모: `post-silence commit 300ms`, `final-only planner`, `is_speaking` 기반 self-echo 차단, `복합 발화는 STT final text 안정성만 검증` 기준을 문서에 명시했고, `smalll -> small` 선행 수정도 계획에 포함했습니다.

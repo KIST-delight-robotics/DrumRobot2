@@ -49,6 +49,7 @@ RELATIVE_DEGREE_PATTERN = re.compile(r"(-?\d+(?:\.\d+)?)\s*도")
 class MotionResolutionResult:
     op_cmds: List[str]
     message_override: Optional[str] = None
+    speech_override: Optional[str] = None
     warnings: List[str] = field(default_factory=list)
 
 
@@ -57,20 +58,26 @@ def resolve_motion_commands(user_text, op_cmds, robot_state):
     상대 이동 표현을 현재 각도 기반 절대각 명령으로 변환한다.
     이 레이어는 planner를 본격 도입하기 전의 얇은 motion resolver 역할을 한다.
     """
+    normalized_text = _normalize_motion_text(user_text)
     result = MotionResolutionResult(op_cmds=list(op_cmds))
 
-    look_op_cmd = parse_head_look_command(user_text)
+    look_op_cmd = parse_head_look_command(normalized_text)
     if look_op_cmd is not None:
         result.op_cmds = _replace_or_append_look_op_cmd(result.op_cmds, look_op_cmd)
         result.warnings.append(f"고개 방향 해석: {look_op_cmd}")
 
-    arm_cmds = parse_arm_pose_commands(user_text)
+    arm_cmds = parse_arm_pose_commands(normalized_text)
     if arm_cmds is not None:
+        if _has_sequence_marker(normalized_text) and any(
+            command.startswith(("move:", "wait:")) for command in result.op_cmds
+        ):
+            result.warnings.append("순차 팔 동작은 planner 시퀀스를 그대로 유지합니다.")
+            return result
         result.op_cmds = _replace_move_sequence(result.op_cmds, arm_cmds)
         result.warnings.append(f"팔 자세 해석: {' | '.join(arm_cmds)}")
         return result
 
-    intent = parse_relative_motion_intent(user_text, robot_state=robot_state)
+    intent = parse_relative_motion_intent(normalized_text, robot_state=robot_state)
     if intent is None:
         return result
 
@@ -79,7 +86,7 @@ def resolve_motion_commands(user_text, op_cmds, robot_state):
     if not isinstance(current_angle, (int, float)):
         result.message_override = f"{intent['display_name']}의 현재 각도를 아직 확인할 수 없어 지금은 해당 동작을 수행할 수 없습니다."
         result.warnings.append(f"현재 각도를 알 수 없어 상대 이동 해석 실패: {intent['joint_name']}")
-        result.op_cmds = _remove_move_op_cmds(result.op_cmds)
+        result.op_cmds = _remove_relative_motion_side_effects(result.op_cmds)
         return result
 
     delta = intent["delta_deg"] if intent["delta_deg"] is not None else DEFAULT_RELATIVE_STEP_DEG
@@ -102,11 +109,13 @@ def resolve_motion_commands(user_text, op_cmds, robot_state):
         result.warnings.append(
             f"상대 이동 한계 초과 차단: {intent['joint_name']} {current_angle:.1f} -> {target_angle:.1f}"
         )
-        result.op_cmds = _remove_motion_sequence_op_cmds(result.op_cmds)
+        result.op_cmds = _remove_relative_motion_side_effects(result.op_cmds)
         return result
 
     resolved_op_cmd = _format_move_command(intent["joint_name"], target_angle)
-    result.op_cmds = _replace_or_append_move_op_cmd(result.op_cmds, resolved_op_cmd)
+    result.op_cmds = _replace_relative_motion_sequence(result.op_cmds, resolved_op_cmd)
+    if not _has_sequence_marker(normalized_text):
+        result.speech_override = _build_relative_motion_speech(intent, delta)
     result.warnings.append(
         f"상대 이동 해석: {intent['joint_name']} {current_angle:.1f} -> {target_angle:.1f}"
     )
@@ -118,7 +127,7 @@ def parse_head_look_command(user_text):
     고개/시선 방향 요청을 look:pan,tilt 명령으로 정규화한다.
     LLM 이 pan/tilt 축을 헷갈려도 이 레이어에서 의미를 바로잡는다.
     """
-    text = (user_text or "").strip()
+    text = _normalize_motion_text(user_text)
     if not text:
         return None
 
@@ -156,7 +165,7 @@ def parse_relative_motion_intent(user_text, robot_state=None):
     사용자의 자연어에서 "현재 각도 기준 상대 이동" 의도를 추출한다.
     robot_state 가 있으면 명시적 관절이 없어도 last_action 기반 추론을 시도한다.
     """
-    text = (user_text or "").strip()
+    text = _normalize_motion_text(user_text)
     if not text:
         return None
 
@@ -185,7 +194,7 @@ def parse_relative_motion_intent(user_text, robot_state=None):
 
 
 def parse_arm_pose_commands(user_text):
-    text = (user_text or "").strip()
+    text = _normalize_motion_text(user_text)
     if not text:
         return None
 
@@ -222,6 +231,26 @@ def _find_joint(text):
                 "display_name": display_name,
             }
     return None
+
+
+def _normalize_motion_text(user_text):
+    text = (user_text or "").strip()
+    text = re.sub(r"오른\s+쪽", "오른쪽", text)
+    text = re.sub(r"왼\s+쪽", "왼쪽", text)
+    return text
+
+
+def _has_sequence_marker(text):
+    return any(marker in text for marker in ["뒤에", "후에", "다음", "두번", "두 번", "올렸다가", "내렸다가"])
+
+
+def _build_relative_motion_speech(intent, delta_deg):
+    delta_text = f"{delta_deg:.0f}도" if float(delta_deg).is_integer() else f"{delta_deg:.1f}도"
+    if intent["direction"] > 0:
+        return f"{intent['display_name']}을 {delta_text} 더 올려드릴게요."
+    return f"{intent['display_name']}을 {delta_text} 더 내려드릴게요."
+
+
 
 
 def _infer_joint_from_context(text, robot_state):
@@ -357,6 +386,28 @@ def _replace_or_append_move_op_cmd(op_cmds, move_op_cmd):
     return updated_commands
 
 
+def _replace_relative_motion_sequence(op_cmds, move_op_cmd):
+    updated_commands = []
+    replaced = False
+
+    for command in op_cmds:
+        if command.startswith("move:") and not replaced:
+            updated_commands.append(move_op_cmd)
+            replaced = True
+            continue
+        if command.startswith("move:"):
+            continue
+        if command.startswith(("look:", "gesture:")):
+            continue
+        updated_commands.append(command)
+
+    if not replaced:
+        wait_idx = next((idx for idx, command in enumerate(updated_commands) if command.startswith("wait:")), len(updated_commands))
+        updated_commands.insert(wait_idx, move_op_cmd)
+
+    return updated_commands
+
+
 def _replace_move_sequence(op_cmds, move_cmds):
     updated_commands = []
     inserted = False
@@ -405,4 +456,12 @@ def _remove_motion_sequence_op_cmds(op_cmds):
         command
         for command in op_cmds
         if not command.startswith("move:") and not command.startswith("wait:")
+    ]
+
+
+def _remove_relative_motion_side_effects(op_cmds):
+    return [
+        command
+        for command in op_cmds
+        if not command.startswith(("move:", "wait:", "look:", "gesture:"))
     ]

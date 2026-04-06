@@ -4,7 +4,7 @@ import os
 import re
 import sys
 from datetime import datetime
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -21,8 +21,11 @@ from phil_robot.config import CLASSIFIER_MODEL, PLANNER_MODEL  # noqa: E402
 
 DEFAULT_CASES = {
     "smoke": os.path.join(CURRENT_DIR, "cases_smoke.json"),
+    "scenario": os.path.join(CURRENT_DIR, "cases_scenario_eval.json"),
+    "scenario_eval": os.path.join(CURRENT_DIR, "cases_scenario_eval.json"),
 }
 DEFAULT_REPORT_DIR = os.path.join(CURRENT_DIR, "reports")
+DEFAULT_DOC_DIR = os.path.join(CURRENT_DIR, "eval_docs")
 
 
 def load_cases(cases_path: str) -> List[Dict[str, Any]]:
@@ -35,6 +38,11 @@ def load_cases(cases_path: str) -> List[Dict[str, Any]]:
     return cases_data
 
 
+def load_json(path_name: str) -> Dict[str, Any]:
+    with open(path_name, "r", encoding="utf-8") as file:
+        return json.load(file)
+
+
 def infer_suite_name(suite_name: str, cases_path: str) -> str:
     """suite 이름이 없으면 케이스 파일명에서 대표 이름을 추론한다."""
     if suite_name:
@@ -44,6 +52,66 @@ def infer_suite_name(suite_name: str, cases_path: str) -> str:
     if stem.startswith("cases_"):
         return stem[len("cases_") :]
     return stem
+
+
+def mean_num(num_list: List[float]) -> float:
+    if not num_list:
+        return None
+    return sum(num_list) / float(len(num_list))
+
+
+def median_num(num_list: List[float]) -> float:
+    if not num_list:
+        return None
+
+    sorted_list = sorted(num_list)
+    size_num = len(sorted_list)
+    mid_num = size_num // 2
+    if size_num % 2 == 1:
+        return sorted_list[mid_num]
+    return (sorted_list[mid_num - 1] + sorted_list[mid_num]) / 2.0
+
+
+def p95_num(num_list: List[float]) -> float:
+    if not num_list:
+        return None
+
+    sorted_list = sorted(num_list)
+    idx_num = int(len(sorted_list) * 0.95)
+    if idx_num < 0:
+        idx_num = 0
+    if idx_num >= len(sorted_list):
+        idx_num = len(sorted_list) - 1
+    return sorted_list[idx_num]
+
+
+def summarize_time_rows(results: List[Dict[str, Any]], key_name: str) -> Dict[str, Any]:
+    time_list: List[float] = []
+    slow_row: Dict[str, Any] = None
+
+    for result in results:
+        duration_obj = result.get("durations_sec", {})
+        time_val = duration_obj.get(key_name)
+        if not isinstance(time_val, (int, float)):
+            continue
+
+        time_num = float(time_val)
+        time_list.append(time_num)
+        if slow_row is None or time_num > slow_row["time_sec"]:
+            slow_row = {
+                "id": result.get("id", ""),
+                "time_sec": time_num,
+            }
+
+    return {
+        "measured_cases": len(time_list),
+        "avg_sec": mean_num(time_list),
+        "median_sec": median_num(time_list),
+        "p95_sec": p95_num(time_list),
+        "min_sec": min(time_list) if time_list else None,
+        "max_sec": max(time_list) if time_list else None,
+        "slowest_case": slow_row["id"] if slow_row else "",
+    }
 
 
 def abbreviate_model_name(model_name: str) -> str:
@@ -130,6 +198,288 @@ def build_report_path(
     )
 
 
+def build_doc_path(path_name: str) -> str:
+    abs_path = os.path.abspath(path_name)
+    rel_path = os.path.relpath(abs_path, CURRENT_DIR)
+    if rel_path != ".." and not rel_path.startswith(f"..{os.sep}"):
+        stem, _ = os.path.splitext(rel_path)
+        return os.path.join(DEFAULT_DOC_DIR, f"{stem}.md")
+
+    stem, _ = os.path.splitext(abs_path)
+    return f"{stem}.md"
+
+
+def save_text(path_name: str, text: str) -> None:
+    os.makedirs(os.path.dirname(path_name), exist_ok=True)
+    with open(path_name, "w", encoding="utf-8") as file:
+        file.write(text)
+
+
+def fmt_ratio(ok_num: int, total_num: int) -> str:
+    if total_num <= 0:
+        return f"{ok_num}/{total_num} (기록 없음)"
+    rate_num = (float(ok_num) / float(total_num)) * 100.0
+    return f"{ok_num}/{total_num} ({rate_num:.1f}%)"
+
+
+def fmt_sec(sec_val: Optional[float]) -> str:
+    if sec_val is None:
+        return "기록 없음"
+    return f"{float(sec_val):.3f} s"
+
+
+def norm_text(raw_val: Any) -> str:
+    if raw_val is None:
+        return ""
+    return re.sub(r"\s+", " ", str(raw_val)).strip()
+
+
+def md_cell(raw_val: Any) -> str:
+    if raw_val is None:
+        text = "기록 없음"
+    elif isinstance(raw_val, list):
+        text = ", ".join(norm_text(item) for item in raw_val if norm_text(item)) or "없음"
+    elif isinstance(raw_val, bool):
+        text = "true" if raw_val else "false"
+    else:
+        text = norm_text(raw_val) or "기록 없음"
+
+    return text.replace("|", "\\|").replace("\n", "<br>")
+
+
+def brief(raw_val: Any, limit_num: int = 120) -> str:
+    text = md_cell(raw_val)
+    if len(text) <= limit_num:
+        return text
+    return f"{text[: limit_num - 1]}…"
+
+
+def fix_note(row_obj: Dict[str, Any]) -> str:
+    fail_list = row_obj.get("failed_checks", [])
+    if not fail_list:
+        return "실패 원인 기록 없음"
+
+    first_name = fail_list[0].get("name", "")
+    valid_cmds = row_obj.get("actual", {}).get("valid_op_cmds", [])
+
+    if first_name.startswith("validator."):
+        if valid_cmds:
+            return "막아야 할 명령이 남았거나 명령 구성이 기대와 다릅니다."
+        return "남겨야 할 명령이 빠졌거나 명령 구성이 기대와 다릅니다."
+    if first_name.startswith("e2e."):
+        return "최종 발화가 기대 표현과 달라 사용자 경험이 어긋납니다."
+    if first_name.startswith("planner."):
+        return "planner 도메인이나 skill 선택이 기대와 다릅니다."
+    if first_name.startswith("classifier."):
+        return "의도 분류가 틀려 뒤 단계 전체가 흔들릴 수 있습니다."
+    return "자동 비교 기준을 통과하지 못했습니다."
+
+
+def latency_rows(sum_obj: Dict[str, Any]) -> List[Tuple[str, Dict[str, Any]]]:
+    lat_obj = sum_obj.get("latency_summary", {})
+    row_list: List[Tuple[str, Dict[str, Any]]] = []
+    for key_name, label_text in [
+        ("classifier", "classifier"),
+        ("planner", "planner"),
+        ("total", "total"),
+    ]:
+        stage_obj = lat_obj.get(key_name)
+        if isinstance(stage_obj, dict) and stage_obj.get("measured_cases"):
+            row_list.append((label_text, stage_obj))
+    return row_list
+
+
+def build_report_md(report_path: str, report_obj: Dict[str, Any]) -> str:
+    meta_obj = report_obj.get("metadata", {})
+    sum_obj = report_obj.get("summary", {})
+    row_list = report_obj.get("results", [])
+
+    total_num = int(sum_obj.get("total_cases", len(row_list)))
+    pass_num = int(sum_obj.get("passed_cases", sum(1 for row in row_list if row.get("passed"))))
+    fail_num = int(sum_obj.get("failed_cases", total_num - pass_num))
+
+    pass_ids = [row.get("id", "") for row in row_list if row.get("passed")]
+    fail_rows = [row for row in row_list if not row.get("passed")]
+    fail_ids = [row.get("id", "") for row in fail_rows]
+
+    doc_path = build_doc_path(report_path)
+    src_path = os.path.abspath(report_path)
+    try:
+        src_text = os.path.relpath(src_path, CURRENT_DIR)
+    except ValueError:
+        src_text = src_path
+
+    line_list: List[str] = [
+        f"# {os.path.basename(report_path)} 해설 리포트",
+        "",
+        f"- source_json: `{src_text}`",
+        "",
+        "## 한눈에 보기",
+        "",
+        "| 항목 | 내용 |",
+        "| --- | --- |",
+        "| 문서 종류 | 실행 결과 리포트 |",
+        f"| generated_at | {md_cell(meta_obj.get('generated_at'))} |",
+        f"| suite | {md_cell(meta_obj.get('suite'))} |",
+        f"| cases_path | {md_cell(meta_obj.get('cases_path'))} |",
+        f"| classifier_model | {md_cell(meta_obj.get('classifier_model'))} |",
+        f"| planner_model | {md_cell(meta_obj.get('planner_model'))} |",
+        f"| 전체 결과 | {fmt_ratio(pass_num, total_num)} |",
+    ]
+
+    for label_text, stage_obj in latency_rows(sum_obj):
+        line_list.append(
+            f"| {label_text} latency | avg {fmt_sec(stage_obj.get('avg_sec'))}, "
+            f"median {fmt_sec(stage_obj.get('median_sec'))}, "
+            f"p95 {fmt_sec(stage_obj.get('p95_sec'))} |"
+        )
+
+    line_list.extend(
+        [
+            "",
+            "## 왜 이 실험을 했는가",
+            "",
+            f"`{meta_obj.get('suite', 'unknown')}` 케이스 묶음을 현재 classifier/planner 모델 조합으로 실제 평가 경로에 태웠을 때, 몇 개를 맞췄고 어디서 틀렸는지 바로 읽기 위한 실행 결과입니다.",
+            "",
+            "## 이번에 바꿔 보거나 고정한 점",
+            "",
+            f"- classifier 모델은 `{meta_obj.get('classifier_model', '기록 없음')}`로 고정했습니다.",
+            f"- planner 모델은 `{meta_obj.get('planner_model', '기록 없음')}`로 고정했습니다.",
+            f"- 케이스 입력은 `{meta_obj.get('cases_path', '기록 없음')}`를 그대로 사용했습니다.",
+            f"- `capture_llm_metrics`는 `{md_cell(meta_obj.get('capture_llm_metrics', False))}` 상태로 실행했습니다.",
+            "",
+            "## 테스트 구성",
+            "",
+            "| 항목 | 내용 |",
+            "| --- | --- |",
+            f"| 전체 케이스 수 | {total_num} |",
+            f"| JSON 리포트 | {md_cell(src_text)} |",
+            f"| Markdown 리포트 | {md_cell(os.path.relpath(doc_path, CURRENT_DIR) if doc_path.startswith(CURRENT_DIR) else doc_path)} |",
+            f"| 실패 시 종료 코드 | {1 if fail_num > 0 else 0} |",
+            "",
+            "## 결과 요약",
+            "",
+            "| 항목 | 내용 |",
+            "| --- | --- |",
+            f"| 전체 케이스 수 | {total_num} |",
+            f"| 통과 수 | {pass_num} |",
+            f"| 실패 수 | {fail_num} |",
+            f"| pass rate | {fmt_ratio(pass_num, total_num)} |",
+            f"| 통과한 케이스 | {md_cell(pass_ids)} |",
+            f"| 실패한 케이스 | {md_cell(fail_ids)} |",
+            "",
+            "### 레이어별 통과율",
+            "",
+            "| 단계 | 통과율 |",
+            "| --- | --- |",
+        ]
+    )
+
+    for layer_name, layer_obj in sum_obj.get("layer_summary", {}).items():
+        line_list.append(
+            f"| {md_cell(layer_name)} | {fmt_ratio(int(layer_obj.get('passed', 0)), int(layer_obj.get('total', 0)))} |"
+        )
+
+    line_list.extend(
+        [
+            "",
+            "### 지연 시간 요약",
+            "",
+            "| 단계 | 평균 | 중앙값 | p95 | 가장 느린 케이스 |",
+            "| --- | --- | --- | --- | --- |",
+        ]
+    )
+
+    for label_text, stage_obj in latency_rows(sum_obj):
+        line_list.append(
+            f"| {label_text} | {fmt_sec(stage_obj.get('avg_sec'))} | {fmt_sec(stage_obj.get('median_sec'))} | "
+            f"{fmt_sec(stage_obj.get('p95_sec'))} | {md_cell(stage_obj.get('slowest_case'))} |"
+        )
+
+    line_list.extend(["", "### 바로 고쳐야 할 항목", ""])
+
+    if fail_rows:
+        line_list.extend(
+            [
+                "| case id | 실패 체크 | 기대한 값 | 실제 값 | 바로 고칠 점 |",
+                "| --- | --- | --- | --- | --- |",
+            ]
+        )
+        for row_obj in fail_rows:
+            fail_list = row_obj.get("failed_checks", [])
+            fail_names = [item.get("name", "") for item in fail_list if item.get("name")]
+            first_obj = fail_list[0] if fail_list else {}
+            line_list.append(
+                f"| {md_cell(row_obj.get('id'))} | {md_cell(fail_names)} | {brief(first_obj.get('expected'))} | "
+                f"{brief(first_obj.get('actual'))} | {md_cell(fix_note(row_obj))} |"
+            )
+    else:
+        line_list.append("- 없음")
+
+    line_list.extend(
+        [
+            "",
+            "## 상세 표",
+            "",
+            "| case id | 사용자 발화 | 결과 | 실패 체크 | 실제로 남은 명령 | 실제 최종 발화 | 총 시간 |",
+            "| --- | --- | --- | --- | --- | --- | --- |",
+        ]
+    )
+
+    for row_obj in row_list:
+        fail_names = [item.get("name", "") for item in row_obj.get("failed_checks", []) if item.get("name")]
+        act_obj = row_obj.get("actual", {})
+        dur_obj = row_obj.get("durations_sec", {})
+        line_list.append(
+            f"| {md_cell(row_obj.get('id'))} | {md_cell(row_obj.get('user_text'))} | "
+            f"{'통과' if row_obj.get('passed') else '실패'} | {md_cell(fail_names)} | "
+            f"{md_cell(act_obj.get('valid_op_cmds'))} | {md_cell(act_obj.get('speech'))} | "
+            f"{fmt_sec(dur_obj.get('total'))} |"
+        )
+
+    line_list.extend(["", "## 눈여겨볼 점", ""])
+
+    slow_obj = sum_obj.get("latency_summary", {}).get("total", {})
+    if fail_rows:
+        line_list.append(
+            f"- 총 {total_num}건 중 {pass_num}건 통과, {fail_num}건 실패였습니다. 실패 케이스는 `{', '.join(fail_ids)}`입니다."
+        )
+    else:
+        line_list.append(f"- 총 {total_num}건을 모두 통과했습니다.")
+
+    if slow_obj.get("slowest_case"):
+        line_list.append(
+            f"- 가장 느린 케이스는 `{slow_obj.get('slowest_case')}`였고 총 {fmt_sec(slow_obj.get('max_sec'))}가 걸렸습니다."
+        )
+
+    fallback_num = sum(1 for row in row_list if row.get("actual", {}).get("planner_is_fallback"))
+    if fallback_num:
+        line_list.append(f"- planner fallback 응답이 나온 케이스는 {fallback_num}건입니다.")
+    else:
+        line_list.append("- planner fallback 응답은 없었습니다.")
+
+    line_list.extend(["", "## 종합 총평", ""])
+
+    if fail_rows:
+        line_list.append(
+            f"이번 실행은 `{fmt_ratio(pass_num, total_num)}`로 끝났습니다. 통과한 케이스와 실패한 케이스가 명확히 갈렸으므로, 위 `바로 고쳐야 할 항목` 표의 실패 체크와 실제 최종 발화를 기준으로 우선순위를 잡으면 됩니다."
+        )
+    else:
+        line_list.append(
+            f"이번 실행은 `{fmt_ratio(pass_num, total_num)}`로 전체 통과했습니다. 현재 모델 조합에서는 이 suite 기준 동작/발화 정합성이 안정적으로 유지됐습니다."
+        )
+
+    line_list.append("")
+    return "\n".join(line_list)
+
+
+def save_report_md(report_path: str) -> str:
+    report_obj = load_json(report_path)
+    md_path = build_doc_path(report_path)
+    save_text(md_path, build_report_md(report_path, report_obj))
+    return md_path
+
+
 def _list_equals(actual: List[Any], expected: List[Any]) -> bool:
     return list(actual) == list(expected)
 
@@ -152,6 +502,11 @@ def _list_matches_any_of(actual: List[str], candidate_lists: List[List[str]]) ->
 def _text_contains_any(actual: str, candidates: List[str]) -> bool:
     lowered = (actual or "").lower()
     return any(candidate.lower() in lowered for candidate in candidates)
+
+
+def _text_contains_all(actual: str, candidates: List[str]) -> bool:
+    lowered = (actual or "").lower()
+    return all(candidate.lower() in lowered for candidate in candidates)
 
 
 def evaluate_actual(expected: Dict[str, Any], actual: Dict[str, Any]) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]], bool]:
@@ -237,6 +592,13 @@ def evaluate_actual(expected: Dict[str, Any], actual: Dict[str, Any]) -> Tuple[L
             "e2e.speech_contains_any",
             _text_contains_any(actual["speech"], expected["speech_contains_any"]),
             expected["speech_contains_any"],
+            actual["speech"],
+        )
+    if "speech_contains_all" in expected:
+        add_check(
+            "e2e.speech_contains_all",
+            _text_contains_all(actual["speech"], expected["speech_contains_all"]),
+            expected["speech_contains_all"],
             actual["speech"],
         )
 
@@ -406,6 +768,11 @@ def summarize_results(results: List[Dict[str, Any]]) -> Dict[str, Any]:
         "passed_cases": passed,
         "failed_cases": total - passed,
         "layer_summary": layer_totals,
+        "latency_summary": {
+            "classifier": summarize_time_rows(results, "classifier"),
+            "planner": summarize_time_rows(results, "planner"),
+            "total": summarize_time_rows(results, "total"),
+        },
     }
 
 
@@ -427,6 +794,21 @@ def print_results(results: List[Dict[str, Any]], summary: Dict[str, Any]) -> Non
     )
     for layer_name, layer_stats in summary["layer_summary"].items():
         print(f"{layer_name}: {layer_stats['passed']}/{layer_stats['total']} checks passed")
+
+    latency_obj = summary.get("latency_summary", {})
+    for key_name, label_text in [
+        ("classifier", "classifier latency"),
+        ("planner", "planner latency"),
+        ("total", "total latency"),
+    ]:
+        stage_obj = latency_obj.get(key_name, {})
+        if not stage_obj.get("measured_cases"):
+            continue
+        print(
+            f"{label_text}: avg {stage_obj.get('avg_sec'):.3f}s, "
+            f"median {stage_obj.get('median_sec'):.3f}s, "
+            f"p95 {stage_obj.get('p95_sec'):.3f}s"
+        )
 
 
 def save_report(
@@ -452,6 +834,11 @@ def save_report(
 def main() -> int:
     parser = argparse.ArgumentParser(description="Run Phil Robot multi-layer evaluation cases.")
     parser.add_argument("--suite", choices=sorted(DEFAULT_CASES.keys()), help="Named case suite to run.")
+    parser.add_argument(
+        "--scenario",
+        action="store_true",
+        help="Alias for --suite scenario.",
+    )
     parser.add_argument("--cases", help="Explicit JSON case file to run.")
     parser.add_argument("--report", help="Explicit JSON report output path.")
     parser.add_argument(
@@ -476,13 +863,19 @@ def main() -> int:
     )
     args = parser.parse_args()
 
-    if not args.suite and not args.cases:
+    suite_name_arg = args.suite
+    if args.scenario:
+        if suite_name_arg and suite_name_arg not in {"scenario", "scenario_eval"}:
+            parser.error("Use either --scenario or --suite smoke, not both.")
+        suite_name_arg = "scenario"
+
+    if not suite_name_arg and not args.cases:
         parser.error("Either --suite or --cases is required.")
     if args.report and args.save_report:
         parser.error("Use either --report or --save-report, not both.")
 
-    cases_path = args.cases or DEFAULT_CASES[args.suite]
-    suite_name = infer_suite_name(args.suite, cases_path)
+    cases_path = args.cases or DEFAULT_CASES[suite_name_arg]
+    suite_name = infer_suite_name(suite_name_arg, cases_path)
     cases = load_cases(cases_path)
 
     results, summary = run_cases(
@@ -513,7 +906,9 @@ def main() -> int:
             },
         )
         save_report(report_path, results, summary, metadata)
+        md_path = save_report_md(report_path)
         print(f"\nSaved report to: {report_path}")
+        print(f"Saved markdown to: {md_path}")
 
     return 0 if summary["failed_cases"] == 0 else 1
 

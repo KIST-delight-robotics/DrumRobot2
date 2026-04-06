@@ -74,7 +74,7 @@ def load_runtime():
     print(f"[{time.strftime('%H:%M:%S')}] TTS 로드 후: {tts_mem:.2f} MB (증가량: {tts_mem - base_mem:.2f} MB)")
 
     print("[STT] Whisper 모델 로딩 중...")
-    stt_model = whisper.load_model("smalll", device="cuda")
+    stt_model = whisper.load_model("small", device="cuda")
 
     stt_mem = get_mem_usage()
     print(f"[{time.strftime('%H:%M:%S')}] STT 로드 후: {stt_mem:.2f} MB (증가량: {stt_mem - tts_mem:.2f} MB)")

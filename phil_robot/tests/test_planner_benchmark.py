@@ -1,3 +1,5 @@
+import os
+import tempfile
 import unittest
 from unittest.mock import patch
 
@@ -13,8 +15,9 @@ from phil_robot.pipeline.planner import (
 )
 from phil_robot.eval.run_planner_benchmark import judge_gate, prep_model, summarize_smoke_latency_rows
 from phil_robot.eval.run_planner_latency_isolation import build_case_summary
-from phil_robot.pipeline.brain_pipeline import BrainTurnResult
-from phil_robot.pipeline.validator import ValidatedPlan
+from phil_robot.pipeline.brain_pipeline import BrainTurnResult, run_brain_turn
+from phil_robot.pipeline.skills import expand_skills
+from phil_robot.pipeline.validator import ValidatedPlan, build_validated_plan
 
 
 class PlannerBenchmarkTest(unittest.TestCase):
@@ -23,6 +26,10 @@ class PlannerBenchmarkTest(unittest.TestCase):
 
         self.assertTrue(prompt_text.startswith(PLANNER_SHARED_RULES))
         self.assertTrue(prompt_text.endswith(DOMAIN_INSTRUCTIONS["motion"]))
+        self.assertIn("look_forward skill 이나 look:0,90 명령을 추가하지 않는다", prompt_text)
+        self.assertIn("긍정은 nod_yes, 부정은 shake_no", prompt_text)
+        self.assertIn("준비 자세", prompt_text)
+        self.assertIn("unrelated social skill", prompt_text)
 
     def test_planner_input_json_keeps_user_text_last(self) -> None:
         input_json = build_planner_input_json(
@@ -51,7 +58,112 @@ class PlannerBenchmarkTest(unittest.TestCase):
     def test_planner_response_schema_example_uses_compact_keys(self) -> None:
         self.assertEqual(
             PLANNER_RESPONSE_SCHEMA_EXAMPLE,
-            {"s": ["wave_hi"], "c": [], "t": "안녕하세요!", "r": "simple greeting"},
+            {"s": [], "c": [], "t": "안녕하세요!", "r": "simple greeting"},
+        )
+
+    def test_wave_hi_skill_no_longer_forces_forward_look(self) -> None:
+        op_cmds, warnings = expand_skills(["wave_hi"])
+
+        self.assertEqual(op_cmds, ["gesture:wave"])
+        self.assertEqual(warnings, [])
+
+    def test_expand_skills_keeps_direct_wait_command_in_order(self) -> None:
+        op_cmds, warnings = expand_skills(["arm_up", "wait:3", "arm_down"])
+
+        self.assertEqual(
+            op_cmds,
+            [
+                "move:R_arm2,58",
+                "move:L_arm2,58",
+                "move:R_arm3,95",
+                "move:L_arm3,95",
+                "move:R_wrist,0",
+                "move:L_wrist,0",
+                "wait:3",
+                "move:R_arm2,0",
+                "move:L_arm2,0",
+                "move:R_arm3,20",
+                "move:L_arm3,20",
+            ],
+        )
+        self.assertEqual(warnings, [])
+
+    def test_filter_skills_keeps_direct_wait_command(self) -> None:
+        from phil_robot.pipeline.skills import filter_skills_by_allowed_categories
+
+        filtered = filter_skills_by_allowed_categories(
+            ["arm_up", "wait:3", "arm_down"],
+            {"posture"},
+        )
+
+        self.assertEqual(filtered, ["arm_up", "wait:3", "arm_down"])
+
+    def test_build_validated_plan_overrides_relative_motion_speech(self) -> None:
+        plan_obj = build_validated_plan(
+            user_text="오른 쪽 손목 들어봐",
+            robot_state={
+                "state": 0,
+                "is_lock_key_removed": True,
+                "is_fixed": True,
+                "current_angles": {"R_wrist": 20.0},
+                "last_action": "move:R_wrist,20",
+            },
+            classifier_result={
+                "intent": "motion_request",
+                "needs_motion": True,
+                "needs_dialogue": True,
+                "risk_level": "medium",
+            },
+            planner_result={
+                "skills": ["wave_hi"],
+                "op_cmd": [],
+                "speech": "안녕하세요!",
+                "reason": "fallback greeting",
+            },
+        )
+
+        self.assertEqual(plan_obj.valid_op_cmds, ["move:R_wrist,35"])
+        self.assertIn("오른쪽 손목", plan_obj.speech)
+        self.assertIn("15도", plan_obj.speech)
+
+    def test_build_validated_plan_preserves_arm_wait_sequence(self) -> None:
+        plan_obj = build_validated_plan(
+            user_text="양팔 올렸다가 3초 뒤에 양팔 내려",
+            robot_state={
+                "state": 0,
+                "is_lock_key_removed": True,
+                "is_fixed": True,
+                "current_angles": {},
+            },
+            classifier_result={
+                "intent": "motion_request",
+                "needs_motion": True,
+                "needs_dialogue": True,
+                "risk_level": "medium",
+            },
+            planner_result={
+                "skills": ["arm_up", "wait:3", "arm_down"],
+                "op_cmd": [],
+                "speech": "양팔을 올렸다가 3초 뒤에 내립니다.",
+                "reason": "arm sequence",
+            },
+        )
+
+        self.assertEqual(
+            plan_obj.valid_op_cmds,
+            [
+                "move:R_arm2,58",
+                "move:L_arm2,58",
+                "move:R_arm3,95",
+                "move:L_arm3,95",
+                "move:R_wrist,0",
+                "move:L_wrist,0",
+                "wait:3",
+                "move:R_arm2,0",
+                "move:L_arm2,0",
+                "move:R_arm3,20",
+                "move:L_arm3,20",
+            ],
         )
 
     def test_parse_plan_response_accepts_compact_schema(self) -> None:
@@ -192,6 +304,88 @@ class PlannerBenchmarkTest(unittest.TestCase):
         self.assertTrue(prepared_case.planner_input_json)
         self.assertEqual(prepared_case.shortcut_reason, "")
 
+    @patch("phil_robot.pipeline.brain_pipeline.call_json_llm")
+    def test_run_brain_turn_shortcuts_repertoire_question(self, mock_call) -> None:
+        mock_call.return_value = '{"i":"P","m":1,"d":1,"r":"M"}'
+
+        turn_obj = run_brain_turn(
+            "너 무슨 노래 연주할 수 있니?",
+            {
+                "state": 0,
+                "is_fixed": True,
+                "current_song": "None",
+                "progress": "0/1",
+                "last_action": "None",
+                "is_lock_key_removed": False,
+                "error_message": "None",
+                "current_angles": {"waist": 0.0},
+            },
+        )
+
+        mock_call.assert_called_once()
+        self.assertEqual(turn_obj.classifier_result["intent"], "chat")
+        self.assertFalse(turn_obj.classifier_result["needs_motion"])
+        self.assertEqual(turn_obj.planner_domain, "chat")
+        self.assertEqual(turn_obj.planner_input_json, "")
+        self.assertEqual(turn_obj.planner_raw_response_text, "")
+        self.assertEqual(turn_obj.validated_plan.valid_op_cmds, [])
+        self.assertIn("This Is Me", turn_obj.validated_plan.speech)
+        self.assertIn("Test Beat", turn_obj.validated_plan.speech)
+        self.assertIn("그대에게", turn_obj.validated_plan.speech)
+        self.assertIn("Baby I Need You", turn_obj.validated_plan.speech)
+
+    @patch("phil_robot.pipeline.brain_pipeline.call_json_llm")
+    def test_run_brain_turn_shortcuts_identity_confirmation_negative(self, mock_call) -> None:
+        mock_call.return_value = '{"i":"C","m":1,"d":1,"r":"M"}'
+
+        turn_obj = run_brain_turn(
+            "너의 이름은 모펫이니?",
+            {
+                "state": 0,
+                "is_fixed": True,
+                "current_song": "None",
+                "progress": "0/1",
+                "last_action": "None",
+                "is_lock_key_removed": True,
+                "error_message": "None",
+                "current_angles": {"waist": 0.0},
+            },
+        )
+
+        mock_call.assert_called_once()
+        self.assertEqual(turn_obj.classifier_result["intent"], "motion_request")
+        self.assertEqual(turn_obj.planner_domain, "motion")
+        self.assertEqual(turn_obj.planner_input_json, "")
+        self.assertEqual(turn_obj.planner_raw_response_text, "")
+        self.assertEqual(turn_obj.validated_plan.valid_op_cmds, ["gesture:shake"])
+        self.assertEqual(turn_obj.validated_plan.speech, "아니요, 제 이름은 필이에요.")
+
+    @patch("phil_robot.pipeline.brain_pipeline.call_json_llm")
+    def test_run_brain_turn_shortcuts_wave_then_play_song(self, mock_call) -> None:
+        mock_call.return_value = '{"i":"M","m":1,"d":1,"r":"M"}'
+
+        turn_obj = run_brain_turn(
+            "손흔들고 This Is Me 연주해줘.",
+            {
+                "state": 0,
+                "is_fixed": True,
+                "current_song": "None",
+                "progress": "0/1",
+                "last_action": "None",
+                "is_lock_key_removed": True,
+                "error_message": "None",
+                "current_angles": {"waist": 0.0, "R_wrist": 20.0, "L_wrist": 20.0},
+            },
+        )
+
+        mock_call.assert_called_once()
+        self.assertEqual(turn_obj.classifier_result["intent"], "play_request")
+        self.assertEqual(turn_obj.planner_domain, "play")
+        self.assertEqual(turn_obj.planner_input_json, "")
+        self.assertEqual(turn_obj.planner_raw_response_text, "")
+        self.assertEqual(turn_obj.validated_plan.valid_op_cmds, ["gesture:wave", "r", "p:TIM"])
+        self.assertIn("This Is Me", turn_obj.validated_plan.speech)
+
     def test_smoke_latency_summary_uses_json_fixture_metrics(self) -> None:
         row_list = [
             {
@@ -217,6 +411,139 @@ class PlannerBenchmarkTest(unittest.TestCase):
         self.assertEqual(sum_obj["median_planner_sec"], 3.0)
         self.assertEqual(sum_obj["p95_planner_sec"], 4.0)
         self.assertEqual(sum_obj["slowest_case"], "case_b")
+
+    def test_run_eval_summary_includes_avg_median_p95(self) -> None:
+        row_list = [
+            {
+                "id": "case_a",
+                "passed": True,
+                "checks": [{"name": "classifier.intent", "passed": True}],
+                "durations_sec": {
+                    "classifier": 0.5,
+                    "planner": 2.0,
+                    "total": 2.5,
+                },
+            },
+            {
+                "id": "case_b",
+                "passed": False,
+                "checks": [{"name": "classifier.intent", "passed": False}],
+                "durations_sec": {
+                    "classifier": 0.7,
+                    "planner": 4.0,
+                    "total": 4.7,
+                },
+            },
+        ]
+
+        sum_obj = run_eval.summarize_results(row_list)
+
+        self.assertEqual(sum_obj["latency_summary"]["classifier"]["avg_sec"], 0.6)
+        self.assertEqual(sum_obj["latency_summary"]["classifier"]["median_sec"], 0.6)
+        self.assertEqual(sum_obj["latency_summary"]["classifier"]["p95_sec"], 0.7)
+        self.assertEqual(sum_obj["latency_summary"]["planner"]["avg_sec"], 3.0)
+        self.assertEqual(sum_obj["latency_summary"]["planner"]["median_sec"], 3.0)
+        self.assertEqual(sum_obj["latency_summary"]["planner"]["p95_sec"], 4.0)
+        self.assertEqual(sum_obj["latency_summary"]["total"]["slowest_case"], "case_b")
+
+    def test_build_doc_path_maps_report_into_eval_docs(self) -> None:
+        json_path = os.path.join(run_eval.CURRENT_DIR, "reports", "smoke_report_test.json")
+        md_path = run_eval.build_doc_path(json_path)
+
+        self.assertEqual(
+            md_path,
+            os.path.join(run_eval.CURRENT_DIR, "eval_docs", "reports", "smoke_report_test.md"),
+        )
+
+    def test_save_report_md_includes_pass_fail_and_actual_speech(self) -> None:
+        row_list = [
+            {
+                "id": "pass_case",
+                "user_text": "안녕",
+                "passed": True,
+                "checks": [{"name": "classifier.intent", "passed": True}],
+                "failed_checks": [],
+                "actual": {
+                    "valid_op_cmds": [],
+                    "speech": "안녕하세요!",
+                    "planner_is_fallback": False,
+                },
+                "durations_sec": {
+                    "classifier": 0.4,
+                    "planner": 1.0,
+                    "total": 1.4,
+                },
+            },
+            {
+                "id": "fail_case",
+                "user_text": "고개 끄덕여봐",
+                "passed": False,
+                "checks": [{"name": "validator.valid_op_cmds_exact", "passed": False}],
+                "failed_checks": [
+                    {
+                        "name": "validator.valid_op_cmds_exact",
+                        "expected": [],
+                        "actual": ["gesture:nod"],
+                    }
+                ],
+                "actual": {
+                    "valid_op_cmds": ["gesture:nod"],
+                    "speech": "지금은 연주 중입니다.",
+                    "planner_is_fallback": False,
+                },
+                "durations_sec": {
+                    "classifier": 0.6,
+                    "planner": 1.8,
+                    "total": 2.4,
+                },
+            },
+        ]
+        sum_obj = run_eval.summarize_results(row_list)
+        meta_obj = {
+            "generated_at": "2026-04-06T14:28:00+09:00",
+            "suite": "smoke",
+            "cases_path": "/tmp/cases_smoke.json",
+            "classifier_model": "clf:test",
+            "planner_model": "plan:test",
+            "capture_llm_metrics": False,
+        }
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            json_path = os.path.join(tmp_dir, "reports", "smoke_report_test.json")
+            run_eval.save_report(json_path, row_list, sum_obj, meta_obj)
+            md_path = run_eval.save_report_md(json_path)
+            self.assertTrue(os.path.exists(md_path))
+
+            with open(md_path, "r", encoding="utf-8") as file:
+                md_text = file.read()
+
+        self.assertIn("총 2건 중 1건 통과, 1건 실패", md_text)
+        self.assertIn("통과한 케이스", md_text)
+        self.assertIn("pass_case", md_text)
+        self.assertIn("fail_case", md_text)
+        self.assertIn("안녕하세요!", md_text)
+        self.assertIn("지금은 연주 중입니다.", md_text)
+        self.assertIn("바로 고쳐야 할 항목", md_text)
+        self.assertIn("1/2 (50.0%)", md_text)
+        self.assertIn("p95", md_text)
+
+    def test_evaluate_actual_supports_speech_contains_all(self) -> None:
+        checks, failed_checks, passed = run_eval.evaluate_actual(
+            {"speech_contains_all": ["30도", "1초", "10도"]},
+            {
+                "intent": None,
+                "needs_motion": None,
+                "needs_dialogue": None,
+                "planner_domain": None,
+                "skills": [],
+                "valid_op_cmds": [],
+                "speech": "손목을 30도 내리고 1초 후에 10도 더 내립니다.",
+            },
+        )
+
+        self.assertTrue(passed)
+        self.assertEqual(len(failed_checks), 0)
+        self.assertEqual(checks[0]["name"], "e2e.speech_contains_all")
 
     def test_latency_isolation_case_summary_tracks_variability(self) -> None:
         run_list = [

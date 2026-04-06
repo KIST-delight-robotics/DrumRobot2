@@ -8,6 +8,10 @@
 - planner benchmark 는 `JSON production path`만 사용합니다.
 - `legacy_str` 대 `json` 비교 스크립트는 과거 형식 비교 실험용이며, planner 모델 후보 선정용 benchmark 에서는 사용하지 않습니다.
 
+현재 기본 case suite:
+- `smoke`: 기본 인사/동작/연주/차단 확인
+- `scenario` / `scenario_eval`: TODO 예시 + 실제 운영 복합 시나리오 묶음
+
 ## 목적
 이 디렉토리는 `phil_robot`의 Python LLM 제어 스택을 위한 오프라인 평가 파이프라인을 담고 있습니다.
 
@@ -96,6 +100,18 @@
 /home/shy/miniforge3/envs/drum4/bin/python phil_robot/eval/run_eval.py --suite smoke
 ```
 
+scenario eval 을 돌리려면:
+
+```bash
+/home/shy/miniforge3/envs/drum4/bin/python phil_robot/eval/run_eval.py --suite scenario
+```
+
+짧은 별칭도 사용할 수 있습니다:
+
+```bash
+/home/shy/miniforge3/envs/drum4/bin/python phil_robot/eval/run_eval.py --scenario
+```
+
 `config.py`를 바꾸지 않고 모델만 임시 override 하려면:
 
 ```bash
@@ -111,10 +127,22 @@
 /home/shy/miniforge3/envs/drum4/bin/python phil_robot/eval/run_eval.py --cases phil_robot/eval/cases_smoke.json
 ```
 
+scenario eval 파일을 직접 지정하려면:
+
+```bash
+/home/shy/miniforge3/envs/drum4/bin/python phil_robot/eval/run_eval.py --cases phil_robot/eval/cases_scenario_eval.json
+```
+
 `~/robot_project/phil_robot/eval` 안에 들어와 있다면:
 
 ```bash
 python run_eval.py --suite smoke
+```
+
+scenario eval 은 이렇게 돌릴 수 있습니다:
+
+```bash
+python run_eval.py --scenario
 ```
 
 ## 출력
@@ -123,7 +151,7 @@ python run_eval.py --suite smoke
 - 레이어별 mismatch 상세
 - 전체 pass 집계
 
-JSON 리포트로 저장할 수도 있습니다.
+리포트를 저장하면 JSON과 대응 Markdown이 함께 생성됩니다.
 
 ```bash
 /home/shy/miniforge3/envs/drum4/bin/python phil_robot/eval/run_eval.py \
@@ -135,6 +163,13 @@ JSON 리포트로 저장할 수도 있습니다.
 
 ```bash
 python run_eval.py --suite smoke --report reports/smoke_report_q3-4b-q4km_q3-30b-a3b-q4km.json
+```
+
+위처럼 저장하면 아래 두 파일이 짝으로 생깁니다.
+
+```text
+phil_robot/eval/reports/<name>.json
+phil_robot/eval/eval_docs/reports/<name>.md
 ```
 
 표준 파일명 규칙으로 자동 저장하려면 `--save-report`를 사용합니다.
@@ -216,6 +251,12 @@ smoke_report_q3-4b-q4km_q3-30b-a3b-q4km_20260317_1530_2.json
 - `planner_model`
 
 이 정보로 나중에 어떤 모델 조합과 어떤 케이스 파일로 측정했는지 추적할 수 있습니다.
+
+대응 Markdown 리포트에는 아래 내용이 함께 정리됩니다.
+- 총 몇 건 중 몇 건 통과했는지
+- 통과한 케이스 / 실패한 케이스
+- 평균 / 중앙값 / p95 지연 시간
+- 각 케이스의 실제 최종 발화와 남은 명령
 
 ## 기존 리포트 파일에 대한 참고
 현재 `reports/` 안에 있는 기존 `smoke_report*.json` 파일 중 일부는

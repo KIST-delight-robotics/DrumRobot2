@@ -3,10 +3,10 @@ import re
 
 try:
     from .failure import build_classifier_failure_result
-    from .state_adapter import build_classifier_state_summary, detect_joint_angle_query
+    from .state_adapter import build_classifier_state_summary, detect_joint_angle_query, detect_repertoire_query
 except (ImportError, ValueError):
     from pipeline.failure import build_classifier_failure_result
-    from pipeline.state_adapter import build_classifier_state_summary, detect_joint_angle_query
+    from pipeline.state_adapter import build_classifier_state_summary, detect_joint_angle_query, detect_repertoire_query
 
 try:
     from ..config import CLASSIFIER_MODEL
@@ -30,6 +30,10 @@ RISK_CODE_MAP = {
     "H": "high",
 }
 IDENTITY_CHAT_KEYWORDS = ["이름", "누구", "정체", "자기소개"]
+IDENTITY_CONFIRMATION_PATTERNS = [
+    re.compile(r"맞(?:지|죠|니|나요)\s*[?!.\s]*$"),
+    re.compile(r"(?:이니|인가|인가요)\s*[?!.\s]*$"),
+]
 PLAY_ACTION_KEYWORDS = [
     "연주",
     "재생",
@@ -49,6 +53,17 @@ PLAY_SONG_KEYWORDS = [
     "ty_short",
     "bi",
 ]
+READY_POSE_TEXTS = {
+    "준비",
+    "준비해",
+    "준비해줘",
+    "준비해주세요",
+    "준비자세",
+    "준비자세해",
+    "준비자세해줘",
+    "준비자세로가",
+    "준비자세로가줘",
+}
 MOTION_CHAT_KEYWORDS = [
     "손",
     "팔",
@@ -109,6 +124,9 @@ CLASSIFIER_SYSTEM_PROMPT = """당신은 로봇 에이전트의 1차 intent class
 - 물리 동작이 필요하면 m=1
 - 사용자에게 말로 응답해야 하면 d=1
 - 안전/상태 제약이 강하게 얽히거나 물리 동작이면 r 을 낮게 잡지 말고 최소 M 이상을 고려한다.
+- "준비", "준비 자세"처럼 짧은 자세 전환 명령은 motion_request 로 보고 m=1 로 둔다.
+- "무슨 노래 연주할 수 있니?", "연주할 수 있는 곡이 뭐야?" 같은 곡 목록/레퍼토리 질문은 play_request 가 아니라 chat 로 보고 m=0 으로 둔다.
+- 이름/정체를 확인하면서 "맞지?", "~이니?"처럼 예/아니오를 몸으로 같이 보여줘야 하는 질문은 motion_request 로 보고 m=1 로 둔다.
 """
 
 
@@ -258,7 +276,26 @@ def normalize_intent_result(intent_result, user_text):
         result["risk_level"] = "low"
         return result
 
-    if any(keyword in normalized_text for keyword in IDENTITY_CHAT_KEYWORDS):
+    if detect_repertoire_query(normalized_text):
+        result["intent"] = "chat"
+        result["needs_motion"] = False
+        result["needs_dialogue"] = True
+        result["risk_level"] = "low"
+        return result
+
+    if looks_like_ready_pose_request(normalized_text):
+        result["intent"] = "motion_request"
+        result["needs_motion"] = True
+        result["needs_dialogue"] = True
+        if result.get("risk_level") == "low":
+            result["risk_level"] = "medium"
+    elif looks_like_identity_confirmation_motion(normalized_text):
+        result["intent"] = "motion_request"
+        result["needs_motion"] = True
+        result["needs_dialogue"] = True
+        if result.get("risk_level") == "low":
+            result["risk_level"] = "medium"
+    elif any(keyword in normalized_text for keyword in IDENTITY_CHAT_KEYWORDS):
         result["intent"] = "chat"
         result["needs_motion"] = False
         result["needs_dialogue"] = True
@@ -322,3 +359,20 @@ def is_ambiguous_follow_up(user_text):
     normalized_text = (user_text or "").strip()
     condensed_text = re.sub(r"[\s\?\!\.\,~]+", "", normalized_text)
     return condensed_text in AMBIGUOUS_FOLLOW_UPS
+
+
+def looks_like_identity_confirmation_motion(user_text):
+    normalized_text = (user_text or "").strip()
+    if not normalized_text:
+        return False
+
+    if not any(keyword in normalized_text for keyword in IDENTITY_CHAT_KEYWORDS):
+        return False
+
+    return any(pattern.search(normalized_text) for pattern in IDENTITY_CONFIRMATION_PATTERNS)
+
+
+def looks_like_ready_pose_request(user_text):
+    normalized_text = (user_text or "").strip()
+    condensed_text = re.sub(r"[\s\?\!\.\,~]+", "", normalized_text)
+    return condensed_text in READY_POSE_TEXTS
