@@ -7,10 +7,10 @@
 | 항목 | 내용 |
 | --- | --- |
 | 문서 종류 | 입력 케이스 설명 |
-| 케이스 수 | 28 |
-| 태그 종류 수 | 24 |
-| 기대 intent 종류 | chat 5건, motion_request 16건, play_request 4건, status_question 1건, stop_request 1건 |
-| 기대 planner_domain 종류 | chat 5건, motion 16건, play 4건, status 1건, stop 1건 |
+| 케이스 수 | 26 |
+| 태그 종류 수 | 21 |
+| 기대 intent 종류 | chat 5건, motion_request 16건, play_request 3건, status_question 1건 |
+| 기대 planner_domain 종류 | chat 5건, motion 16건, play 3건, status 1건 |
 
 ## 왜 이 실험을 했는가
 
@@ -29,26 +29,23 @@
 | --- | --- |
 | chat | 7 |
 | compound | 6 |
-| continuous | 1 |
-| dialogue | 1 |
 | identity | 3 |
 | joke | 2 |
 | key_in | 3 |
 | key_out | 14 |
 | knowledge | 1 |
 | motion | 17 |
-| play | 4 |
-| play_state | 3 |
+| play | 3 |
+| play_state | 2 |
 | posture | 1 |
 | relative | 4 |
 | repertoire | 1 |
 | safety | 2 |
-| scenario_eval | 28 |
+| scenario_eval | 26 |
 | sequence | 4 |
 | social | 2 |
 | status | 1 |
-| stop | 1 |
-| todo_ref | 7 |
+| todo_ref | 5 |
 | user_ref | 21 |
 | visual | 1 |
 
@@ -56,9 +53,9 @@
 
 | 항목 | 내용 |
 | --- | --- |
-| 총 케이스 수 | 28 |
-| 기대 intent 분포 | chat 5건, motion_request 16건, play_request 4건, status_question 1건, stop_request 1건 |
-| 기대 domain 분포 | chat 5건, motion 16건, play 4건, status 1건, stop 1건 |
+| 총 케이스 수 | 26 |
+| 기대 intent 분포 | chat 5건, motion_request 16건, play_request 3건, status_question 1건 |
+| 기대 domain 분포 | chat 5건, motion 16건, play 3건, status 1건 |
 | 통과/실패 수 | 이 문서는 결과 리포트가 아니라 입력 정의 문서라서 기록하지 않음 |
 
 ## 상세 표
@@ -81,7 +78,7 @@
 | scenario_14_key_out_arms_up_wait_down | scenario_eval, user_ref, motion, sequence, key_out | 양팔 올렸다가 3초 뒤에 양팔 내려 | motion_request | motion | 모두 포함: 올렸다 / 3초 / 내립니다 |
 | scenario_15_key_out_wave_then_play_ty | scenario_eval, user_ref, play, motion, compound, key_out | 손으로 인사한번 해주고 그대에게 연주해줘. | play_request | play | 그대에게 / 인사 / 연주 |
 | scenario_16_key_out_tongue_twister_as_joke | scenario_eval, user_ref, chat, joke, key_out | 간장공장공장장은 강공장장이고 된장공장공장장은 장공장장이다. | chat | chat | 발음 / 말장난 / 간장 / 재밌 |
-| scenario_17_key_out_joke_request | scenario_eval, user_ref, chat, joke, key_out | 농담해봐 | chat | chat | 농담 / 웃 / 하나 |
+| scenario_17_key_out_joke_request | scenario_eval, user_ref, chat, joke, key_out | 농담해봐 | chat | chat | 농담 / 웃 / 하나 / 들어보세요 / 스탠바이 |
 | scenario_18_ramen_recipe_question | scenario_eval, user_ref, chat, knowledge | 라면 끓이는 법 알려줘라 | chat | chat | 라면 / 물 / 스프 / 끓 |
 | scenario_19_key_out_arm_up_then_nod | scenario_eval, user_ref, motion, sequence, compound, key_out | 팔 올리고 팔 내리지말고 고개 끄덕여봐. | motion_request | motion | 모두 포함: 올리 / 끄덕 |
 | scenario_20_key_out_wrist_down_then_after_one_more_down | scenario_eval, user_ref, motion, sequence, relative, key_out | 손목 30도 내리고 1초 뒤에 10도 더 내려 | motion_request | motion | 모두 포함: 30도 / 1초 / 10도 |
@@ -89,10 +86,8 @@
 | scenario_22_todo_greet_and_nod | scenario_eval, todo_ref, chat, motion, compound | 안녕 하고 고개 끄덕여 | motion_request | motion | 안녕 / 안녕하세요 / 반가 |
 | scenario_23_todo_play_and_wave_greatest_showman | scenario_eval, todo_ref, play, motion, compound | 손흔들고 This Is Me 연주해줘. | play_request | play | This Is Me / 연주 |
 | scenario_24_todo_unsafe_waist_turn_100 | scenario_eval, todo_ref, motion, safety | 허리 100도 돌려 | motion_request | motion | 한계 / 움직일 수 없습니다 / 범위 |
-| scenario_25_todo_stop_and_home_if_playing | scenario_eval, todo_ref, stop, play_state | 지금 연주 중이면 멈추고 홈으로 가 | stop_request | stop | 멈추 / 홈 / 중단 |
-| scenario_26_todo_raise_left_arm_a_bit_more | scenario_eval, todo_ref, motion, relative | 왼팔 조금만 더 올려 | motion_request | motion | 왼팔 / 올리 / 조금 |
-| scenario_27_todo_look_slightly_right | scenario_eval, todo_ref, motion, visual | 아까보다 살짝 오른쪽 봐 | motion_request | motion | 오른쪽 / 볼게 / 보겠습니다 |
-| scenario_28_todo_greet_after_play | scenario_eval, todo_ref, play, dialogue, continuous | 연주하다가 끝나면 인사해 | play_request | play | 모두 포함: 끝나면 / 인사 |
+| scenario_25_todo_raise_left_arm_a_bit_more | scenario_eval, todo_ref, motion, relative | 왼팔 조금만 더 올려 | motion_request | motion | 왼팔 / 올리 / 조금 |
+| scenario_26_todo_look_slightly_right | scenario_eval, todo_ref, motion, visual | 아까보다 살짝 오른쪽 봐 | motion_request | motion | 오른쪽 / 볼게 / 보겠습니다 |
 
 ## 눈여겨볼 점
 

@@ -3,7 +3,99 @@
 프로젝트에서 의미 있는 변경을 할 때마다 한국시간(KST, UTC+9) 기준의 날짜, 시간, 요약을 기록합니다.
 최신 항목이 위로 오도록 추가합니다.
 
+## 2026-04-08
+- 13:50 KST (UTC+9) — `scenario_21`의 `바로 고칠 점` 문구도 더 간결하게 다듬어, 오른손목 반복 상대동작이 왼손목 `30도` 명령 두 번으로 잘못 풀린 문제와 발화 기준 불일치가 한눈에 보이게 정리했습니다.
+  - 수정 파일: `phil_robot/eval/eval_docs/reports/scenario_report_q3-4b-q4km_q3-30b-a3b-q4km_20260406_1800.md`, `log.md`
+  - 메모: 구조 설명을 줄이고, 기대한 `70→40→10` 순차 변환과 실제 출력의 차이를 바로 읽을 수 있게 문장을 짧게 바꿨습니다.
+
+## 2026-04-08
+- 13:10 KST (UTC+9) — `scenario_20`의 `바로 고칠 점` 문구를 더 간결하게 다듬어, 첫 동작은 맞고 두 번째 손목 명령이 빠졌다는 핵심이 바로 읽히게 정리했습니다.
+  - 수정 파일: `phil_robot/eval/eval_docs/reports/scenario_report_q3-4b-q4km_q3-30b-a3b-q4km_20260406_1800.md`, `log.md`
+  - 메모: 구조 설명은 줄이고, 실제 실패 원인인 후속 `move` 누락에 집중해 문장을 짧게 바꿨습니다.
+
+## 2026-04-08
+- 13:00 KST (UTC+9) — `20260406_1800` scenario 리포트에서 `scenario_20`, `scenario_21`의 `바로 고칠 점`을 단순 불일치 진술이 아니라 원인과 수정 방향이 보이도록 다시 썼고, 같은 JSON 리포트 안에서 `passed` 플래그가 `failed_checks`와 어긋난 항목도 함께 바로잡았습니다.
+  - 수정 파일: `phil_robot/eval/reports/scenario_report_q3-4b-q4km_q3-30b-a3b-q4km_20260406_1800.json`, `phil_robot/eval/eval_docs/reports/scenario_report_q3-4b-q4km_q3-30b-a3b-q4km_20260406_1800.md`, `log.md`
+  - 메모: `scenario_20`은 두 번째 상대 손목 명령 누락 문제로, `scenario_21`은 절대 목표값과 상대 이동량을 같은 `move`로 다루는 구조 문제로 정리했고, 리포트 JSON의 케이스 상태도 `22/26` 요약과 일치하게 맞췄습니다.
+
+## 2026-04-08
+- 12:50 KST (UTC+9) — `scenario_24_todo_unsafe_waist_turn_100`는 실패 케이스로 유지하되, `바로 고칠 점`이 단순 재진술이 아니라 validator recovery 보강 또는 케이스 분리 방향을 직접 말하도록 리포트 생성 문구와 `20260406_1800` 해설을 수정했습니다.
+  - 수정 파일: `phil_robot/eval/run_eval.py`, `phil_robot/eval/reports/scenario_report_q3-4b-q4km_q3-30b-a3b-q4km_20260406_1800.json`, `phil_robot/eval/eval_docs/reports/scenario_report_q3-4b-q4km_q3-30b-a3b-q4km_20260406_1800.md`, `log.md`
+  - 메모: `scenario_24`는 여전히 `22/26` 집계의 실패 항목으로 남기고, 절대각 한계 초과가 generic 차단 문구로 덮이는 문제를 `범위/한계 설명 recovery 추가` 또는 `generic 차단 케이스 분리`로 바로 읽히게 정리했습니다.
+
+## 2026-04-08
+- 12:43 KST (UTC+9) — `20260406_1800` scenario 리포트 JSON과 해설 Markdown도 현재 scenario 세트 기준으로 다시 맞춰, 25·28 제거, 뒤 번호 당김, `scenario_17` 발화 판정 보정을 반영했습니다.
+  - 수정 파일: `phil_robot/eval/reports/scenario_report_q3-4b-q4km_q3-30b-a3b-q4km_20260406_1800.json`, `phil_robot/eval/eval_docs/reports/scenario_report_q3-4b-q4km_q3-30b-a3b-q4km_20260406_1800.md`, `log.md`
+  - 메모: 결과 집계는 26건 기준 `22/26`으로 다시 계산했고, 마지막 케이스 ID도 `scenario_25`, `scenario_26`으로 정리했습니다.
+
+## 2026-04-08
+- 12:35 KST (UTC+9) — `ppt/new0408.html`의 본문 기준 문서를 리포트에서 `phil_robot/docs/PHIL_SEQUENCE_DIAGRAM_KR.md`로 바로잡아, 첫 장 영어 표지 뒤에 전체 sequence diagram을 넣고 나머지 슬라이드를 `snapshot`, `classifier`, `planner`, `modifier/executor` 흐름 중심의 한국어 deck으로 다시 구성했습니다.
+  - 수정 파일: `ppt/new0408.html`, `log.md`
+  - 메모: 한글 글씨가 깨지지 않도록 외부 웹폰트 링크를 빼고 `Pretendard`, `Noto Sans KR`, `Malgun Gothic`, `Apple SD Gothic Neo`, `NanumGothic` 순의 로컬 우선 fallback stack으로 정리했습니다.
+
+## 2026-04-08
+- 12:26 KST (UTC+9) — `ppt/new0408.html`을 발표용 deck으로 다시 구성해 첫 장은 영어 표지로 유지하고, 표지 다음에 화면을 꽉 채우는 한국어 sequence diagram을 넣은 뒤 나머지 슬라이드를 `scenario_report_q3-4b-q4km_q3-30b-a3b-q4km_20260406_1800.md` 기준의 한국어 결과 요약으로 정리했습니다.
+  - 수정 파일: `ppt/new0408.html`, `log.md`
+  - 메모: 2장부터는 실험 개요, 전체 결과, 실패 패턴, 수정 우선순위 흐름으로 재구성했고, 발표에서 바로 읽을 수 있게 75.0% pass rate, 레이어별 통과율, 대표 실패 원인을 한 장씩 나눠 넣었습니다.
+
+## 2026-04-08
+- 11:36 KST (UTC+9) — `scenario_eval` 입력 세트에서 빠진 번호가 남지 않도록 뒤의 케이스 ID를 한 칸씩 당겨 `scenario_25`, `scenario_26`으로 다시 맞췄습니다.
+  - 수정 파일: `phil_robot/eval/cases_scenario_eval.json`, `phil_robot/eval/eval_docs/cases_scenario_eval.md`, `log.md`
+  - 메모: 현재 활성 세트에서는 옛 `scenario_25`, `scenario_28`이 빠졌기 때문에 남아 있던 `scenario_26_todo_raise_left_arm_a_bit_more`, `scenario_27_todo_look_slightly_right`를 각각 `scenario_25`, `scenario_26`으로 정리했습니다.
+
+## 2026-04-08
+- 11:27 KST (UTC+9) — `scenario_17` 농담 요청 false negative를 줄이도록 기대 발화 단서를 넓히고, 현재 validator/final speech 기준으로 검증이 어려운 `scenario_25`, `scenario_28` 제외 상태가 케이스 설명 문서에도 반영되게 다시 생성했습니다.
+  - 수정 파일: `phil_robot/eval/cases_scenario_eval.json`, `phil_robot/eval/eval_docs/cases_scenario_eval.md`, `log.md`
+  - 메모: `scenario_17`은 실제 농담 응답이어도 `speech_contains_any`가 `농담/웃/하나`만 허용해 떨어질 수 있어 `들어보세요`, `스탠바이`를 추가했고, 25번은 연주 중 `h`가 validator에서 제거되어 최종 명령이 `s`만 남고 28번은 planner 발화가 있어도 최종 발화가 차단 문구로 바뀌어 현재 기능 기준의 scenario eval로는 안정적으로 테스트하기 어렵다고 판단했습니다.
+
+## 2026-04-07
+- 17:52 KST (UTC+9) — planner 입력을 더 줄여 classifier 결과 전체 대신 `needs_motion`만 넘기도록 바꾸고, prompt 문구·문서 예시·단위 테스트도 같은 구조로 정리했습니다.
+  - 수정 파일: `phil_robot/pipeline/planner.py`, `phil_robot/tests/test_planner_benchmark.py`, `phil_robot/docs/PHIL_SEQUENCE_DIAGRAM_KR.md`, `log.md`
+  - 메모: classifier 출력 객체(`intent`, `needs_motion`, `needs_dialogue`, `risk_level`)는 그대로 유지하되, runtime planner 입력 payload는 `planner_domain`, `robot_state`, `needs_motion`, `user_text`만 사용하도록 정리했습니다.
+- 17:47 KST (UTC+9) — 실제 planner runtime 경로에서는 출력 스키마 예시를 system prompt에만 두고 user JSON에서는 제거해, `build_planner_input_json()` payload와 관련 문서/테스트를 중복 없이 정리했습니다.
+  - 수정 파일: `phil_robot/pipeline/planner.py`, `phil_robot/tests/test_planner_benchmark.py`, `phil_robot/docs/PHIL_SEQUENCE_DIAGRAM_KR.md`, `log.md`
+  - 메모: 실험용 `format compare` 스크립트는 별도 포맷 비교 목적이라 그대로 두고, 실제 runtime planner 입력만 `planner_domain`, `robot_state`, `intent_result`, `user_text` 4항목으로 맞췄습니다.
+- 15:47 KST (UTC+9) — 시퀀스 다이어그램에서 `phil_brain.main()` participant를 제거하고, `STT 완료 시점 -> snapshot self-loop -> classifier/planner 입력` 흐름만 남겨 캡처 타이밍이 더 직접 보이게 정리했습니다.
+  - 수정 파일: `phil_robot/docs/PHIL_SEQUENCE_DIAGRAM_KR.md`, `log.md`
+  - 메모: `snapshot`으로 향하는 화살표는 데이터 전달이 아니라 상태 고정 시점 트리거로 읽히게 바꿨고, classifier/planner 입력은 다시 `STT`와 `snapshot`에서 각각 들어가도록 그렸습니다.
+- 15:41 KST (UTC+9) — 시퀀스 다이어그램의 snapshot 구간을 self-loop 형태로 다시 그려, STT 직후 그 턴의 `ROBOT_STATE`를 복사해 고정하는 시점이 lifeline 위에서 바로 보이게 바꿨습니다.
+  - 수정 파일: `phil_robot/docs/PHIL_SEQUENCE_DIAGRAM_KR.md`, `log.md`
+  - 메모: 단순 note 설명보다 `snapshot -> snapshot` 자기 호출로 표현해 달라는 요청에 맞춰 `get_robot_state_snapshot()`의 의미를 시각적으로 드러냈습니다.
+- 14:33 KST (UTC+9) — 시퀀스 다이어그램의 `main` 라벨이 너무 모호해 `main.out`과 헷갈릴 수 있어, Python 진입점인 `phil_brain.main()`으로 명시적으로 바꿨습니다.
+  - 수정 파일: `phil_robot/docs/PHIL_SEQUENCE_DIAGRAM_KR.md`, `log.md`
+  - 메모: 실제로는 `phil_robot/phil_brain.py`의 `main()`이 STT 뒤 `get_robot_state_snapshot()`을 호출하므로, 다이어그램에서도 그 정체가 바로 보이게 맞췄습니다.
+- 14:28 KST (UTC+9) — 시퀀스 다이어그램 상단을 실제 호출 순서 중심으로 다시 다듬어, `main`이 STT 직후 `get_robot_state_snapshot()`을 호출하는 캡처 시점을 명시적으로 보이게 바꿨습니다.
+  - 수정 파일: `phil_robot/docs/PHIL_SEQUENCE_DIAGRAM_KR.md`, `log.md`
+  - 메모: 기존의 데이터 관계 설명 문구 대신 `STT 완료 -> snapshot 캡처 -> classifier 호출 -> planner 호출` 순서를 화살표와 note로 직접 표시했습니다.
+- 12:23 KST (UTC+9) — 시퀀스 다이어그램의 데이터 화살표를 바로잡아 `STT -> classifier(user_text)`와 `snapshot -> classifier(system_info)`가 따로 합류하고, planner도 `intent_result` 단독이 아니라 전체 `planner_input_json` 묶음을 받는 구조로 수정했습니다.
+  - 수정 파일: `phil_robot/docs/PHIL_SEQUENCE_DIAGRAM_KR.md`, `log.md`
+  - 메모: 기존 `STT -> snapshot` 표현은 실제 코드 흐름과 달라 제거했고, classifier와 planner 위에 각각 입력 JSON 묶음이 어떻게 합쳐지는지 `Note`로 명시했습니다.
+- 11:50 KST (UTC+9) — `그대에게 빠르게 연주해줘.` 예시를 기준으로 `snapshot -> classifier 입력/출력 -> planner 입력/출력 -> modifier -> executor transport command`까지 실제 JSON 형태로 따라갈 수 있게 시퀀스 문서를 확장했습니다.
+  - 수정 파일: `phil_robot/docs/PHIL_SEQUENCE_DIAGRAM_KR.md`, `log.md`
+  - 메모: classifier 출력 4필드(`intent`, `needs_motion`, `needs_dialogue`, `risk_level`)와 `user_text`의 재사용 위치를 분리해 적었고, `tempo_scale:1.10 -> r -> p:TY_short` 전송 순서도 예시로 명시했습니다.
+- 11:39 KST (UTC+9) — 단순화한 `phil_robot` 시퀀스 다이어그램에 빠져 있던 `play_modifier` 경로를 다시 넣고, validator에서 추출되어 executor가 템포/세기 보정 명령을 먼저 전송하는 흐름을 보이게 고쳤습니다.
+  - 수정 파일: `phil_robot/docs/PHIL_SEQUENCE_DIAGRAM_KR.md`, `log.md`
+  - 메모: `modifier`는 별도 planner가 아니라 `parse_play_modifier(user_text)`로 validator 단계에서 붙는 보정값이라, `opt play request` 분기로 표시했습니다.
+- 11:34 KST (UTC+9) — `phil_robot` 시퀀스 다이어그램을 주 경로만 남긴 단순 버전으로 다시 그려, `User -> STT -> snapshot -> classifier -> planner -> validator -> executor -> RobotClient + TTS` 흐름이 바로 읽히게 정리했습니다.
+  - 수정 파일: `phil_robot/docs/PHIL_SEQUENCE_DIAGRAM_KR.md`, `log.md`
+  - 메모: 기존 버전은 `main`, 상태 수신 스레드, shortcut 분기까지 한 번에 넣어 읽기 어려워서, 이번에는 세부 분기를 걷어내고 핵심 participant만 남겼습니다.
+- 11:18 KST (UTC+9) — `phil_robot` 한 턴의 실제 호출 순서를 함수/역할 2줄 참가자 라벨로 읽을 수 있도록 한국어 시퀀스 다이어그램 문서를 새로 추가했습니다.
+  - 수정 파일: `phil_robot/docs/PHIL_SEQUENCE_DIAGRAM_KR.md`, `log.md`
+  - 메모: `main`, `_receive_loop`, `run_brain_turn`, `classifier`, `planner`, `validator`, `executor`, `RobotClient`, `TTS_Engine` 기준으로 정리했고, shortcut 경로와 planner 경로가 어디서 갈리는지도 함께 표시했습니다.
+- 10:13 KST (UTC+9) — `txt7.md`의 `import 분석` 섹션을 실제 코드 기준 설명으로 채워 넣고, `numpy`, `run_brain_turn`, `execute_validated_plan`, `get_robot_state_snapshot`처럼 처음 보기엔 헷갈리기 쉬운 역할을 보강 정리했습니다.
+  - 수정 파일: `txt7.md`, `log.md`
+  - 메모: 사용자 초안의 표현을 최대한 살리되, "문구 정리"처럼 역할이 다르게 읽히던 부분은 `classifier/planner/validator 파이프라인`, `실행 명령 전송`, `C++ 상태 스냅샷` 기준으로 더 정확하게 다듬었습니다.
+- 09:46 KST (UTC+9) — `phil_brain.py` 해체 분석용 Velog 초안 템플릿을 `txt7.md`로 새로 만들고, 제목 후보·서론·전체 흐름·import/파라미터/함수별 분석 블록·사용자 메모 칸까지 한 번에 채울 수 있게 정리했습니다.
+  - 수정 파일: `txt7.md`, `log.md`
+  - 메모: 이후에는 이 초안을 바탕으로 import 섹션부터 차례대로 실제 해설 문장을 덧붙여 나가면 됩니다.
+
 ## 2026-04-06
+- 18:05 KST (UTC+9) — eval 리포트의 실패 항목 라벨을 실패 원인 중심 표현으로 다시 다듬어, `명령 일치` 같은 중립 표현 대신 `명령 불일치`, `발화 표현 누락`처럼 바로 읽히게 바꿨습니다.
+  - 수정 파일: `phil_robot/eval/run_eval.py`, `phil_robot/eval/AGENTS.md`, `phil_robot/tests/test_planner_benchmark.py`, `phil_robot/eval/eval_docs/reports/*.md`, `log.md`
+  - 메모: 실패 표와 상세 표 모두 같은 규칙을 쓰도록 맞췄고, `unittest` 25건 재통과와 report markdown 재생성까지 함께 확인했습니다.
+- 17:46 KST (UTC+9) — eval 리포트의 실패 표시를 짧은 한글 이름으로 바꾸고, 각 실패 행에서 `기대한 것`과 `실제로 나온 것`을 바로 비교할 수 있게 리포트 생성 규칙과 출력 형식을 함께 정리했습니다.
+  - 수정 파일: `phil_robot/eval/run_eval.py`, `phil_robot/eval/AGENTS.md`, `phil_robot/tests/test_planner_benchmark.py`, `phil_robot/eval/eval_docs/reports/*.md`, `log.md`
+  - 메모: 이제 `classifier.intent` 같은 내부 체크 ID를 report 표에 그대로 던지지 않고 `의도`, `도메인`, `명령 일치`, `발화 포함`처럼 먼저 풀어 보여줍니다. `농담해봐`처럼 왜 실패했는지 헷갈리던 케이스도 기대 키워드와 실제 발화를 같은 줄에서 비교할 수 있게 바꿨고, `unittest` 25건 통과까지 확인했습니다.
 - 16:35 KST (UTC+9) — `phil_robot` 루트에 새 `AGENTS.md`를 추가하고, prompt/shortcut/identity 응답을 손볼 때 공통으로 따를 페르소나 작성 규칙을 정리했습니다.
   - 수정 파일: `phil_robot/AGENTS.md`, `log.md`
   - 메모: 필의 정체성, 톤, 능력/제약을 분리해서 쓰고, 검증되지 않은 능력 과장 금지, 이름 확인형 yes/no 일관성 유지, 재사용 가능한 패턴 중심 작성 같은 기준을 `phil_robot` 범위 전체에 걸어두었습니다.

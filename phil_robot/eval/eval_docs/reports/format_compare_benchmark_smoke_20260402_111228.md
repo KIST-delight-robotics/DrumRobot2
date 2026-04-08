@@ -6,57 +6,90 @@
 
 | 항목 | 내용 |
 | --- | --- |
-| 문서 종류 | planner 출력 형식 비교 |
+| 문서 종류 | 실행 결과 리포트 |
 | generated_at | 2026-04-02T11:12:28+09:00 |
-| case_count | 10 |
+| suite | 기록 없음 |
+| cases_path | /home/shy/robot_project/phil_robot/eval/cases_smoke.json |
 | classifier_model | qwen3:4b-instruct-2507-q4_K_M |
 | planner_model | qwen3:30b-a3b-instruct-2507-q4_K_M |
-| temperature | 0 |
+| 전체 결과 | 0/10 (0.0%) |
 
 ## 왜 이 실험을 했는가
 
-planner 출력 형식을 문자열 방식과 JSON 방식으로 나눠서, 속도와 파싱 편의가 어떻게 달라지는지 보려는 비교입니다.
+`unknown` 케이스 묶음을 현재 classifier/planner 모델 조합으로 실제 평가 경로에 태웠을 때, 몇 개를 맞췄고 어디서 틀렸는지 바로 읽기 위한 실행 결과입니다.
 
 ## 이번에 바꿔 보거나 고정한 점
 
-- 모델은 그대로 두고 출력 형식만 `legacy_str`와 `json`으로 바꿨습니다.
-- classifier는 케이스마다 한 번만 돌리고 같은 intent 결과를 두 형식 비교에 재사용했습니다.
-- planner 두 형식 모두 warm-up 한 번 뒤 시간을 쟀습니다.
-- temperature는 `0`로 고정했습니다.
+- classifier 모델은 `qwen3:4b-instruct-2507-q4_K_M`로 고정했습니다.
+- planner 모델은 `qwen3:30b-a3b-instruct-2507-q4_K_M`로 고정했습니다.
+- 케이스 입력은 `/home/shy/robot_project/phil_robot/eval/cases_smoke.json`를 그대로 사용했습니다.
+- `capture_llm_metrics`는 `false` 상태로 실행했습니다.
+
+## 테스트 구성
+
+| 항목 | 내용 |
+| --- | --- |
+| 전체 케이스 수 | 10 |
+| JSON 리포트 | reports/format_compare_benchmark_smoke_20260402_111228.json |
+| Markdown 리포트 | eval_docs/reports/format_compare_benchmark_smoke_20260402_111228.md |
+| 실패 시 종료 코드 | 1 |
 
 ## 결과 요약
 
-| 지표 | 문자열 형식 | JSON 형식 |
-| --- | --- | --- |
-| parse 성공률 | 100.0% | 100.0% |
-| 평균 wall 시간 | 3.945 s | 4.880 s |
-| 평균 prompt token | 1461.4 | 1529.4 |
-| 평균 eval token | 37.3 | 57.1 |
-| 평균 출력 글자 수 | 64.7 | 126.2 |
-| 평균 명령 수 | 2.5 | 1.1 |
+| 항목 | 내용 |
+| --- | --- |
+| 전체 케이스 수 | 10 |
+| 통과 수 | 0 |
+| 실패 수 | 10 |
+| pass rate | 0/10 (0.0%) |
+| 통과한 케이스 | 없음 |
+| 실패한 케이스 | chat_greeting_basic, motion_wave_allowed, motion_wave_blocked_by_lock, motion_arm_up_basic, motion_left_arm_out_basic, play_tim_basic, status_question_basic, stop_request_basic, relative_wrist_raise_success, relative_wrist_raise_blocked |
+
+### 레이어별 통과율
+
+| 단계 | 통과율 |
+| --- | --- |
+
+### 지연 시간 요약
+
+| 단계 | 평균 | 중앙값 | p95 | 가장 느린 케이스 |
+| --- | --- | --- | --- | --- |
+
+### 바로 고쳐야 할 항목
+
+| case id | 실패 항목 | 기대한 것 | 실제로 나온 것 | 실제 최종 발화 | 바로 고칠 점 |
+| --- | --- | --- | --- | --- | --- |
+| chat_greeting_basic | 없음 | - | - | 기록 없음 | 실패 원인 기록 없음 |
+| motion_wave_allowed | 없음 | - | - | 기록 없음 | 실패 원인 기록 없음 |
+| motion_wave_blocked_by_lock | 없음 | - | - | 기록 없음 | 실패 원인 기록 없음 |
+| motion_arm_up_basic | 없음 | - | - | 기록 없음 | 실패 원인 기록 없음 |
+| motion_left_arm_out_basic | 없음 | - | - | 기록 없음 | 실패 원인 기록 없음 |
+| play_tim_basic | 없음 | - | - | 기록 없음 | 실패 원인 기록 없음 |
+| status_question_basic | 없음 | - | - | 기록 없음 | 실패 원인 기록 없음 |
+| stop_request_basic | 없음 | - | - | 기록 없음 | 실패 원인 기록 없음 |
+| relative_wrist_raise_success | 없음 | - | - | 기록 없음 | 실패 원인 기록 없음 |
+| relative_wrist_raise_blocked | 없음 | - | - | 기록 없음 | 실패 원인 기록 없음 |
 
 ## 상세 표
 
-| case id | 상황 | 문자열 형식 시간 | JSON 형식 시간 | 차이 | 말 내용 동일 | 명령 수 변화 |
-| --- | --- | --- | --- | --- | --- | --- |
-| chat_greeting_basic | 인사 요청 | 2.642 s | 4.011 s | 1.369 s | 같음 | 0 -> 0 |
-| motion_wave_allowed | 움직일 수 있는 상태에서 손 흔들기 | 3.352 s | 3.943 s | 0.591 s | 다름 | 1 -> 1 |
-| motion_wave_blocked_by_lock | 안전 키가 잠긴 상태에서 손 흔들기 | 4.097 s | 4.024 s | -0.073 s | 같음 | 2 -> 1 |
-| motion_arm_up_basic | 팔 올리기 | 3.062 s | 4.317 s | 1.255 s | 다름 | 1 -> 1 |
-| motion_left_arm_out_basic | 왼팔 벌리기 | 4.273 s | 4.971 s | 0.699 s | 다름 | 4 -> 1 |
-| play_tim_basic | 곡 연주 요청 | 5.927 s | 5.191 s | -0.735 s | 다름 | 8 -> 2 |
-| status_question_basic | 오류로 멈춘 뒤 이유 묻기 | 3.654 s | 5.692 s | 2.037 s | 다름 | 0 -> 0 |
-| stop_request_basic | 종료 요청 | 5.191 s | 5.012 s | -0.179 s | 다름 | 6 -> 2 |
-| relative_wrist_raise_success | 왼쪽 손목을 조금 더 올리기 | 4.418 s | 6.016 s | 1.598 s | 다름 | 1 -> 1 |
-| relative_wrist_raise_blocked | 손목을 더 올리면 범위를 넘는 상황 | 2.838 s | 5.625 s | 2.787 s | 다름 | 2 -> 2 |
+| case id | 사용자 발화 | 결과 | 실패 항목 | 기대한 것 | 실제로 나온 것 | 실제 명령 | 실제 최종 발화 | 총 시간 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| chat_greeting_basic | 안녕 | 실패 | 없음 | - | - | 기록 없음 | 기록 없음 | 기록 없음 |
+| motion_wave_allowed | 손 흔들어줘 | 실패 | 없음 | - | - | 기록 없음 | 기록 없음 | 기록 없음 |
+| motion_wave_blocked_by_lock | 손 흔들어줘 | 실패 | 없음 | - | - | 기록 없음 | 기록 없음 | 기록 없음 |
+| motion_arm_up_basic | 팔 올려 | 실패 | 없음 | - | - | 기록 없음 | 기록 없음 | 기록 없음 |
+| motion_left_arm_out_basic | 왼팔 벌려 | 실패 | 없음 | - | - | 기록 없음 | 기록 없음 | 기록 없음 |
+| play_tim_basic | This Is Me 연주해줘 | 실패 | 없음 | - | - | 기록 없음 | 기록 없음 | 기록 없음 |
+| status_question_basic | 왜 멈췄어? | 실패 | 없음 | - | - | 기록 없음 | 기록 없음 | 기록 없음 |
+| stop_request_basic | 종료해 | 실패 | 없음 | - | - | 기록 없음 | 기록 없음 | 기록 없음 |
+| relative_wrist_raise_success | 왼쪽 손목 더 올려 | 실패 | 없음 | - | - | 기록 없음 | 기록 없음 | 기록 없음 |
+| relative_wrist_raise_blocked | 거기서 50도 더 올리고 2초 있다 | 실패 | 없음 | - | - | 기록 없음 | 기록 없음 | 기록 없음 |
 
 ## 눈여겨볼 점
 
-- `손목을 더 올리면 범위를 넘는 상황` 장면에서는 JSON 형식이 문자열 형식보다 `2.787 s` 더 걸렸습니다.
-- `오류로 멈춘 뒤 이유 묻기` 장면에서는 JSON 형식이 문자열 형식보다 `2.037 s` 더 걸렸습니다.
-- `왼쪽 손목을 조금 더 올리기` 장면에서는 JSON 형식이 문자열 형식보다 `1.598 s` 더 걸렸습니다.
-- 이 문서는 속도만 보는 것이 아니라, 출력 구조가 더 길어져도 사람이 읽고 후처리하기 쉬워지는지를 함께 보는 비교입니다.
+- 총 10건 중 0건 통과, 10건 실패였습니다. 실패 케이스는 `chat_greeting_basic, motion_wave_allowed, motion_wave_blocked_by_lock, motion_arm_up_basic, motion_left_arm_out_basic, play_tim_basic, status_question_basic, stop_request_basic, relative_wrist_raise_success, relative_wrist_raise_blocked`입니다.
+- planner fallback 응답은 없었습니다.
 
 ## 종합 총평
 
-이번 비교에서는 두 형식 모두 파싱에는 성공했지만, JSON 형식이 더 긴 응답과 더 긴 실행 시간을 보였습니다. 대신 응답 구조가 명확해져 이후 처리에는 유리하므로, 속도와 가독성 사이의 교환 관계를 보여 주는 문서로 읽는 편이 맞습니다.
+이번 실행은 `0/10 (0.0%)`로 끝났습니다. 통과한 케이스와 실패한 케이스가 명확히 갈렸으므로, 위 `바로 고쳐야 할 항목` 표의 실패 항목, 기대한 것, 실제로 나온 것을 기준으로 우선순위를 잡으면 됩니다.

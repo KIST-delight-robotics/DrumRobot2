@@ -6,39 +6,74 @@
 
 | 항목 | 내용 |
 | --- | --- |
-| 문서 종류 | planner 시간 분리 측정 |
+| 문서 종류 | 실행 결과 리포트 |
 | generated_at | 2026-04-02T16:32:55+09:00 |
+| suite | planner_latency_isolation |
+| cases_path | /tmp/planner_latency_cases_qwen30.json |
 | classifier_model | qwen3:4b-instruct-2507-q4_K_M |
 | planner_model | qwen3:30b-a3b-instruct-2507-q4_K_M |
-| warm-up 횟수 | 1 |
-| 실측 횟수 | 2 |
-| 평균 시간 | 1.584 s |
-| p95 시간 | 1.815 s |
+| 전체 결과 | 0/2 (0.0%) |
 
 ## 왜 이 실험을 했는가
 
-planner 자체 속도를 따로 보기 위해 classifier와 입력을 고정하고 planner만 여러 번 불러 본 실험입니다.
+`planner_latency_isolation` 케이스 묶음을 현재 classifier/planner 모델 조합으로 실제 평가 경로에 태웠을 때, 몇 개를 맞췄고 어디서 틀렸는지 바로 읽기 위한 실행 결과입니다.
 
 ## 이번에 바꿔 보거나 고정한 점
 
-- classifier 결과를 케이스마다 한 번만 만들고 그대로 다시 사용했습니다.
-- planner 입력 JSON도 고정해 입력 차이 없이 planner만 비교했습니다.
-- 케이스마다 warm-up 1회 뒤, 실측 2회를 기록했습니다.
-- 첫 호출의 차가운 시작 시간도 따로 기록했습니다.
+- classifier 모델은 `qwen3:4b-instruct-2507-q4_K_M`로 고정했습니다.
+- planner 모델은 `qwen3:30b-a3b-instruct-2507-q4_K_M`로 고정했습니다.
+- 케이스 입력은 `/tmp/planner_latency_cases_qwen30.json`를 그대로 사용했습니다.
+- `capture_llm_metrics`는 `false` 상태로 실행했습니다.
+
+## 테스트 구성
+
+| 항목 | 내용 |
+| --- | --- |
+| 전체 케이스 수 | 2 |
+| JSON 리포트 | reports/planner_latency_qwen30_json_only_20260402.json |
+| Markdown 리포트 | eval_docs/reports/planner_latency_qwen30_json_only_20260402.md |
+| 실패 시 종료 코드 | 1 |
 
 ## 결과 요약
 
-| case id | 상황 | input chars | avg | median | p95 | 서로 다른 raw 수 | 서로 다른 말 수 | 서로 다른 명령 수 |
+| 항목 | 내용 |
+| --- | --- |
+| 전체 케이스 수 | 2 |
+| 통과 수 | 0 |
+| 실패 수 | 2 |
+| pass rate | 0/2 (0.0%) |
+| 통과한 케이스 | 없음 |
+| 실패한 케이스 | chat_greeting_basic, motion_wave_allowed |
+
+### 레이어별 통과율
+
+| 단계 | 통과율 |
+| --- | --- |
+
+### 지연 시간 요약
+
+| 단계 | 평균 | 중앙값 | p95 | 가장 느린 케이스 |
+| --- | --- | --- | --- | --- |
+
+### 바로 고쳐야 할 항목
+
+| case id | 실패 항목 | 기대한 것 | 실제로 나온 것 | 실제 최종 발화 | 바로 고칠 점 |
+| --- | --- | --- | --- | --- | --- |
+| chat_greeting_basic | 없음 | - | - | 기록 없음 | 실패 원인 기록 없음 |
+| motion_wave_allowed | 없음 | - | - | 기록 없음 | 실패 원인 기록 없음 |
+
+## 상세 표
+
+| case id | 사용자 발화 | 결과 | 실패 항목 | 기대한 것 | 실제로 나온 것 | 실제 명령 | 실제 최종 발화 | 총 시간 |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| chat_greeting_basic | 인사 요청 | 858 | 1.412 s | 1.412 s | 1.456 s | 2 | 1 | 1 |
-| motion_wave_allowed | 움직일 수 있는 상태에서 손 흔들기 | 877 | 1.757 s | 1.757 s | 1.815 s | 2 | 1 | 1 |
+| chat_greeting_basic | 안녕 | 실패 | 없음 | - | - | 기록 없음 | 기록 없음 | 기록 없음 |
+| motion_wave_allowed | 손 흔들어줘 | 실패 | 없음 | - | - | 기록 없음 | 기록 없음 | 기록 없음 |
 
 ## 눈여겨볼 점
 
-- 첫 호출 시간은 `인사 요청`에서 `1.579 s`로 기록됐습니다.
-- 평균 시간이 가장 긴 장면은 `움직일 수 있는 상태에서 손 흔들기`였습니다.
-- raw 응답 문자열은 조금 달라도, 실제로 남는 명령 수와 말 내용 종류가 크게 흔들리지 않는지도 같이 보게 했습니다.
+- 총 2건 중 0건 통과, 2건 실패였습니다. 실패 케이스는 `chat_greeting_basic, motion_wave_allowed`입니다.
+- planner fallback 응답은 없었습니다.
 
 ## 종합 총평
 
-이 문서는 planner 자체 시간을 따로 떼어 본 결과라서, 전체 파이프라인보다 순수 planner 속도와 출력 흔들림을 읽기에 좋습니다. 속도뿐 아니라 같은 입력에서 답이 얼마나 일정한지도 같이 볼 수 있다는 점이 핵심입니다.
+이번 실행은 `0/2 (0.0%)`로 끝났습니다. 통과한 케이스와 실패한 케이스가 명확히 갈렸으므로, 위 `바로 고쳐야 할 항목` 표의 실패 항목, 기대한 것, 실제로 나온 것을 기준으로 우선순위를 잡으면 됩니다.

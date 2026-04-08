@@ -26,6 +26,40 @@ DEFAULT_CASES = {
 }
 DEFAULT_REPORT_DIR = os.path.join(CURRENT_DIR, "reports")
 DEFAULT_DOC_DIR = os.path.join(CURRENT_DIR, "eval_docs")
+CHECK_LABELS = {
+    "classifier.intent": "의도",
+    "classifier.needs_motion": "움직임 필요",
+    "classifier.needs_dialogue": "대화 필요",
+    "planner.domain": "도메인",
+    "planner.skills_exact": "스킬 일치",
+    "planner.skills_any_of": "스킬 후보",
+    "validator.valid_op_cmds_exact": "명령 일치",
+    "validator.valid_op_cmds_any_of": "명령 후보",
+    "validator.valid_op_cmds_contains_all": "명령 포함",
+    "validator.valid_op_cmds_contains_prefixes": "명령 접두",
+    "e2e.speech_contains_any": "발화 포함",
+    "e2e.speech_contains_all": "발화 전체 포함",
+}
+FAIL_LABELS = {
+    "classifier.intent": "의도 불일치",
+    "classifier.needs_motion": "움직임 필요 불일치",
+    "classifier.needs_dialogue": "대화 필요 불일치",
+    "planner.domain": "도메인 불일치",
+    "planner.skills_exact": "스킬 불일치",
+    "planner.skills_any_of": "스킬 후보 불일치",
+    "validator.valid_op_cmds_exact": "명령 불일치",
+    "validator.valid_op_cmds_any_of": "명령 후보 불일치",
+    "validator.valid_op_cmds_contains_all": "명령 누락",
+    "validator.valid_op_cmds_contains_prefixes": "명령 종류 불일치",
+    "e2e.speech_contains_any": "발화 표현 누락",
+    "e2e.speech_contains_all": "발화 표현 누락",
+}
+LAYER_LABELS = {
+    "classifier": "의도 분류",
+    "planner": "계획 선택",
+    "validator": "명령 검사",
+    "e2e": "최종 발화",
+}
 
 
 def load_cases(cases_path: str) -> List[Dict[str, Any]]:
@@ -254,24 +288,86 @@ def brief(raw_val: Any, limit_num: int = 120) -> str:
     return f"{text[: limit_num - 1]}…"
 
 
+def label_for_check(name: str) -> str:
+    return CHECK_LABELS.get(name, name)
+
+
+def label_for_fail(name: str) -> str:
+    return FAIL_LABELS.get(name, label_for_check(name))
+
+
+def label_for_layer(name: str) -> str:
+    return LAYER_LABELS.get(name, name)
+
+
+def fail_labels(fail_list: List[Dict[str, Any]]) -> List[str]:
+    label_list: List[str] = []
+    for fail_obj in fail_list:
+        name = fail_obj.get("name", "")
+        if name:
+            label_list.append(label_for_fail(name))
+    return label_list
+
+
+def fail_text(fail_list: List[Dict[str, Any]], key_name: str, limit_num: Optional[int] = None) -> str:
+    if not fail_list:
+        return "-"
+
+    line_list: List[str] = []
+    for fail_obj in fail_list:
+        label_text = label_for_fail(fail_obj.get("name", ""))
+        if limit_num is None:
+            value_text = md_cell(fail_obj.get(key_name))
+        else:
+            value_text = brief(fail_obj.get(key_name), limit_num)
+        line_list.append(f"{label_text}: {value_text}")
+
+    return "<br>".join(line_list) if line_list else "-"
+
+
 def fix_note(row_obj: Dict[str, Any]) -> str:
     fail_list = row_obj.get("failed_checks", [])
     if not fail_list:
         return "실패 원인 기록 없음"
 
-    first_name = fail_list[0].get("name", "")
-    valid_cmds = row_obj.get("actual", {}).get("valid_op_cmds", [])
+    first_fail = fail_list[0]
+    first_name = first_fail.get("name", "")
+    actual_speech = norm_text(row_obj.get("actual", {}).get("speech"))
+    expected_value = first_fail.get("expected", [])
+    if isinstance(expected_value, list):
+        expected_list = [norm_text(item) for item in expected_value]
+    else:
+        expected_list = [norm_text(expected_value)]
 
-    if first_name.startswith("validator."):
-        if valid_cmds:
-            return "막아야 할 명령이 남았거나 명령 구성이 기대와 다릅니다."
-        return "남겨야 할 명령이 빠졌거나 명령 구성이 기대와 다릅니다."
-    if first_name.startswith("e2e."):
-        return "최종 발화가 기대 표현과 달라 사용자 경험이 어긋납니다."
+    if first_name == "validator.valid_op_cmds_exact":
+        return "최종 명령이 기대 목록과 정확히 같지 않습니다."
+    if first_name == "validator.valid_op_cmds_any_of":
+        return "허용한 명령 조합 중 어느 것도 맞지 않았습니다."
+    if first_name == "validator.valid_op_cmds_contains_all":
+        return "기대한 명령이 최종 명령 목록에 다 들어가지 않았습니다."
+    if first_name == "validator.valid_op_cmds_contains_prefixes":
+        return "기대한 명령 종류가 접두사 기준으로 보이지 않습니다."
+    if first_name == "e2e.speech_contains_any":
+        if (
+            any(token in {"한계", "범위"} for token in expected_list)
+            and actual_speech == "지금은 해당 동작을 수행할 수 없습니다."
+        ):
+            return "validator에서 절대각 한계 초과를 일반 차단 문구로 덮고 있습니다. 범위/한계를 설명하는 recovery 발화를 추가하거나, generic 차단 케이스를 별도로 분리해야 합니다."
+        return "기대 발화와 실제 발화가 다릅니다. validator recovery 문구를 보강하거나 케이스 기대 표현을 더 세분화해야 합니다."
+    if first_name == "e2e.speech_contains_all":
+        return "기대한 안내 문구 구성이 실제 최종 발화에서 깨졌습니다. validator recovery 문구를 고정하거나 케이스를 더 세분화해야 합니다."
+    if first_name == "planner.domain":
+        return "planner 도메인이 기대와 다릅니다."
     if first_name.startswith("planner."):
-        return "planner 도메인이나 skill 선택이 기대와 다릅니다."
+        return "planner 선택 결과가 기대와 다릅니다."
+    if first_name == "classifier.intent":
+        return "의도 분류가 기대와 다릅니다."
+    if first_name == "classifier.needs_motion":
+        return "움직임 필요 여부가 기대와 다릅니다."
+    if first_name == "classifier.needs_dialogue":
+        return "대화 필요 여부가 기대와 다릅니다."
     if first_name.startswith("classifier."):
-        return "의도 분류가 틀려 뒤 단계 전체가 흔들릴 수 있습니다."
+        return "classifier 결과가 기대와 다릅니다."
     return "자동 비교 기준을 통과하지 못했습니다."
 
 
@@ -377,7 +473,7 @@ def build_report_md(report_path: str, report_obj: Dict[str, Any]) -> str:
 
     for layer_name, layer_obj in sum_obj.get("layer_summary", {}).items():
         line_list.append(
-            f"| {md_cell(layer_name)} | {fmt_ratio(int(layer_obj.get('passed', 0)), int(layer_obj.get('total', 0)))} |"
+            f"| {md_cell(label_for_layer(layer_name))} | {fmt_ratio(int(layer_obj.get('passed', 0)), int(layer_obj.get('total', 0)))} |"
         )
 
     line_list.extend(
@@ -401,17 +497,16 @@ def build_report_md(report_path: str, report_obj: Dict[str, Any]) -> str:
     if fail_rows:
         line_list.extend(
             [
-                "| case id | 실패 체크 | 기대한 값 | 실제 값 | 바로 고칠 점 |",
-                "| --- | --- | --- | --- | --- |",
+                "| case id | 실패 항목 | 기대한 것 | 실제로 나온 것 | 실제 최종 발화 | 바로 고칠 점 |",
+                "| --- | --- | --- | --- | --- | --- |",
             ]
         )
         for row_obj in fail_rows:
             fail_list = row_obj.get("failed_checks", [])
-            fail_names = [item.get("name", "") for item in fail_list if item.get("name")]
-            first_obj = fail_list[0] if fail_list else {}
+            act_obj = row_obj.get("actual", {})
             line_list.append(
-                f"| {md_cell(row_obj.get('id'))} | {md_cell(fail_names)} | {brief(first_obj.get('expected'))} | "
-                f"{brief(first_obj.get('actual'))} | {md_cell(fix_note(row_obj))} |"
+                f"| {md_cell(row_obj.get('id'))} | {md_cell(fail_labels(fail_list))} | {fail_text(fail_list, 'expected', 80)} | "
+                f"{fail_text(fail_list, 'actual', 80)} | {brief(act_obj.get('speech'), 100)} | {md_cell(fix_note(row_obj))} |"
             )
     else:
         line_list.append("- 없음")
@@ -421,18 +516,25 @@ def build_report_md(report_path: str, report_obj: Dict[str, Any]) -> str:
             "",
             "## 상세 표",
             "",
-            "| case id | 사용자 발화 | 결과 | 실패 체크 | 실제로 남은 명령 | 실제 최종 발화 | 총 시간 |",
-            "| --- | --- | --- | --- | --- | --- | --- |",
+            "| case id | 사용자 발화 | 결과 | 실패 항목 | 기대한 것 | 실제로 나온 것 | 실제 명령 | 실제 최종 발화 | 총 시간 |",
+            "| --- | --- | --- | --- | --- | --- | --- | --- | --- |",
         ]
     )
 
     for row_obj in row_list:
-        fail_names = [item.get("name", "") for item in row_obj.get("failed_checks", []) if item.get("name")]
+        fail_list = row_obj.get("failed_checks", [])
         act_obj = row_obj.get("actual", {})
         dur_obj = row_obj.get("durations_sec", {})
+        fail_name_text = "없음"
+        exp_text = "-"
+        act_text = "-"
+        if fail_list:
+            fail_name_text = md_cell(fail_labels(fail_list))
+            exp_text = fail_text(fail_list, "expected")
+            act_text = fail_text(fail_list, "actual")
         line_list.append(
             f"| {md_cell(row_obj.get('id'))} | {md_cell(row_obj.get('user_text'))} | "
-            f"{'통과' if row_obj.get('passed') else '실패'} | {md_cell(fail_names)} | "
+            f"{'통과' if row_obj.get('passed') else '실패'} | {fail_name_text} | {exp_text} | {act_text} | "
             f"{md_cell(act_obj.get('valid_op_cmds'))} | {md_cell(act_obj.get('speech'))} | "
             f"{fmt_sec(dur_obj.get('total'))} |"
         )
@@ -462,7 +564,7 @@ def build_report_md(report_path: str, report_obj: Dict[str, Any]) -> str:
 
     if fail_rows:
         line_list.append(
-            f"이번 실행은 `{fmt_ratio(pass_num, total_num)}`로 끝났습니다. 통과한 케이스와 실패한 케이스가 명확히 갈렸으므로, 위 `바로 고쳐야 할 항목` 표의 실패 체크와 실제 최종 발화를 기준으로 우선순위를 잡으면 됩니다."
+            f"이번 실행은 `{fmt_ratio(pass_num, total_num)}`로 끝났습니다. 통과한 케이스와 실패한 케이스가 명확히 갈렸으므로, 위 `바로 고쳐야 할 항목` 표의 실패 항목, 기대한 것, 실제로 나온 것을 기준으로 우선순위를 잡으면 됩니다."
         )
     else:
         line_list.append(
@@ -783,9 +885,9 @@ def print_results(results: List[Dict[str, Any]], summary: Dict[str, Any]) -> Non
         print(f"[{status}] {result['id']} :: {result['user_text']}")
         if result["failed_checks"]:
             for failed_check in result["failed_checks"]:
-                print(f"  - {failed_check['name']}")
-                print(f"    expected: {failed_check['expected']}")
-                print(f"    actual:   {failed_check['actual']}")
+                print(f"  - {label_for_fail(failed_check['name'])}")
+                print(f"    기대: {failed_check['expected']}")
+                print(f"    실제: {failed_check['actual']}")
 
     print("\n=== Summary ===")
     print(
@@ -793,7 +895,7 @@ def print_results(results: List[Dict[str, Any]], summary: Dict[str, Any]) -> Non
         f"({summary['failed_cases']} failed)"
     )
     for layer_name, layer_stats in summary["layer_summary"].items():
-        print(f"{layer_name}: {layer_stats['passed']}/{layer_stats['total']} checks passed")
+        print(f"{label_for_layer(layer_name)}: {layer_stats['passed']}/{layer_stats['total']} checks passed")
 
     latency_obj = summary.get("latency_summary", {})
     for key_name, label_text in [

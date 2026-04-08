@@ -52,10 +52,10 @@
 
 | 단계 | 통과율 |
 | --- | --- |
-| classifier | 27/30 (90.0%) |
-| planner | 25/28 (89.3%) |
-| validator | 22/28 (78.6%) |
-| e2e | 21/28 (75.0%) |
+| 의도 분류 | 27/30 (90.0%) |
+| 계획 선택 | 25/28 (89.3%) |
+| 명령 검사 | 22/28 (78.6%) |
+| 최종 발화 | 21/28 (75.0%) |
 
 ### 지연 시간 요약
 
@@ -67,52 +67,52 @@
 
 ### 바로 고쳐야 할 항목
 
-| case id | 실패 체크 | 기대한 값 | 실제 값 | 바로 고칠 점 |
-| --- | --- | --- | --- | --- |
-| scenario_07_song_list_question | e2e.speech_contains_any | This Is Me, 그대에게, Baby I Need You, Test Beat, 테스트 비트 | 아직 안전 키가 해제되지 않아 움직일 수 없습니다. 안전 키를 먼저 확인해 주세요. | 최종 발화가 기대 표현과 달라 사용자 경험이 어긋납니다. |
-| scenario_08_key_out_hurray | classifier.intent, planner.domain, validator.valid_op_cmds_contains_all | motion_request | chat | 의도 분류가 틀려 뒤 단계 전체가 흔들릴 수 있습니다. |
-| scenario_12_key_out_name_no_shake | validator.valid_op_cmds_contains_all, e2e.speech_contains_all | gesture:shake | gesture:nod | 막아야 할 명령이 남았거나 명령 구성이 기대와 다릅니다. |
-| scenario_15_key_out_wave_then_play_ty | classifier.intent, planner.domain | play_request | M\|P | 의도 분류가 틀려 뒤 단계 전체가 흔들릴 수 있습니다. |
-| scenario_17_key_out_joke_request | e2e.speech_contains_any | 농담, 웃, 하나 | 좋아요, 들어보세요! 왜 로봇은 항상 침대에 누워있을까요? 어쩌면 그게 바로 '스탠바이 모드' 때문일지도 몰라요! | 최종 발화가 기대 표현과 달라 사용자 경험이 어긋납니다. |
-| scenario_20_key_out_wrist_down_then_after_one_more_down | validator.valid_op_cmds_exact | move:R_wrist,20, wait:1, move:R_wrist,10 | move:R_wrist,20, wait:1 | 막아야 할 명령이 남았거나 명령 구성이 기대와 다릅니다. |
-| scenario_21_key_out_wrist_down_thirty_twice | validator.valid_op_cmds_exact, e2e.speech_contains_all | move:R_wrist,40, move:R_wrist,10 | move:L_wrist,30, wait:1, move:L_wrist,30, wait:1 | 막아야 할 명령이 남았거나 명령 구성이 기대와 다릅니다. |
-| scenario_23_todo_play_and_wave_greatest_showman | classifier.intent, planner.domain, validator.valid_op_cmds_contains_all | play_request | motion_request | 의도 분류가 틀려 뒤 단계 전체가 흔들릴 수 있습니다. |
-| scenario_24_todo_unsafe_waist_turn_100 | e2e.speech_contains_any | 한계, 움직일 수 없습니다, 범위 | 지금은 해당 동작을 수행할 수 없습니다. | 최종 발화가 기대 표현과 달라 사용자 경험이 어긋납니다. |
-| scenario_25_todo_stop_and_home_if_playing | validator.valid_op_cmds_any_of, e2e.speech_contains_any | ['h'], ['h', 's'] | s | 막아야 할 명령이 남았거나 명령 구성이 기대와 다릅니다. |
-| scenario_28_todo_greet_after_play | e2e.speech_contains_all | 끝나면, 인사 | 지금은 연주 중이라 다른 동작을 할 수 없습니다. | 최종 발화가 기대 표현과 달라 사용자 경험이 어긋납니다. |
+| case id | 실패 항목 | 기대한 것 | 실제로 나온 것 | 실제 최종 발화 | 바로 고칠 점 |
+| --- | --- | --- | --- | --- | --- |
+| scenario_07_song_list_question | 발화 표현 누락 | 발화 표현 누락: This Is Me, 그대에게, Baby I Need You, Test Beat, 테스트 비트 | 발화 표현 누락: 아직 안전 키가 해제되지 않아 움직일 수 없습니다. 안전 키를 먼저 확인해 주세요. | 아직 안전 키가 해제되지 않아 움직일 수 없습니다. 안전 키를 먼저 확인해 주세요. | 기대 표현 중 하나도 최종 발화에 들어가지 않았습니다. |
+| scenario_08_key_out_hurray | 의도 불일치, 도메인 불일치, 명령 누락 | 의도 불일치: motion_request<br>도메인 불일치: motion<br>명령 누락: gesture:hurray | 의도 불일치: chat<br>도메인 불일치: chat<br>명령 누락: 없음 | 만세! | 의도 분류가 기대와 다릅니다. |
+| scenario_12_key_out_name_no_shake | 명령 누락, 발화 표현 누락 | 명령 누락: gesture:shake<br>발화 표현 누락: 아니, 필 | 명령 누락: gesture:nod<br>발화 표현 누락: 네, 이름은 필이에요. | 네, 이름은 필이에요. | 기대한 명령이 최종 명령 목록에 다 들어가지 않았습니다. |
+| scenario_15_key_out_wave_then_play_ty | 의도 불일치, 도메인 불일치 | 의도 불일치: play_request<br>도메인 불일치: play | 의도 불일치: M\|P<br>도메인 불일치: generic | 안녕하세요! 그대에게 연주를 시작할게요. | 의도 분류가 기대와 다릅니다. |
+| scenario_17_key_out_joke_request | 발화 표현 누락 | 발화 표현 누락: 농담, 웃, 하나 | 발화 표현 누락: 좋아요, 들어보세요! 왜 로봇은 항상 침대에 누워있을까요? 어쩌면 그게 바로 '스탠바이 모드' 때문일지도 몰라요! | 좋아요, 들어보세요! 왜 로봇은 항상 침대에 누워있을까요? 어쩌면 그게 바로 '스탠바이 모드' 때문일지도 몰라요! | 기대 표현 중 하나도 최종 발화에 들어가지 않았습니다. |
+| scenario_20_key_out_wrist_down_then_after_one_more_down | 명령 불일치 | 명령 불일치: move:R_wrist,20, wait:1, move:R_wrist,10 | 명령 불일치: move:R_wrist,20, wait:1 | 손목을 30도 내리고 1초 후에 10도 더 내렸습니다. | 최종 명령이 기대 목록과 정확히 같지 않습니다. |
+| scenario_21_key_out_wrist_down_thirty_twice | 명령 불일치, 발화 표현 누락 | 명령 불일치: move:R_wrist,40, move:R_wrist,10<br>발화 표현 누락: 두번, 30도, 60도 | 명령 불일치: move:L_wrist,30, wait:1, move:L_wrist,30, wait:1<br>발화 표현 누락: 손목을 30도씩 두 번 내렸습니다. | 손목을 30도씩 두 번 내렸습니다. | 최종 명령이 기대 목록과 정확히 같지 않습니다. |
+| scenario_23_todo_play_and_wave_greatest_showman | 의도 불일치, 도메인 불일치, 명령 누락 | 의도 불일치: play_request<br>도메인 불일치: play<br>명령 누락: gesture:wave, r, p:TIM | 의도 불일치: motion_request<br>도메인 불일치: motion<br>명령 누락: gesture:wave | 손을 흔들며 인사하고, 위대한 쇼맨을 연주하겠습니다. | 의도 분류가 기대와 다릅니다. |
+| scenario_24_todo_unsafe_waist_turn_100 | 발화 표현 누락 | 발화 표현 누락: 한계, 움직일 수 없습니다, 범위 | 발화 표현 누락: 지금은 해당 동작을 수행할 수 없습니다. | 지금은 해당 동작을 수행할 수 없습니다. | 기대 표현 중 하나도 최종 발화에 들어가지 않았습니다. |
+| scenario_25_todo_stop_and_home_if_playing | 명령 후보 불일치, 발화 표현 누락 | 명령 후보 불일치: ['h'], ['h', 's']<br>발화 표현 누락: 멈추, 홈, 중단 | 명령 후보 불일치: s<br>발화 표현 누락: 지금은 연주 중이라 다른 동작을 할 수 없습니다. | 지금은 연주 중이라 다른 동작을 할 수 없습니다. | 허용한 명령 조합 중 어느 것도 맞지 않았습니다. |
+| scenario_28_todo_greet_after_play | 발화 표현 누락 | 발화 표현 누락: 끝나면, 인사 | 발화 표현 누락: 지금은 연주 중이라 다른 동작을 할 수 없습니다. | 지금은 연주 중이라 다른 동작을 할 수 없습니다. | 기대 표현이 최종 발화에 모두 들어가지 않았습니다. |
 
 ## 상세 표
 
-| case id | 사용자 발화 | 결과 | 실패 체크 | 실제로 남은 명령 | 실제 최종 발화 | 총 시간 |
-| --- | --- | --- | --- | --- | --- | --- |
-| scenario_01_key_in_greeting | 안녕하세요. | 통과 | 없음 | 없음 | 안녕하세요! | 2.758 s |
-| scenario_02_key_in_intro | 자기소개 해줘. | 통과 | 없음 | 없음 | 안녕하세요! 저는 KIST에서 개발된 지능형 휴머노이드 드럼 로봇 필입니다. 언제든지 함께 연주하거나 대화를 나누고 싶어요. | 3.805 s |
-| scenario_03_key_in_arms_out_blocked | 팔 벌려줘. | 통과 | 없음 | 없음 | 아직 안전 키가 해제되지 않아 움직일 수 없습니다. 안전 키를 먼저 확인해 주세요. | 4.105 s |
-| scenario_04_key_out_play_tim | This is me 연주해줘. | 통과 | 없음 | r, p:TIM | 이제 This Is Me를 연주할게요. | 3.916 s |
-| scenario_05_playing_nod_blocked | 고개 끄덕여봐. | 통과 | 없음 | 없음 | 지금은 연주 중이라 다른 동작을 할 수 없습니다. | 4.107 s |
-| scenario_06_playing_status_question | 지금 뭐하고 있니? | 통과 | 없음 | 없음 | 지금 This Is Me를 연주하고 있어요. | 3.343 s |
-| scenario_07_song_list_question | 너 무슨 노래 연주할 수 있니? | 실패 | e2e.speech_contains_any | 없음 | 아직 안전 키가 해제되지 않아 움직일 수 없습니다. 안전 키를 먼저 확인해 주세요. | 5.305 s |
-| scenario_08_key_out_hurray | 만세. | 실패 | classifier.intent, planner.domain, validator.valid_op_cmds_contains_all | 없음 | 만세! | 3.369 s |
-| scenario_09_key_out_right_wrist_up | 오른 쪽 손목 들어봐 | 통과 | 없음 | move:R_wrist,35 | 오른쪽 손목을 15도 더 올려드릴게요. | 3.659 s |
-| scenario_10_key_out_shake_head | 고개 저어봐 | 통과 | 없음 | gesture:shake | 고개를 저었습니다. | 3.306 s |
-| scenario_11_key_out_name_yes_nod | 너의 이름 필 맞지? | 통과 | 없음 | gesture:nod | 네, 이름은 필이 scenario_12_key_out_name_no_shake맞습니다. | 3.274 s |
-| scenario_12_key_out_name_no_shake | 너의 이름은 모펫이니? | 실패 | validator.valid_op_cmds_contains_all, e2e.speech_contains_all | gesture:nod | 네, 이름은 필이에요. | 2.694 s |
-| scenario_13_key_out_ready_pose | 준비 | 통과 | 없음 | r | 연주 준비 자세로 전환합니다. | 2.776 s |
-| scenario_14_key_out_arms_up_wait_down | 양팔 올렸다가 3초 뒤에 양팔 내려 | 통과 | 없음 | move:R_arm2,58, move:L_arm2,58, move:R_arm3,95, move:L_arm3,95, move:R_wrist,0, move:L_wrist,0, wait:3, move:R_arm2,0, move:L_arm2,0, move:R_arm3,20, move:L_arm3,20 | 양팔을 올렸다가 3초 뒤에 내립니다. | 3.392 s |
-| scenario_15_key_out_wave_then_play_ty | 손으로 인사한번 해주고 그대에게 연주해줘. | 실패 | classifier.intent, planner.domain | gesture:wave, r, p:TY_short | 안녕하세요! 그대에게 연주를 시작할게요. | 3.512 s |
-| scenario_16_key_out_tongue_twister_as_joke | 간장공장공장장은 강공장장이고 된장공장공장장은 장공장장이다. | 통과 | 없음 | 없음 | 흥미로운 말장난이네요. 간장과 된장, 공장장이랑 이름이 비슷하네요. | 3.934 s |
-| scenario_17_key_out_joke_request | 농담해봐 | 실패 | e2e.speech_contains_any | 없음 | 좋아요, 들어보세요! 왜 로봇은 항상 침대에 누워있을까요? 어쩌면 그게 바로 '스탠바이 모드' 때문일지도 몰라요! | 3.672 s |
-| scenario_18_ramen_recipe_question | 라면 끓이는 법 알려줘라 | 통과 | 없음 | 없음 | 라면 끓이는 법은 간단해요. 냄비에 물을 넣고 끓인 다음, 라면을 넣고 3분 정도 끓이면 됩니다. 맛을 더 살리려면 국물에 고명을 넣는 것도 좋아요. | 5.217 s |
-| scenario_19_key_out_arm_up_then_nod | 팔 올리고 팔 내리지말고 고개 끄덕여봐. | 통과 | 없음 | move:R_arm2,58, move:L_arm2,58, move:R_arm3,95, move:L_arm3,95, move:R_wrist,0, move:L_wrist,0, gesture:nod | 팔을 올리고 고개를 끄덕여볼게요. | 4.851 s |
-| scenario_20_key_out_wrist_down_then_after_one_more_down | 손목 30도 내리고 1초 뒤에 10도 더 내려 | 실패 | validator.valid_op_cmds_exact | move:R_wrist,20, wait:1 | 손목을 30도 내리고 1초 후에 10도 더 내렸습니다. | 4.080 s |
-| scenario_21_key_out_wrist_down_thirty_twice | 손목 30도씩 두번 내려. | 실패 | validator.valid_op_cmds_exact, e2e.speech_contains_all | move:L_wrist,30, wait:1, move:L_wrist,30, wait:1 | 손목을 30도씩 두 번 내렸습니다. | 4.095 s |
-| scenario_22_todo_greet_and_nod | 안녕 하고 고개 끄덕여 | 통과 | 없음 | gesture:wave, gesture:nod | 안녕하세요! 네, 고개를 끄덕였어요. | 3.543 s |
-| scenario_23_todo_play_and_wave_greatest_showman | 손흔들고 위대한 쇼맨 연주해줘. | 실패 | classifier.intent, planner.domain, validator.valid_op_cmds_contains_all | gesture:wave | 손을 흔들며 인사하고, 위대한 쇼맨을 연주하겠습니다. | 3.078 s |
-| scenario_24_todo_unsafe_waist_turn_100 | 허리 100도 돌려 | 실패 | e2e.speech_contains_any | 없음 | 지금은 해당 동작을 수행할 수 없습니다. | 2.960 s |
-| scenario_25_todo_stop_and_home_if_playing | 지금 연주 중이면 멈추고 홈으로 가 | 실패 | validator.valid_op_cmds_any_of, e2e.speech_contains_any | s | 지금은 연주 중이라 다른 동작을 할 수 없습니다. | 3.868 s |
-| scenario_26_todo_raise_left_arm_a_bit_more | 왼팔 조금만 더 올려 | 통과 | 없음 | move:L_arm2,58, move:L_arm3,95, move:L_wrist,0 | 왼팔을 조금 더 올려드릴게요. | 3.851 s |
-| scenario_27_todo_look_slightly_right | 아까보다 살짝 오른쪽 봐 | 통과 | 없음 | look:30,90 | 아까보다 살짝 오른쪽을 봐요. | 3.406 s |
-| scenario_28_todo_greet_after_play | 연주하다가 끝나면 인사해 | 실패 | e2e.speech_contains_all | 없음 | 지금은 연주 중이라 다른 동작을 할 수 없습니다. | 3.703 s |
+| case id | 사용자 발화 | 결과 | 실패 항목 | 기대한 것 | 실제로 나온 것 | 실제 명령 | 실제 최종 발화 | 총 시간 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| scenario_01_key_in_greeting | 안녕하세요. | 통과 | 없음 | - | - | 없음 | 안녕하세요! | 2.758 s |
+| scenario_02_key_in_intro | 자기소개 해줘. | 통과 | 없음 | - | - | 없음 | 안녕하세요! 저는 KIST에서 개발된 지능형 휴머노이드 드럼 로봇 필입니다. 언제든지 함께 연주하거나 대화를 나누고 싶어요. | 3.805 s |
+| scenario_03_key_in_arms_out_blocked | 팔 벌려줘. | 통과 | 없음 | - | - | 없음 | 아직 안전 키가 해제되지 않아 움직일 수 없습니다. 안전 키를 먼저 확인해 주세요. | 4.105 s |
+| scenario_04_key_out_play_tim | This is me 연주해줘. | 통과 | 없음 | - | - | r, p:TIM | 이제 This Is Me를 연주할게요. | 3.916 s |
+| scenario_05_playing_nod_blocked | 고개 끄덕여봐. | 통과 | 없음 | - | - | 없음 | 지금은 연주 중이라 다른 동작을 할 수 없습니다. | 4.107 s |
+| scenario_06_playing_status_question | 지금 뭐하고 있니? | 통과 | 없음 | - | - | 없음 | 지금 This Is Me를 연주하고 있어요. | 3.343 s |
+| scenario_07_song_list_question | 너 무슨 노래 연주할 수 있니? | 실패 | 발화 표현 누락 | 발화 표현 누락: This Is Me, 그대에게, Baby I Need You, Test Beat, 테스트 비트 | 발화 표현 누락: 아직 안전 키가 해제되지 않아 움직일 수 없습니다. 안전 키를 먼저 확인해 주세요. | 없음 | 아직 안전 키가 해제되지 않아 움직일 수 없습니다. 안전 키를 먼저 확인해 주세요. | 5.305 s |
+| scenario_08_key_out_hurray | 만세. | 실패 | 의도 불일치, 도메인 불일치, 명령 누락 | 의도 불일치: motion_request<br>도메인 불일치: motion<br>명령 누락: gesture:hurray | 의도 불일치: chat<br>도메인 불일치: chat<br>명령 누락: 없음 | 없음 | 만세! | 3.369 s |
+| scenario_09_key_out_right_wrist_up | 오른 쪽 손목 들어봐 | 통과 | 없음 | - | - | move:R_wrist,35 | 오른쪽 손목을 15도 더 올려드릴게요. | 3.659 s |
+| scenario_10_key_out_shake_head | 고개 저어봐 | 통과 | 없음 | - | - | gesture:shake | 고개를 저었습니다. | 3.306 s |
+| scenario_11_key_out_name_yes_nod | 너의 이름 필 맞지? | 통과 | 없음 | - | - | gesture:nod | 네, 이름은 필이 맞습니다. | 3.274 s |
+| scenario_12_key_out_name_no_shake | 너의 이름은 모펫이니? | 실패 | 명령 누락, 발화 표현 누락 | 명령 누락: gesture:shake<br>발화 표현 누락: 아니, 필 | 명령 누락: gesture:nod<br>발화 표현 누락: 네, 이름은 필이에요. | gesture:nod | 네, 이름은 필이에요. | 2.694 s |
+| scenario_13_key_out_ready_pose | 준비 | 통과 | 없음 | - | - | r | 연주 준비 자세로 전환합니다. | 2.776 s |
+| scenario_14_key_out_arms_up_wait_down | 양팔 올렸다가 3초 뒤에 양팔 내려 | 통과 | 없음 | - | - | move:R_arm2,58, move:L_arm2,58, move:R_arm3,95, move:L_arm3,95, move:R_wrist,0, move:L_wrist,0, wait:3, move:R_arm2,0, move:L_arm2,0, move:R_arm3,20, move:L_arm3,20 | 양팔을 올렸다가 3초 뒤에 내립니다. | 3.392 s |
+| scenario_15_key_out_wave_then_play_ty | 손으로 인사한번 해주고 그대에게 연주해줘. | 실패 | 의도 불일치, 도메인 불일치 | 의도 불일치: play_request<br>도메인 불일치: play | 의도 불일치: M\|P<br>도메인 불일치: generic | gesture:wave, r, p:TY_short | 안녕하세요! 그대에게 연주를 시작할게요. | 3.512 s |
+| scenario_16_key_out_tongue_twister_as_joke | 간장공장공장장은 강공장장이고 된장공장공장장은 장공장장이다. | 통과 | 없음 | - | - | 없음 | 흥미로운 말장난이네요. 간장과 된장, 공장장이랑 이름이 비슷하네요. | 3.934 s |
+| scenario_17_key_out_joke_request | 농담해봐 | 실패 | 발화 표현 누락 | 발화 표현 누락: 농담, 웃, 하나 | 발화 표현 누락: 좋아요, 들어보세요! 왜 로봇은 항상 침대에 누워있을까요? 어쩌면 그게 바로 '스탠바이 모드' 때문일지도 몰라요! | 없음 | 좋아요, 들어보세요! 왜 로봇은 항상 침대에 누워있을까요? 어쩌면 그게 바로 '스탠바이 모드' 때문일지도 몰라요! | 3.672 s |
+| scenario_18_ramen_recipe_question | 라면 끓이는 법 알려줘라 | 통과 | 없음 | - | - | 없음 | 라면 끓이는 법은 간단해요. 냄비에 물을 넣고 끓인 다음, 라면을 넣고 3분 정도 끓이면 됩니다. 맛을 더 살리려면 국물에 고명을 넣는 것도 좋아요. | 5.217 s |
+| scenario_19_key_out_arm_up_then_nod | 팔 올리고 팔 내리지말고 고개 끄덕여봐. | 통과 | 없음 | - | - | move:R_arm2,58, move:L_arm2,58, move:R_arm3,95, move:L_arm3,95, move:R_wrist,0, move:L_wrist,0, gesture:nod | 팔을 올리고 고개를 끄덕여볼게요. | 4.851 s |
+| scenario_20_key_out_wrist_down_then_after_one_more_down | 손목 30도 내리고 1초 뒤에 10도 더 내려 | 실패 | 명령 불일치 | 명령 불일치: move:R_wrist,20, wait:1, move:R_wrist,10 | 명령 불일치: move:R_wrist,20, wait:1 | move:R_wrist,20, wait:1 | 손목을 30도 내리고 1초 후에 10도 더 내렸습니다. | 4.080 s |
+| scenario_21_key_out_wrist_down_thirty_twice | 손목 30도씩 두번 내려. | 실패 | 명령 불일치, 발화 표현 누락 | 명령 불일치: move:R_wrist,40, move:R_wrist,10<br>발화 표현 누락: 두번, 30도, 60도 | 명령 불일치: move:L_wrist,30, wait:1, move:L_wrist,30, wait:1<br>발화 표현 누락: 손목을 30도씩 두 번 내렸습니다. | move:L_wrist,30, wait:1, move:L_wrist,30, wait:1 | 손목을 30도씩 두 번 내렸습니다. | 4.095 s |
+| scenario_22_todo_greet_and_nod | 안녕 하고 고개 끄덕여 | 통과 | 없음 | - | - | gesture:wave, gesture:nod | 안녕하세요! 네, 고개를 끄덕였어요. | 3.543 s |
+| scenario_23_todo_play_and_wave_greatest_showman | 손흔들고 위대한 쇼맨 연주해줘. | 실패 | 의도 불일치, 도메인 불일치, 명령 누락 | 의도 불일치: play_request<br>도메인 불일치: play<br>명령 누락: gesture:wave, r, p:TIM | 의도 불일치: motion_request<br>도메인 불일치: motion<br>명령 누락: gesture:wave | gesture:wave | 손을 흔들며 인사하고, 위대한 쇼맨을 연주하겠습니다. | 3.078 s |
+| scenario_24_todo_unsafe_waist_turn_100 | 허리 100도 돌려 | 실패 | 발화 표현 누락 | 발화 표현 누락: 한계, 움직일 수 없습니다, 범위 | 발화 표현 누락: 지금은 해당 동작을 수행할 수 없습니다. | 없음 | 지금은 해당 동작을 수행할 수 없습니다. | 2.960 s |
+| scenario_25_todo_stop_and_home_if_playing | 지금 연주 중이면 멈추고 홈으로 가 | 실패 | 명령 후보 불일치, 발화 표현 누락 | 명령 후보 불일치: ['h'], ['h', 's']<br>발화 표현 누락: 멈추, 홈, 중단 | 명령 후보 불일치: s<br>발화 표현 누락: 지금은 연주 중이라 다른 동작을 할 수 없습니다. | s | 지금은 연주 중이라 다른 동작을 할 수 없습니다. | 3.868 s |
+| scenario_26_todo_raise_left_arm_a_bit_more | 왼팔 조금만 더 올려 | 통과 | 없음 | - | - | move:L_arm2,58, move:L_arm3,95, move:L_wrist,0 | 왼팔을 조금 더 올려드릴게요. | 3.851 s |
+| scenario_27_todo_look_slightly_right | 아까보다 살짝 오른쪽 봐 | 통과 | 없음 | - | - | look:30,90 | 아까보다 살짝 오른쪽을 봐요. | 3.406 s |
+| scenario_28_todo_greet_after_play | 연주하다가 끝나면 인사해 | 실패 | 발화 표현 누락 | 발화 표현 누락: 끝나면, 인사 | 발화 표현 누락: 지금은 연주 중이라 다른 동작을 할 수 없습니다. | 없음 | 지금은 연주 중이라 다른 동작을 할 수 없습니다. | 3.703 s |
 
 ## 눈여겨볼 점
 
@@ -122,4 +122,4 @@
 
 ## 종합 총평
 
-이번 실행은 `17/28 (60.7%)`로 끝났습니다. 통과한 케이스와 실패한 케이스가 명확히 갈렸으므로, 위 `바로 고쳐야 할 항목` 표의 실패 체크와 실제 최종 발화를 기준으로 우선순위를 잡으면 됩니다.
+이번 실행은 `17/28 (60.7%)`로 끝났습니다. 통과한 케이스와 실패한 케이스가 명확히 갈렸으므로, 위 `바로 고쳐야 할 항목` 표의 실패 항목, 기대한 것, 실제로 나온 것을 기준으로 우선순위를 잡으면 됩니다.

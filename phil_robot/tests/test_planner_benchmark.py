@@ -45,15 +45,15 @@ class PlannerBenchmarkTest(unittest.TestCase):
         )
 
         planner_idx = input_json.find('"planner_domain"')
-        schema_idx = input_json.find('"response_schema"')
         state_idx = input_json.find('"robot_state"')
-        intent_idx = input_json.find('"intent_result"')
+        motion_idx = input_json.find('"needs_motion"')
         user_idx = input_json.find('"user_text"')
 
-        self.assertLess(planner_idx, schema_idx)
-        self.assertLess(schema_idx, state_idx)
-        self.assertLess(state_idx, intent_idx)
-        self.assertLess(intent_idx, user_idx)
+        self.assertEqual(input_json.find('"response_schema"'), -1)
+        self.assertEqual(input_json.find('"intent_result"'), -1)
+        self.assertLess(planner_idx, state_idx)
+        self.assertLess(state_idx, motion_idx)
+        self.assertLess(motion_idx, user_idx)
 
     def test_planner_response_schema_example_uses_compact_keys(self) -> None:
         self.assertEqual(
@@ -524,6 +524,12 @@ class PlannerBenchmarkTest(unittest.TestCase):
         self.assertIn("안녕하세요!", md_text)
         self.assertIn("지금은 연주 중입니다.", md_text)
         self.assertIn("바로 고쳐야 할 항목", md_text)
+        self.assertIn("실패 항목", md_text)
+        self.assertIn("기대한 것", md_text)
+        self.assertIn("실제로 나온 것", md_text)
+        self.assertIn("명령 불일치", md_text)
+        self.assertIn("명령 불일치: 없음", md_text)
+        self.assertIn("명령 불일치: gesture:nod", md_text)
         self.assertIn("1/2 (50.0%)", md_text)
         self.assertIn("p95", md_text)
 

@@ -24,8 +24,7 @@ robot_project/
 ├── phil_robot/          # Python LLM brain / STT / TTS / eval
 ├── DrumRobot_data/      # 저장/생성 데이터와 코드 산출물
 ├── docs/                # 루트 문서 자산
-├── legacy/              # 이전 intheloop 자산 보관
-├── ppt/                 # 발표 자료
+├── legacy/              # 이전 자산 보관
 └── log.md               # 작업 로그
 ```
 

@@ -23,14 +23,14 @@ def parse_play_modifier(user_text: str) -> PlayModifier:
     # 인스턴스 초기화
     mod = PlayModifier()
     
-    if "빠르게" in user_text or "빨리" in user_text or "빠른" in user_text or "답답" in user_text:
+    if "빠르게" in user_text or "빠르고" in user_text or "빨리" in user_text or "빠른" in user_text or "답답" in user_text:
         mod.tempo_scale = 1.1
-    elif "느리게" in user_text or "천천히" in user_text or "느린" in user_text or "느림" in user_text or "느려" in user_text:
+    elif "느리게" in user_text or "느리고" in user_text or "천천히" in user_text or "느린" in user_text or "느림" in user_text or "느려" in user_text:
         mod.tempo_scale = 0.9
     
-    if "세게" in user_text or "강하게" in user_text:
+    if "세게" in user_text or "세고" in user_text or "강하게" in user_text or "강하고" in user_text or "세진" in user_text or "강한" in user_text:
         mod.velocity_delta = 1
-    elif "약하게" in user_text or "살살" in user_text:
+    elif "약하게" in user_text or "약하고" in user_text or "살살" in user_text:
         mod.velocity_delta = -1
 
     if not mod.is_identity():
