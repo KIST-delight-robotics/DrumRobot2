@@ -12,19 +12,26 @@
 
 ## Now
 
-- [x] `gesture / play abstraction uplift`
-  - 목표: 긴 `op_cmd` 시퀀스를 위 계층 skill/gesture로 끌어올리고, `AgentAction`은 저수준 실행 primitive로 고정한다.
-  - 1차 범위:
-    - 기존 `wave / nod / shake / hurray` 계열을 상위 skill 카탈로그 기준으로 다시 정리
-    - `arm_up`, `arm_down` 같은 팔 동작 gesture 추가
-    - `tempo:fast|slow`, `strength:strong|soft`를 다음 연주용 pre-play modifier로 설계
-  - 원칙:
-    - planner는 긴 `move:` 나열보다 skill / symbolic command를 우선 사용
-    - calibration과 실제 joint 시퀀스는 C++ `AgentAction` 쪽에 둔다
-    - 연주 speed / intensity modifier는 `readMeasure()`에서 적용한다
+- [ ] `planner 의미 해석 / resolver 계산 분리`
+  - 목표: planner는 `absolute / delta / sequence` 의미만 정하고, resolver는 state snapshot 기준 수치 계산만 맡는다.
+  - 이유:
+    - `scenario_20`, `scenario_21`처럼 연속 상대동작에서 `move`를 다시 해석하다가 명령이 꼬이는 문제를 줄인다.
+    - planner가 최종 각도까지 추측하기보다 관절, 방향, 단계 수, 대기 시간만 구조화해 넘기게 한다.
+  - 구현 방향:
+    - planner 출력에 `joint`, `mode`, `value`, `wait` 같은 중간 표현을 둔다.
+    - resolver는 이를 누적 절대각 시퀀스로 변환한다.
+    - validator는 최종 절대각 명령만 검증한다.
+
+- [ ] `classifier routing / shortcut` 보강
+  - 목표: 짧은 social-motion 발화가 `chat`으로 빠지지 않게 classifier routing을 먼저 안정화한다.
+  - 우선 대상:
+    - `만세`
+    - `손 흔들어`
+    - `고개 끄덕여`
+    - `고개 저어봐`
   - 메모:
-    - 현재 기준으로 baseline uplift와 pre-play modifier/readMeasure 적용 경로까지는 사실상 정리 완료로 본다.
-    - 이후 확장 기준과 계층 재정리는 `phil_robot/docs/DECISION_LAYER_ROADMAP_KR.md`를 중심으로 따라간다.
+    - `scenario_08`은 failure taxonomy보다 classifier가 `만세`를 `chat`으로 본 문제가 더 직접적인 원인으로 보인다.
+    - 저모호도 motion/social command는 prefilter 또는 shortcut으로 먼저 잡는 쪽이 낫다.
 
 - [ ] `scenario eval` 확장
   - 목표: smoke(기본 확인)에서 벗어나 실제 운용에 가까운 복합 시나리오를 평가한다.
@@ -41,19 +48,6 @@
     - `왼팔 조금만 더 올려`
     - `아까보다 살짝 오른쪽 봐`
     - `연주하다가 끝나면 인사해`
-
-- [ ] `failure taxonomy` 정의
-  - 목표: 실패를 그냥 pass/fail로 보지 않고 원인 분류로 본다.
-  - 초안 라벨:
-    - `intent_misclassification`
-    - `invalid_parameter`
-    - `unsafe_motion`
-    - `wrong_skill_selection`
-    - `dialogue_mismatch`
-    - `stale_state_usage`
-    - `execution_sequence_error`
-    - `planner_domain_mismatch`
-    - `deterministic_shortcut_miss`
 
 ## Next
 
@@ -252,6 +246,10 @@
 
 ## Parking Lot
 
+- [ ] `failure taxonomy` 정의
+  - 메모:
+    - 지금은 `raw_op_cmds / resolved_op_cmds / valid_op_cmds`만으로도 1차 원인 분리가 가능하다.
+    - 당장은 taxonomy 확장보다 `planner 의미 해석 / resolver 계산 분리`와 `classifier routing` 안정화가 우선으로 보인다.
 - [ ] `task planner`와 `dialogue planner`를 서로 다른 모델로 분리할지 검토
 - [ ] TTS 숫자 읽기 정책 세분화
   - 각도
@@ -266,6 +264,19 @@
 
 ## Done
 
+- [x] `gesture / play abstraction uplift`
+  - 목표: 긴 `op_cmd` 시퀀스를 위 계층 skill/gesture로 끌어올리고, `AgentAction`은 저수준 실행 primitive로 고정한다.
+  - 1차 범위:
+    - 기존 `wave / nod / shake / hurray` 계열을 상위 skill 카탈로그 기준으로 다시 정리
+    - `arm_up`, `arm_down` 같은 팔 동작 gesture 추가
+    - `tempo:fast|slow`, `strength:strong|soft`를 다음 연주용 pre-play modifier로 설계
+  - 원칙:
+    - planner는 긴 `move:` 나열보다 skill / symbolic command를 우선 사용
+    - calibration과 실제 joint 시퀀스는 C++ `AgentAction` 쪽에 둔다
+    - 연주 speed / intensity modifier는 `readMeasure()`에서 적용한다
+  - 메모:
+    - 현재 기준으로 baseline uplift와 pre-play modifier/readMeasure 적용 경로까지는 사실상 정리 완료로 본다.
+    - 이후 확장 기준과 계층 재정리는 `phil_robot/docs/DECISION_LAYER_ROADMAP_KR.md`를 중심으로 따라간다.
 - [x] 자유형 문자열 출력에서 `JSON-only` 출력 계약으로 전환
 - [x] parser fallback 추가
 - [x] classifier / planner 2단계 분리

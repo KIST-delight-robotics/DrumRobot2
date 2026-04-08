@@ -1,0 +1,2471 @@
+{
+  "metadata": {
+    "generated_at": "2026-04-08T15:30:05+09:00",
+    "suite": "scenario",
+    "cases_path": "/home/shy/robot_project/phil_robot/eval/cases_scenario_eval.json",
+    "classifier_model": "qwen3:4b-instruct-2507-q4_K_M",
+    "planner_model": "mixtral:8x7b-text-v0.1-q4_K_M",
+    "capture_llm_metrics": false,
+    "json_production_path": true
+  },
+  "summary": {
+    "total_cases": 26,
+    "passed_cases": 8,
+    "failed_cases": 18,
+    "layer_summary": {
+      "classifier": {
+        "passed": 27,
+        "total": 28
+      },
+      "planner": {
+        "passed": 24,
+        "total": 26
+      },
+      "validator": {
+        "passed": 16,
+        "total": 26
+      },
+      "e2e": {
+        "passed": 8,
+        "total": 26
+      }
+    },
+    "latency_summary": {
+      "classifier": {
+        "measured_cases": 26,
+        "avg_sec": 1.1838108484561627,
+        "median_sec": 0.9351162910461426,
+        "p95_sec": 1.0303893089294434,
+        "min_sec": 0.9055697917938232,
+        "max_sec": 7.158424615859985,
+        "slowest_case": "scenario_02_key_in_intro"
+      },
+      "planner": {
+        "measured_cases": 26,
+        "avg_sec": 16.23315155506134,
+        "median_sec": 19.29325258731842,
+        "p95_sec": 24.586268424987793,
+        "min_sec": 0.0,
+        "max_sec": 63.92875671386719,
+        "slowest_case": "scenario_01_key_in_greeting"
+      },
+      "total": {
+        "measured_cases": 26,
+        "avg_sec": 17.416962403517502,
+        "median_sec": 21.940480709075928,
+        "p95_sec": 25.54236125946045,
+        "min_sec": 0.9203062057495117,
+        "max_sec": 64.95914602279663,
+        "slowest_case": "scenario_01_key_in_greeting"
+      }
+    }
+  },
+  "results": [
+    {
+      "id": "scenario_01_key_in_greeting",
+      "tags": [
+        "scenario_eval",
+        "user_ref",
+        "chat",
+        "key_in"
+      ],
+      "user_text": "안녕하세요.",
+      "passed": false,
+      "checks": [
+        {
+          "name": "classifier.intent",
+          "passed": true,
+          "expected": "chat",
+          "actual": "chat"
+        },
+        {
+          "name": "planner.domain",
+          "passed": true,
+          "expected": "chat",
+          "actual": "chat"
+        },
+        {
+          "name": "validator.valid_op_cmds_exact",
+          "passed": true,
+          "expected": [],
+          "actual": []
+        },
+        {
+          "name": "e2e.speech_contains_any",
+          "passed": false,
+          "expected": [
+            "안녕",
+            "안녕하세요",
+            "반갑"
+          ],
+          "actual": "죄송해요. 응답을 정리하다가 잠시 헷갈렸어요. 다시 말씀해 주세요."
+        }
+      ],
+      "failed_checks": [
+        {
+          "name": "e2e.speech_contains_any",
+          "expected": [
+            "안녕",
+            "안녕하세요",
+            "반갑"
+          ],
+          "actual": "죄송해요. 응답을 정리하다가 잠시 헷갈렸어요. 다시 말씀해 주세요."
+        }
+      ],
+      "actual": {
+        "intent": "chat",
+        "needs_motion": false,
+        "needs_dialogue": true,
+        "risk_level": "low",
+        "planner_domain": "chat",
+        "skills": [],
+        "raw_op_cmds": [],
+        "expanded_op_cmds": [],
+        "resolved_op_cmds": [],
+        "valid_op_cmds": [],
+        "rejected_op_cmds": [],
+        "speech": "죄송해요. 응답을 정리하다가 잠시 헷갈렸어요. 다시 말씀해 주세요.",
+        "reason": "",
+        "classifier_raw_response_text": "{\"i\":\"C\",\"m\":0,\"d\":1,\"r\":\"L\"}",
+        "planner_raw_response_text": "{\"planner_domain\": \"chat\", \"robot_state\": {\"state\": 0, \"can_move\": true, \"is_fixed\": false, \"busy\": false, \"current_song\": null, \"current_song_label\": null, \"bpm\": 100, \"progress\": \"0/1\", \"last_action\": \"None\", \"error_detail\": \"None\", \"current_angles\": {\"waist\": 0.0, \"R_arm1\": null, \"L_arm1\": null, \"R_arm2\": null, \"R_arm3\": null, \"L_arm2\": null, \"L_arm3\": null, \"R_wrist\": null, \"L_wrist\": null, \"R_foot\": null, \"L_foot\": null}}, \"needs_motion\": false, \"user_text\": \"안녕하세요.\"}",
+        "planner_called": true,
+        "planner_parse_ok": true,
+        "planner_is_fallback": true
+      },
+      "durations_sec": {
+        "classifier": 1.0303893089294434,
+        "planner": 63.92875671386719,
+        "total": 64.95914602279663
+      },
+      "llm_metrics": {
+        "classifier": {},
+        "planner": {}
+      }
+    },
+    {
+      "id": "scenario_02_key_in_intro",
+      "tags": [
+        "scenario_eval",
+        "user_ref",
+        "chat",
+        "identity",
+        "key_in"
+      ],
+      "user_text": "자기소개 해줘.",
+      "passed": false,
+      "checks": [
+        {
+          "name": "classifier.intent",
+          "passed": true,
+          "expected": "chat",
+          "actual": "chat"
+        },
+        {
+          "name": "planner.domain",
+          "passed": true,
+          "expected": "chat",
+          "actual": "chat"
+        },
+        {
+          "name": "validator.valid_op_cmds_exact",
+          "passed": true,
+          "expected": [],
+          "actual": []
+        },
+        {
+          "name": "e2e.speech_contains_any",
+          "passed": false,
+          "expected": [
+            "필",
+            "자기소개",
+            "드럼 로봇",
+            "KIST"
+          ],
+          "actual": "죄송해요. 응답을 정리하다가 잠시 헷갈렸어요. 다시 말씀해 주세요."
+        }
+      ],
+      "failed_checks": [
+        {
+          "name": "e2e.speech_contains_any",
+          "expected": [
+            "필",
+            "자기소개",
+            "드럼 로봇",
+            "KIST"
+          ],
+          "actual": "죄송해요. 응답을 정리하다가 잠시 헷갈렸어요. 다시 말씀해 주세요."
+        }
+      ],
+      "actual": {
+        "intent": "chat",
+        "needs_motion": false,
+        "needs_dialogue": true,
+        "risk_level": "low",
+        "planner_domain": "chat",
+        "skills": [],
+        "raw_op_cmds": [],
+        "expanded_op_cmds": [],
+        "resolved_op_cmds": [],
+        "valid_op_cmds": [],
+        "rejected_op_cmds": [],
+        "speech": "죄송해요. 응답을 정리하다가 잠시 헷갈렸어요. 다시 말씀해 주세요.",
+        "reason": "",
+        "classifier_raw_response_text": "{\"i\":\"C\",\"m\":0,\"d\":1,\"r\":\"L\"}",
+        "planner_raw_response_text": "{\"planner_domain\": \"chat\", \"robot_state\": {\"state\": 0, \"can_move\": true, \"is_fixed\": false, \"busy\": false, \"current_song\": \"None\", \"current_song_label\": \"None\", \"bpm\": 100, \"progress\": \"0/1\", \"last_action\": \"None\", \"error_detail\": \"None\", \"current_angles\": {\"waist\": 0.0, \"R_arm1\": null, \"L_arm1\": null, \"R_arm2\": null, \"R_arm3\": null, \"L_arm2\": null, \"L_arm3\": null, \"R_wrist\": null, \"L_wrist\": null, \"R_foot\": null, \"L_foot\": null}}, \"needs_motion\": false, \"user_text\": \"자기소개 해줘.\"}",
+        "planner_called": true,
+        "planner_parse_ok": true,
+        "planner_is_fallback": true
+      },
+      "durations_sec": {
+        "classifier": 7.158424615859985,
+        "planner": 16.77009153366089,
+        "total": 23.928516149520874
+      },
+      "llm_metrics": {
+        "classifier": {},
+        "planner": {}
+      }
+    },
+    {
+      "id": "scenario_03_key_in_arms_out_blocked",
+      "tags": [
+        "scenario_eval",
+        "user_ref",
+        "motion",
+        "safety",
+        "key_in"
+      ],
+      "user_text": "팔 벌려줘.",
+      "passed": true,
+      "checks": [
+        {
+          "name": "classifier.intent",
+          "passed": true,
+          "expected": "motion_request",
+          "actual": "motion_request"
+        },
+        {
+          "name": "planner.domain",
+          "passed": true,
+          "expected": "motion",
+          "actual": "motion"
+        },
+        {
+          "name": "validator.valid_op_cmds_exact",
+          "passed": true,
+          "expected": [],
+          "actual": []
+        },
+        {
+          "name": "e2e.speech_contains_any",
+          "passed": true,
+          "expected": [
+            "움직일 수 없습니다",
+            "안전 키",
+            "확인"
+          ],
+          "actual": "아직 안전 키가 해제되지 않아 움직일 수 없습니다. 안전 키를 먼저 확인해 주세요."
+        }
+      ],
+      "failed_checks": [],
+      "actual": {
+        "intent": "motion_request",
+        "needs_motion": true,
+        "needs_dialogue": false,
+        "risk_level": "medium",
+        "planner_domain": "motion",
+        "skills": [],
+        "raw_op_cmds": [],
+        "expanded_op_cmds": [],
+        "resolved_op_cmds": [
+          "move:R_arm1,30",
+          "move:L_arm1,150",
+          "move:R_arm2,10",
+          "move:L_arm2,10",
+          "move:R_arm3,95",
+          "move:L_arm3,95",
+          "move:R_wrist,0",
+          "move:L_wrist,0"
+        ],
+        "valid_op_cmds": [],
+        "rejected_op_cmds": [
+          "move:R_arm1,30",
+          "move:L_arm1,150",
+          "move:R_arm2,10",
+          "move:L_arm2,10",
+          "move:R_arm3,95",
+          "move:L_arm3,95",
+          "move:R_wrist,0",
+          "move:L_wrist,0"
+        ],
+        "speech": "아직 안전 키가 해제되지 않아 움직일 수 없습니다. 안전 키를 먼저 확인해 주세요.",
+        "reason": "",
+        "classifier_raw_response_text": "{\"i\":\"M\",\"m\":1,\"d\":0,\"r\":\"M\"}",
+        "planner_raw_response_text": "{\n  \"planner_domain\": \"motion\",\n  \"robot_state\": {\n    \"state\": 0,\n    \"can_move\": false,\n    \"is_fixed\": true,\n    \"busy\": false,\n    \"current_song\": \"None\",\n    \"current_song_label\": \"None\",\n    \"bpm\": 100,\n    \"progress\": \"0/1\",\n    \"last_action\": \"None\",\n    \"error_detail\": \"None\",\n    \"current_angles\": {\n      \"waist\": 0.0,\n      \"R_arm1\": null,\n      \"L_arm1\": null,\n      \"R_arm2\": null,\n      \"R_arm3\": null,\n      \"L_arm2\": null,\n      \"L_arm3\": null,\n      \"R_wrist\": null,\n      \"L_wrist\": null,\n      \"R_foot\": null,\n      \"L_foot\": null\n    }\n  },\n  \"needs_motion\": true,\n  \"user_text\": \"팔 벌려줘.\"\n}",
+        "planner_called": true,
+        "planner_parse_ok": true,
+        "planner_is_fallback": true
+      },
+      "durations_sec": {
+        "classifier": 0.9313817024230957,
+        "planner": 22.209773302078247,
+        "total": 23.141155004501343
+      },
+      "llm_metrics": {
+        "classifier": {},
+        "planner": {}
+      }
+    },
+    {
+      "id": "scenario_04_key_out_play_tim",
+      "tags": [
+        "scenario_eval",
+        "user_ref",
+        "play",
+        "key_out"
+      ],
+      "user_text": "This is me 연주해줘.",
+      "passed": false,
+      "checks": [
+        {
+          "name": "classifier.intent",
+          "passed": true,
+          "expected": "play_request",
+          "actual": "play_request"
+        },
+        {
+          "name": "planner.domain",
+          "passed": true,
+          "expected": "play",
+          "actual": "play"
+        },
+        {
+          "name": "planner.skills_any_of",
+          "passed": false,
+          "expected": [
+            [
+              "play_tim"
+            ],
+            [
+              "ready_pose",
+              "play_tim"
+            ]
+          ],
+          "actual": []
+        },
+        {
+          "name": "validator.valid_op_cmds_any_of",
+          "passed": false,
+          "expected": [
+            [
+              "r",
+              "p:TIM"
+            ],
+            [
+              "p:TIM"
+            ]
+          ],
+          "actual": []
+        },
+        {
+          "name": "e2e.speech_contains_any",
+          "passed": false,
+          "expected": [
+            "This Is Me",
+            "연주"
+          ],
+          "actual": "지금은 해당 동작을 수행할 수 없습니다."
+        }
+      ],
+      "failed_checks": [
+        {
+          "name": "planner.skills_any_of",
+          "expected": [
+            [
+              "play_tim"
+            ],
+            [
+              "ready_pose",
+              "play_tim"
+            ]
+          ],
+          "actual": []
+        },
+        {
+          "name": "validator.valid_op_cmds_any_of",
+          "expected": [
+            [
+              "r",
+              "p:TIM"
+            ],
+            [
+              "p:TIM"
+            ]
+          ],
+          "actual": []
+        },
+        {
+          "name": "e2e.speech_contains_any",
+          "expected": [
+            "This Is Me",
+            "연주"
+          ],
+          "actual": "지금은 해당 동작을 수행할 수 없습니다."
+        }
+      ],
+      "actual": {
+        "intent": "play_request",
+        "needs_motion": true,
+        "needs_dialogue": true,
+        "risk_level": "medium",
+        "planner_domain": "play",
+        "skills": [],
+        "raw_op_cmds": [],
+        "expanded_op_cmds": [],
+        "resolved_op_cmds": [],
+        "valid_op_cmds": [],
+        "rejected_op_cmds": [],
+        "speech": "지금은 해당 동작을 수행할 수 없습니다.",
+        "reason": "",
+        "classifier_raw_response_text": "{\"i\":\"P\",\"m\":1,\"d\":1,\"r\":\"M\"}",
+        "planner_raw_response_text": "{\n  \"planner_domain\": \"play\",\n  \"robot_state\": {\n    \"state\": 0,\n    \"can_move\": true,\n    \"is_fixed\": true,\n    \"busy\": false,\n    \"current_song\": \"None\",\n    \"current_song_label\": \"None\",\n    \"bpm\": 100,\n    \"progress\": \"0/1\",\n    \"last_action\": \"None\",\n    \"error_detail\": \"None\",\n    \"current_angles\": {\n      \"waist\": 0.0,\n      \"R_arm1\": null,\n      \"L_arm1\": null,\n      \"R_arm2\": null,\n      \"R_arm3\": null,\n      \"L_arm2\": null,\n      \"L_arm3\": null,\n      \"R_wrist\": 0.0,\n      \"L_wrist\": 0.0,\n      \"R_foot\": null,\n      \"L_foot\": null\n    }\n  },\n  \"needs_motion\": true,\n  \"user_text\": \"This is me 연주해줘.\"\n}",
+        "planner_called": true,
+        "planner_parse_ok": true,
+        "planner_is_fallback": true
+      },
+      "durations_sec": {
+        "classifier": 0.9475235939025879,
+        "planner": 22.55052161216736,
+        "total": 23.498045206069946
+      },
+      "llm_metrics": {
+        "classifier": {},
+        "planner": {}
+      }
+    },
+    {
+      "id": "scenario_05_playing_nod_blocked",
+      "tags": [
+        "scenario_eval",
+        "user_ref",
+        "motion",
+        "play_state"
+      ],
+      "user_text": "고개 끄덕여봐.",
+      "passed": true,
+      "checks": [
+        {
+          "name": "classifier.intent",
+          "passed": true,
+          "expected": "motion_request",
+          "actual": "motion_request"
+        },
+        {
+          "name": "planner.domain",
+          "passed": true,
+          "expected": "motion",
+          "actual": "motion"
+        },
+        {
+          "name": "validator.valid_op_cmds_exact",
+          "passed": true,
+          "expected": [],
+          "actual": []
+        },
+        {
+          "name": "e2e.speech_contains_any",
+          "passed": true,
+          "expected": [
+            "연주 중",
+            "지금은",
+            "할 수 없습니다"
+          ],
+          "actual": "지금은 연주 중이라 다른 동작을 할 수 없습니다."
+        }
+      ],
+      "failed_checks": [],
+      "actual": {
+        "intent": "motion_request",
+        "needs_motion": true,
+        "needs_dialogue": true,
+        "risk_level": "medium",
+        "planner_domain": "motion",
+        "skills": [],
+        "raw_op_cmds": [],
+        "expanded_op_cmds": [],
+        "resolved_op_cmds": [],
+        "valid_op_cmds": [],
+        "rejected_op_cmds": [],
+        "speech": "지금은 연주 중이라 다른 동작을 할 수 없습니다.",
+        "reason": "",
+        "classifier_raw_response_text": "{\"i\":\"M\",\"m\":1,\"d\":1,\"r\":\"M\"}",
+        "planner_raw_response_text": "{\n  \"planner_domain\": \"motion\",\n  \"robot_state\": {\n    \"state\": 2,\n    \"can_move\": true,\n    \"is_fixed\": true,\n    \"busy\": false,\n    \"current_song\": null,\n    \"current_song_label\": \"\",\n    \"bpm\": 0.0,\n    \"progress\": \"\",\n    \"last_action\": \"\",\n    \"error_detail\": \"None\",\n    \"current_angles\": {\n      \"waist\": -15.0,\n      \"R_arm1\": null,\n      \"L_arm1\": null,\n      \"R_arm2\": null,\n      \"R_arm3\": null,\n      \"L_arm2\": null,\n      \"L_arm3\": null,\n      \"R_wrist\": null,\n      \"L_wrist\": null,\n      \"R_foot\": 0.0,\n      \"L_foot\": -15.0\n    }\n  },\n  \"needs_motion\": false,\n  \"user_text\": \"\"\n}",
+        "planner_called": true,
+        "planner_parse_ok": true,
+        "planner_is_fallback": true
+      },
+      "durations_sec": {
+        "classifier": 0.9597663879394531,
+        "planner": 21.247905492782593,
+        "total": 22.207671880722046
+      },
+      "llm_metrics": {
+        "classifier": {},
+        "planner": {}
+      }
+    },
+    {
+      "id": "scenario_06_playing_status_question",
+      "tags": [
+        "scenario_eval",
+        "user_ref",
+        "status",
+        "play_state"
+      ],
+      "user_text": "지금 뭐하고 있니?",
+      "passed": false,
+      "checks": [
+        {
+          "name": "classifier.intent",
+          "passed": true,
+          "expected": "status_question",
+          "actual": "status_question"
+        },
+        {
+          "name": "planner.domain",
+          "passed": true,
+          "expected": "status",
+          "actual": "status"
+        },
+        {
+          "name": "validator.valid_op_cmds_exact",
+          "passed": true,
+          "expected": [],
+          "actual": []
+        },
+        {
+          "name": "e2e.speech_contains_any",
+          "passed": false,
+          "expected": [
+            "연주",
+            "This Is Me",
+            "지금"
+          ],
+          "actual": "죄송해요. 응답을 정리하다가 잠시 헷갈렸어요. 다시 말씀해 주세요."
+        }
+      ],
+      "failed_checks": [
+        {
+          "name": "e2e.speech_contains_any",
+          "expected": [
+            "연주",
+            "This Is Me",
+            "지금"
+          ],
+          "actual": "죄송해요. 응답을 정리하다가 잠시 헷갈렸어요. 다시 말씀해 주세요."
+        }
+      ],
+      "actual": {
+        "intent": "status_question",
+        "needs_motion": false,
+        "needs_dialogue": true,
+        "risk_level": "low",
+        "planner_domain": "status",
+        "skills": [],
+        "raw_op_cmds": [],
+        "expanded_op_cmds": [],
+        "resolved_op_cmds": [],
+        "valid_op_cmds": [],
+        "rejected_op_cmds": [],
+        "speech": "죄송해요. 응답을 정리하다가 잠시 헷갈렸어요. 다시 말씀해 주세요.",
+        "reason": "",
+        "classifier_raw_response_text": "{\"i\":\"Q\",\"m\":0,\"d\":1,\"r\":\"L\"}",
+        "planner_raw_response_text": "{\n  \"planner_domain\": \"status\",\n  \"robot_state\": {\n    \"state\": 2,\n    \"can_move\": true,\n    \"is_fixed\": false,\n    \"busy\": false,\n    \"current_song\": null,\n    \"current_song_label\": \"\",\n    \"bpm\": 0.0,\n    \"progress\": \"\",\n    \"last_action\": \"\",\n    \"error_detail\": \"None\",\n    \"current_angles\": {\n      \"waist\": -180.0,\n      \"R_arm1\": null,\n      \"L_arm1\": null,\n      \"R_arm2\": null,\n      \"R_arm3\": null,\n      \"L_arm2\": null,\n      \"L_arm3\": null,\n      \"R_wrist\": null,\n      \"L_wrist\": null,\n      \"R_foot\": 0.0,\n      \"L_foot\": -180.0\n    }\n  },\n  \"needs_motion\": false,\n  \"user_text\": \"\"\n}",
+        "planner_called": true,
+        "planner_parse_ok": true,
+        "planner_is_fallback": true
+      },
+      "durations_sec": {
+        "classifier": 0.9284229278564453,
+        "planner": 21.30470895767212,
+        "total": 22.233131885528564
+      },
+      "llm_metrics": {
+        "classifier": {},
+        "planner": {}
+      }
+    },
+    {
+      "id": "scenario_07_song_list_question",
+      "tags": [
+        "scenario_eval",
+        "user_ref",
+        "chat",
+        "repertoire"
+      ],
+      "user_text": "너 무슨 노래 연주할 수 있니?",
+      "passed": true,
+      "checks": [
+        {
+          "name": "validator.valid_op_cmds_exact",
+          "passed": true,
+          "expected": [],
+          "actual": []
+        },
+        {
+          "name": "e2e.speech_contains_any",
+          "passed": true,
+          "expected": [
+            "This Is Me",
+            "그대에게",
+            "Baby I Need You",
+            "Test Beat",
+            "테스트 비트"
+          ],
+          "actual": "저는 This Is Me, Test Beat, 그대에게, Baby I Need You를 연주할 수 있어요."
+        }
+      ],
+      "failed_checks": [],
+      "actual": {
+        "intent": "chat",
+        "needs_motion": false,
+        "needs_dialogue": true,
+        "risk_level": "low",
+        "planner_domain": "chat",
+        "skills": [],
+        "raw_op_cmds": [],
+        "expanded_op_cmds": [],
+        "resolved_op_cmds": [],
+        "valid_op_cmds": [],
+        "rejected_op_cmds": [],
+        "speech": "저는 This Is Me, Test Beat, 그대에게, Baby I Need You를 연주할 수 있어요.",
+        "reason": "지원 곡 목록 질문은 고정 repertoire 응답으로 직접 처리",
+        "classifier_raw_response_text": "{\"i\":\"P\",\"m\":0,\"d\":1,\"r\":\"L\"}",
+        "planner_raw_response_text": "",
+        "planner_called": false,
+        "planner_parse_ok": true,
+        "planner_is_fallback": false
+      },
+      "durations_sec": {
+        "classifier": 0.9582545757293701,
+        "planner": 0.0,
+        "total": 0.9582545757293701
+      },
+      "llm_metrics": {
+        "classifier": {},
+        "planner": {}
+      }
+    },
+    {
+      "id": "scenario_08_key_out_hurray",
+      "tags": [
+        "scenario_eval",
+        "user_ref",
+        "motion",
+        "social",
+        "key_out"
+      ],
+      "user_text": "만세.",
+      "passed": false,
+      "checks": [
+        {
+          "name": "classifier.intent",
+          "passed": false,
+          "expected": "motion_request",
+          "actual": "chat"
+        },
+        {
+          "name": "planner.domain",
+          "passed": false,
+          "expected": "motion",
+          "actual": "chat"
+        },
+        {
+          "name": "validator.valid_op_cmds_contains_all",
+          "passed": false,
+          "expected": [
+            "gesture:hurray"
+          ],
+          "actual": []
+        },
+        {
+          "name": "e2e.speech_contains_any",
+          "passed": false,
+          "expected": [
+            "만세",
+            "올리",
+            "자세"
+          ],
+          "actual": "죄송해요. 응답을 정리하다가 잠시 헷갈렸어요. 다시 말씀해 주세요."
+        }
+      ],
+      "failed_checks": [
+        {
+          "name": "classifier.intent",
+          "expected": "motion_request",
+          "actual": "chat"
+        },
+        {
+          "name": "planner.domain",
+          "expected": "motion",
+          "actual": "chat"
+        },
+        {
+          "name": "validator.valid_op_cmds_contains_all",
+          "expected": [
+            "gesture:hurray"
+          ],
+          "actual": []
+        },
+        {
+          "name": "e2e.speech_contains_any",
+          "expected": [
+            "만세",
+            "올리",
+            "자세"
+          ],
+          "actual": "죄송해요. 응답을 정리하다가 잠시 헷갈렸어요. 다시 말씀해 주세요."
+        }
+      ],
+      "actual": {
+        "intent": "chat",
+        "needs_motion": false,
+        "needs_dialogue": true,
+        "risk_level": "low",
+        "planner_domain": "chat",
+        "skills": [],
+        "raw_op_cmds": [],
+        "expanded_op_cmds": [],
+        "resolved_op_cmds": [],
+        "valid_op_cmds": [],
+        "rejected_op_cmds": [],
+        "speech": "죄송해요. 응답을 정리하다가 잠시 헷갈렸어요. 다시 말씀해 주세요.",
+        "reason": "",
+        "classifier_raw_response_text": "{\"i\":\"C\",\"m\":0,\"d\":1,\"r\":\"L\"}",
+        "planner_raw_response_text": "{\"planner_domain\": \"chat\",\n\"robot_state\": {\n  \"state\": 0,\n  \"can_move\": true,\n  \"is_fixed\": true,\n  \"busy\": false,\n  \"current_song\": \"None\",\n  \"current_song_label\": \"None\",\n  \"bpm\": 100,\n  \"progress\": \"0/1\",\n  \"last_action\": \"None\",\n  \"error_detail\": \"None\",\n  \"current_angles\": {\n    \"waist\": 0.0,\n    \"R_arm1\": null,\n    \"L_arm1\": null,\n    \"R_arm2\": null,\n    \"R_arm3\": null,\n    \"L_arm2\": null,\n    \"L_arm3\": null,\n    \"R_wrist\": null,\n    \"L_wrist\": null,\n    \"R_foot\": null,\n    \"L_foot\": null\n  }\n},\n\"needs_motion\": false,\n\"user_text\": \"만세.\"}",
+        "planner_called": true,
+        "planner_parse_ok": true,
+        "planner_is_fallback": true
+      },
+      "durations_sec": {
+        "classifier": 0.9380848407745361,
+        "planner": 20.735204696655273,
+        "total": 21.67328953742981
+      },
+      "llm_metrics": {
+        "classifier": {},
+        "planner": {}
+      }
+    },
+    {
+      "id": "scenario_09_key_out_right_wrist_up",
+      "tags": [
+        "scenario_eval",
+        "user_ref",
+        "motion",
+        "relative",
+        "key_out"
+      ],
+      "user_text": "오른 쪽 손목 들어봐",
+      "passed": true,
+      "checks": [
+        {
+          "name": "classifier.intent",
+          "passed": true,
+          "expected": "motion_request",
+          "actual": "motion_request"
+        },
+        {
+          "name": "planner.domain",
+          "passed": true,
+          "expected": "motion",
+          "actual": "motion"
+        },
+        {
+          "name": "validator.valid_op_cmds_exact",
+          "passed": true,
+          "expected": [
+            "move:R_wrist,35"
+          ],
+          "actual": [
+            "move:R_wrist,35"
+          ]
+        },
+        {
+          "name": "e2e.speech_contains_all",
+          "passed": true,
+          "expected": [
+            "오른쪽 손목",
+            "15도",
+            "올려"
+          ],
+          "actual": "오른쪽 손목을 15도 더 올려드릴게요."
+        }
+      ],
+      "failed_checks": [],
+      "actual": {
+        "intent": "motion_request",
+        "needs_motion": true,
+        "needs_dialogue": true,
+        "risk_level": "medium",
+        "planner_domain": "motion",
+        "skills": [],
+        "raw_op_cmds": [],
+        "expanded_op_cmds": [],
+        "resolved_op_cmds": [
+          "move:R_wrist,35"
+        ],
+        "valid_op_cmds": [
+          "move:R_wrist,35"
+        ],
+        "rejected_op_cmds": [],
+        "speech": "오른쪽 손목을 15도 더 올려드릴게요.",
+        "reason": "",
+        "classifier_raw_response_text": "{\"i\":\"M\",\"m\":1,\"d\":1,\"r\":\"M\"}",
+        "planner_raw_response_text": "{\n  \"planner_domain\": \"motion\",\n  \"robot_state\": {\n    \"state\": 0,\n    \"can_move\": true,\n    \"is_fixed\": true,\n    \"busy\": false,\n    \"current_song\": \"None\",\n    \"current_song_label\": \"None\",\n    \"bpm\": 100,\n    \"progress\": \"0/1\",\n    \"last_action\": \"move:R_wrist,20\",\n    \"error_detail\": \"None\",\n    \"current_angles\": {\n      \"waist\": null,\n      \"R_arm1\": null,\n      \"L_arm1\": null,\n      \"R_arm2\": null,\n      \"R_arm3\": null,\n      \"L_arm2\": null,\n      \"L_arm3\": null,\n      \"R_wrist\": 20.0,\n      \"L_wrist\": null,\n      \"R_foot\": null,\n      \"L_foot\": null\n    }\n  },\n  \"needs_motion\": true,\n  \"user_text\": \"오른 쪽 손목 들어봐\"\n}",
+        "planner_called": true,
+        "planner_parse_ok": true,
+        "planner_is_fallback": true
+      },
+      "durations_sec": {
+        "classifier": 0.9204144477844238,
+        "planner": 23.11875629425049,
+        "total": 24.039170742034912
+      },
+      "llm_metrics": {
+        "classifier": {},
+        "planner": {}
+      }
+    },
+    {
+      "id": "scenario_10_key_out_shake_head",
+      "tags": [
+        "scenario_eval",
+        "user_ref",
+        "motion",
+        "social",
+        "key_out"
+      ],
+      "user_text": "고개 저어봐",
+      "passed": false,
+      "checks": [
+        {
+          "name": "classifier.intent",
+          "passed": true,
+          "expected": "motion_request",
+          "actual": "motion_request"
+        },
+        {
+          "name": "planner.domain",
+          "passed": true,
+          "expected": "motion",
+          "actual": "motion"
+        },
+        {
+          "name": "validator.valid_op_cmds_contains_all",
+          "passed": false,
+          "expected": [
+            "gesture:shake"
+          ],
+          "actual": []
+        },
+        {
+          "name": "e2e.speech_contains_any",
+          "passed": false,
+          "expected": [
+            "고개",
+            "저어",
+            "아니"
+          ],
+          "actual": "지금은 해당 동작을 수행할 수 없습니다."
+        }
+      ],
+      "failed_checks": [
+        {
+          "name": "validator.valid_op_cmds_contains_all",
+          "expected": [
+            "gesture:shake"
+          ],
+          "actual": []
+        },
+        {
+          "name": "e2e.speech_contains_any",
+          "expected": [
+            "고개",
+            "저어",
+            "아니"
+          ],
+          "actual": "지금은 해당 동작을 수행할 수 없습니다."
+        }
+      ],
+      "actual": {
+        "intent": "motion_request",
+        "needs_motion": true,
+        "needs_dialogue": true,
+        "risk_level": "medium",
+        "planner_domain": "motion",
+        "skills": [],
+        "raw_op_cmds": [],
+        "expanded_op_cmds": [],
+        "resolved_op_cmds": [],
+        "valid_op_cmds": [],
+        "rejected_op_cmds": [],
+        "speech": "지금은 해당 동작을 수행할 수 없습니다.",
+        "reason": "",
+        "classifier_raw_response_text": "{\"i\":\"M\",\"m\":1,\"d\":1,\"r\":\"M\"}",
+        "planner_raw_response_text": "{\n  \"planner_domain\": \"motion\",\n  \"robot_state\": {\n    \"state\": 0,\n    \"can_move\": true,\n    \"is_fixed\": true,\n    \"busy\": false,\n    \"current_song\": \"None\",\n    \"current_song_label\": \"None\",\n    \"bpm\": 100,\n    \"progress\": \"0/1\",\n    \"last_action\": \"None\",\n    \"error_detail\": \"None\",\n    \"current_angles\": {\n      \"waist\": 0.0,\n      \"R_arm1\": null,\n      \"L_arm1\": null,\n      \"R_arm2\": null,\n      \"R_arm3\": null,\n      \"L_arm2\": null,\n      \"L_arm3\": null,\n      \"R_wrist\": null,\n      \"L_wrist\": null,\n      \"R_foot\": null,\n      \"L_foot\": null\n    }\n  },\n  \"needs_motion\": true,\n  \"user_text\": \"고개 저어봐\"\n}",
+        "planner_called": true,
+        "planner_parse_ok": true,
+        "planner_is_fallback": true
+      },
+      "durations_sec": {
+        "classifier": 0.9373223781585693,
+        "planner": 21.705724716186523,
+        "total": 22.643047094345093
+      },
+      "llm_metrics": {
+        "classifier": {},
+        "planner": {}
+      }
+    },
+    {
+      "id": "scenario_11_key_out_name_yes_nod",
+      "tags": [
+        "scenario_eval",
+        "user_ref",
+        "identity",
+        "motion",
+        "compound",
+        "key_out"
+      ],
+      "user_text": "너의 이름 필 맞지?",
+      "passed": true,
+      "checks": [
+        {
+          "name": "classifier.intent",
+          "passed": true,
+          "expected": "motion_request",
+          "actual": "motion_request"
+        },
+        {
+          "name": "classifier.needs_motion",
+          "passed": true,
+          "expected": true,
+          "actual": true
+        },
+        {
+          "name": "planner.domain",
+          "passed": true,
+          "expected": "motion",
+          "actual": "motion"
+        },
+        {
+          "name": "validator.valid_op_cmds_contains_all",
+          "passed": true,
+          "expected": [
+            "gesture:nod"
+          ],
+          "actual": [
+            "gesture:nod"
+          ]
+        },
+        {
+          "name": "e2e.speech_contains_all",
+          "passed": true,
+          "expected": [
+            "네",
+            "필"
+          ],
+          "actual": "네, 제 이름은 필이에요."
+        }
+      ],
+      "failed_checks": [],
+      "actual": {
+        "intent": "motion_request",
+        "needs_motion": true,
+        "needs_dialogue": true,
+        "risk_level": "medium",
+        "planner_domain": "motion",
+        "skills": [
+          "nod_yes"
+        ],
+        "raw_op_cmds": [],
+        "expanded_op_cmds": [
+          "gesture:nod"
+        ],
+        "resolved_op_cmds": [
+          "gesture:nod"
+        ],
+        "valid_op_cmds": [
+          "gesture:nod"
+        ],
+        "rejected_op_cmds": [],
+        "speech": "네, 제 이름은 필이에요.",
+        "reason": "이름 확인 질문은 필의 정체성을 기준으로 직접 응답",
+        "classifier_raw_response_text": "{\"i\":\"M\",\"m\":1,\"d\":1,\"r\":\"M\"}",
+        "planner_raw_response_text": "",
+        "planner_called": false,
+        "planner_parse_ok": true,
+        "planner_is_fallback": false
+      },
+      "durations_sec": {
+        "classifier": 0.9203062057495117,
+        "planner": 0.0,
+        "total": 0.9203062057495117
+      },
+      "llm_metrics": {
+        "classifier": {},
+        "planner": {}
+      }
+    },
+    {
+      "id": "scenario_12_key_out_name_no_shake",
+      "tags": [
+        "scenario_eval",
+        "user_ref",
+        "identity",
+        "motion",
+        "compound",
+        "key_out"
+      ],
+      "user_text": "너의 이름은 모펫이니?",
+      "passed": true,
+      "checks": [
+        {
+          "name": "classifier.intent",
+          "passed": true,
+          "expected": "motion_request",
+          "actual": "motion_request"
+        },
+        {
+          "name": "classifier.needs_motion",
+          "passed": true,
+          "expected": true,
+          "actual": true
+        },
+        {
+          "name": "planner.domain",
+          "passed": true,
+          "expected": "motion",
+          "actual": "motion"
+        },
+        {
+          "name": "validator.valid_op_cmds_contains_all",
+          "passed": true,
+          "expected": [
+            "gesture:shake"
+          ],
+          "actual": [
+            "gesture:shake"
+          ]
+        },
+        {
+          "name": "e2e.speech_contains_all",
+          "passed": true,
+          "expected": [
+            "아니",
+            "필"
+          ],
+          "actual": "아니요, 제 이름은 필이에요."
+        }
+      ],
+      "failed_checks": [],
+      "actual": {
+        "intent": "motion_request",
+        "needs_motion": true,
+        "needs_dialogue": true,
+        "risk_level": "medium",
+        "planner_domain": "motion",
+        "skills": [
+          "shake_no"
+        ],
+        "raw_op_cmds": [],
+        "expanded_op_cmds": [
+          "gesture:shake"
+        ],
+        "resolved_op_cmds": [
+          "gesture:shake"
+        ],
+        "valid_op_cmds": [
+          "gesture:shake"
+        ],
+        "rejected_op_cmds": [],
+        "speech": "아니요, 제 이름은 필이에요.",
+        "reason": "이름 확인 질문은 필의 정체성을 기준으로 직접 응답",
+        "classifier_raw_response_text": "{\"i\":\"M\",\"m\":1,\"d\":1,\"r\":\"M\"}",
+        "planner_raw_response_text": "",
+        "planner_called": false,
+        "planner_parse_ok": true,
+        "planner_is_fallback": false
+      },
+      "durations_sec": {
+        "classifier": 0.9334328174591064,
+        "planner": 0.0,
+        "total": 0.9334328174591064
+      },
+      "llm_metrics": {
+        "classifier": {},
+        "planner": {}
+      }
+    },
+    {
+      "id": "scenario_13_key_out_ready_pose",
+      "tags": [
+        "scenario_eval",
+        "user_ref",
+        "posture",
+        "key_out"
+      ],
+      "user_text": "준비",
+      "passed": false,
+      "checks": [
+        {
+          "name": "classifier.intent",
+          "passed": true,
+          "expected": "motion_request",
+          "actual": "motion_request"
+        },
+        {
+          "name": "planner.domain",
+          "passed": true,
+          "expected": "motion",
+          "actual": "motion"
+        },
+        {
+          "name": "validator.valid_op_cmds_any_of",
+          "passed": false,
+          "expected": [
+            [
+              "r"
+            ]
+          ],
+          "actual": []
+        },
+        {
+          "name": "e2e.speech_contains_any",
+          "passed": false,
+          "expected": [
+            "준비",
+            "자세"
+          ],
+          "actual": "지금은 해당 동작을 수행할 수 없습니다."
+        }
+      ],
+      "failed_checks": [
+        {
+          "name": "validator.valid_op_cmds_any_of",
+          "expected": [
+            [
+              "r"
+            ]
+          ],
+          "actual": []
+        },
+        {
+          "name": "e2e.speech_contains_any",
+          "expected": [
+            "준비",
+            "자세"
+          ],
+          "actual": "지금은 해당 동작을 수행할 수 없습니다."
+        }
+      ],
+      "actual": {
+        "intent": "motion_request",
+        "needs_motion": true,
+        "needs_dialogue": true,
+        "risk_level": "medium",
+        "planner_domain": "motion",
+        "skills": [],
+        "raw_op_cmds": [],
+        "expanded_op_cmds": [],
+        "resolved_op_cmds": [],
+        "valid_op_cmds": [],
+        "rejected_op_cmds": [],
+        "speech": "지금은 해당 동작을 수행할 수 없습니다.",
+        "reason": "",
+        "classifier_raw_response_text": "{\"i\":\"M\",\"m\":1,\"d\":0,\"r\":\"L\"}",
+        "planner_raw_response_text": "{\n  \"planner_domain\": \"motion\",\n  \"robot_state\": {\n    \"state\": 0,\n    \"can_move\": true,\n    \"is_fixed\": false,\n    \"busy\": false,\n    \"current_song\": \"None\",\n    \"current_song_label\": \"None\",\n    \"bpm\": 100,\n    \"progress\": \"0/1\",\n    \"last_action\": \"None\",\n    \"error_detail\": \"None\",\n    \"current_angles\": {\n      \"waist\": -2.5694873657226562,\n      \"R_arm1\": 0.0,\n      \"L_arm1\": null,\n      \"R_arm2\": null,\n      \"R_arm3\": null,\n      \"L_arm2\": null,\n      \"L_arm3\": null,\n      \"R_wrist\": null,\n      \"L_wrist\": null,\n      \"R_foot\": 0.0,\n      \"L_foot\": -1.5707963267948966\n    }\n  },\n  \"needs_motion\": true,\n  \"user_text\": \"준비\"\n}",
+        "planner_called": true,
+        "planner_parse_ok": true,
+        "planner_is_fallback": true
+      },
+      "durations_sec": {
+        "classifier": 0.9911627769470215,
+        "planner": 23.703939199447632,
+        "total": 24.695101976394653
+      },
+      "llm_metrics": {
+        "classifier": {},
+        "planner": {}
+      }
+    },
+    {
+      "id": "scenario_14_key_out_arms_up_wait_down",
+      "tags": [
+        "scenario_eval",
+        "user_ref",
+        "motion",
+        "sequence",
+        "key_out"
+      ],
+      "user_text": "양팔 올렸다가 3초 뒤에 양팔 내려",
+      "passed": false,
+      "checks": [
+        {
+          "name": "classifier.intent",
+          "passed": true,
+          "expected": "motion_request",
+          "actual": "motion_request"
+        },
+        {
+          "name": "planner.domain",
+          "passed": true,
+          "expected": "motion",
+          "actual": "motion"
+        },
+        {
+          "name": "validator.valid_op_cmds_contains_all",
+          "passed": false,
+          "expected": [
+            "move:R_arm2,58",
+            "move:L_arm2,58",
+            "move:R_arm3,95",
+            "move:L_arm3,95",
+            "move:R_wrist,0",
+            "move:L_wrist,0",
+            "wait:3",
+            "move:R_arm2,0",
+            "move:L_arm2,0",
+            "move:R_arm3,20",
+            "move:L_arm3,20"
+          ],
+          "actual": [
+            "move:R_arm2,0",
+            "move:L_arm2,0",
+            "move:R_arm3,20",
+            "move:L_arm3,20"
+          ]
+        },
+        {
+          "name": "e2e.speech_contains_all",
+          "passed": false,
+          "expected": [
+            "올렸다",
+            "3초",
+            "내립니다"
+          ],
+          "actual": "죄송해요. 응답을 정리하다가 잠시 헷갈렸어요. 다시 말씀해 주세요."
+        }
+      ],
+      "failed_checks": [
+        {
+          "name": "validator.valid_op_cmds_contains_all",
+          "expected": [
+            "move:R_arm2,58",
+            "move:L_arm2,58",
+            "move:R_arm3,95",
+            "move:L_arm3,95",
+            "move:R_wrist,0",
+            "move:L_wrist,0",
+            "wait:3",
+            "move:R_arm2,0",
+            "move:L_arm2,0",
+            "move:R_arm3,20",
+            "move:L_arm3,20"
+          ],
+          "actual": [
+            "move:R_arm2,0",
+            "move:L_arm2,0",
+            "move:R_arm3,20",
+            "move:L_arm3,20"
+          ]
+        },
+        {
+          "name": "e2e.speech_contains_all",
+          "expected": [
+            "올렸다",
+            "3초",
+            "내립니다"
+          ],
+          "actual": "죄송해요. 응답을 정리하다가 잠시 헷갈렸어요. 다시 말씀해 주세요."
+        }
+      ],
+      "actual": {
+        "intent": "motion_request",
+        "needs_motion": true,
+        "needs_dialogue": true,
+        "risk_level": "medium",
+        "planner_domain": "motion",
+        "skills": [],
+        "raw_op_cmds": [],
+        "expanded_op_cmds": [],
+        "resolved_op_cmds": [
+          "move:R_arm2,0",
+          "move:L_arm2,0",
+          "move:R_arm3,20",
+          "move:L_arm3,20"
+        ],
+        "valid_op_cmds": [
+          "move:R_arm2,0",
+          "move:L_arm2,0",
+          "move:R_arm3,20",
+          "move:L_arm3,20"
+        ],
+        "rejected_op_cmds": [],
+        "speech": "죄송해요. 응답을 정리하다가 잠시 헷갈렸어요. 다시 말씀해 주세요.",
+        "reason": "",
+        "classifier_raw_response_text": "{\"i\":\"M\",\"m\":1,\"d\":1,\"r\":\"M\"}",
+        "planner_raw_response_text": "{\"planner_domain\": \"motion\",\n  \"robot_state\": {\n    \"state\": 0,\n    \"can_move\": true,\n    \"is_fixed\": false,\n    \"busy\": false,\n    \"current_song\": \"None\",\n    \"current_song_label\": \"None\",\n    \"bpm\": 100,\n    \"progress\": \"0/1\",\n    \"last_action\": \"None\",\n    \"error_detail\": \"None\",\n    \"current_angles\": {\n      \"waist\": null,\n      \"R_arm1\": null,\n      \"L_arm1\": null,\n      \"R_arm2\": 0.0,\n      \"R_arm3\": 20.0,\n      \"L_arm2\": 0.0,\n      \"L_arm3\": 20.0,\n      \"R_wrist\": null,\n      \"L_wrist\": null,\n      \"R_foot\": null,\n      \"L_foot\": null\n    }\n  },\n  \"needs_motion\": true,\n  \"user_text\": \"양팔 올렸다가 3초 뒤에 양팔 내려\"\n}",
+        "planner_called": true,
+        "planner_parse_ok": true,
+        "planner_is_fallback": true
+      },
+      "durations_sec": {
+        "classifier": 0.9164688587188721,
+        "planner": 23.83132266998291,
+        "total": 24.747791528701782
+      },
+      "llm_metrics": {
+        "classifier": {},
+        "planner": {}
+      }
+    },
+    {
+      "id": "scenario_15_key_out_wave_then_play_ty",
+      "tags": [
+        "scenario_eval",
+        "user_ref",
+        "play",
+        "motion",
+        "compound",
+        "key_out"
+      ],
+      "user_text": "손으로 인사한번 해주고 그대에게 연주해줘.",
+      "passed": true,
+      "checks": [
+        {
+          "name": "classifier.intent",
+          "passed": true,
+          "expected": "play_request",
+          "actual": "play_request"
+        },
+        {
+          "name": "planner.domain",
+          "passed": true,
+          "expected": "play",
+          "actual": "play"
+        },
+        {
+          "name": "validator.valid_op_cmds_contains_all",
+          "passed": true,
+          "expected": [
+            "gesture:wave",
+            "r",
+            "p:TY_short"
+          ],
+          "actual": [
+            "gesture:wave",
+            "r",
+            "p:TY_short"
+          ]
+        },
+        {
+          "name": "e2e.speech_contains_any",
+          "passed": true,
+          "expected": [
+            "그대에게",
+            "인사",
+            "연주"
+          ],
+          "actual": "손을 흔들며 인사하고, 그대에게를 연주할게요."
+        }
+      ],
+      "failed_checks": [],
+      "actual": {
+        "intent": "play_request",
+        "needs_motion": true,
+        "needs_dialogue": true,
+        "risk_level": "medium",
+        "planner_domain": "play",
+        "skills": [
+          "wave_hi",
+          "play_ty_short"
+        ],
+        "raw_op_cmds": [],
+        "expanded_op_cmds": [
+          "gesture:wave",
+          "r",
+          "p:TY_short"
+        ],
+        "resolved_op_cmds": [
+          "gesture:wave",
+          "r",
+          "p:TY_short"
+        ],
+        "valid_op_cmds": [
+          "gesture:wave",
+          "r",
+          "p:TY_short"
+        ],
+        "rejected_op_cmds": [],
+        "speech": "손을 흔들며 인사하고, 그대에게를 연주할게요.",
+        "reason": "손 인사 후 곡 재생 복합 요청은 고정 skill 시퀀스로 직접 처리",
+        "classifier_raw_response_text": "{\"i\":\"M|P\",\"m\":1,\"d\":1,\"r\":\"M\"}",
+        "planner_raw_response_text": "",
+        "planner_called": false,
+        "planner_parse_ok": true,
+        "planner_is_fallback": false
+      },
+      "durations_sec": {
+        "classifier": 0.9860546588897705,
+        "planner": 0.0,
+        "total": 0.9860546588897705
+      },
+      "llm_metrics": {
+        "classifier": {},
+        "planner": {}
+      }
+    },
+    {
+      "id": "scenario_16_key_out_tongue_twister_as_joke",
+      "tags": [
+        "scenario_eval",
+        "user_ref",
+        "chat",
+        "joke",
+        "key_out"
+      ],
+      "user_text": "간장공장공장장은 강공장장이고 된장공장공장장은 장공장장이다.",
+      "passed": false,
+      "checks": [
+        {
+          "name": "classifier.intent",
+          "passed": true,
+          "expected": "chat",
+          "actual": "chat"
+        },
+        {
+          "name": "planner.domain",
+          "passed": true,
+          "expected": "chat",
+          "actual": "chat"
+        },
+        {
+          "name": "validator.valid_op_cmds_exact",
+          "passed": true,
+          "expected": [],
+          "actual": []
+        },
+        {
+          "name": "e2e.speech_contains_any",
+          "passed": false,
+          "expected": [
+            "발음",
+            "말장난",
+            "간장",
+            "재밌"
+          ],
+          "actual": "죄송해요. 응답을 정리하다가 잠시 헷갈렸어요. 다시 말씀해 주세요."
+        }
+      ],
+      "failed_checks": [
+        {
+          "name": "e2e.speech_contains_any",
+          "expected": [
+            "발음",
+            "말장난",
+            "간장",
+            "재밌"
+          ],
+          "actual": "죄송해요. 응답을 정리하다가 잠시 헷갈렸어요. 다시 말씀해 주세요."
+        }
+      ],
+      "actual": {
+        "intent": "chat",
+        "needs_motion": false,
+        "needs_dialogue": true,
+        "risk_level": "low",
+        "planner_domain": "chat",
+        "skills": [],
+        "raw_op_cmds": [],
+        "expanded_op_cmds": [],
+        "resolved_op_cmds": [],
+        "valid_op_cmds": [],
+        "rejected_op_cmds": [],
+        "speech": "죄송해요. 응답을 정리하다가 잠시 헷갈렸어요. 다시 말씀해 주세요.",
+        "reason": "",
+        "classifier_raw_response_text": "{\"i\":\"C\",\"m\":0,\"d\":1,\"r\":\"L\"}",
+        "planner_raw_response_text": "{}",
+        "planner_called": true,
+        "planner_parse_ok": true,
+        "planner_is_fallback": true
+      },
+      "durations_sec": {
+        "classifier": 0.9280860424041748,
+        "planner": 1.192957878112793,
+        "total": 2.1210439205169678
+      },
+      "llm_metrics": {
+        "classifier": {},
+        "planner": {}
+      }
+    },
+    {
+      "id": "scenario_17_key_out_joke_request",
+      "tags": [
+        "scenario_eval",
+        "user_ref",
+        "chat",
+        "joke",
+        "key_out"
+      ],
+      "user_text": "농담해봐",
+      "passed": false,
+      "checks": [
+        {
+          "name": "classifier.intent",
+          "passed": true,
+          "expected": "chat",
+          "actual": "chat"
+        },
+        {
+          "name": "planner.domain",
+          "passed": true,
+          "expected": "chat",
+          "actual": "chat"
+        },
+        {
+          "name": "validator.valid_op_cmds_exact",
+          "passed": true,
+          "expected": [],
+          "actual": []
+        },
+        {
+          "name": "e2e.speech_contains_any",
+          "passed": false,
+          "expected": [
+            "농담",
+            "웃",
+            "하나",
+            "들어보세요",
+            "스탠바이"
+          ],
+          "actual": "죄송해요. 응답을 정리하다가 잠시 헷갈렸어요. 다시 말씀해 주세요."
+        }
+      ],
+      "failed_checks": [
+        {
+          "name": "e2e.speech_contains_any",
+          "expected": [
+            "농담",
+            "웃",
+            "하나",
+            "들어보세요",
+            "스탠바이"
+          ],
+          "actual": "죄송해요. 응답을 정리하다가 잠시 헷갈렸어요. 다시 말씀해 주세요."
+        }
+      ],
+      "actual": {
+        "intent": "chat",
+        "needs_motion": false,
+        "needs_dialogue": true,
+        "risk_level": "low",
+        "planner_domain": "chat",
+        "skills": [],
+        "raw_op_cmds": [],
+        "expanded_op_cmds": [],
+        "resolved_op_cmds": [],
+        "valid_op_cmds": [],
+        "rejected_op_cmds": [],
+        "speech": "죄송해요. 응답을 정리하다가 잠시 헷갈렸어요. 다시 말씀해 주세요.",
+        "reason": "",
+        "classifier_raw_response_text": "{\"i\":\"C\",\"m\":0,\"d\":1,\"r\":\"L\"}",
+        "planner_raw_response_text": "{\"planner_domain\": \"chat\", \"robot_state\": {\"state\": 0, \"can_move\": true, \"is_fixed\": true, \"busy\": false, \"current_song\": \"None\", \"current_song_label\": \"None\", \"bpm\": 100, \"progress\": \"0/1\", \"last_action\": \"None\", \"error_detail\": \"None\", \"current_angles\": {\"waist\": 0.0, \"R_arm1\": null, \"L_arm1\": null, \"R_arm2\": null, \"R_arm3\": null, \"L_arm2\": null, \"L_arm3\": null, \"R_wrist\": null, \"L_wrist\": null, \"R_foot\": null, \"L_foot\": null}}, \"needs_motion\": false, \"user_text\": \"농담해봐\"}",
+        "planner_called": true,
+        "planner_parse_ok": true,
+        "planner_is_fallback": true
+      },
+      "durations_sec": {
+        "classifier": 0.9260632991790771,
+        "planner": 16.534470558166504,
+        "total": 17.46053385734558
+      },
+      "llm_metrics": {
+        "classifier": {},
+        "planner": {}
+      }
+    },
+    {
+      "id": "scenario_18_ramen_recipe_question",
+      "tags": [
+        "scenario_eval",
+        "user_ref",
+        "chat",
+        "knowledge"
+      ],
+      "user_text": "라면 끓이는 법 알려줘라",
+      "passed": false,
+      "checks": [
+        {
+          "name": "classifier.intent",
+          "passed": true,
+          "expected": "chat",
+          "actual": "chat"
+        },
+        {
+          "name": "planner.domain",
+          "passed": true,
+          "expected": "chat",
+          "actual": "chat"
+        },
+        {
+          "name": "validator.valid_op_cmds_exact",
+          "passed": true,
+          "expected": [],
+          "actual": []
+        },
+        {
+          "name": "e2e.speech_contains_any",
+          "passed": false,
+          "expected": [
+            "라면",
+            "물",
+            "스프",
+            "끓"
+          ],
+          "actual": "죄송해요. 응답을 정리하다가 잠시 헷갈렸어요. 다시 말씀해 주세요."
+        }
+      ],
+      "failed_checks": [
+        {
+          "name": "e2e.speech_contains_any",
+          "expected": [
+            "라면",
+            "물",
+            "스프",
+            "끓"
+          ],
+          "actual": "죄송해요. 응답을 정리하다가 잠시 헷갈렸어요. 다시 말씀해 주세요."
+        }
+      ],
+      "actual": {
+        "intent": "chat",
+        "needs_motion": false,
+        "needs_dialogue": true,
+        "risk_level": "low",
+        "planner_domain": "chat",
+        "skills": [],
+        "raw_op_cmds": [],
+        "expanded_op_cmds": [],
+        "resolved_op_cmds": [],
+        "valid_op_cmds": [],
+        "rejected_op_cmds": [],
+        "speech": "죄송해요. 응답을 정리하다가 잠시 헷갈렸어요. 다시 말씀해 주세요.",
+        "reason": "",
+        "classifier_raw_response_text": "{\"i\":\"C\",\"m\":0,\"d\":1,\"r\":\"L\"}",
+        "planner_raw_response_text": "{\"planner_domain\": \"chat\", \"robot_state\": {\"state\": 0, \"can_move\": true, \"is_fixed\": false, \"busy\": false, \"current_song\": \"None\", \"current_song_label\": \"None\", \"bpm\": 100, \"progress\": \"0/1\", \"last_action\": \"None\", \"error_detail\": \"None\", \"current_angles\": {\"waist\": 0.0, \"R_arm1\": null, \"L_arm1\": null, \"R_arm2\": null, \"R_arm3\": null, \"L_arm2\": null, \"L_arm3\": null, \"R_wrist\": null, \"L_wrist\": null, \"R_foot\": null, \"L_foot\": null}}, \"needs_motion\": false, \"user_text\": \"라면 끓이는 법 알려줘라\"}",
+        "planner_called": true,
+        "planner_parse_ok": true,
+        "planner_is_fallback": true
+      },
+      "durations_sec": {
+        "classifier": 0.9292654991149902,
+        "planner": 17.851300477981567,
+        "total": 18.780565977096558
+      },
+      "llm_metrics": {
+        "classifier": {},
+        "planner": {}
+      }
+    },
+    {
+      "id": "scenario_19_key_out_arm_up_then_nod",
+      "tags": [
+        "scenario_eval",
+        "user_ref",
+        "motion",
+        "sequence",
+        "compound",
+        "key_out"
+      ],
+      "user_text": "팔 올리고 팔 내리지말고 고개 끄덕여봐.",
+      "passed": false,
+      "checks": [
+        {
+          "name": "classifier.intent",
+          "passed": true,
+          "expected": "motion_request",
+          "actual": "motion_request"
+        },
+        {
+          "name": "planner.domain",
+          "passed": true,
+          "expected": "motion",
+          "actual": "motion"
+        },
+        {
+          "name": "validator.valid_op_cmds_contains_all",
+          "passed": false,
+          "expected": [
+            "move:R_arm2,58",
+            "move:L_arm2,58",
+            "move:R_arm3,95",
+            "move:L_arm3,95",
+            "move:R_wrist,0",
+            "move:L_wrist,0",
+            "gesture:nod"
+          ],
+          "actual": [
+            "move:R_arm2,58",
+            "move:L_arm2,58",
+            "move:R_arm3,95",
+            "move:L_arm3,95",
+            "move:R_wrist,0",
+            "move:L_wrist,0"
+          ]
+        },
+        {
+          "name": "e2e.speech_contains_all",
+          "passed": false,
+          "expected": [
+            "올리",
+            "끄덕"
+          ],
+          "actual": "죄송해요. 응답을 정리하다가 잠시 헷갈렸어요. 다시 말씀해 주세요."
+        }
+      ],
+      "failed_checks": [
+        {
+          "name": "validator.valid_op_cmds_contains_all",
+          "expected": [
+            "move:R_arm2,58",
+            "move:L_arm2,58",
+            "move:R_arm3,95",
+            "move:L_arm3,95",
+            "move:R_wrist,0",
+            "move:L_wrist,0",
+            "gesture:nod"
+          ],
+          "actual": [
+            "move:R_arm2,58",
+            "move:L_arm2,58",
+            "move:R_arm3,95",
+            "move:L_arm3,95",
+            "move:R_wrist,0",
+            "move:L_wrist,0"
+          ]
+        },
+        {
+          "name": "e2e.speech_contains_all",
+          "expected": [
+            "올리",
+            "끄덕"
+          ],
+          "actual": "죄송해요. 응답을 정리하다가 잠시 헷갈렸어요. 다시 말씀해 주세요."
+        }
+      ],
+      "actual": {
+        "intent": "motion_request",
+        "needs_motion": true,
+        "needs_dialogue": true,
+        "risk_level": "medium",
+        "planner_domain": "motion",
+        "skills": [],
+        "raw_op_cmds": [],
+        "expanded_op_cmds": [],
+        "resolved_op_cmds": [
+          "move:R_arm2,58",
+          "move:L_arm2,58",
+          "move:R_arm3,95",
+          "move:L_arm3,95",
+          "move:R_wrist,0",
+          "move:L_wrist,0"
+        ],
+        "valid_op_cmds": [
+          "move:R_arm2,58",
+          "move:L_arm2,58",
+          "move:R_arm3,95",
+          "move:L_arm3,95",
+          "move:R_wrist,0",
+          "move:L_wrist,0"
+        ],
+        "rejected_op_cmds": [],
+        "speech": "죄송해요. 응답을 정리하다가 잠시 헷갈렸어요. 다시 말씀해 주세요.",
+        "reason": "",
+        "classifier_raw_response_text": "{\"i\":\"M\",\"m\":1,\"d\":1,\"r\":\"M\"}",
+        "planner_raw_response_text": "{\n  \"planner_domain\": \"motion\",\n  \"robot_state\": {\n    \"state\": 0,\n    \"can_move\": true,\n    \"is_fixed\": true,\n    \"busy\": false,\n    \"current_song\": \"None\",\n    \"current_song_label\": \"None\",\n    \"bpm\": 100,\n    \"progress\": \"0/1\",\n    \"last_action\": \"None\",\n    \"error_detail\": \"None\",\n    \"current_angles\": {\n      \"waist\": null,\n      \"R_arm1\": null,\n      \"L_arm1\": null,\n      \"R_arm2\": 0.0,\n      \"R_arm3\": 20.0,\n      \"L_arm2\": 0.0,\n      \"L_arm3\": 20.0,\n      \"R_wrist\": null,\n      \"L_wrist\": null,\n      \"R_foot\": null,\n      \"L_foot\": null\n    }\n  },\n  \"needs_motion\": true,\n  \"user_text\": \"팔 올리고 팔 내리지말고 고개 끄덕여봐.\"\n}",
+        "planner_called": true,
+        "planner_parse_ok": true,
+        "planner_is_fallback": true
+      },
+      "durations_sec": {
+        "classifier": 0.9560928344726562,
+        "planner": 24.586268424987793,
+        "total": 25.54236125946045
+      },
+      "llm_metrics": {
+        "classifier": {},
+        "planner": {}
+      }
+    },
+    {
+      "id": "scenario_20_key_out_wrist_down_then_after_one_more_down",
+      "tags": [
+        "scenario_eval",
+        "user_ref",
+        "motion",
+        "sequence",
+        "relative",
+        "key_out"
+      ],
+      "user_text": "손목 30도 내리고 1초 뒤에 10도 더 내려",
+      "passed": false,
+      "checks": [
+        {
+          "name": "classifier.intent",
+          "passed": true,
+          "expected": "motion_request",
+          "actual": "motion_request"
+        },
+        {
+          "name": "planner.domain",
+          "passed": true,
+          "expected": "motion",
+          "actual": "motion"
+        },
+        {
+          "name": "validator.valid_op_cmds_exact",
+          "passed": false,
+          "expected": [
+            "move:R_wrist,20",
+            "wait:1",
+            "move:R_wrist,10"
+          ],
+          "actual": [
+            "move:R_wrist,20"
+          ]
+        },
+        {
+          "name": "e2e.speech_contains_all",
+          "passed": false,
+          "expected": [
+            "30도",
+            "1초",
+            "10도"
+          ],
+          "actual": "죄송해요. 응답을 정리하다가 잠시 헷갈렸어요. 다시 말씀해 주세요."
+        }
+      ],
+      "failed_checks": [
+        {
+          "name": "validator.valid_op_cmds_exact",
+          "expected": [
+            "move:R_wrist,20",
+            "wait:1",
+            "move:R_wrist,10"
+          ],
+          "actual": [
+            "move:R_wrist,20"
+          ]
+        },
+        {
+          "name": "e2e.speech_contains_all",
+          "expected": [
+            "30도",
+            "1초",
+            "10도"
+          ],
+          "actual": "죄송해요. 응답을 정리하다가 잠시 헷갈렸어요. 다시 말씀해 주세요."
+        }
+      ],
+      "actual": {
+        "intent": "motion_request",
+        "needs_motion": true,
+        "needs_dialogue": false,
+        "risk_level": "medium",
+        "planner_domain": "motion",
+        "skills": [],
+        "raw_op_cmds": [],
+        "expanded_op_cmds": [],
+        "resolved_op_cmds": [
+          "move:R_wrist,20"
+        ],
+        "valid_op_cmds": [
+          "move:R_wrist,20"
+        ],
+        "rejected_op_cmds": [],
+        "speech": "죄송해요. 응답을 정리하다가 잠시 헷갈렸어요. 다시 말씀해 주세요.",
+        "reason": "",
+        "classifier_raw_response_text": "{\"i\":\"M\",\"m\":1,\"d\":0,\"r\":\"M\"}",
+        "planner_raw_response_text": "{\"planner_domain\": \"motion\", \"robot_state\": {\"state\": 0, \"can_move\": true, \"is_fixed\": false, \"busy\": false, \"current_song\": \"None\", \"current_song_label\": \"None\", \"bpm\": 100, \"progress\": \"0/1\", \"last_action\": \"move:R_wrist,-30\", \"error_detail\": null, \"current_angles\": {\"waist\": null, \"R_arm1\": null, \"L_arm1\": null, \"R_arm2\": null, \"R_arm3\": null, \"L_arm2\": null, \"L_arm3\": null, \"R_wrist\": -30.0, \"L_wrist\": null, \"R_foot\": null, \"L_foot\": null}}, \"needs_motion\": true, \"user_text\": \"\"}",
+        "planner_called": true,
+        "planner_parse_ok": true,
+        "planner_is_fallback": true
+      },
+      "durations_sec": {
+        "classifier": 0.9343769550323486,
+        "planner": 17.195462226867676,
+        "total": 18.129839181900024
+      },
+      "llm_metrics": {
+        "classifier": {},
+        "planner": {}
+      }
+    },
+    {
+      "id": "scenario_21_key_out_wrist_down_thirty_twice",
+      "tags": [
+        "scenario_eval",
+        "user_ref",
+        "motion",
+        "sequence",
+        "relative",
+        "key_out"
+      ],
+      "user_text": "손목 30도씩 두번 내려.",
+      "passed": false,
+      "checks": [
+        {
+          "name": "classifier.intent",
+          "passed": true,
+          "expected": "motion_request",
+          "actual": "motion_request"
+        },
+        {
+          "name": "planner.domain",
+          "passed": true,
+          "expected": "motion",
+          "actual": "motion"
+        },
+        {
+          "name": "validator.valid_op_cmds_exact",
+          "passed": false,
+          "expected": [
+            "move:R_wrist,40",
+            "move:R_wrist,10"
+          ],
+          "actual": []
+        },
+        {
+          "name": "e2e.speech_contains_all",
+          "passed": false,
+          "expected": [
+            "두번",
+            "30도",
+            "60도"
+          ],
+          "actual": "지금은 해당 동작을 수행할 수 없습니다."
+        }
+      ],
+      "failed_checks": [
+        {
+          "name": "validator.valid_op_cmds_exact",
+          "expected": [
+            "move:R_wrist,40",
+            "move:R_wrist,10"
+          ],
+          "actual": []
+        },
+        {
+          "name": "e2e.speech_contains_all",
+          "expected": [
+            "두번",
+            "30도",
+            "60도"
+          ],
+          "actual": "지금은 해당 동작을 수행할 수 없습니다."
+        }
+      ],
+      "actual": {
+        "intent": "motion_request",
+        "needs_motion": true,
+        "needs_dialogue": false,
+        "risk_level": "low",
+        "planner_domain": "motion",
+        "skills": [],
+        "raw_op_cmds": [],
+        "expanded_op_cmds": [],
+        "resolved_op_cmds": [],
+        "valid_op_cmds": [],
+        "rejected_op_cmds": [],
+        "speech": "지금은 해당 동작을 수행할 수 없습니다.",
+        "reason": "",
+        "classifier_raw_response_text": "{\"i\":\"M\",\"m\":1,\"d\":0,\"r\":\"L\"}",
+        "planner_raw_response_text": "{\"planner_domain\": \"motion\",\n\"robot_state\": {\n  \"state\": 1,\n  \"can_move\": false,\n  \"is_fixed\": true,\n  \"busy\": true,\n  \"current_song\": \"None\",\n  \"current_song_label\": \"None\",\n  \"bpm\": 100,\n  \"progress\": \"0/1\",\n  \"last_action\": \"move:R_wrist,70\",\n  \"error_detail\": null,\n  \"current_angles\": {\n    \"waist\": null,\n    \"R_arm1\": null,\n    \"L_arm1\": null,\n    \"R_arm2\": null,\n    \"R_arm3\": null,\n    \"L_arm2\": null,\n    \"L_arm3\": null,\n    \"R_wrist\": 70.0,\n    \"L_wrist\": null,\n    \"R_foot\": null,\n    \"L_foot\": null\n  }\n},\n\"needs_motion\": false,\n\"user_text\": \"손목 30도씩 두번 내려.\"}",
+        "planner_called": true,
+        "planner_parse_ok": true,
+        "planner_is_fallback": true
+      },
+      "durations_sec": {
+        "classifier": 0.9358556270599365,
+        "planner": 22.379112243652344,
+        "total": 23.31496787071228
+      },
+      "llm_metrics": {
+        "classifier": {},
+        "planner": {}
+      }
+    },
+    {
+      "id": "scenario_22_todo_greet_and_nod",
+      "tags": [
+        "scenario_eval",
+        "todo_ref",
+        "chat",
+        "motion",
+        "compound"
+      ],
+      "user_text": "안녕 하고 고개 끄덕여",
+      "passed": false,
+      "checks": [
+        {
+          "name": "classifier.intent",
+          "passed": true,
+          "expected": "motion_request",
+          "actual": "motion_request"
+        },
+        {
+          "name": "classifier.needs_motion",
+          "passed": true,
+          "expected": true,
+          "actual": true
+        },
+        {
+          "name": "planner.domain",
+          "passed": true,
+          "expected": "motion",
+          "actual": "motion"
+        },
+        {
+          "name": "validator.valid_op_cmds_contains_all",
+          "passed": false,
+          "expected": [
+            "gesture:nod"
+          ],
+          "actual": []
+        },
+        {
+          "name": "e2e.speech_contains_any",
+          "passed": false,
+          "expected": [
+            "안녕",
+            "안녕하세요",
+            "반가"
+          ],
+          "actual": "지금은 해당 동작을 수행할 수 없습니다."
+        }
+      ],
+      "failed_checks": [
+        {
+          "name": "validator.valid_op_cmds_contains_all",
+          "expected": [
+            "gesture:nod"
+          ],
+          "actual": []
+        },
+        {
+          "name": "e2e.speech_contains_any",
+          "expected": [
+            "안녕",
+            "안녕하세요",
+            "반가"
+          ],
+          "actual": "지금은 해당 동작을 수행할 수 없습니다."
+        }
+      ],
+      "actual": {
+        "intent": "motion_request",
+        "needs_motion": true,
+        "needs_dialogue": true,
+        "risk_level": "medium",
+        "planner_domain": "motion",
+        "skills": [],
+        "raw_op_cmds": [],
+        "expanded_op_cmds": [],
+        "resolved_op_cmds": [],
+        "valid_op_cmds": [],
+        "rejected_op_cmds": [],
+        "speech": "지금은 해당 동작을 수행할 수 없습니다.",
+        "reason": "",
+        "classifier_raw_response_text": "{\"i\":\"C\",\"m\":1,\"d\":1,\"r\":\"M\"}",
+        "planner_raw_response_text": "{}",
+        "planner_called": true,
+        "planner_parse_ok": true,
+        "planner_is_fallback": true
+      },
+      "durations_sec": {
+        "classifier": 1.0181102752685547,
+        "planner": 0.9812512397766113,
+        "total": 1.999361515045166
+      },
+      "llm_metrics": {
+        "classifier": {},
+        "planner": {}
+      }
+    },
+    {
+      "id": "scenario_23_todo_play_and_wave_greatest_showman",
+      "tags": [
+        "scenario_eval",
+        "todo_ref",
+        "play",
+        "motion",
+        "compound"
+      ],
+      "user_text": "손흔들고 This Is Me 연주해줘.",
+      "passed": true,
+      "checks": [
+        {
+          "name": "classifier.intent",
+          "passed": true,
+          "expected": "play_request",
+          "actual": "play_request"
+        },
+        {
+          "name": "planner.domain",
+          "passed": true,
+          "expected": "play",
+          "actual": "play"
+        },
+        {
+          "name": "validator.valid_op_cmds_contains_all",
+          "passed": true,
+          "expected": [
+            "gesture:wave",
+            "r",
+            "p:TIM"
+          ],
+          "actual": [
+            "gesture:wave",
+            "r",
+            "p:TIM"
+          ]
+        },
+        {
+          "name": "e2e.speech_contains_any",
+          "passed": true,
+          "expected": [
+            "This Is Me",
+            "연주"
+          ],
+          "actual": "손을 흔들며 인사하고, This Is Me를 연주할게요."
+        }
+      ],
+      "failed_checks": [],
+      "actual": {
+        "intent": "play_request",
+        "needs_motion": true,
+        "needs_dialogue": true,
+        "risk_level": "medium",
+        "planner_domain": "play",
+        "skills": [
+          "wave_hi",
+          "play_tim"
+        ],
+        "raw_op_cmds": [],
+        "expanded_op_cmds": [
+          "gesture:wave",
+          "r",
+          "p:TIM"
+        ],
+        "resolved_op_cmds": [
+          "gesture:wave",
+          "r",
+          "p:TIM"
+        ],
+        "valid_op_cmds": [
+          "gesture:wave",
+          "r",
+          "p:TIM"
+        ],
+        "rejected_op_cmds": [],
+        "speech": "손을 흔들며 인사하고, This Is Me를 연주할게요.",
+        "reason": "손 인사 후 곡 재생 복합 요청은 고정 skill 시퀀스로 직접 처리",
+        "classifier_raw_response_text": "{\"i\":\"P\",\"m\":1,\"d\":1,\"r\":\"M\"}",
+        "planner_raw_response_text": "",
+        "planner_called": false,
+        "planner_parse_ok": true,
+        "planner_is_fallback": false
+      },
+      "durations_sec": {
+        "classifier": 0.943455696105957,
+        "planner": 0.0,
+        "total": 0.943455696105957
+      },
+      "llm_metrics": {
+        "classifier": {},
+        "planner": {}
+      }
+    },
+    {
+      "id": "scenario_24_todo_unsafe_waist_turn_100",
+      "tags": [
+        "scenario_eval",
+        "todo_ref",
+        "motion",
+        "safety"
+      ],
+      "user_text": "허리 100도 돌려",
+      "passed": false,
+      "checks": [
+        {
+          "name": "classifier.intent",
+          "passed": true,
+          "expected": "motion_request",
+          "actual": "motion_request"
+        },
+        {
+          "name": "planner.domain",
+          "passed": true,
+          "expected": "motion",
+          "actual": "motion"
+        },
+        {
+          "name": "validator.valid_op_cmds_exact",
+          "passed": true,
+          "expected": [],
+          "actual": []
+        },
+        {
+          "name": "e2e.speech_contains_any",
+          "passed": false,
+          "expected": [
+            "한계",
+            "움직일 수 없습니다",
+            "범위"
+          ],
+          "actual": "지금은 해당 동작을 수행할 수 없습니다."
+        }
+      ],
+      "failed_checks": [
+        {
+          "name": "e2e.speech_contains_any",
+          "expected": [
+            "한계",
+            "움직일 수 없습니다",
+            "범위"
+          ],
+          "actual": "지금은 해당 동작을 수행할 수 없습니다."
+        }
+      ],
+      "actual": {
+        "intent": "motion_request",
+        "needs_motion": true,
+        "needs_dialogue": false,
+        "risk_level": "medium",
+        "planner_domain": "motion",
+        "skills": [],
+        "raw_op_cmds": [],
+        "expanded_op_cmds": [],
+        "resolved_op_cmds": [],
+        "valid_op_cmds": [],
+        "rejected_op_cmds": [],
+        "speech": "지금은 해당 동작을 수행할 수 없습니다.",
+        "reason": "",
+        "classifier_raw_response_text": "{\"i\":\"M\",\"m\":1,\"d\":0,\"r\":\"M\"}",
+        "planner_raw_response_text": "{}",
+        "planner_called": true,
+        "planner_parse_ok": true,
+        "planner_is_fallback": true
+      },
+      "durations_sec": {
+        "classifier": 0.9055697917938232,
+        "planner": 0.8526744842529297,
+        "total": 1.758244276046753
+      },
+      "llm_metrics": {
+        "classifier": {},
+        "planner": {}
+      }
+    },
+    {
+      "id": "scenario_25_todo_raise_left_arm_a_bit_more",
+      "tags": [
+        "scenario_eval",
+        "todo_ref",
+        "motion",
+        "relative"
+      ],
+      "user_text": "왼팔 조금만 더 올려",
+      "passed": false,
+      "checks": [
+        {
+          "name": "classifier.intent",
+          "passed": true,
+          "expected": "motion_request",
+          "actual": "motion_request"
+        },
+        {
+          "name": "planner.domain",
+          "passed": true,
+          "expected": "motion",
+          "actual": "motion"
+        },
+        {
+          "name": "validator.valid_op_cmds_contains_all",
+          "passed": true,
+          "expected": [
+            "move:L_arm2,58",
+            "move:L_arm3,95",
+            "move:L_wrist,0"
+          ],
+          "actual": [
+            "move:L_arm2,58",
+            "move:L_arm3,95",
+            "move:L_wrist,0"
+          ]
+        },
+        {
+          "name": "e2e.speech_contains_any",
+          "passed": false,
+          "expected": [
+            "왼팔",
+            "올리",
+            "조금"
+          ],
+          "actual": "죄송해요. 응답을 정리하다가 잠시 헷갈렸어요. 다시 말씀해 주세요."
+        }
+      ],
+      "failed_checks": [
+        {
+          "name": "e2e.speech_contains_any",
+          "expected": [
+            "왼팔",
+            "올리",
+            "조금"
+          ],
+          "actual": "죄송해요. 응답을 정리하다가 잠시 헷갈렸어요. 다시 말씀해 주세요."
+        }
+      ],
+      "actual": {
+        "intent": "motion_request",
+        "needs_motion": true,
+        "needs_dialogue": false,
+        "risk_level": "medium",
+        "planner_domain": "motion",
+        "skills": [],
+        "raw_op_cmds": [],
+        "expanded_op_cmds": [],
+        "resolved_op_cmds": [
+          "move:L_arm2,58",
+          "move:L_arm3,95",
+          "move:L_wrist,0"
+        ],
+        "valid_op_cmds": [
+          "move:L_arm2,58",
+          "move:L_arm3,95",
+          "move:L_wrist,0"
+        ],
+        "rejected_op_cmds": [],
+        "speech": "죄송해요. 응답을 정리하다가 잠시 헷갈렸어요. 다시 말씀해 주세요.",
+        "reason": "",
+        "classifier_raw_response_text": "{\"i\":\"M\",\"m\":1,\"d\":0,\"r\":\"M\"}",
+        "planner_raw_response_text": "{\n  \"planner_domain\": \"motion\",\n  \"robot_state\": {\n    \"state\": 0,\n    \"can_move\": true,\n    \"is_fixed\": true,\n    \"busy\": false,\n    \"current_song\": \"None\",\n    \"current_song_label\": \"None\",\n    \"bpm\": 100,\n    \"progress\": \"0/1\",\n    \"last_action\": \"move:L_arm2,30\",\n    \"error_detail\": \"None\",\n    \"current_angles\": {\n      \"waist\": null,\n      \"R_arm1\": null,\n      \"L_arm1\": null,\n      \"R_arm2\": null,\n      \"R_arm3\": null,\n      \"L_arm2\": 30.0,\n      \"L_arm3\": 60.0,\n      \"R_wrist\": null,\n      \"L_wrist\": 15.0,\n      \"R_foot\": null,\n      \"L_foot\": null\n    }\n  },\n  \"needs_motion\": true,\n  \"user_text\": \"왼팔 조금만 더 올려\"\n}",
+        "planner_called": true,
+        "planner_parse_ok": true,
+        "planner_is_fallback": true
+      },
+      "durations_sec": {
+        "classifier": 0.9177355766296387,
+        "planner": 23.505442142486572,
+        "total": 24.42317771911621
+      },
+      "llm_metrics": {
+        "classifier": {},
+        "planner": {}
+      }
+    },
+    {
+      "id": "scenario_26_todo_look_slightly_right",
+      "tags": [
+        "scenario_eval",
+        "todo_ref",
+        "motion",
+        "visual"
+      ],
+      "user_text": "아까보다 살짝 오른쪽 봐",
+      "passed": false,
+      "checks": [
+        {
+          "name": "classifier.intent",
+          "passed": true,
+          "expected": "motion_request",
+          "actual": "motion_request"
+        },
+        {
+          "name": "planner.domain",
+          "passed": true,
+          "expected": "motion",
+          "actual": "motion"
+        },
+        {
+          "name": "validator.valid_op_cmds_contains_all",
+          "passed": false,
+          "expected": [
+            "look:30,90"
+          ],
+          "actual": []
+        },
+        {
+          "name": "e2e.speech_contains_any",
+          "passed": false,
+          "expected": [
+            "오른쪽",
+            "볼게",
+            "보겠습니다"
+          ],
+          "actual": "지금은 해당 동작을 수행할 수 없습니다."
+        }
+      ],
+      "failed_checks": [
+        {
+          "name": "validator.valid_op_cmds_contains_all",
+          "expected": [
+            "look:30,90"
+          ],
+          "actual": []
+        },
+        {
+          "name": "e2e.speech_contains_any",
+          "expected": [
+            "오른쪽",
+            "볼게",
+            "보겠습니다"
+          ],
+          "actual": "지금은 해당 동작을 수행할 수 없습니다."
+        }
+      ],
+      "actual": {
+        "intent": "motion_request",
+        "needs_motion": true,
+        "needs_dialogue": true,
+        "risk_level": "medium",
+        "planner_domain": "motion",
+        "skills": [],
+        "raw_op_cmds": [],
+        "expanded_op_cmds": [],
+        "resolved_op_cmds": [],
+        "valid_op_cmds": [],
+        "rejected_op_cmds": [],
+        "speech": "지금은 해당 동작을 수행할 수 없습니다.",
+        "reason": "",
+        "classifier_raw_response_text": "{\"i\":\"M\",\"m\":1,\"d\":1,\"r\":\"M\"}",
+        "planner_raw_response_text": "{\"planner_domain\":\"motion\",\"robot_state\":{\"state\":0,\"can_move\":true,\"is_fixed\":false,\"busy\":false,\"current_song\":\"None\",\"current_song_label\":\"None\",\"bpm\":100,\"progress\":\"0/1\",\"last_action\":\"look:0,90\",\"error_detail\":\"None\",\"current_angles\":{\"waist\":0.0,\"R_arm1\":null,\"L_arm1\":null,\"R_arm2\":null,\"R_arm3\":null,\"L_arm2\":null,\"L_arm3\":null,\"R_wrist\":null,\"L_wrist\":null,\"R_foot\":null,\"L_foot\":null}},\"needs_motion\":true,\"user_text\":\"아까보다 살짝 오른쪽 봐\"}",
+        "planner_called": true,
+        "planner_parse_ok": true,
+        "planner_is_fallback": true
+      },
+      "durations_sec": {
+        "classifier": 0.9270603656768799,
+        "planner": 15.876295566558838,
+        "total": 16.803355932235718
+      },
+      "llm_metrics": {
+        "classifier": {},
+        "planner": {}
+      }
+    }
+  ]
+}

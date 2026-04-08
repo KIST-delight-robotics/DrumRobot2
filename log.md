@@ -4,6 +4,11 @@
 최신 항목이 위로 오도록 추가합니다.
 
 ## 2026-04-08
+- 15:00 KST (UTC+9) — `phil_robot/TODO.md`의 `Now` 우선순위를 현재 이슈 기준으로 다시 정리해, `planner 의미 해석 / resolver 계산 분리`와 `classifier routing / shortcut` 보강을 맨 위로 올리고 `failure taxonomy`는 `Parking Lot`으로 내렸습니다.
+  - 수정 파일: `phil_robot/TODO.md`, `log.md`
+  - 메모: `scenario_20/21`은 연속 상대동작 구조 문제, `scenario_08`은 classifier routing 문제로 보인다는 최근 분석을 TODO 보드 우선순위에 반영했습니다.
+
+## 2026-04-08
 - 13:50 KST (UTC+9) — `scenario_21`의 `바로 고칠 점` 문구도 더 간결하게 다듬어, 오른손목 반복 상대동작이 왼손목 `30도` 명령 두 번으로 잘못 풀린 문제와 발화 기준 불일치가 한눈에 보이게 정리했습니다.
   - 수정 파일: `phil_robot/eval/eval_docs/reports/scenario_report_q3-4b-q4km_q3-30b-a3b-q4km_20260406_1800.md`, `log.md`
   - 메모: 구조 설명을 줄이고, 기대한 `70→40→10` 순차 변환과 실제 출력의 차이를 바로 읽을 수 있게 문장을 짧게 바꿨습니다.
