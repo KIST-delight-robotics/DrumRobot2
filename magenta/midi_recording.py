@@ -4,6 +4,7 @@ import note_seq
 from mido import MidiFile, MidiTrack, Message
 import time
 import datetime
+import csv
 
 def print_midi_mido(midi_path):
     midi_file = mido.MidiFile(midi_path)
@@ -244,7 +245,7 @@ class RecordingManager:
                     now = time.time()
                     time_since_last_message = now - last_message_time
                     ticks_since_last_message = time_since_last_message / seconds_per_beat * ticks_per_beat
-                    t = int(ticks_since_last_message)
+                    t = round(ticks_since_last_message)
 
                 if first_note_received:
                     if msg.type == 'note_on':
@@ -261,11 +262,114 @@ class RecordingManager:
                     print(f"[Python] Recording stopped after {recording_second} seconds.")
                     break
 
-            time.sleep(0.01)
+            time.sleep(0.001)
 
         track.append(mido.MetaMessage('end_of_track', time=0))
         mid.save(output_file)
         print(f"\n[Python] Recording saved to {output_file}")
+        midi_input.close()
+
+    # 첫 타격 이후 지정한 시간(초) 만큼 녹음 + CSV 저장 (note_on time, note_id, velocity, duration)
+    def record_for_sec_and_csv(self, output_file, wait_second, time_record):
+
+        bpm = self.bpm
+        ticks_per_beat = 480
+        seconds_per_beat = 60 / bpm
+        recording_second = time_record
+
+        csv_output_path = output_file.replace('.mid', '.csv')
+
+        midi_input = mido.open_input(self.input_port_name)
+
+        mid = MidiFile(ticks_per_beat=ticks_per_beat)
+        track = MidiTrack()
+        mid.tracks.append(track)
+
+        track.append(mido.MetaMessage('track_name', name='Drum Track'))
+        track.append(mido.MetaMessage('set_tempo', tempo=mido.bpm2tempo(bpm)))
+        track.append(mido.MetaMessage('time_signature', numerator=4, denominator=4))
+        track.append(Message('program_change', channel=9, program=0, time=0))
+
+        self.clear_input_buffer(midi_input, wait_second)
+
+        print(f"\n[Python] Recording for {recording_second} seconds after the first note...")
+
+        first_note_received = False
+        start_time = None
+        last_message_time = None
+
+        # 🔥 note_on 저장용 (note별 start time)
+        note_on_dict = {}
+
+        # 🔥 CSV 파일 오픈
+        with open(csv_output_path, 'w', newline='', encoding='utf-8') as f:
+            writer = csv.writer(f)
+            writer.writerow(['start_time', 'note_id', 'velocity', 'duration'])
+
+            while True:
+                for msg in midi_input.iter_pending():
+                    print(f"[Python] Recording - Message Received: {msg}")
+
+                    # 시작 트리거 (velocity>0만)
+                    if msg.type == 'note_on' and msg.velocity > 0 and not first_note_received:
+                        first_note_received = True
+                        start_time = time.time()
+                        last_message_time = time.time()
+                        t = 0
+                        print("[Python] First note received, starting recording...")
+
+                    elif first_note_received:
+                        now = time.time()
+                        dt = now - last_message_time
+                        t = round(dt / seconds_per_beat * ticks_per_beat)
+
+                    if not first_note_received:
+                        continue
+
+                    current_time = time.time() - start_time  # 🔥 절대시간(초)
+
+                    # -------------------------
+                    # NOTE ON (시작)
+                    # -------------------------
+                    if msg.type == 'note_on' and msg.velocity > 0:
+                        track.append(Message('note_on', channel=9, note=msg.note,
+                                            velocity=msg.velocity, time=t))
+
+                        # 시작 저장
+                        note_on_dict[msg.note] = (current_time, msg.velocity)
+
+                        last_message_time = time.time()
+
+                    # -------------------------
+                    # NOTE OFF 처리
+                    # -------------------------
+                    elif msg.type == 'note_off' or (msg.type == 'note_on' and msg.velocity == 0):
+
+                        track.append(Message('note_on', channel=9, note=msg.note, velocity=0, time=t))
+
+                        if msg.note in note_on_dict:
+                            start_t, vel = note_on_dict[msg.note]
+                            duration = current_time - start_t
+
+                            # 🔥 CSV 기록
+                            writer.writerow([round(start_t, 4), msg.note, vel, round(duration, 4)])
+                            del note_on_dict[msg.note]
+
+                        last_message_time = time.time()
+
+                if first_note_received:
+                    if (time.time() - start_time) >= recording_second:
+                        print(f"[Python] Recording stopped after {recording_second} seconds.")
+                        break
+
+                time.sleep(0.001)
+
+        track.append(mido.MetaMessage('end_of_track', time=0))
+        mid.save(output_file)
+
+        print(f"\n[Python] Recording saved to {output_file}")
+        print(f"[Python] CSV saved to {csv_output_path}")
+
         midi_input.close()
 
     # 첫 타격 감지 후 일정 시간동안 MIDI 신호를 실시간으로 받아와서 MIDI 파일로 저장

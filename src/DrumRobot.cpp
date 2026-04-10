@@ -664,8 +664,13 @@ void DrumRobot::sendLoopForThread()
 
     int cycleCounter = 0; // 주기 조절을 위한 변수 (Tmotor : 5ms, Maxon : 1ms)
     sendLoopPeriod = std::chrono::steady_clock::now();
+    // auto prevLoopStart = std::chrono::steady_clock::now();
     while (state.main != Main::Shutdown)
     {
+        // auto loopStart = std::chrono::steady_clock::now();
+        // auto actualPeriodUs = std::chrono::duration_cast<std::chrono::microseconds>(loopStart - prevLoopStart).count();
+        // func.appendToCSV("loop_period", false, actualPeriodUs);
+        // prevLoopStart = loopStart;
         sendLoopPeriod += std::chrono::microseconds(1000);  // 주기 : 1msec
         
         std::map<std::string, bool> fixFlags; // 각 모터의 고정 상태 저장
@@ -753,7 +758,7 @@ void DrumRobot::sendLoopForThread()
                 // float des1 = (float)dxlCommand[0][2];
                 // float des2 = (float)dxlCommand[1][2];
 
-                std::map<int, float> pos_act = dxl.syncRead();
+                // std::map<int, float> pos_act = dxl.syncRead();
                 // float act1 = pos_act[1];
                 // float act2 = pos_act[2];
 
@@ -1317,13 +1322,15 @@ void DrumRobot::displayPlayCommands(bool useMagenta, bool useDrumPad, bool isSou
     {
         std::cout << "music: Just Drumming \n";
     }
-    
-    std::cout << "\nEnter Commad (magenta, ";
+
+    std::cout << "press Time: " << pathManager.pressTime << "[sec]\n";
+
+    std::cout << "\nEnter Command (magenta, ";
     if (useMagenta)
         std::cout << "args, ";
     else
         std::cout << "code, trigger, soundFB, ";
-    std::cout << "bpm, mode, music, run, exit): ";
+    std::cout << "bpm, mode, music, test, run, exit): ";
 }
 
 void DrumRobot::setPythonArgs()
@@ -1578,6 +1585,11 @@ std::string DrumRobot::selectPlayMode()
                 wavPath = wavBaseFolderPath + wavFileName + ".wav";
                 playMusic = true;
             }
+        }
+        else if (userInput == "test")
+        {
+            std::cout << "\nEnter Press Time(0 ~ 0.02): ";
+            std::cin >> pathManager.pressTime;
         }
         else if (userInput == "run")
         {

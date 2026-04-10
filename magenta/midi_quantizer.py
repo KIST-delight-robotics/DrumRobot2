@@ -114,35 +114,22 @@ def quantize_drum_midi(input_path: str, bpm) -> str:    #input_path = 'record/co
         with open(csv_output_path, 'w', newline='', encoding='utf-8') as f:
             writer = csv.writer(f)
             # 헤더 작성 (Time, ID, Velocity)
-            writer.writerow(['Time', 'Duration', 'ID', 'Velocity'])
+            writer.writerow(['Time', 'ID', 'Velocity'])
 
             time_ex_note = 0
+            ex_note = 0
             for note in snapped_notes:
-                # 1. 매핑에 존재하는 피치만 저장
+            # for note in sorted(snapped_notes, key=lambda x: x.start):
                 if note.pitch in ROBOT_MAP:
                     inst_id = ROBOT_MAP[note.pitch]
-
-                    time_cur_note = round(note.start * bpm /100, 3)     # note 시작 시간을 100bpm 기준 시간으로 변환, 이후 모든 계산은 100bpm 기준으로 진행
-                    duration = round(time_cur_note - time_ex_note, 3)             # 이전 노트와의 시간 간격
-                    if duration > 0.6:                                  # 음표 간 쉼표 존재하는 경우
-                        n = duration / 0.6                              # 쉼표 개수 계산
-                        m = int(n)                                      # 쉼표 개수의 정수 부분
-                        o = n - m                                       # 쉼표 개수의 소수 부분
-                        if abs(o) > 1e-6:
-                            for k in range(m-1):
-                                writer.writerow([time_ex_note + 0.6*(k+1), 0.6, 0, 0])    # 0.6초 간격으로 쉼표
-                            writer.writerow([time_cur_note, o*0.6, inst_id, note.velocity])
-                        else:
-                            for k in range(m-2):
-                                writer.writerow([time_ex_note + 0.6*(k+1), 0.6, 0, 0])    # 0.6초 간격으로 쉼표
-                            writer.writerow([time_cur_note, 0.6, inst_id, note.velocity])
-                    elif duration  <= 1e-6:
-                        writer.writerow([time_cur_note, 0, inst_id, note.velocity])
-                    else:     
-                        # 2. 초(sec) 단위 시간 (소수점 4자리까지 표기 권장)
-                        # 4. 동시 입력은 루프가 돌면서 같은 시간 값으로 자연스럽게 여러 줄 생성됨
-                        writer.writerow([time_cur_note, duration, inst_id, note.velocity])
+                    time_cur_note = note.start * bpm /100     # note 시작 시간을 100bpm 기준 시간으로 변환, 이후 모든 계산은 100bpm 기준으로 진행
+                    duration = time_cur_note - time_ex_note           # 이전 노트와의 시간 간격
+                    note_duration = note.end - note.start
+                    if abs(duration) < 1e-3 and ex_note == inst_id:
+                        continue
+                    writer.writerow([round(time_cur_note, 4), inst_id, note.velocity, note_duration])
                     time_ex_note = time_cur_note
+                    ex_note = inst_id
                     
         print(f"CSV Saved: {csv_output_path}")
         
@@ -154,6 +141,7 @@ def quantize_drum_midi(input_path: str, bpm) -> str:    #input_path = 'record/co
     
     return midi_output_path
 
+# velocity 데이터를 기반으로 코드 파일의 offset 수정
 def modify_intensity(input_path: str) -> None:      # input_path = codeName 예) velocity/solo2.csv 면 input_path = "solo2"
     # code 파일을 열고 drum_velocity 파일과 비교하여 intensity를 수정하는 함수
     code_path = os.path.join("../include/codes", input_path + "0.txt" )    # 악보 번호가 "1.txt"인 경우는 아직 구현 안함
@@ -180,8 +168,8 @@ def modify_intensity(input_path: str) -> None:      # input_path = codeName 예)
                     row[8] = 0
                     row.append(0)
                 elif len(row) == 10:
-                    row[8] = float(row[8])
-                    row[9] = float(row[9])
+                    row[8] = int(row[8])
+                    row[9] = int(row[9])
                     pass
                 elif len(row) < 8:
                     pass
@@ -192,25 +180,26 @@ def modify_intensity(input_path: str) -> None:      # input_path = codeName 예)
     except FileNotFoundError:
         print("파일을 찾을 수 없음")
     except Exception as e:
-        print(f"에러 발생: {e}")
+        print(f"에러 발생1: {e}")
 
     try:
         with open(velo_path, 'r', encoding='utf-8') as f:
             reader = csv.reader(f)
             next(reader)  # 헤더 건너뛰기
             for row in reader:
-                # velo.append([float(x) for x in row])
-                velo.append([float(row[0]),row[1],row[2],float(row[3])])
+                velo.append([float(row[0]),row[1],float(row[2]), 0])    # row[0]: time, row[1]: inst_id, row[2]: velocity, row[3]: used 여부 (0: 미사용, 1: 사용)
         # print(velo)
     except FileNotFoundError:
         print("파일을 찾을 수 없음")
     except Exception as e:
-        print(f"에러 발생: {e}")
+        print(f"에러 발생2: {e}")
 
     time_sum = 0
     first_note = False
     idx_first_note = 0
     elapsed_time = 0
+    note_cnt = 0
+    offset_cnt = 0
 
     # ver1
     for i in range(len(code)):
@@ -223,6 +212,11 @@ def modify_intensity(input_path: str) -> None:      # input_path = codeName 예)
             idx_first_note = i
 
         if first_note:
+            if code[i][2] != '0' or code[i][3] != '0':
+                # print(f"i: {i}, code[i]: {code[i][2]}, {code[i][3]}")
+                note_cnt += 1
+                if code[i][2] != '0' and code[i][3] != '0':
+                    note_cnt += 1
             time_sum += code[i][1]
             elapsed_time = round((time_sum - code[idx_first_note][1]), 3)
 
@@ -236,104 +230,41 @@ def modify_intensity(input_path: str) -> None:      # input_path = codeName 예)
                     if abs(velo[j][0] - elapsed_time) > 0.2:
                         continue
                     elif abs(velo[j][0] - elapsed_time) <= 0.2:
-                        if velo[j][3] >= min_vel:
+                        if velo[j][2] >= min_vel:
                             continue
-
-                        if velo[j][2] == code[i][2]:
+                        if velo[j][3] == 1:
+                            continue
+                        if velo[j][1] == code[i][2]:
+                            print(f"elapsed time : {elapsed_time} / right inst : {code[i][2]} / velocity : {velo[j][2]} / offset : {code[i][8]}")
                             code[i][8] += 1
-                            print(f"++++++++++++++right: {code[i][8]}")
+                            offset_cnt += 1
+                            velo[j][3] = 1
+                            print(f"------------------------------>> changed offset {code[i][8]}")
                             break
-                        # elif velo[j+1][2] == code[i][2]:
-                        #     code[i][8] += 1
-                        #     print(f"++++++++++++++right: {code[i][8]}")
-                        #     break
                        
             if left_inst != '0':
                 for j in range(len(velo) - 1):
                     if abs(velo[j][0] - elapsed_time) > 0.2:
                         continue
                     elif abs(velo[j][0] - elapsed_time) <= 0.2:
-                        if velo[j][3] >= min_vel:
+                        if velo[j][2] >= min_vel:
                             continue
-
-                        if velo[j][2] == code[i][3]:
+                        if velo[j][3] == 1:
+                            continue
+                        if velo[j][1] == code[i][3]:
+                            print(f"elapsed time : {elapsed_time} / left inst : {code[i][3]} / velocity : {velo[j][2]} / offset : {code[i][9]}")
                             code[i][9] += 1
+                            offset_cnt += 1
+                            velo[j][3] = 1
+                            print(f"------------------------------>> changed offset {code[i][9]}")
                             break
-                        # elif velo[j+1][2] == code[i][3]:
-                        #     code[i][9] += 1
-                        #     break
-                    
-            for j in range(len(velo)):
-                if velo[j][3] >= min_vel:
-                    continue
-    
-    # # ver2
-    # for i in range(len(code)):
-    #     if code[i][0] == 'bpm' or code[i][0] == 'end':
-    #         continue
 
-    #     if not first_note and (code[i][2] != '0' or code[i][3] != '0'):
-    #         first_note = True
-    #         idx_first_note = i
-
-    #     if first_note:
-    #         time_sum += code[i][1]
-    #         elapsed_time = round((time_sum - code[idx_first_note][1]), 3)
-    #         code[i].append(elapsed_time)
-
-    # for i in range(len(velo)):
-    #     # bpm, end, 또는 elapsed_time이 없는 행 방지
-    #     if len(code[j]) <= 10:
-    #         continue
-    #     if velo[i][3] >= min_vel:
-    #         continue
-    #     for j in range(len(code)):
-    #         if abs(velo[i][0] - code[j][10]) > 1e-3:
-    #             continue
-    #         elif abs(velo[i][0] - code[j][10]) <= 1e-3:
-    #             if velo[i][2] == code[j][2]:
-    #                 code[j][8] += 1
-    #                 break
-    #             elif velo[i][2] == code[j][3]:
-    #                 code[j][9] += 1
-    #                 break
-    #         else:
-    #             break
-
-    # # ver3
-    # j = 0
-
-    # for i in range(len(velo)):
-    #     if velo[i][3] >= min_vel:
-    #         continue
-
-    #     while j < len(code):
-    #         if len(code[j]) <= 10:
-    #             j += 1
-    #             continue
-
-    #         if code[j][10] < velo[i][0] - 1e-3:
-    #             j += 1
-    #         else:
-    #             break
-
-    #     k = j
-    #     while k < len(code):
-    #         if len(code[k]) <= 10:
-    #             k += 1
-    #             continue
-
-    #         if abs(code[k][10] - velo[i][0]) <= 1e-3:
-    #             if velo[i][2] == code[k][2]:
-    #                 code[k][8] += 1
-    #                 break
-    #             elif velo[i][2] == code[k][3]:
-    #                 code[k][9] += 1
-    #                 break
-    #             k += 1
-    #         else:
-    #             break
-
+    min_vel_cnt = 0
+    for j in range(len(velo)):
+        if velo[j][2] < min_vel:
+            min_vel_cnt += 1
+    print(f"number of velocity is under {min_vel} : {min_vel_cnt}")
+    print(f"number of offset changed : {offset_cnt}")
     output_path = os.path.join("../include/codes/", input_path + "0.txt")
 
     print({output_path})
@@ -344,6 +275,7 @@ def modify_intensity(input_path: str) -> None:      # input_path = codeName 예)
             line = '\t'.join(map(str, row))
             f.write(line + '\n')
 
+# tap 기준으로 분리한 데이터에서 공백을 제거
 def trim_whitespace(s: str) -> str:
     # 앞쪽 공백(스페이스, 탭) 아닌 첫 위치 찾기
     first = 0
@@ -362,15 +294,59 @@ def trim_whitespace(s: str) -> str:
     # substring 반환
     return s[first:last + 1]
 
+# 추가된 offset을 초기화
+def reset_codes(code_name: str) -> None:
+
+    code = []
+    code_path = os.path.join("../include/codes", code_name + "0.txt" )
+
+    try:
+        with open(code_path, 'r', encoding='utf-8') as f:
+            for line in f:
+                row = line.strip().split('\t')
+                for i in range(len(row)):
+                    row[i] = trim_whitespace(row[i])
+                row[1] = float(row[1])
+
+                if len(row) == 8:
+                    row.extend([0, 0])
+                elif len(row) == 9:
+                    row[8] = 0
+                    row.append(0)
+                elif len(row) == 10:
+                    row[8] = 0
+                    row[9] = 0
+                    pass
+                elif len(row) < 8:
+                    pass
+                else:
+                    raise ValueError(f"Unexpected row length: {len(row)}")
+                code.append(row)
+            # print(code)   
+
+         # 2. 다시 쓰기
+        with open(code_path, 'w', encoding='utf-8') as f:
+            for row in code:
+                f.write('\t'.join(map(str, row)) + '\n')
+
+    except FileNotFoundError:
+        print("파일을 찾을 수 없음")
+    except Exception as e:
+        print(f"에러 발생: {e}")        
+
+    print(f"Code reset completed for {code_name}0.txt")
+
 # --- 메인 실행 ---
 if __name__ == "__main__":
     input_path = input("입력 MIDI 파일 경로: ").strip()
     try:
         # 경로의 따옴표 제거 (터미널 입력 시 발생 가능성)
         input_path = input_path.strip("'").strip('"')
-        # out_mid = quantize_drum_midi(input_path, 107) # record/solo2.mid
+        # out_mid = quantize_drum_midi(input_path, 107) # ex) record/solo2.mid
         # print(f"MIDI Saved: {out_mid}") 
-        modify_intensity(input_path)  # solo2
+        # modify_intensity(input_path)  # ex) solo2
+        reset_codes(input_path)  # ex) DrumSolo_
+
 
     except Exception as e:
         print(f"ERROR: {e}", file=sys.stderr)

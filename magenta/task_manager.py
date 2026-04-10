@@ -125,10 +125,18 @@ class taskManager:
         # 오브젝트 생성
         rec = RecordingManager(self.device_name, self.bpm, self.base_path)
 
-        recording_file_name = '../magenta/record/' + codeName + '.mid'
-        rec.record_for_sec(output_file=recording_file_name, wait_second=3, time_record=40)    
+        if codeName is None:
+            recording_file_name = './magenta/record/soundfb.mid'
+        else:
+            recording_file_name = '../magenta/record/' + codeName + '.mid'
+
+        rec.record_for_sec(output_file=recording_file_name, wait_second=3, time_record=40)
         quantize_midi_file = quantize_drum_midi(recording_file_name, self.bpm)
         print(f"\n[Python] quantized MIDI saved at : {quantize_midi_file}")
 
-        modify_intensity(codeName)
-        print(f"\n[Python] modified CODE saved at : include/{codeName}0.txt")
+        if codeName is None:
+            modify_intensity('soundfb0')
+            print(f"\n[Python] modified CODE saved at : include/soundfb0.txt")
+        else:
+            modify_intensity(codeName)
+            print(f"\n[Python] modified CODE saved at : include/{codeName}0.txt")

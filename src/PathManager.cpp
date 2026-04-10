@@ -62,8 +62,8 @@ void PathManager::initPlayStateValue()
 
     waistParameterQueue = std::queue<WaistParameter>();   // 큐 재선언해서 비우기
 
-    hitStateR = VectorXd::Zero(3);  // [이전 시간, 이전 state, velocity]
-    hitStateL = VectorXd::Zero(3); 
+    hitStateR = VectorXd::Zero(4);  // [이전 시간, 이전 state, velocity]
+    hitStateL = VectorXd::Zero(4); 
 
     prevLine = VectorXd::Zero(11);   // 악보 나눌 때 시작 악보 기록
 
@@ -1426,6 +1426,8 @@ PathManager::HitData PathManager::getHitData(MatrixXd &measureMatrix, VectorXd &
     VectorXd t = measureMatrix.col(10);
     VectorXd velocityR = measureMatrix.col(4);
     VectorXd velocityL = measureMatrix.col(5);
+    VectorXd offsetR = measureMatrix.col(8);
+    VectorXd offsetL = measureMatrix.col(9);
     VectorXd nextStateR, nextStateL; 
 
     double hitDetectionThreshold = 0.5;     // 다음 타격 감지할 최대 시간
@@ -1433,14 +1435,14 @@ PathManager::HitData PathManager::getHitData(MatrixXd &measureMatrix, VectorXd &
     double preTL = stateL(0), preStateL = stateL(1);
 
     // parse
-    VectorXd dataR = parseHitData(t, velocityR, preTR, preStateR, hitDetectionThreshold);
-    VectorXd dataL = parseHitData(t, velocityL, preTL, preStateL, hitDetectionThreshold);
+    VectorXd dataR = parseHitData(t, velocityR, preTR, preStateR, hitDetectionThreshold, offsetR);
+    VectorXd dataL = parseHitData(t, velocityL, preTL, preStateL, hitDetectionThreshold, offsetL);
 
-    nextStateR.resize(3);
-    nextStateR << dataR(0), dataR(2), dataR(3);
+    nextStateR.resize(4);
+    nextStateR << dataR(0), dataR(2), dataR(3), dataR(4);
 
-    nextStateL.resize(3);
-    nextStateL << dataL(0), dataL(2), dataL(3);
+    nextStateL.resize(4);
+    nextStateL << dataL(0), dataL(2), dataL(3), dataL(4);
 
     hitData.initialTimeR = dataR(0);
     hitData.finalTimeR = dataR(1);
@@ -1452,13 +1454,14 @@ PathManager::HitData PathManager::getHitData(MatrixXd &measureMatrix, VectorXd &
     return hitData;
 }
 
-VectorXd PathManager::parseHitData(VectorXd &t, VectorXd &hit, double preT, double preState, double hitDetectionThreshold)
+VectorXd PathManager::parseHitData(VectorXd &t, VectorXd &hit, double preT, double preState, double hitDetectionThreshold, VectorXd &offsetVec)
 {
     VectorXd output;
     double t1, t2, state;
     bool detectHit = false;
     double hitTime = t(1);
     int velocity = 0;
+    int offset = 0;
 
     // 다음 타격 찾기
     for (int i = 1; i < t.rows(); i++)
@@ -1476,6 +1479,7 @@ VectorXd PathManager::parseHitData(VectorXd &t, VectorXd &hit, double preT, doub
             detectHit = true;
             hitTime = t(i);
             velocity = hit(i);
+            offset = offsetVec(i);
             break;
         }
     }
@@ -1521,8 +1525,8 @@ VectorXd PathManager::parseHitData(VectorXd &t, VectorXd &hit, double preT, doub
         }
     }
 
-    output.resize(4);
-    output << t1, t2, state, velocity;
+    output.resize(5);
+    output << t1, t2, state, velocity, offset;
 
     return output;
 }
@@ -1531,6 +1535,9 @@ void PathManager::makeHitCoefficient(HitData hitData, VectorXd &stateR, VectorXd
 {
     int velocityR = stateR(2);
     int velocityL = stateL(2);
+
+    int offsetR = stateR(3);
+    int offsetL = stateL(3);
 
     // 타격 관련 파라미터
     ElbowAngle elbowAngleR, elbowAngleL;
@@ -1545,8 +1552,8 @@ void PathManager::makeHitCoefficient(HitData hitData, VectorXd &stateR, VectorXd
     elbowAngleR = getElbowAngleParam(hitData.initialTimeR, hitData.finalTimeR, velocityR);
     elbowAngleL = getElbowAngleParam(hitData.initialTimeL, hitData.finalTimeL, velocityL);
 
-    wristAngleR = getWristAngleParam(hitData.initialTimeR, hitData.finalTimeR, velocityR, stateR(1));
-    wristAngleL = getWristAngleParam(hitData.initialTimeL, hitData.finalTimeL, velocityL, stateL(1));
+    wristAngleR = getWristAngleParam(hitData.initialTimeR, hitData.finalTimeR, velocityR, stateR(1), offsetR);
+    wristAngleL = getWristAngleParam(hitData.initialTimeL, hitData.finalTimeL, velocityL, stateL(1), offsetL);
 
     // 계수 행렬 구하기
     elbowCoefficientR = makeElbowCoefficient(stateR(1), elbowTimeR, elbowAngleR);
@@ -1575,6 +1582,10 @@ PathManager::WristTime PathManager::getWristTimeParam(double t1, double t2, int 
     // 타격 후 복귀 시간
     wristTime.releaseTime = std::min(0.2 * (T), 0.1);   // 이제 의미 없음
 
+    // 1: O -> X
+    // 2: X -> O
+    // 3: O -> O
+
     if (state == 2)
     {
         wristTime.liftTime = std::max(0.7 * (T), T - 0.2);      // 최고점에 도달하는 시간
@@ -1595,9 +1606,9 @@ PathManager::WristTime PathManager::getWristTimeParam(double t1, double t2, int 
         }
         wristTime.stayTime = 0.5 * (T);
     }
-
+    wristTime.holdTime = pressTime;
     wristTime.hitTime = T;
-    
+
     return wristTime;
 }
 
@@ -1638,14 +1649,16 @@ PathManager::ElbowAngle PathManager::getElbowAngleParam(double t1, double t2, in
     return elbowAngle;
 }
 
-PathManager::WristAngle PathManager::getWristAngleParam(double t1, double t2, int velocity, int state)
+PathManager::WristAngle PathManager::getWristAngleParam(double t1, double t2, int velocity, int state, int offset)
 {
     WristAngle wristAngle;
     float T = (t2 - t1);        // 타격 전체 시간
     double intensityFactor;
 
+    offset = 0;
+
     wristAngle.prevPressAngle = -5.0 * M_PI / 180.0;
-    wristAngle.pressAngle = -5.0 * M_PI / 180.0;
+    wristAngle.pressAngle = -(5.0 + 3.0 * offset) * M_PI / 180.0;
 
     // velocity = 5;  // 변화 실험을 위해 일단 고정
     if (velocity < 5)
@@ -1828,8 +1841,9 @@ MatrixXd PathManager::makeWristCoefficient(int state, WristTime wT, WristAngle w
     if (state == 0)
     {
         // Stay
-        wristCoefficient.resize(4, 4);
-        wristCoefficient << wA.stayAngle, 0, 0, 0,  // Stay
+        wristCoefficient.resize(5, 4);
+        wristCoefficient << wA.stayAngle, 0, 0, 0,  // Hold
+                            wA.stayAngle, 0, 0, 0,  // Stay
                             wA.stayAngle, 0, 0, 0,  // Stay
                             wA.stayAngle, 0, 0, 0,  // Stay
                             wA.stayAngle, 0, 0, 0;  // Stay
@@ -1847,21 +1861,38 @@ MatrixXd PathManager::makeWristCoefficient(int state, WristTime wT, WristAngle w
             A.resize(3, 3);
             b.resize(3, 1);
 
-            A << 1, 0, 0,
+            A << 1, wT.holdTime, wT.holdTime * wT.holdTime,
                 1, wT.hitTime, wT.hitTime * wT.hitTime,
                 0, 1, 2 * wT.hitTime;
 
             b << wA.prevPressAngle, wA.stayAngle, 0;
+            
+            // A.resize(4, 4);
+            // b.resize(4, 1);
+
+            // A << 1, wT.holdTime, wT.holdTime * wT.holdTime, wT.holdTime * wT.holdTime * wT.holdTime,
+            //     1, wT.hitTime, wT.hitTime * wT.hitTime, wT.hitTime * wT.hitTime * wT.hitTime,
+            //     0, 1, 2 * wT.holdTime, 3 * wT.holdTime * wT.holdTime,
+            //     0, 1, 2 * wT.hitTime, 3 * wT.hitTime * wT.hitTime;
+
+            // b << wA.prevPressAngle, wA.stayAngle, 0, 0;
 
             A_1 = A.inverse();
             sol = A_1 * b;
         }
 
-        wristCoefficient.resize(4, 4);
-        wristCoefficient << sol(0), sol(1), sol(2), 0,  // Release
+        wristCoefficient.resize(5, 4);
+        wristCoefficient << wA.pressAngle, 0, 0, 0,     // Hold
+                            sol(0), sol(1), sol(2), 0,  // Release
                             sol(0), sol(1), sol(2), 0,  // Release
                             sol(0), sol(1), sol(2), 0,  // Release
                             sol(0), sol(1), sol(2), 0;  // Release
+        // wristCoefficient.resize(5, 4);
+        // wristCoefficient << wA.pressAngle, 0, 0, 0,     // Hold
+        //                     sol(0), sol(1), sol(2), sol(3),  // Release
+        //                     sol(0), sol(1), sol(2), sol(3),  // Release
+        //                     sol(0), sol(1), sol(2), sol(3),  // Release
+        //                     sol(0), sol(1), sol(2), sol(3);  // Release
     }
     else if (state == 2)
     {
@@ -1911,8 +1942,9 @@ MatrixXd PathManager::makeWristCoefficient(int state, WristTime wT, WristAngle w
             sol2 = A_1 * b;
         }
 
-        wristCoefficient.resize(4, 4);
-        wristCoefficient << wA.stayAngle, 0, 0, 0,          // Stay
+        wristCoefficient.resize(5, 4);
+        wristCoefficient << wA.stayAngle, 0, 0, 0,          // Hold
+                            wA.stayAngle, 0, 0, 0,          // Stay
                             wA.stayAngle, 0, 0, 0,          // Stay
                             sol(0), sol(1), sol(2), sol(3), // Lift
                             sol2(0), sol2(1), sol2(2), 0;   // Hit
@@ -1932,11 +1964,21 @@ MatrixXd PathManager::makeWristCoefficient(int state, WristTime wT, WristAngle w
             A.resize(3, 3);
             b.resize(3, 1);
 
-            A << 1, 0, 0,
+            A << 1, wT.holdTime, wT.holdTime * wT.holdTime,
                 1, wT.stayTime, wT.stayTime * wT.stayTime,
                 0, 1, 2 * wT.stayTime;
 
             b << wA.pressAngle, wA.liftAngle, 0;
+
+            // A.resize(4, 4);
+            // b.resize(4, 1);
+
+            // A << 1, wT.holdTime, wT.holdTime * wT.holdTime, wT.holdTime * wT.holdTime * wT.holdTime,
+            //     1, wT.stayTime, wT.stayTime * wT.stayTime, wT.stayTime * wT.stayTime * wT.stayTime,
+            //     0, 1, 2 * wT.holdTime, 3 * wT.holdTime * wT.holdTime,
+            //     0, 1, 2 * wT.stayTime, 3 * wT.stayTime * wT.stayTime;
+
+            // b << wA.pressAngle, wA.liftAngle, 0, 0;
 
             A_1 = A.inverse();
             sol = A_1 * b;
@@ -1963,11 +2005,19 @@ MatrixXd PathManager::makeWristCoefficient(int state, WristTime wT, WristAngle w
             sol2 = A_1 * b;
         }
 
-        wristCoefficient.resize(4, 4);
-        wristCoefficient << sol(0), sol(1), sol(2), 0,      // Lift
+        wristCoefficient.resize(5, 4);
+        wristCoefficient << wA.pressAngle, 0, 0, 0,          // Hold
+                            sol(0), sol(1), sol(2), 0,      // Lift
                             sol(0), sol(1), sol(2), 0,      // Lift
                             wA.liftAngle, 0, 0, 0,          // Stay (Lift Angle)
                             sol2(0), sol2(1), sol2(2), 0;   // Hit
+
+        // wristCoefficient.resize(5, 4);
+        // wristCoefficient << wA.pressAngle, 0, 0, 0,          // Hit 끝난 후 유지
+        //                     sol(0), sol(1), sol(2), sol(3),      // Lift
+        //                     sol(0), sol(1), sol(2), sol(3),      // Lift
+        //                     wA.liftAngle, 0, 0, 0,          // Stay (Lift Angle)
+        //                     sol2(0), sol2(1), sol2(2), 0;   // Hit
     }
 
     return wristCoefficient;
@@ -1999,21 +2049,25 @@ double PathManager::getWristAngle(double t, WristTime wT, MatrixXd &coefficientM
 
     MatrixXd wristAngle = coefficientMatrix * tMatrix;
 
-    if (t < wT.releaseTime)
+    if (t < wT.holdTime)
     {
         return wristAngle(0);
     }
-    else if (t < wT.stayTime)
+    else if (t < wT.releaseTime)
     {
         return wristAngle(1);
     }
-    else if (t < wT.liftTime)
+    else if (t < wT.stayTime)
     {
         return wristAngle(2);
     }
-    else
+    else if (t < wT.liftTime)
     {
         return wristAngle(3);
+    }
+    else
+    {
+        return wristAngle(4);
     }
 }
 
@@ -3726,7 +3780,7 @@ VectorXd PathManager::solveGeometricIK(VectorXd &pR, VectorXd &pL, double theta0
     double theta34 = atan2(sqrt(r2), zeta);
     double theta3 = theta34 - atan2(R2 * sin(theta4), R1 + R2 * cos(theta4));
 
-    if (theta3 < -45.0 * M_PI / 180.0 || theta3 > 90 * M_PI / 180.0) // the3 범위 : -45deg ~ 90deg
+    if (theta3 < -46.0 * M_PI / 180.0 || theta3 > 90 * M_PI / 180.0) // the3 범위 : -45deg ~ 90deg
     {
         if (printError)
         {
@@ -3764,7 +3818,7 @@ VectorXd PathManager::solveGeometricIK(VectorXd &pR, VectorXd &pL, double theta0
     double theta56 = atan2(sqrt(r2), zeta);
     double theta5 = theta56 - atan2(L2 * sin(theta6), L1 + L2 * cos(theta6));
 
-    if (theta5 < -45.0 * M_PI / 180.0 || theta5 > 90 * M_PI / 180.0) // the5 범위 : -45deg ~ 90deg
+    if (theta5 < -46.0 * M_PI / 180.0 || theta5 > 90 * M_PI / 180.0) // the5 범위 : -45deg ~ 90deg
     {
         if (printError)
         {

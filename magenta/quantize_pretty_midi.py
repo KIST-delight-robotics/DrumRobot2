@@ -146,7 +146,7 @@ def quantize_midi(input_filename: str, **kwargs):       # 메인 함수 : string
     # --- 기본 설정값 ---
     params = {
         "base_path": "/home/shy/DrumRobot/magenta/",
-        "bpm": 120,
+        "bpm": 107,
         "subdivisions": 4,      # 악보의 최소단위를 (4*subdivision)분 음표로 한다. ex) sub=2, 최소 단위: 8분 음표
         "debounce_threshold": 0.04,
         "cluster_threshold": 0.02
@@ -160,7 +160,8 @@ def quantize_midi(input_filename: str, **kwargs):       # 메인 함수 : string
 
     csv_file_dir_path = os.path.join(params["base_path"], "velocity/")      # /home/shy/DrumRobot/magenta/velocity/
     output_csv_filename = f"drum_events_{base_name}.csv"                    
-    output_csv_filepath = os.path.join(csv_file_dir_path, output_csv_filename)  # /home/shy/DrumRobot/magenta/velocity/drum_events_().csv
+    # output_csv_filepath = os.path.join(csv_file_dir_path, output_csv_filename)  # /home/shy/DrumRobot/magenta/velocity/drum_events_().csv
+    output_csv_filepath = '/home/shy/DrumRobot_data/soundFB_backup/DrumSolo_1.csv'
 
     output_midi_filename = f"output_{base_name}.mid"
     output_midi_filepath = os.path.join(params["base_path"], "record/" + output_midi_filename)
@@ -212,7 +213,7 @@ if __name__ == '__main__':
 #    # 다른 파이썬 파일에서 import하여 사용할 때는 실행되지 않습니다.
     
 #     # 예시 1: 기본 설정으로 "input_00.mid" 파일 처리
-    quantize_midi("drum_recording_soundfb.mid")
+    quantize_midi("../../../DrumRobot_data/soundFB_backup/midi/DrumSolo_1.mid")
     
 #    # 예시 2: "input_01.mid" 파일을 16분음표(subdivisions=4) 기준으로 처리
 #    quantize_midi("input_01.mid", subdivisions=4)

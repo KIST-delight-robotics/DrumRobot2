@@ -15,6 +15,7 @@ print(f"[Python] program name : {program_name}")
 
 bpm = 120
 base_path = None
+codeName = None
 num_args = len(sys.argv) - 1
 for i in range(num_args):
     arg = sys.argv[i+1]

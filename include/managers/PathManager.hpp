@@ -72,6 +72,7 @@ public:
     double kpMin;
     double kpMax;
     int KdDrop;
+    double pressTime = 0.02;
     string tmotorMode = "velocity";
 
     void initPathManager();
@@ -193,6 +194,7 @@ private:
     }ElbowTime;
 
     typedef struct {
+        double holdTime;
         double releaseTime;
         double stayTime;
         double liftTime;
@@ -302,12 +304,12 @@ private:
     void genHitTrajectory(MatrixXd &measureMatrix, int n);
     MatrixXd divideMatrix(MatrixXd &measureMatrix);
     PathManager::HitData getHitData(MatrixXd &measureMatrix, VectorXd &stateR, VectorXd &stateL);
-    VectorXd parseHitData(VectorXd &t, VectorXd &hit, double preT, double preStatem, double hitDetectionThreshold);
+    VectorXd parseHitData(VectorXd &t, VectorXd &hit, double preT, double preStatem, double hitDetectionThreshold, VectorXd &offset);
     void makeHitCoefficient(HitData hitData, VectorXd &stateR, VectorXd &stateL);
     PathManager::ElbowTime getElbowTimeParam(double t1, double t2, int velocity);
     PathManager::WristTime getWristTimeParam(double t1, double t2, int velocity, int state);
     PathManager::ElbowAngle getElbowAngleParam(double t1, double t2, int velocity);
-    PathManager::WristAngle getWristAngleParam(double t1, double t2, int velocity, int state);
+    PathManager::WristAngle getWristAngleParam(double t1, double t2, int velocity, int state, int offset);
     MatrixXd makeElbowCoefficient(int state, ElbowTime eT, ElbowAngle eA);
     MatrixXd makeWristCoefficient(int state, WristTime wT, WristAngle wA);
     double getElbowAngle(double t, ElbowTime eT, MatrixXd &coefficientMatrix);
