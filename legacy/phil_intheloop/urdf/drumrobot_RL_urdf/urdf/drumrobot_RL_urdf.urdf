@@ -1,0 +1,685 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- This URDF was automatically created by SolidWorks to URDF Exporter! Originally created by Stephen Brawner (brawner@gmail.com) 
+     Commit Version: 1.6.0-4-g7f85cfe  Build Version: 1.6.7995.38578
+     For more information, please see http://wiki.ros.org/sw_urdf_exporter -->
+<robot
+  name="drumrobot_RL_urdf">
+  <link
+    name="base_link">
+    <inertial>
+      <origin
+        xyz="0.049984 -1.561 -0.023419"
+        rpy="0 0 0" />
+      <mass
+        value="6.9792" />
+      <inertia
+        ixx="0.06278"
+        ixy="2.6705E-07"
+        ixz="-8.2288E-06"
+        iyy="0.015503"
+        iyz="0.00031975"
+        izz="0.063748" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://drumrobot_RL_urdf/meshes/base_link.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.75294 0.75294 0.75294 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://drumrobot_RL_urdf/meshes/base_link.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <link
+    name="waist">
+    <inertial>
+      <origin
+        xyz="-0.00023797 0.0030511 0.025043"
+        rpy="0 0 0" />
+      <mass
+        value="4.737" />
+      <inertia
+        ixx="0.0059431"
+        ixy="-1.0279E-06"
+        ixz="2.1883E-06"
+        iyy="0.036877"
+        iyz="-7.0323E-06"
+        izz="0.041312" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://drumrobot_RL_urdf/meshes/waist.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.75294 0.75294 0.75294 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://drumrobot_RL_urdf/meshes/waist.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="waist_joint"
+    type="revolute">
+    <origin
+      xyz="0.049913 -1.7215 -0.025206"
+      rpy="1.5708 0 0" />
+    <parent
+      link="base_link" />
+    <child
+      link="waist" />
+    <axis
+      xyz="0 0 1" />
+    <limit
+      lower="0"
+      upper="0"
+      effort="0"
+      velocity="0" />
+  </joint>
+  <link
+    name="left_shoulder_1">
+    <inertial>
+      <origin
+        xyz="0.0008044 0.0035967 -0.074233"
+        rpy="0 0 0" />
+      <mass
+        value="0.0693" />
+      <inertia
+        ixx="3.6715E-05"
+        ixy="-6.2964E-13"
+        ixz="2.0323E-13"
+        iyy="5.2364E-05"
+        iyz="3.2579E-07"
+        izz="4.2646E-05" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://drumrobot_RL_urdf/meshes/left_shoulder_1.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.75294 0.75294 0.75294 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://drumrobot_RL_urdf/meshes/left_shoulder_1.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="left_shoulder_1"
+    type="revolute">
+    <origin
+      xyz="-0.2608 0.00040604 0.03375"
+      rpy="0 0 0" />
+    <parent
+      link="waist" />
+    <child
+      link="left_shoulder_1" />
+    <axis
+      xyz="0 0 -1" />
+    <limit
+      lower="0"
+      upper="0"
+      effort="0"
+      velocity="0" />
+  </joint>
+  <link
+    name="left_shoulder_2">
+    <inertial>
+      <origin
+        xyz="0.056175 2.7583E-10 -0.02332"
+        rpy="0 0 0" />
+      <mass
+        value="2.8727" />
+      <inertia
+        ixx="0.0017886"
+        ixy="4.049E-06"
+        ixz="-7.1446E-10"
+        iyy="0.0025234"
+        iyz="1.2713E-12"
+        izz="0.0033752" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://drumrobot_RL_urdf/meshes/left_shoulder_2.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.75294 0.75294 0.75294 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://drumrobot_RL_urdf/meshes/left_shoulder_2.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="left_shoulder_2"
+    type="revolute">
+    <origin
+      xyz="0.00080439 -0.022406 -0.10925"
+      rpy="1.5708 1.5708 0" />
+    <parent
+      link="left_shoulder_1" />
+    <child
+      link="left_shoulder_2" />
+    <axis
+      xyz="0 0 1" />
+    <limit
+      lower="0"
+      upper="0"
+      effort="0"
+      velocity="0" />
+  </joint>
+  <link
+    name="left_elbow">
+    <inertial>
+      <origin
+        xyz="0.11881 2.6109E-07 -0.022621"
+        rpy="0 0 0" />
+      <mass
+        value="0.37689" />
+      <inertia
+        ixx="3.4583E-05"
+        ixy="8.5523E-09"
+        ixz="1.301E-07"
+        iyy="0.00035016"
+        iyz="-1.8102E-10"
+        izz="0.00035942" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://drumrobot_RL_urdf/meshes/left_elbow.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.75294 0.75294 0.75294 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://drumrobot_RL_urdf/meshes/left_elbow.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="left_elbow"
+    type="revolute">
+    <origin
+      xyz="0.23 0 0.0005"
+      rpy="0 0 0" />
+    <parent
+      link="left_shoulder_2" />
+    <child
+      link="left_elbow" />
+    <axis
+      xyz="0 0 1" />
+    <limit
+      lower="0"
+      upper="0"
+      effort="0"
+      velocity="0" />
+  </joint>
+  <link
+    name="left_wrist">
+    <inertial>
+      <origin
+        xyz="0.11114 1.1583E-05 -0.023002"
+        rpy="0 0 0" />
+      <mass
+        value="0.084981" />
+      <inertia
+        ixx="1.3719E-05"
+        ixy="2.2849E-08"
+        ixz="-7.1702E-09"
+        iyy="0.00039646"
+        iyz="-7.493E-12"
+        izz="0.00039453" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://drumrobot_RL_urdf/meshes/left_wrist.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.75294 0.75294 0.75294 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://drumrobot_RL_urdf/meshes/left_wrist.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="left_wrist"
+    type="revolute">
+    <origin
+      xyz="0.2 0 0.00045"
+      rpy="0 0 0" />
+    <parent
+      link="left_elbow" />
+    <child
+      link="left_wrist" />
+    <axis
+      xyz="0 0 -1" />
+    <limit
+      lower="0"
+      upper="0"
+      effort="0"
+      velocity="0" />
+  </joint>
+  <link
+    name="right_shoulder_1">
+    <inertial>
+      <origin
+        xyz="-0.0001254 -0.004895 -0.074233"
+        rpy="0 0 0" />
+      <mass
+        value="0.0693" />
+      <inertia
+        ixx="3.6715E-05"
+        ixy="-6.2964E-13"
+        ixz="-2.0323E-13"
+        iyy="5.2364E-05"
+        iyz="-3.2579E-07"
+        izz="4.2646E-05" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://drumrobot_RL_urdf/meshes/right_shoulder_1.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.75294 0.75294 0.75294 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://drumrobot_RL_urdf/meshes/right_shoulder_1.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="right_shoulder_1"
+    type="revolute">
+    <origin
+      xyz="0.26013 0.00089229 0.03375"
+      rpy="0 0 0" />
+    <parent
+      link="waist" />
+    <child
+      link="right_shoulder_1" />
+    <axis
+      xyz="0 0 -1" />
+    <limit
+      lower="0"
+      upper="0"
+      effort="0"
+      velocity="0" />
+  </joint>
+  <link
+    name="right_shoulder_2">
+    <inertial>
+      <origin
+        xyz="0.056175 -2.7583E-10 -0.02643"
+        rpy="0 0 0" />
+      <mass
+        value="2.8727" />
+      <inertia
+        ixx="0.0017886"
+        ixy="-4.049E-06"
+        ixz="7.1446E-10"
+        iyy="0.0025234"
+        iyz="1.2713E-12"
+        izz="0.0033752" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://drumrobot_RL_urdf/meshes/right_shoulder_2.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.75294 0.75294 0.75294 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://drumrobot_RL_urdf/meshes/right_shoulder_2.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="right_shoulder_2"
+    type="revolute">
+    <origin
+      xyz="-0.0001254 -0.028642 -0.10925"
+      rpy="1.5708 1.5708 0" />
+    <parent
+      link="right_shoulder_1" />
+    <child
+      link="right_shoulder_2" />
+    <axis
+      xyz="0 0 -1" />
+    <limit
+      lower="0"
+      upper="0"
+      effort="0"
+      velocity="0" />
+  </joint>
+  <link
+    name="right_elbow">
+    <inertial>
+      <origin
+        xyz="0.11881 -2.6109E-07 -0.016429"
+        rpy="0 0 0" />
+      <mass
+        value="0.37689" />
+      <inertia
+        ixx="3.4583E-05"
+        ixy="-8.5523E-09"
+        ixz="-1.301E-07"
+        iyy="0.00035016"
+        iyz="-1.8102E-10"
+        izz="0.00035942" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://drumrobot_RL_urdf/meshes/right_elbow.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.75294 0.75294 0.75294 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://drumrobot_RL_urdf/meshes/right_elbow.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="right_elbow"
+    type="revolute">
+    <origin
+      xyz="0.23 0 -0.0112"
+      rpy="0 0 0" />
+    <parent
+      link="right_shoulder_2" />
+    <child
+      link="right_elbow" />
+    <axis
+      xyz="0 0 -1" />
+    <limit
+      lower="0"
+      upper="0"
+      effort="0"
+      velocity="0" />
+  </joint>
+  <link
+    name="right_wrist">
+    <inertial>
+      <origin
+        xyz="0.11114 1.1583E-05 -0.026002"
+        rpy="0 0 0" />
+      <mass
+        value="0.084981" />
+      <inertia
+        ixx="1.3719E-05"
+        ixy="2.2849E-08"
+        ixz="-7.1702E-09"
+        iyy="0.00039646"
+        iyz="-7.493E-12"
+        izz="0.00039453" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://drumrobot_RL_urdf/meshes/right_wrist.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.75294 0.75294 0.75294 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://drumrobot_RL_urdf/meshes/right_wrist.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="right_wrist"
+    type="revolute">
+    <origin
+      xyz="0.2 0 0.0095"
+      rpy="0 0 0" />
+    <parent
+      link="right_elbow" />
+    <child
+      link="right_wrist" />
+    <axis
+      xyz="0 0 1" />
+    <limit
+      lower="0"
+      upper="0"
+      effort="0"
+      velocity="0" />
+  </joint>
+  <link
+    name="head">
+    <inertial>
+      <origin
+        xyz="-0.00031434 -5.6798E-06 0.026892"
+        rpy="0 0 0" />
+      <mass
+        value="0.31902" />
+      <inertia
+        ixx="7.2002E-05"
+        ixy="2.1035E-09"
+        ixz="-5.2319E-08"
+        iyy="6.1312E-05"
+        iyz="-5.6195E-08"
+        izz="2.9042E-05" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://drumrobot_RL_urdf/meshes/head.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.75294 0.75294 0.75294 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://drumrobot_RL_urdf/meshes/head.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="head"
+    type="revolute">
+    <origin
+      xyz="0 0.022 0.142"
+      rpy="0 0 0" />
+    <parent
+      link="waist" />
+    <child
+      link="head" />
+    <axis
+      xyz="0 0 -1" />
+    <limit
+      lower="0"
+      upper="0"
+      effort="0"
+      velocity="0" />
+  </joint>
+  <link
+    name="head_2">
+    <inertial>
+      <origin
+        xyz="-0.011418 0.019288 -0.069715"
+        rpy="0 0 0" />
+      <mass
+        value="0.20144" />
+      <inertia
+        ixx="0.0012665"
+        ixy="7.4538E-09"
+        ixz="4.4275E-06"
+        iyy="0.00030395"
+        iyz="1.5738E-10"
+        izz="0.0014077" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://drumrobot_RL_urdf/meshes/head_2.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.75294 0.75294 0.75294 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://drumrobot_RL_urdf/meshes/head_2.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="head_2"
+    type="revolute">
+    <origin
+      xyz="-0.019 0 0.039006"
+      rpy="1.5708 1.5708 0" />
+    <parent
+      link="head" />
+    <child
+      link="head_2" />
+    <axis
+      xyz="0 1 0" />
+    <limit
+      lower="0"
+      upper="0"
+      effort="0"
+      velocity="0" />
+  </joint>
+</robot>
