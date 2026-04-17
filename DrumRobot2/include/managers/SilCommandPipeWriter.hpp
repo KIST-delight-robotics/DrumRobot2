@@ -17,6 +17,7 @@ public:
     void writeTMotor(const std::string &motorName, TMotor &motor, const TMotorData &data);
     void writeMaxon(const std::string &motorName, MaxonMotor &motor, const MaxonData &data);
     void writeDxl(const std::string &motorName, float position);
+    void writeTick();
 
 private:
     std::string pipePath;

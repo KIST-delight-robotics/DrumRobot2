@@ -112,6 +112,21 @@ void SilCommandPipeWriter::writeDxl(const std::string &motorName, float position
     writeLine(buildDxlLine(motorName, motorTypeConversion(position)));
 }
 
+void SilCommandPipeWriter::writeTick()
+{
+    if (!enabled)
+    {
+        return;
+    }
+
+    if (!openPipe())
+    {
+        return;
+    }
+
+    writeLine("{\"kind\":\"tick\"}");
+}
+
 void SilCommandPipeWriter::writeLine(const std::string &line)
 {
     if (pipeFd < 0)

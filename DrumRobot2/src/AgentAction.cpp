@@ -107,47 +107,64 @@ void AgentAction::policy_lookAt(float pan, float tilt)
 {
     std::cout << "[Action] Look At -> Pan:" << pan << ", Tilt:" << tilt << std::endl;
 
-    // DXL 모터 제어 (ID 12: Pan, ID 13: Tilt라고 가정)
-    // PathManager의 dxlCommandBuffer를 활용
-    float radPan = pan * M_PI / 180.0f;
-    float radTilt = tilt * M_PI / 180.0f;
-    float moveTime = 1.0f; // 1초 동안 이동
+    float targetPan  = pan  * M_PI / 180.0f;
+    float targetTilt = tilt * M_PI / 180.0f;
+    float move_time  = 1.0f; // 1초 이동
+    float dt         = 0.005f; // 5ms 한 스텝
 
-    // DXL 명령 생성: {{time, totalTime, pos}, ...}
-    // DXL ID 12(index 0), 13(index 1)에 해당한다고 가정 (Robot 구조에 따라 확인 필요)
-    std::vector<std::vector<float>> dxlCmd;
-    dxlCmd.push_back({moveTime, moveTime, radPan});  // DXL 1
-    dxlCmd.push_back({moveTime, moveTime, radTilt}); // DXL 2
+    // PathManager genDxlTrajectory와 동일하게 5ms 단위 보간 trajectory를 push한다.
+    // SIL에서도 중간 각도가 tick마다 전달되어 부드러운 움직임으로 보인다.
+    for (float t = dt; t <= move_time + 1e-6f; t += dt)
+    {
+        float tau   = t / move_time;
+        float interp = (1.0f - cosf(M_PI * tau)) / 2.0f; // 사인 보간
 
-    // PathManager 큐에 삽입 (Thread Safe 여부 확인 필요, 보통 큐는 안전)
-    pathManager.dxlCommandBuffer.push(dxlCmd);
+        float curPan  = lastPanRad  + (targetPan  - lastPanRad)  * interp;
+        float curTilt = lastTiltRad + (targetTilt - lastTiltRad) * interp;
+
+        std::vector<std::vector<float>> dxlCmd;
+        dxlCmd.push_back({dt, dt, curPan});
+        dxlCmd.push_back({dt, dt, curTilt});
+        pathManager.dxlCommandBuffer.push(dxlCmd);
+    }
+
+    lastPanRad  = targetPan;
+    lastTiltRad = targetTilt;
 }
 
 void AgentAction::policy_gesture(std::string type)
 {
     std::cout << "[Action] Perform Gesture: " << type << std::endl;
 
-    // 1. 인사 (Wave) - 어깨를 살짝 벌린 상태에서 팔을 열고 오므리며 손을 흔든다.
+    // 1. 인사 (Wave) - 팔을 올려 인사 자세를 잡은 뒤 손목만 빠르게 흔든다.
     if (type == "wave" || type == "hi")
     {
+        // 인사 방향으로 시선
         policy_lookAt(20, 95);
-        policy_moveJoint("R_arm1", 48.0);
-        policy_moveJoint("R_arm2", 20.0);
-        policy_moveJoint("R_arm3", 100.0);
+        // 팔을 인사 자세로 올리기 (정상 속도, 각 관절 동시 이동)
+        policy_moveJoint("R_arm1", 45.0);
+        policy_moveJoint("R_arm2", 45.0);   // 기존 20 -> 45: 팔을 더 높이 올려 인사처럼 보이게
+        policy_moveJoint("R_arm3", 90.0);
         policy_moveJoint("R_wrist", 0.0);
+        // 끄덕임: 아래 -> 위 -> 정면
+        // 손목만 2배 빠르게 (1.0초) 4회 왕복 흔들기
+        policy_moveJoint("R_arm3", 110.0, 1.0f);
+        policy_moveJoint("R_wrist",  25.0, 1.0f);
+        policy_moveJoint("R_arm3",  70.0, 1.0f);
+        policy_moveJoint("R_wrist", -25.0, 1.0f);
 
-        policy_moveJoint("R_arm1", 32.0);
-        policy_moveJoint("R_arm3", 85.0);
-        policy_moveJoint("R_wrist", -10.0);
-        policy_moveJoint("R_arm1", 58.0);
-        policy_moveJoint("R_arm3", 110.0);
-        policy_moveJoint("R_wrist", 20.0);
-        policy_moveJoint("R_arm1", 32.0);
-        policy_moveJoint("R_arm3", 85.0);
-        policy_moveJoint("R_wrist", -10.0);
-        policy_moveJoint("R_arm1", 48.0);
-        policy_moveJoint("R_arm3", 100.0);
-        policy_moveJoint("R_wrist", 0.0);
+        policy_moveJoint("R_arm3", 110.0, 1.0f);
+        policy_moveJoint("R_wrist",  25.0, 1.0f);
+
+        policy_moveJoint("R_arm3",  70.0, 1.0f);
+        policy_moveJoint("R_wrist", -25.0, 1.0f);
+        policy_moveJoint("R_arm3", 110.0, 1.0f);
+        policy_moveJoint("R_wrist",  25.0, 1.0f);
+        policy_moveJoint("R_arm3",  90.0, 1.0f);
+        policy_moveJoint("R_wrist",   0.0, 1.0f);
+
+        //policy_moveJoint("R_wrist", -25.0, 1.0f);
+        //policy_moveJoint("R_wrist",  25.0, 1.0f);
     }
     // 2. 끄덕임 (Nod) - DXL 모터 사용
     else if (type == "nod"){
@@ -197,8 +214,8 @@ void AgentAction::policy_pose(std::string pose)
 }
 */
 
-void AgentAction::policy_moveJoint(std::string motorName, float angleDeg)
-{    
+void AgentAction::policy_moveJoint(std::string motorName, float angleDeg, float moveTime)
+{
     // 1. 모터 이름 확인
     if (motors.find(motorName) == motors.end()) {
         std::cerr << "[Agent] Unknown Motor: " << motorName << std::endl;
@@ -208,7 +225,7 @@ void AgentAction::policy_moveJoint(std::string motorName, float angleDeg)
 
     auto motor = motors[motorName];
     float targetRad = angleDeg * M_PI / 180.0f;
-    float move_time = 2.0f;
+    float move_time = moveTime;
     float dt = 0.005f;      // 5ms 주기 (CAN 통신 주기)
 
     // 2. 모터 타입별 명령 생성 (GenericMotor -> TMotor/MaxonMotor 캐스팅)

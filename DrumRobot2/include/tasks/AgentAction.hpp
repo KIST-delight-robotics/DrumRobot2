@@ -55,7 +55,11 @@ private:
     bool readJsonString(const std::string& payload, size_t startQuote, std::string& value, size_t& nextPos);
 
     // --- Action Policies (구체적 행동 정의) ---
-    
+
+    // DXL 이전 목표 각도 (보간 시작점)
+    float lastPanRad  = 0.0f;
+    float lastTiltRad = 1.5707963f; // 90deg (정면)
+
     // 1. 시선 제어 (Look At)
     // pan: 좌우(-90~90), tilt: 상하(60~120)
     void policy_lookAt(float pan, float tilt);
@@ -69,6 +73,6 @@ private:
     // void policy_pose(std::string pose);
 
     // 4. 개별 관절 이동 (Joint Move)
-    // motorName: 모터 이름, angleDeg: 목표 각도 (도 단위)
-    void policy_moveJoint(std::string motorName, float angleDeg);
+    // motorName: 모터 이름, angleDeg: 목표 각도 (도 단위), moveTime: 이동 시간 (초, 기본 2.0)
+    void policy_moveJoint(std::string motorName, float angleDeg, float moveTime = 2.0f);
 };
