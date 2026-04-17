@@ -666,6 +666,7 @@ void DrumRobot::stateMachine()
             }
             case Main::Pause:
             {
+                pauseStateRoutine();
                 break;
             }
         }
@@ -686,6 +687,7 @@ void DrumRobot::sendLoopForThread()
 {
     sleep(2);   // read thead에서 clear / initial pos Path 생성 할 때까지 기다림
 
+    static SilCommandPipeWriter silWriter; // SIL frame tick 전용 (DXL 블록과 공유)
     int cycleCounter = 0; // 주기 조절을 위한 변수 (Tmotor : 5ms, Maxon : 1ms)
     sendLoopPeriod = chrono::steady_clock::now();
     while (state.main != Main::Shutdown)
@@ -768,16 +770,13 @@ void DrumRobot::sendLoopForThread()
         // DXL
         if (cycleCounter == 0)
         {
+            silWriter.setEnabled(canManager.isSilModeEnabled());
             if (!pathManager.dxlCommandBuffer.empty())
             {
-                static SilCommandPipeWriter silWriter;
-                silWriter.setEnabled(canManager.isSilModeEnabled());
-
                 // 맨 앞 원소 꺼낸 값으로 SyncWrite 실행
                 vector<vector<float>> dxlCommand = pathManager.dxlCommandBuffer.front();
                 pathManager.dxlCommandBuffer.pop();
 
-                // 1차 command-level SIL exporter 삽입 지점:
                 // 실제로 소비되는 DXL command를 head_pan/head_tilt 값으로 pipe에 내보낸다.
                 if (dxlCommand.size() >= 2)
                 {
@@ -793,17 +792,14 @@ void DrumRobot::sendLoopForThread()
 
                 dxl.syncWrite(dxlCommand);
 
-                // float des1 = (float)dxlCommand[0][2];
-                // float des2 = (float)dxlCommand[1][2];
-
                 map<int, float> pos_act = dxl.syncRead();
-                // float act1 = pos_act[1];
-                // float act2 = pos_act[2];
-
-                // func.appendToCSV("dxl_log", false, des1, des2, act1, act2);
             }
         }
-        
+
+        // 1ms 주기마다 SIL frame tick 전송 (Python reader의 frame 경계 기준)
+        silWriter.setEnabled(canManager.isSilModeEnabled());
+        silWriter.writeTick();
+
         if (isWriteError)
         {
                         lastErrorReason = "모터 연결 끊김! CAN 통신 케이블이나 전원을 확인해 주세요."; // CAN 통신 에러
@@ -1344,6 +1340,16 @@ void DrumRobot::processInput(const string &input, string flagName)
         state.main = Main::AddStance;
     }*/
    
+    else if (cmd == "pause")
+    {
+        // Idle 상태에서 pause 요청 — 연주 중이 아니므로 무시
+        cout << ">>> [Pause] 현재 연주 중이 아닙니다." << endl;
+    }
+    else if (cmd == "resume")
+    {
+        // Idle 상태에서 resume 요청 — 일시정지 상태가 아니므로 무시
+        cout << ">>> [Resume] 현재 일시정지 상태가 아닙니다." << endl;
+    }
     else if (input == "s" && flagName == "isHome")
     {
         flagObj.setAddStanceFlag(FlagClass::SHUTDOWN);
@@ -1422,7 +1428,8 @@ void DrumRobot::idealStateRoutine()
 
                 // (A) 상태 제어 명령 (r, p, h, s, t, u) -> 기존 상태 머신(processInput)으로
                 // p:TIM 처럼 콜론이 붙은 곡 선택 명령도 포함
-                if (command == "r" || command == "h" || command == "s" || command == "t" || command == "u" || 
+                if (command == "r" || command == "h" || command == "s" || command == "t" || command == "u" ||
+                    command == "pause" || command == "resume" ||
                     command.rfind("p", 0) == 0) // "p"로 시작하는 경우 (p 또는 p:TIM)
                 {
                     processInput(command, flag);
@@ -2106,72 +2113,162 @@ bool DrumRobot::readMeasure(ifstream& inputFile)
     return false;
 }
 
+void DrumRobot::checkPlayInterrupts()
+{
+    string input = agentSocket.popCommand();
+    if (input.empty()) return;
+
+    vector<string> commands = agentAction.unpackCommands(input);
+    for (const string& command : commands)
+    {
+        if (command == "pause")
+        {
+            cout << ">>> [Play] 일시정지 요청." << endl;
+            pause_requested = true;
+        }
+        else if (handleModifier(command))
+        {
+            // 다음 마디부터 즉시 반영
+            active_modifier = pending_modifier;
+            pending_modifier = PlayModifier();
+            cout << ">>> [Play] modifier 즉시 적용." << endl;
+        }
+    }
+}
+
+void DrumRobot::pauseStateRoutine()
+{
+    cout << ">>> [Pause] 일시정지 상태. 'resume' 또는 'h' 명령을 기다립니다." << endl;
+    arduino.setHeadLED(Arduino::IDLE);
+    agentSocket.openGate(); // Pause 중에는 look/gesture/modifier 등 명령 수신 허용
+
+    while (state.main == Main::Pause)
+    {
+        string input = agentSocket.popCommand();
+
+        if (!input.empty())
+        {
+            vector<string> commands = agentAction.unpackCommands(input);
+            for (const string& command : commands)
+            {
+                if (command == "resume")
+                {
+                    cout << ">>> [Resume] 연주를 재개합니다. (파일 인덱스: " << play_file_index << ")" << endl;
+                    agentSocket.closeGate(); // 연주 재개 시 gate 다시 닫기
+                    is_resuming = true;
+                    state.main = Main::Play;
+                    return;
+                }
+                else if (command == "h")
+                {
+                    cout << ">>> [Pause->Home] 홈으로 복귀합니다." << endl;
+                    play_file_index = 0;
+                    is_resuming = false;
+                    endOfScore = false;
+                    flagObj.setAddStanceFlag(FlagClass::HOME);
+                    agentSocket.openGate();
+                    state.main = Main::AddStance;
+                    return;
+                }
+                else if (handleModifier(command))
+                {
+                    // Pause 중 modifier 즉시 적용 — resume 후 readMeasure에서 반영됨
+                    active_modifier = pending_modifier;
+                    pending_modifier = PlayModifier();
+                    cout << ">>> [Pause] modifier 적용. 재개 시 반영됩니다." << endl;
+                }
+                else
+                {
+                    // look/gesture/move 등 액션 명령 처리
+                    agentAction.executeCommand(command);
+                }
+            }
+        }
+
+        usleep(10000); // 10ms
+    }
+}
+
 void DrumRobot::runPlayProcess()
 {
     string txtPath;
     string txtIndexPath;
-    int fileIndex = 0;
 
-    // 1. 초기화
-    initializePlayState();
-
-    // =========================================================================
-    // [수정] Agent 모드: selectPlayMode(키보드 입력) 제거 -> 변수 기반 자동 설정
-    // =========================================================================
-
-    // (1) 곡 이름 확인 (processInput에서 p:TIM 등으로 설정된 값)
-    if (nextSongCode.empty()) {
-        nextSongCode = "test_one"; // 기본값 설정 (안전장치)
-    }
-
-    cout << ">>> [Agent] Auto-Start Playing: " << nextSongCode << endl;
-
-    // (2) 파일 경로 완성 (예: ../include/codes/TIM)
-    txtPath = txtBaseFolderPath + nextSongCode; // 경로 완성
-
-    // (3) 파일 존재 여부 확인 (TIM0.txt가 있는지 체크)
-    // C++ 로직상 파일명 뒤에 숫자(Index)와 .txt가 붙으므로 0번 파일을 체크함 [Source 203]
-    string checkPath = txtPath + "0.txt";
-    if (!filesystem::exists(checkPath)) 
+    if (is_resuming)
     {
-        cout << ">>> [Error] 악보 파일을 찾을 수 없습니다: " << checkPath << endl;
-        cout << ">>> 대기 모드(Home)로 복귀합니다." << endl;
-        
-        // 파일을 못 찾으면 Ideal 상태로 복귀
-        state.main = Main::Ideal; 
-        flagObj.setAddStanceFlag(FlagClass::HOME);
-        return;
+        // -------------------------------------------------------
+        // Resume 경로: 저장된 play_file_index에서 재개
+        // -------------------------------------------------------
+        is_resuming = false;
+        endOfScore = false;
+        measureTotalTime = 0.0;
+        measureMatrix.resize(1, 9);
+        measureMatrix = MatrixXd::Zero(1, 9);
+        txtPath = txtBaseFolderPath + nextSongCode;
+        pathManager.startOfPlay = true;
+        arduino.setHeadLED(Arduino::PLAYING);
+        cout << ">>> [Resume] '" << nextSongCode << "' 파일 인덱스 "
+             << play_file_index << " 에서 재개합니다." << endl;
     }
-
-    active_modifier = pending_modifier;
-    pending_modifier = PlayModifier();
-
-    if (hasPlayModifier(active_modifier))
+    else
     {
-        ostringstream modifier_text;
-        modifier_text << fixed << setprecision(2) << active_modifier.tempo_scale;
-        cout << ">>> [Modifier] 이번 연주 적용: tempo_scale=" << modifier_text.str()
-             << ", velocity_delta=" << active_modifier.velocity_delta << endl;
-    }
+        // -------------------------------------------------------
+        // Fresh start 경로: 처음부터 연주
+        // -------------------------------------------------------
+        play_file_index = 0;
 
-    // (4) 연주 설정 강제 주입 (기존에 키보드로 입력받던 값들)
-    bool useMagenta = false; // Magenta 뇌는 아직 안 씀
-    repeatNum = 1;           // 1번만 연주
-    currentIterations = 1;   // 반복 카운트 초기화
-    
-    
-    // LED 켜기
-    arduino.setHeadLED(Arduino::PLAYING);
+        // 1. 초기화
+        initializePlayState();
 
-    // =================================================================
-    // [추가] 에이전트 모드용 하드웨어 기본 설정 (Manual 입력 대체)
-    // =================================================================
-    
-    // 1. BPM 기본값 설정 (악보 파일에 bpm 태그가 없으면 이 속도로 연주)
-    if (pathManager.bpmOfScore <= 0) {
-        pathManager.bpmOfScore = 100.0; // 기본 100 BPM
-    }
-    pathManager.bpmOfScore = applyTempoScale(pathManager.bpmOfScore);
+        // =========================================================================
+        // [수정] Agent 모드: selectPlayMode(키보드 입력) 제거 -> 변수 기반 자동 설정
+        // =========================================================================
+
+        // (1) 곡 이름 확인 (processInput에서 p:TIM 등으로 설정된 값)
+        if (nextSongCode.empty()) {
+            nextSongCode = "test_one"; // 기본값 설정 (안전장치)
+        }
+
+        cout << ">>> [Agent] Auto-Start Playing: " << nextSongCode << endl;
+
+        // (2) 파일 경로 완성 (예: ../include/codes/TIM)
+        txtPath = txtBaseFolderPath + nextSongCode; // 경로 완성
+
+        // (3) 파일 존재 여부 확인 (TIM0.txt가 있는지 체크)
+        string checkPath = txtPath + "0.txt";
+        if (!filesystem::exists(checkPath))
+        {
+            cout << ">>> [Error] 악보 파일을 찾을 수 없습니다: " << checkPath << endl;
+            cout << ">>> 대기 모드(Home)로 복귀합니다." << endl;
+            state.main = Main::Ideal;
+            flagObj.setAddStanceFlag(FlagClass::HOME);
+            return;
+        }
+
+        active_modifier = pending_modifier;
+        pending_modifier = PlayModifier();
+
+        if (hasPlayModifier(active_modifier))
+        {
+            ostringstream modifier_text;
+            modifier_text << fixed << setprecision(2) << active_modifier.tempo_scale;
+            cout << ">>> [Modifier] 이번 연주 적용: tempo_scale=" << modifier_text.str()
+                 << ", velocity_delta=" << active_modifier.velocity_delta << endl;
+        }
+
+        // (4) 연주 설정 강제 주입
+        bool useMagenta = false;
+        repeatNum = 1;
+        currentIterations = 1;
+
+        // LED 켜기
+        arduino.setHeadLED(Arduino::PLAYING);
+
+        // 1. BPM 기본값 설정
+        if (pathManager.bpmOfScore <= 0) {
+            pathManager.bpmOfScore = 100.0;
+        }
+        pathManager.bpmOfScore = applyTempoScale(pathManager.bpmOfScore);
 
     // 2. 모터 제어 모드 확정 (CSP: 위치 제어)
     // (InitializePos에서 이미 했지만, 안전을 위해 확실히 고정)
@@ -2182,53 +2279,33 @@ void DrumRobot::runPlayProcess()
         pathManager.tmotorMode = "position";
     }
     
-    // Maxon 모터 게인(Gain) 값 설정 (기존 selectPlayMode에서 입력받던 값들)
-    // CSP 모드는 게인이 필요 없으므로(0), CST일 때만 필요한 값들을 0으로 초기화
-    pathManager.Kp = 300.0;
-    pathManager.Kd = 30.0; 
-    pathManager.KdDrop = 30.0;
-    pathManager.kpMin = 1;
-    pathManager.kpMax = 300.0;
-    
-    // [추가] "자동 엔터" 역할
-    cout << ">>> [System] 연주 시작 트리거 (Start)" << endl;
-    pathManager.startOfPlay = true;  
+        // Maxon 모터 게인(Gain) 값 설정
+        pathManager.Kp = 300.0;
+        pathManager.Kd = 30.0;
+        pathManager.KdDrop = 30.0;
+        pathManager.kpMin = 1;
+        pathManager.kpMax = 300.0;
+
+        cout << ">>> [System] 연주 시작 트리거 (Start)" << endl;
+        pathManager.startOfPlay = true;
+    } // end of fresh-start block
+
     // =================================================================
-    /*
-    // 모드 세팅
-    if (repeatNum == currentIterations) // == 1
-    {
-        currentIterations = 1;
-        txtPath = selectPlayMode();
-
-        if (txtPath == "null")  // 잘못 입력한 경우 : Ideal 로 이동
-        {
-            repeatNum = 1;
-            state.main = Main::Ideal;
-            return;
-        }
-
-        arduino.setHeadLED(Arduino::PLAYING);  // led 연주중 점등 -> 아이보리 
-    }
-    else
-    {
-        currentIterations++;
-        txtPath = magentaCodePath;
-
-        txtIndexPath = txtPath + to_string(fileIndex) + ".txt";
-        while (!filesystem::exists(txtIndexPath)) {
-            this_thread::sleep_for(chrono::milliseconds(1)); // 100ms 대기
-        }
-
-        float inputWaitMs = waitTime.front() * 1000;
-        waitTime.pop();
-        setSyncTime((int)inputWaitMs);
-    }
-    */
     while (!endOfScore)
     {
+        // 연주 중 인터럽트(pause/modifier) 처리
+        checkPlayInterrupts();
+
+        if (pause_requested.load())
+        {
+            pause_requested = false;
+            cout << ">>> [Play] 일시정지. 저장 파일 인덱스: " << play_file_index << endl;
+            state.main = Main::Pause;
+            return; // gate는 닫힌 채 유지 — pauseStateRoutine에서 처리
+        }
+
         ifstream inputFile;
-        txtIndexPath = txtPath + to_string(fileIndex) + ".txt";
+        txtIndexPath = txtPath + to_string(play_file_index) + ".txt";
         inputFile.open(txtIndexPath); // 파일 열기
 
         if (inputFile.is_open())     //////////////////////////////////////// 파일 열기 성공
@@ -2237,7 +2314,7 @@ void DrumRobot::runPlayProcess()
             {
                 cout << "\n - The file exists, but it is empty.\n";
                 inputFile.close();          // 파일 닫기
-                usleep(100);                // 대기 : 악보 작성 중 
+                usleep(100);                // 대기 : 악보 작성 중
             }
             else
             {
@@ -2246,53 +2323,48 @@ void DrumRobot::runPlayProcess()
                     pathManager.processLine(measureMatrix);
 
                     if (state.main == Main::Error) {
-                            lastErrorReason = "자세 계산 실패! 역기구학(IK) 계산 결과 팔이 닿지 않거나 꼬이는 궤적입니다."; // 궤적 생성 실패
-                            return;
-                        }
+                        lastErrorReason = "자세 계산 실패! 역기구학(IK) 계산 결과 팔이 닿지 않거나 꼬이는 궤적입니다.";
+                        return;
+                    }
                 }
 
-                // send thread에서 읽기 전까지 대기
-                if (fileIndex == 0)
+                // send thread에서 읽기 전까지 대기 (첫 파일 한정)
+                if (play_file_index == 0)
                 {
                     int sleepCnt = 0;
                     while (flagObj.getFixationFlag())
-                    // while (!allMotorsUnConected && flagObj.getFixationFlag())
                     {
                         usleep(100);
-                        sleepCnt ++;
+                        sleepCnt++;
                         if(sleepCnt == 50)
                             break;
                     }
                 }
 
                 inputFile.close(); // 파일 닫기
-                fileIndex++;    // 다음 파일 열 준비
-
-                // cout << "\nfileIndex : " << fileIndex << "\n";
+                play_file_index++; // 다음 파일 열 준비
             }
         }
         else     //////////////////////////////////////////////////////////// 파일 열기 실패
         {
-            if (fileIndex == 0)                                             ////////// 1. Play 시작도 못한 경우 (악보 입력 오타 등) -> Ideal 로 이동
+            if (play_file_index == 0)                        ////////// 1. Play 시작도 못한 경우 -> Ideal 로 이동
             {
                 cout << "not find " << txtIndexPath << "\n";
                 sleep(1);
-
                 repeatNum = 1;
                 currentIterations = 1;
-
                 state.main = Main::Ideal;
                 return;
             }
-            else if (flagObj.getFixationFlag() && (!allMotorsUnConected))   ////////// 2. 로봇 상태가 fixed 로 변경 (악보가 들어오기 전 명령 소진) -> 에러
+            else if (flagObj.getFixationFlag() && (!allMotorsUnConected))   ////////// 2. 명령 소진 -> 에러
             {
                 cout << "Error : not find " << txtIndexPath << "\n";
                 state.main = Main::Error;
                 return;
             }
-            else                                                            ////////// 3. 다음 악보 생성될 때까지 대기
+            else                                             ////////// 3. 다음 악보 생성될 때까지 대기
             {
-                inputFile.clear();            // 상태 비트 초기화
+                inputFile.clear();
                 usleep(100);
             }
         }
@@ -2311,7 +2383,7 @@ void DrumRobot::runPlayProcess()
     if(txtPath == magentaCodePath)
     {
         // 악보 파일 저장 후 삭제
-        for (int i = 0; i < fileIndex; i++)
+        for (int i = 0; i < play_file_index; i++)
         {
             txtIndexPath = txtPath + to_string(i) + ".txt";
 
@@ -2349,6 +2421,7 @@ void DrumRobot::runPlayProcess()
     }
 
     cout << "Play is Over\n";
+    play_file_index = 0; // 재사용에 대비해 리셋
     if (repeatNum == currentIterations)
     {
         flagObj.setAddStanceFlag(FlagClass::HOME); // 연주 종료 후 Home 으로 이동

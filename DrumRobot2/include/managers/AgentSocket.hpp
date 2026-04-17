@@ -67,6 +67,7 @@ private:
     std::string trimText(const std::string& text) const;
     bool isJsonStart(const std::string& text) const;
     bool hasFullJson(const std::string& text) const;
+    bool isInterruptCmd(const std::string& text) const; // gate 닫혀도 통과할 인터럽트 명령 판별
 
     // 셔터(게이트) 상태 플래그
     std::atomic<bool> isGateOpen{false};

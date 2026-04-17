@@ -71,6 +71,14 @@ bool AgentSocket::hasFullJson(const std::string& text) const {
     return saw_brace && brace_level == 0;
 }
 
+// gate 닫혀도 통과할 인터럽트 명령 판별
+bool AgentSocket::isInterruptCmd(const std::string& text) const {
+    if (text == "pause" || text == "resume" || text == "h") return true;
+    if (text.rfind("tempo_scale:", 0) == 0) return true;
+    if (text.rfind("velocity_delta:", 0) == 0) return true;
+    return false;
+}
+
 // 큐 비우기 함수
 void AgentSocket::clearQueue() {
     std::lock_guard<std::mutex> lock(queueMutex);
@@ -200,9 +208,10 @@ void AgentSocket::runServerLoop() {
                 }
 
                 // ★ 안전장치: 셔터(게이트)가 닫혀있으면 명령 폐기
-                if (!isGateOpen.load()) {
-                    std::cout << "🚫 [Safeguard] 로봇 보호 상태: 명령 폐기 -> " << cmd_text << std::endl;
-                    continue; 
+                // 단, pause/resume/h/modifier 같은 인터럽트 명령은 gate 무시하고 통과
+                if (!isGateOpen.load() && !isInterruptCmd(cmd_text)) {
+                    std::cout << "[Safeguard] 로봇 보호 상태: 명령 폐기 -> " << cmd_text << std::endl;
+                    continue;
                 }
 
                 // ★ 중요: 큐에 넣을 때는 자물쇠(Mutex) 잠그기
