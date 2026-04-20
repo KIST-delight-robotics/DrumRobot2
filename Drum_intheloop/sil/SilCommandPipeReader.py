@@ -1,11 +1,14 @@
 import argparse
 import json
+import logging
 import os
 import stat
 import sys
 import time
 from pathlib import Path
-from typing import Dict, Iterator
+from typing import Dict, Iterator, Optional
+
+IDLE_RETURN_SEC = 5.0  # 명령 없이 이 시간이 지나면 SIL에서 startup pose로 복귀
 
 # Ensure the project root is in the Python path for imports
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -16,6 +19,9 @@ from sil.command_applier import CommandApplier
 from sil.command_types import MaxonData, TMotorData
 from sil.pybullet_backend import PyBulletBackend
 from sil.robot_spec import STARTUP_CAN_POSE_DEG, STARTUP_DXL_POSE_DEG
+from sil.vcan_state_writer import VcanStateWriter
+
+logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 
 # Writer 경로와 동일
 DEFAULT_PIPE_PATH = Path("/tmp/drum_command.pipe")
@@ -71,6 +77,9 @@ class SilCommandPipeReader:
     def parse_line(self, line: str) -> dict:
         payload = json.loads(line)
         kind = payload["kind"]
+
+        if kind == "tick":
+            return {"kind": "tick"}
 
         if kind == "tmotor":
             return {
@@ -156,6 +165,18 @@ def parse_args() -> argparse.Namespace:
         default=0.0001,
         help="Optional delay after each applied message.",
     )
+    parser.add_argument(
+        "--no-vcan",
+        action="store_true",
+        default=False,
+        help="vcan0 피드백을 비활성화한다 (open-loop 디버그용).",
+    )
+    parser.add_argument(
+        "--vcan",
+        type=str,
+        default="vcan0",
+        help="vcan 인터페이스 이름 (기본값: vcan0).",
+    )
     return parser.parse_args()
 
 
@@ -166,6 +187,16 @@ def main() -> int:
     applier = CommandApplier()
     backend = PyBulletBackend(urdf_path=args.urdf, mode=args.mode)
 
+    # close-loop: vcan0 피드백 송신기
+    vcan_writer: Optional[VcanStateWriter] = None
+    if not args.no_vcan:
+        vcan_writer = VcanStateWriter(channel=args.vcan)
+        if not vcan_writer.open():
+            print(f"[SIL] vcan writer disabled (interface '{args.vcan}' unavailable).")
+            vcan_writer = None
+        else:
+            print(f"[SIL] vcan feedback enabled on {args.vcan}.")
+
     try:
         reader.prepare_pipe()
         backend.start()
@@ -174,23 +205,57 @@ def main() -> int:
             print(f"Applying startup preset pose: {startup_joint_targets_deg}")
             backend.apply_targets(startup_joint_targets_deg)
             backend.step()
+            # startup pose도 즉시 피드백으로 전송한다.
+            if vcan_writer is not None:
+                vcan_writer.send_all(backend.read_joint_states())
         print(f"Listening on named pipe: {args.pipe}")
 
+        # tick 단위로 joint target을 모아서 한 번에 apply → step 한다.
+        # 같은 1ms 구간의 TMotor/Maxon/DXL 명령이 atomic하게 적용되어
+        # DXL과 CAN 모터의 frame 경계가 맞춰진다.
+        #
+        # close-loop:
+        # tick 처리 후 PyBullet joint state를 vcan0 CAN 프레임으로 C++에 돌려준다.
+        # C++ CanManager recv loop 가 이 프레임을 읽어 motor.jointAngle 을 갱신한다.
+        #
+        # Idle return:
+        # 실제 관절 명령이 없는 빈 tick이 IDLE_RETURN_SEC 초 이상 이어지면
+        # startup pose로 복귀한다. SIL 전용 임시 기능.
+        frame_targets: Dict[str, float] = {}
+        last_motion_time: float = time.time()
+        idle_returned: bool = False  # 복귀 후 중복 적용 방지
+
         for message in reader.read_messages():
-            joint_targets_deg = build_joint_targets(applier, message)
-            if not joint_targets_deg:
-                continue
-
-            print(f"Received: {message}")
-            print(f"Applying: {joint_targets_deg}")
-            backend.apply_targets(joint_targets_deg)
-            backend.step()
-
-            if args.sleep > 0.0:
-                time.sleep(args.sleep)
+            if message["kind"] == "tick":
+                if frame_targets:
+                    backend.apply_targets(frame_targets)
+                    backend.step()
+                    # ★ close-loop: PyBullet 현재 state → vcan0 피드백
+                    if vcan_writer is not None:
+                        vcan_writer.send_all(backend.read_joint_states())
+                    frame_targets.clear()
+                    last_motion_time = time.time()
+                    idle_returned = False
+                    if args.sleep > 0.0:
+                        time.sleep(args.sleep)
+                else:
+                    # 빈 tick: 명령 없는 구간 → idle 판정
+                    if not idle_returned and (time.time() - last_motion_time) > IDLE_RETURN_SEC:
+                        print("[SIL] Idle timeout: returning to startup pose")
+                        backend.apply_targets(startup_joint_targets_deg)
+                        backend.step()
+                        # idle 복귀 pose도 피드백 전송
+                        if vcan_writer is not None:
+                            vcan_writer.send_all(backend.read_joint_states())
+                        idle_returned = True
+            else:
+                joint_targets_deg = build_joint_targets(applier, message)
+                frame_targets.update(joint_targets_deg)
 
         return 0
     finally:
+        if vcan_writer is not None:
+            vcan_writer.close()
         backend.close()
         reader.cleanup_pipe()
 

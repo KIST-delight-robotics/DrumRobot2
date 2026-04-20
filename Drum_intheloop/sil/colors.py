@@ -56,23 +56,22 @@ def rgb(color: Color) -> RgbColor:
 
 
 # Keep None to use the PyBullet default background.
-GUI_BACKGROUND_RGB: Optional[RgbColor] = None
+GUI_BACKGROUND_RGB: Optional[RgbColor] = (1, 1, 1)
 
 # The floor can still be lightly tinted even when the background is default.
-PLANE_RGBA: Color = IVORY
-
+PLANE_RGBA: Color = None
 
 ROBOT_THEME: Dict[str, Color] = {
     "base_link": CHARCOAL,
-    "waist": BRICK,
-    "head": CHARCOAL,
-    "head_2": CHARCOAL,
-    "left_shoulder_1": BRICK,
+    "waist": STEEL,
+    "head": STEEL,
+    "head_2": GRAPHITE,
+    "left_shoulder_1": CHARCOAL,
     "left_shoulder_2": BRICK,
-    "right_shoulder_1": BRICK,
+    "right_shoulder_1": CHARCOAL,
     "right_shoulder_2": BRICK,
     "left_elbow": BRICK,
-    "left_wrist": CHARCOAL,
+    "left_wrist": CAMEL,
     "right_elbow": BRICK,
-    "right_wrist": CHARCOAL,
+    "right_wrist": CAMEL,
 }
