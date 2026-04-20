@@ -23,6 +23,7 @@ DrumRobot_data/*
 # 가상환경 및 캐시 (이름이 뭐든 간에 venv, env 들어가면 무시)
 venv/
 env/
+*.env
 magenta-env/
 __pycache__/
 *.pyc
@@ -33,7 +34,7 @@ phil_robot/downloads_whl/
 phil_robot/third_party/downloads_whl/
 
 # legacy mock/simulator workspace (already tracked files remain tracked)
-phil_intheloop/
+#phil_intheloop/
 
 # --- [4] IDE 설정 및 시스템 파일 ---
 .idea/
