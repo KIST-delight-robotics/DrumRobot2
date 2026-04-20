@@ -485,6 +485,87 @@ bool CanManager::setMotorsSocket()
     return allMotorsUnConected;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/*                        SIL vcan feedback socket                            */
+////////////////////////////////////////////////////////////////////////////////
+
+// SIL 모드에서 vcan0 소켓을 열고, 연결 안 된 모터의 socket 필드를 vcan_fd로 교체한다.
+//
+// 동작 원리:
+//   Python SilCommandPipeReader 가 tick 처리 후 PyBullet joint state 를
+//   vcan0 에 struct can_frame 으로 쓴다.
+//   이 함수로 할당된 vcan_fd 를 통해 readFramesFromAllSockets() 가 그 프레임을
+//   읽어 tempFrames[vcan_fd] 에 쌓고, distributeFramesToMotors() 가 각 모터의
+//   motor.jointAngle 을 갱신한다.
+//
+// 전제: sudo bash setup_vcan.sh 로 vcan0 인터페이스가 올라와 있어야 한다.
+void CanManager::openSilVcan(const std::string &ifname)
+{
+    if (!silModeEnabled)
+    {
+        return;
+    }
+
+    // vcan 소켓 생성
+    int sock = socket(PF_CAN, SOCK_RAW, CAN_RAW);
+    if (sock < 0)
+    {
+        std::cerr << "[SIL] vcan socket() failed: " << strerror(errno) << std::endl;
+        return;
+    }
+
+    struct ifreq ifr;
+    std::memset(&ifr, 0, sizeof(ifr));
+    std::strncpy(ifr.ifr_name, ifname.c_str(), IFNAMSIZ - 1);
+
+    if (ioctl(sock, SIOCGIFINDEX, &ifr) < 0)
+    {
+        std::cerr << "[SIL] vcan ioctl(SIOCGIFINDEX) failed for " << ifname
+                  << ": " << strerror(errno)
+                  << " (setup_vcan.sh 를 먼저 실행했는지 확인)" << std::endl;
+        close(sock);
+        return;
+    }
+
+    struct sockaddr_can addr{};
+    addr.can_family  = AF_CAN;
+    addr.can_ifindex = ifr.ifr_ifindex;
+
+    if (bind(sock, reinterpret_cast<struct sockaddr *>(&addr), sizeof(addr)) < 0)
+    {
+        std::cerr << "[SIL] vcan bind() failed: " << strerror(errno) << std::endl;
+        close(sock);
+        return;
+    }
+
+    // non-blocking: readFramesFromAllSockets 의 EWOULDBLOCK 처리와 맞춰야 한다.
+    int flags = fcntl(sock, F_GETFL, 0);
+    if (flags < 0 || fcntl(sock, F_SETFL, flags | O_NONBLOCK) < 0)
+    {
+        std::cerr << "[SIL] vcan fcntl(O_NONBLOCK) failed: " << strerror(errno) << std::endl;
+        close(sock);
+        return;
+    }
+
+    sockets[ifname] = sock;
+
+    // 연결 안 된 모터의 socket 을 vcan_fd 로 교체한다.
+    int assigned = 0;
+    for (auto &motor_pair : motors)
+    {
+        const std::string &name = motor_pair.first;
+        std::shared_ptr<GenericMotor> &motor = motor_pair.second;
+        if (!isConnected.count(name) || !isConnected[name])
+        {
+            motor->socket = sock;
+            assigned++;
+        }
+    }
+
+    std::cout << "[SIL] vcan0 opened (fd=" << sock << "), assigned to "
+              << assigned << " disconnected motor(s)." << std::endl;
+}
+
 //안씀
 bool CanManager::recvToBuff(std::shared_ptr<GenericMotor> &motor, int readCount)
 {

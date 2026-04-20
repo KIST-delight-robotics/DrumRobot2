@@ -99,6 +99,10 @@ public:
     bool setCANFrame(std::map<std::string, bool>& fixFlags, int cycleCounter);
     bool isSilModeEnabled() const { return silModeEnabled; }
 
+    // SIL 모드에서 vcan0 소켓을 열고 disconnected 모터에 할당한다.
+    // setup_vcan.sh 로 vcan0 인터페이스가 미리 올라와 있어야 한다.
+    void openSilVcan(const std::string &ifname = "vcan0");
+
     //////////////////////////////////////// Receive
     void readFramesFromAllSockets();
     bool distributeFramesToMotors(bool setlimit);

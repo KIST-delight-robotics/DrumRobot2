@@ -223,6 +223,17 @@ void DrumRobot::initializeCanManager()
     canManager.initializeCAN();
     canManager.checkCanPortsStatus();
     allMotorsUnConected = canManager.setMotorsSocket(); // 연결된 모터 없음 : 테스트 모드
+
+    // SIL 모드: vcan0 을 열고 disconnected 모터에 할당한다.
+    // Python SilCommandPipeReader 가 tick 후 vcan0 으로 joint state 피드백을 보내면
+    // recv loop 가 motor.jointAngle 을 갱신해 close-loop 가 완성된다.
+    canManager.openSilVcan("vcan0");
+
+    // vcan 피드백 경로가 열렸으면 "연결됨"으로 갱신한다.
+    // allMotorsUnConected=true 이면 sendLoopForThread 에서 is_fixed 가
+    // 항상 true 로 강제돼 홈 복귀 오발이 일어나므로, SIL 에서도 반드시 해제한다.
+    if (canManager.isSilModeEnabled())
+        allMotorsUnConected = false;
 }
 
 void DrumRobot::motorSettingCmd()
@@ -2415,9 +2426,26 @@ void DrumRobot::runPlayProcess()
     cout << ">>> [Agent] 궤적 생성 완료. 모터 연주가 끝날 때까지 대기(Play)합니다..." << endl;
 
     // 궤적은 다 만들어졌지만, 모터가 실제로 연주를 끝내야 하므로, fixationFlag가 켜질 때까지 대기
+    // pause 명령은 이 루프에서도 체크한다 — 수신 즉시 메시지를 내고 buffer가 소진되면 Pause로 전환
+    bool wait_loop_pause = false;
     while (!flagObj.getFixationFlag() && !allMotorsUnConected)
-    {        
-        usleep(1000); // 100ms 대기
+    {
+        checkPlayInterrupts();
+        if (pause_requested.load())
+        {
+            pause_requested = false;
+            wait_loop_pause = true;
+            cout << ">>> [Play] 일시정지 요청 수신. 현재 동작 완료 후 정지합니다." << endl;
+        }
+        usleep(1000);
+    }
+
+    if (wait_loop_pause)
+    {
+        initializePlayState();
+        cout << ">>> [Play] 일시정지 상태로 전환. 재개 시 처음부터 시작됩니다." << endl;
+        state.main = Main::Pause;
+        return;
     }
 
     cout << "Play is Over\n";
