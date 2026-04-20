@@ -8,8 +8,39 @@ phil_robot 공용 설정 상수.
 import os
 from typing import Any, Dict
 
-CLASSIFIER_MODEL = "qwen3:4b-instruct-2507-q4_K_M"
-PLANNER_MODEL = "qwen3:30b-a3b-instruct-2507-q4_K_M"
+
+def _load_dotenv() -> None:
+    env_path = os.path.join(os.path.dirname(__file__), ".env")
+    if not os.path.isfile(env_path):
+        return
+    with open(env_path) as f:
+        for line in f:
+            line = line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            key, _, val = line.partition("=")
+            key = key.strip()
+            val = val.strip().strip('"').strip("'")
+            if key and key not in os.environ:
+                os.environ[key] = val
+
+
+_load_dotenv()
+
+CLASSIFIER_MODEL = os.getenv("PHIL_CLASSIFIER_MODEL", "gpt-4o-mini")
+PLANNER_MODEL = os.getenv("PHIL_PLANNER_MODEL", "gpt-4o-mini")
+
+OPENAI_API_KEY = os.getenv("OM_API_KEY", "")
+
+_OPENAI_PREFIXES = ("gpt-", "o1", "o3", "o4", "o5", "text-")
+
+
+def detect_backend(model_name: str) -> str:
+    lower = model_name.lower()
+    for prefix in _OPENAI_PREFIXES:
+        if lower.startswith(prefix):
+            return "openai"
+    return "ollama"
 
 
 def env_int(key_name: str, default_val: int) -> int:

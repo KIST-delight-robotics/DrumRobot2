@@ -33,9 +33,12 @@ try:
         detect_repertoire_query,
         detect_wave_play_request,
     )
-    
+
     # planner 결과를 최종 실행 가능 계획으로 검증/정리
     from .validator import ValidatedPlan, build_validated_plan
+
+    # 세션 단기 기억
+    from .session import SessionContext, build_session_summary, resolve_clarification_text
 
 except (ImportError, ValueError):
     # phil_robot 폴더 안에서 직접 실행할 때 사용하는 fallback import다.
@@ -68,9 +71,12 @@ except (ImportError, ValueError):
         detect_repertoire_query,
         detect_wave_play_request,
     )
-    
+
     # planner 결과를 최종 실행 가능 계획으로 검증/정리
     from pipeline.validator import ValidatedPlan, build_validated_plan
+
+    # 세션 단기 기억
+    from pipeline.session import SessionContext, build_session_summary, resolve_clarification_text
 
 try:
     # 패키지 문맥 import일 때 공용 모델 설정을 가져온다.
@@ -99,18 +105,137 @@ class BrainTurnResult:
     planner_metrics: Dict = field(default_factory=dict)
 
 
+def _is_greeting_wave(user_text: str) -> bool:
+    """'안녕'과 '반가워'가 동시에 포함된 인사 발화를 감지한다."""
+    return "안녕" in user_text and "반가워" in user_text
+
+
+_PAUSE_KEYWORDS = {"멈춰", "멈춰봐", "잠깐", "스톱", "정지", "그만", "일시정지", "pause"}
+_RESUME_KEYWORDS = {"다시", "계속", "이어서", "재개", "resume"}
+
+
+def _detect_play_interrupt(user_text: str, adapted_state: dict):
+    """
+    연주 중(state==2) pause/resume 발화를 감지한다.
+    LLM 없이 키워드 매칭으로 직접 처리해 지연을 줄인다.
+
+    반환값: "pause" | "resume" | None
+    """
+    if adapted_state.get("state") != 2:
+        return None
+    text = user_text.strip()
+    if any(kw in text for kw in _PAUSE_KEYWORDS):
+        return "pause"
+    if any(kw in text for kw in _RESUME_KEYWORDS):
+        return "resume"
+    return None
+
+
 def run_brain_turn(
     user_text,
     raw_robot_state,
     classifier_model_name=CLASSIFIER_MODEL,
     planner_model_name=PLANNER_MODEL,
     capture_metrics: bool = False,
+    session=None,
 ):
     """
     한 턴의 LLM 처리 파이프라인.
     1차 classifier 와 2차 planner 를 분리해, 각 역할을 독립적으로 다룰 수 있게 한다.
+
+    session: SessionContext | None
+        세션 단기 기억. None 이면 기존 stateless 동작과 동일하다.
+        - clarification 대기 상태라면, user_text 와 이전 발화를 합쳐서 처리한다.
+        - planner input 에 최근 대화 히스토리와 마지막 동작 상태를 포함한다.
     """
     adapted_state = adapt_robot_state(raw_robot_state)
+
+    # ===========================================================
+    # [이동 필요] 이 shortcut은 phil_brain.py 의 orchestration 진입점으로 옮겨야 한다.
+    #
+    # brain_pipeline.py 의 책임은 LLM 두 단계(classifier → planner) 조율이다.
+    # 아래 블록은 classifier 호출 자체를 건너뛰는 순수 문자열 매칭 prefilter로,
+    # LLM 파이프라인과 성격이 다르다.
+    #
+    # 올바른 위치: phil_brain.py 에서 run_brain_turn() 호출 전에 체크.
+    # 장기적으로는 TODO.md 의 'classifier prefilter' 항목에 따라
+    # pipeline/prefilter.py 로 분리하는 것이 맞다.
+    # ===========================================================
+    # Shortcut path:
+    # 연주 중 pause/resume 발화는 LLM latency 없이 즉시 처리한다.
+    # C++ gate 는 이미 pause/resume 을 interrupt 명령으로 허용하므로
+    # 여기서 빠르게 내보내는 것이 사용자 체감에 직접적 영향을 준다.
+    play_interrupt = _detect_play_interrupt(user_text, adapted_state)
+    if play_interrupt is not None:
+        speech_map = {"pause": "잠깐 멈출게요.", "resume": "다시 연주할게요."}
+        classifier_result = {
+            "intent": "stop_request",
+            "needs_motion": False,
+            "needs_dialogue": True,
+            "risk_level": "low",
+        }
+        planner_result = {
+            "skills": [],
+            "op_cmd": [play_interrupt],
+            "speech": speech_map[play_interrupt],
+            "reason": f"연주 중 {play_interrupt} 키워드 감지 → 직접 처리",
+        }
+        validated_plan = build_validated_plan(
+            user_text=user_text,
+            robot_state=adapted_state,
+            classifier_result=classifier_result,
+            planner_result=planner_result,
+        )
+        return BrainTurnResult(
+            classifier_input_json="",
+            classifier_result=classifier_result,
+            planner_domain="stop",
+            planner_input_json="",
+            classifier_raw_response_text="",
+            planner_raw_response_text="",
+            planner_result=planner_result,
+            adapted_state=adapted_state,
+            validated_plan=validated_plan,
+        )
+    # ===========================================================
+
+    if _is_greeting_wave(user_text):
+        classifier_result = {
+            "intent": "motion_request",
+            "needs_motion": True,
+            "needs_dialogue": True,
+            "risk_level": "low",
+        }
+        planner_result = {
+            "skills": ["wave_hi"],
+            "op_cmd": [],
+            "speech": "안녕하세요! 반가워요.",
+            "reason": "'안녕'과 '반가워'가 동시에 포함된 인사는 손 흔들기로 직접 처리",
+        }
+        validated_plan = build_validated_plan(
+            user_text=user_text,
+            robot_state=adapted_state,
+            classifier_result=classifier_result,
+            planner_result=planner_result,
+        )
+        return BrainTurnResult(
+            classifier_input_json="",
+            classifier_result=classifier_result,
+            planner_domain="motion",
+            planner_input_json="",
+            classifier_raw_response_text="",
+            planner_raw_response_text="",
+            planner_result=planner_result,
+            adapted_state=adapted_state,
+            validated_plan=validated_plan,
+        )
+    # ===========================================================
+
+    # ── clarification 처리 ────────────────────────────────────────────────
+    # 이전 턴에서 필이 되물었다면, 원래 발화 + 이번 답변을 합쳐 classifier/planner 에 넘긴다.
+    # 예) "허리 돌려" + "30도" → "허리 돌려 30도"
+    if session is not None:
+        user_text = resolve_clarification_text(session, user_text)
 
     classifier_input_json = build_classifier_input_json(adapted_state, user_text)
     classifier_start_time = time.time()
@@ -325,7 +450,12 @@ def run_brain_turn(
     # 일반 대화/행동/연주 요청은 planner LLM 에게 위임해
     # skill/command/speech plan 을 만들고 validator 로 넘긴다.
     planner_system_prompt = get_planner_system_prompt(planner_domain)
-    planner_input_json = build_planner_input_json(adapted_state, user_text, classifier_result, planner_domain)
+
+    # session 이 있으면 최근 대화 히스토리와 마지막 동작 상태를 planner input 에 포함한다.
+    session_summary = build_session_summary(session) if session is not None else None
+    planner_input_json = build_planner_input_json(
+        adapted_state, user_text, classifier_result, planner_domain, session_summary
+    )
     planner_start_time = time.time()
     if capture_metrics:
         planner_raw_response_text, planner_metrics = call_json_llm(

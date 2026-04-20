@@ -117,7 +117,7 @@ CLASSIFIER_SYSTEM_PROMPT = """당신은 로봇 에이전트의 1차 intent class
 - motion_request: 손/팔/허리/손목/시선/제스처 등 물리 동작 요청
 - play_request: 연주 시작/곡 재생/드럼 연주 요청
 - status_question: 현재 상태, 직전 행동, 왜 멈췄는지, 무엇을 했는지 질문
-- stop_request: 멈춰, 그만, 정지, 종료 요청
+- stop_request: 멈춰, 그만, 정지, 종료, 일시정지, 잠깐, 스톱 요청 또는 연주 재개(다시 해, 계속 해, 이어서 해) 요청
 - unknown: 의도를 분명히 정할 수 없는 경우
 
 판단 규칙:

@@ -44,7 +44,7 @@ Whisper STT
 ```text
 Whisper STT
   -> state_adapter
-  -> classifier LLM
+  -> classifier LLM (or prefilter shortcut)
   -> planner-domain router
   -> planner LLM
   -> planner JSON parse
@@ -52,9 +52,12 @@ Whisper STT
   -> relative motion resolver
   -> command validator
   -> ValidatedPlan
-  -> executor
-  -> TTS
+  -> LangGraph state machine (process → execute → return_home)
+    -> InterruptibleExecutor (백그라운드 스레드)
+    -> TTS (메인 스레드, 동시 실행)
+    -> 동작 완료 후 홈 복귀 (plan_type == motion 일 때)
   -> robot state feedback
+  -> session 갱신 (clarification 대기 포함)
 ```
 
 ### 핵심 개선점
@@ -277,10 +280,10 @@ C++ robot state broadcast -> runtime/phil_client.py -> thread-safe ROBOT_STATE -
 
 - runtime bootstrap
 - STT 호출
-- state snapshot 획득
-- pipeline 호출
-- validated plan 실행
-- TTS 호출
+- LangGraph app(`build_phil_graph`) 빌드 및 매 턴 `app.invoke()` 실행
+- Enter 입력 시 `InterruptibleExecutor.cancel()`로 이전 동작 즉시 중단
+- TTS는 메인 스레드에서 호출 (MeloTTS 스레드 비안전)
+- `SessionContext` 매 턴 갱신
 - 사람이 읽기 좋은 debug 로그 출력
 
 이 파일은 혼합 로직 컨테이너가 아니라 orchestration entrypoint입니다.
@@ -456,14 +459,16 @@ C++ robot state broadcast -> runtime/phil_client.py -> thread-safe ROBOT_STATE -
 ```python
 ValidatedPlan(
     skills=[...],
-    raw_commands=[...],
-    expanded_commands=[...],
-    resolved_commands=[...],
-    valid_commands=[...],
-    rejected_commands=[...],
+    raw_op_cmds=[...],
+    expanded_op_cmds=[...],
+    resolved_op_cmds=[...],
+    valid_op_cmds=[...],
+    rejected_op_cmds=[...],
     warnings=[...],
     speech="...",
-    reason="..."
+    reason="...",
+    play_modifier=...,           # 연주 속도/세기 보정값. play 요청 + 빠르기 수식어 있을 때만 설정
+    clarification_question="..."  # planner가 되물어야 할 때 설정. 없으면 빈 문자열
 )
 ```
 
@@ -480,7 +485,39 @@ ValidatedPlan(
 - socket client를 통해 실제 로봇 명령 전송
 - `wait:<seconds>`를 Python 측 임시 delay primitive로 처리
 
-### 11. Runtime Transport and Feedback Layer
+### 11. LangGraph State Machine Layer
+
+파일:
+
+- [robot_graph.py](/home/shy/robot_project/phil_robot/pipeline/robot_graph.py)
+- [state_graph.py](/home/shy/robot_project/phil_robot/pipeline/state_graph.py)
+- [exec_thread.py](/home/shy/robot_project/phil_robot/pipeline/exec_thread.py)
+
+책임:
+
+- `process → execute → return_home` 노드 구성
+- `InterruptibleExecutor`: 로봇 명령을 백그라운드 스레드에서 실행, `cancel()` 시 `s` 전송 + wait 중단
+- `plan_type` 판단 (motion/play/stop/chat)으로 홈 복귀 여부 결정
+- Enter 입력 시 이전 동작 즉시 중단 후 새 명령 처리
+- TTS와 로봇 명령 동시 실행 (말하면서 제스처)
+
+`state_graph.py`는 Python 3.8 + aarch64에서 `langgraph` 패키지 설치 불가로 인한 경량 호환 구현입니다.  
+Python 3.9+로 업그레이드하면 import 한 줄 교체로 실제 langgraph로 전환할 수 있습니다.
+
+### 12. Session Layer
+
+파일:
+
+- [session.py](/home/shy/robot_project/phil_robot/pipeline/session.py)
+
+책임:
+
+- `SessionContext`: 대화 히스토리, 마지막 관절/시선/연주 상태 단기 기억
+- clarification pending 상태 관리 (`pending_clarification_q`)
+- `resolve_clarification_text()`: 이전 발화 + 이번 답변 합치기
+- `build_session_summary()`: planner input에 포함할 session 요약 생성
+
+### 13. Runtime Transport and Feedback Layer
 
 파일:
 

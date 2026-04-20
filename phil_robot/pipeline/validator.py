@@ -51,6 +51,9 @@ class ValidatedPlan:
     speech: str = ""
     reason: str = ""
     play_modifier: PlayModifier = field(default_factory=PlayModifier)
+    # planner가 되묻기를 요청했을 때 채워진다.
+    # 비어있으면 clarification 없음, 채워져 있으면 session에 pending 상태로 저장된다.
+    clarification_question: str = ""
 
 
 def build_partial_execution_message(valid_op_cmds: List[str], rejected_op_cmds: List[str]) -> str:
@@ -123,4 +126,5 @@ def build_validated_plan(
         speech=speech,
         reason=planner_result.get("reason", ""),
         play_modifier=play_modifier,
+        clarification_question=planner_result.get("clarification_question", ""),
     )

@@ -43,6 +43,8 @@ LEFT_ARM_KEYWORDS = ["왼팔", "왼쪽 팔", "왼손", "왼쪽 손"]
 RIGHT_ARM_KEYWORDS = ["오른팔", "오른쪽 팔", "오른손", "오른쪽 손"]
 ABSOLUTE_DEGREE_PATTERN = re.compile(r"(-?\d+(?:\.\d+)?)\s*도로")
 RELATIVE_DEGREE_PATTERN = re.compile(r"(-?\d+(?:\.\d+)?)\s*도")
+WAIT_STEP_PATTERN = re.compile(r"(-?\d+(?:\.\d+)?)\s*초\s*(?:뒤|후)\s*에?")
+REPEAT_STEP_PATTERN = re.compile(r"(-?\d+(?:\.\d+)?)\s*도씩\s*두\s*번")
 
 
 @dataclass
@@ -75,6 +77,57 @@ def resolve_motion_commands(user_text, op_cmds, robot_state):
             return result
         result.op_cmds = _replace_move_sequence(result.op_cmds, arm_cmds)
         result.warnings.append(f"팔 자세 해석: {' | '.join(arm_cmds)}")
+        return result
+
+    step_plan = parse_relative_motion_steps(normalized_text, robot_state=robot_state)
+    if step_plan is not None:
+        current_angles = robot_state.get("current_angles", {})
+        current_angle = current_angles.get(step_plan["joint_name"])
+        if not isinstance(current_angle, (int, float)):
+            result.message_override = f"{step_plan['display_name']}의 현재 각도를 아직 확인할 수 없어 지금은 해당 동작을 수행할 수 없습니다."
+            result.warnings.append(f"현재 각도를 알 수 없어 상대 이동 시퀀스 해석 실패: {step_plan['joint_name']}")
+            result.op_cmds = _remove_relative_motion_side_effects(result.op_cmds)
+            return result
+
+        next_angle = float(current_angle)
+        step_cmds = []
+        trace_list = [f"{next_angle:.1f}"]
+
+        for step in step_plan["step_list"]:
+            if step["kind"] == "wait":
+                step_cmds.append(_format_wait_command(step["seconds"]))
+                continue
+
+            delta = step["delta_deg"] if step["delta_deg"] is not None else DEFAULT_RELATIVE_STEP_DEG
+            target_angle = next_angle + (step["direction"] * delta)
+            min_angle, max_angle = JOINT_LIMITS[step_plan["joint_name"]]
+
+            if target_angle > max_angle and (target_angle - max_angle) <= JOINT_LIMIT_EPSILON_DEG:
+                target_angle = max_angle
+            elif target_angle < min_angle and (min_angle - target_angle) <= JOINT_LIMIT_EPSILON_DEG:
+                target_angle = min_angle
+
+            if target_angle < min_angle or target_angle > max_angle:
+                direction_text = "올리면" if step["direction"] > 0 else "내리면"
+                result.message_override = (
+                    f"{step_plan['display_name']}은 현재 {next_angle:.1f}도에서 "
+                    f"{delta:.1f}도를 더 {direction_text} 한계 {min_angle:.1f}도에서 {max_angle:.1f}도를 벗어나 움직일 수 없습니다."
+                )
+                result.warnings.append(
+                    f"상대 이동 시퀀스 한계 초과 차단: {step_plan['joint_name']} {next_angle:.1f} -> {target_angle:.1f}"
+                )
+                result.op_cmds = _remove_relative_motion_side_effects(result.op_cmds)
+                return result
+
+            step_cmds.append(_format_move_command(step_plan["joint_name"], target_angle))
+            next_angle = target_angle
+            trace_list.append(f"{next_angle:.1f}")
+
+        result.op_cmds = _replace_relative_step_sequence(result.op_cmds, step_cmds)
+        result.speech_override = _build_relative_step_speech(step_plan)
+        result.warnings.append(
+            f"상대 이동 시퀀스 해석: {step_plan['joint_name']} {' -> '.join(trace_list)}"
+        )
         return result
 
     intent = parse_relative_motion_intent(normalized_text, robot_state=robot_state)
@@ -193,6 +246,32 @@ def parse_relative_motion_intent(user_text, robot_state=None):
     }
 
 
+def parse_relative_motion_steps(user_text, robot_state=None):
+    text = _normalize_motion_text(user_text)
+    if not text:
+        return None
+
+    if ABSOLUTE_DEGREE_PATTERN.search(text):
+        return None
+
+    joint_info = _find_step_joint(text, robot_state)
+    if joint_info is None:
+        return None
+
+    step_plan = _parse_wait_step_list(text)
+    if step_plan is None:
+        step_plan = _parse_repeat_step_list(text)
+    if step_plan is None:
+        return None
+
+    return {
+        "joint_name": joint_info["joint_name"],
+        "display_name": joint_info["display_name"],
+        "kind": step_plan["kind"],
+        "step_list": step_plan["step_list"],
+    }
+
+
 def parse_arm_pose_commands(user_text):
     text = _normalize_motion_text(user_text)
     if not text:
@@ -251,6 +330,124 @@ def _build_relative_motion_speech(intent, delta_deg):
     return f"{intent['display_name']}을 {delta_text} 더 내려드릴게요."
 
 
+def _build_relative_step_speech(step_plan):
+    display_name = step_plan["display_name"]
+
+    if step_plan["kind"] == "repeat_twice":
+        move_step = step_plan["step_list"][0]
+        delta = move_step["delta_deg"] if move_step["delta_deg"] is not None else DEFAULT_RELATIVE_STEP_DEG
+        delta_text = _format_degree_text(delta)
+        total_text = _format_degree_text(delta * 2.0)
+        if move_step["direction"] > 0:
+            return f"{display_name}을 {delta_text}씩 두번 올려 총 {total_text} 올려드릴게요."
+        return f"{display_name}을 {delta_text}씩 두번 내려 총 {total_text} 내려드릴게요."
+
+    move_list = [step for step in step_plan["step_list"] if step["kind"] == "move"]
+    wait_list = [step for step in step_plan["step_list"] if step["kind"] == "wait"]
+    if len(move_list) < 2 or not wait_list:
+        return None
+
+    first_step = move_list[0]
+    second_step = move_list[1]
+    wait_step = wait_list[0]
+    first_text = _format_degree_text(first_step["delta_deg"] if first_step["delta_deg"] is not None else DEFAULT_RELATIVE_STEP_DEG)
+    second_text = _format_degree_text(second_step["delta_deg"] if second_step["delta_deg"] is not None else DEFAULT_RELATIVE_STEP_DEG)
+    wait_text = _format_second_text(wait_step["seconds"])
+    first_verb = "올리고" if first_step["direction"] > 0 else "내리고"
+    second_verb = "올려드릴게요." if second_step["direction"] > 0 else "내려드릴게요."
+    return f"{display_name}을 {first_text} {first_verb} {wait_text} 뒤에 {second_text} 더 {second_verb}"
+
+
+def _find_step_joint(text, robot_state):
+    joint_info = _find_joint(text)
+    if joint_info is not None:
+        return joint_info
+
+    joint_info = _infer_joint_from_context(text, robot_state)
+    if joint_info is not None:
+        return joint_info
+
+    return _infer_joint_from_step_text(text, robot_state)
+
+
+def _parse_wait_step_list(text):
+    wait_match = WAIT_STEP_PATTERN.search(text)
+    if wait_match is None:
+        return None
+
+    first_text = text[: wait_match.start()]
+    second_text = text[wait_match.end() :]
+    first_step = _parse_relative_step(first_text)
+    if first_step is None:
+        return None
+
+    second_step = _parse_relative_step(second_text, default_dir=first_step["direction"])
+    if second_step is None:
+        return None
+
+    return {
+        "kind": "wait_then_more",
+        "step_list": [
+            first_step,
+            {"kind": "wait", "seconds": float(wait_match.group(1))},
+            second_step,
+        ],
+    }
+
+
+def _parse_repeat_step_list(text):
+    repeat_match = REPEAT_STEP_PATTERN.search(text)
+    if repeat_match is None:
+        return None
+
+    direction = _find_direction(text)
+    if direction == 0:
+        return None
+
+    delta = float(repeat_match.group(1))
+    return {
+        "kind": "repeat_twice",
+        "step_list": [
+            {"kind": "move", "direction": direction, "delta_deg": delta},
+            {"kind": "move", "direction": direction, "delta_deg": delta},
+        ],
+    }
+
+
+def _parse_relative_step(text, default_dir=0):
+    if not text:
+        return None
+
+    direction = _find_direction(text)
+    if direction == 0:
+        direction = default_dir
+    if direction == 0:
+        return None
+
+    delta_match = RELATIVE_DEGREE_PATTERN.search(text)
+    delta_deg = float(delta_match.group(1)) if delta_match else None
+    if delta_deg is None and "더" not in text:
+        return None
+
+    return {
+        "kind": "move",
+        "direction": direction,
+        "delta_deg": delta_deg,
+    }
+
+
+def _format_degree_text(angle_val):
+    if float(angle_val).is_integer():
+        return f"{int(angle_val)}도"
+    return f"{float(angle_val):.1f}도"
+
+
+def _format_second_text(sec_val):
+    if float(sec_val).is_integer():
+        return f"{int(sec_val)}초"
+    return f"{float(sec_val):.1f}초"
+
+
 
 
 def _infer_joint_from_context(text, robot_state):
@@ -265,6 +462,31 @@ def _infer_joint_from_context(text, robot_state):
     if not any(keyword in text for keyword in contextual_keywords):
         return None
 
+    return _joint_from_last_action(robot_state)
+
+
+def _infer_joint_from_step_text(text, robot_state):
+    if not text:
+        return None
+
+    last_joint = _joint_from_last_action(robot_state)
+    if last_joint is None:
+        return None
+
+    joint_name = last_joint["joint_name"]
+    if ("손목" in text or "팔목" in text) and joint_name in {"L_wrist", "R_wrist"}:
+        return last_joint
+    if "발" in text and joint_name in {"L_foot", "R_foot"}:
+        return last_joint
+    if "허리" in text and joint_name == "waist":
+        return last_joint
+    if any(marker in text for marker in ["두번", "두 번", "뒤에", "후에", "다음"]):
+        return last_joint
+
+    return None
+
+
+def _joint_from_last_action(robot_state):
     if not isinstance(robot_state, dict):
         return None
 
@@ -355,6 +577,14 @@ def _format_move_command(joint_name, target_angle):
     return f"move:{joint_name},{target_text}"
 
 
+def _format_wait_command(seconds):
+    if float(seconds).is_integer():
+        second_text = str(int(seconds))
+    else:
+        second_text = f"{float(seconds):.1f}"
+    return f"wait:{second_text}"
+
+
 def _format_look_command(pan_deg, tilt_deg):
     if float(pan_deg).is_integer():
         pan_text = str(int(pan_deg))
@@ -404,6 +634,24 @@ def _replace_relative_motion_sequence(op_cmds, move_op_cmd):
     if not replaced:
         wait_idx = next((idx for idx, command in enumerate(updated_commands) if command.startswith("wait:")), len(updated_commands))
         updated_commands.insert(wait_idx, move_op_cmd)
+
+    return updated_commands
+
+
+def _replace_relative_step_sequence(op_cmds, step_cmds):
+    updated_commands = []
+    inserted = False
+
+    for command in op_cmds:
+        if command.startswith(("move:", "wait:", "look:", "gesture:")):
+            if not inserted:
+                updated_commands.extend(step_cmds)
+                inserted = True
+            continue
+        updated_commands.append(command)
+
+    if not inserted:
+        updated_commands.extend(step_cmds)
 
     return updated_commands
 

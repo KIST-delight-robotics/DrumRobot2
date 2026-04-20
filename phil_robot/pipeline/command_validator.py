@@ -29,6 +29,8 @@ JOINT_LIMITS = {
 PLAY_CODES = {"TIM", "TY_short", "BI", "test_one"}
 GESTURES = {"hi", "nod", "shake", "wave", "hurray", "happy"}
 SIMPLE_COMMANDS = {"r", "h", "s", "t", "u"}
+# 연주 중 게이트 우회 인터럽트 명령 — state/motion 조건 무관하게 항상 통과
+INTERRUPT_COMMANDS = {"pause", "resume"}
 MOTION_KEYWORDS = [
     "손",
     "팔",
@@ -92,6 +94,8 @@ def normalize_command(command):
 
 
 def validate_command(command, robot_state):
+    if command in INTERRUPT_COMMANDS:
+        return True, ""  # pause/resume은 C++ gate bypass 명령이므로 항상 통과
     if command in SIMPLE_COMMANDS:
         return validate_simple_command(command, robot_state)
     if command.startswith("p:"):

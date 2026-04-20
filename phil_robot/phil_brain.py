@@ -10,7 +10,9 @@ import whisper
 
 from config import PLANNER_MODEL, CLASSIFIER_MODEL
 from pipeline.brain_pipeline import run_brain_turn
-from pipeline.executor import execute_validated_plan
+from pipeline.exec_thread import InterruptibleExecutor
+from pipeline.robot_graph import build_phil_graph
+from pipeline.session import SessionContext, update_session
 from runtime.melo_engine import TTS_Engine
 from runtime.phil_client import RobotClient, get_robot_state_snapshot
 
@@ -108,16 +110,29 @@ def print_llm_metrics(label, metric_obj):
 
     prompt_tok = metric_obj.get("prompt_tokens")
     eval_tok = metric_obj.get("eval_tokens")
+    wall = metric_obj.get("wall_sec")
 
-    print(
-        f"[{label} LLM] wall={format_metric(metric_obj.get('wall_sec'))}, "
-        f"load={format_metric(metric_obj.get('load_sec'))}, "
-        f"prompt_eval={format_metric(metric_obj.get('prompt_sec'))}, "
-        f"eval={format_metric(metric_obj.get('eval_sec'))}, "
-        f"prompt_tok={prompt_tok if isinstance(prompt_tok, int) else 'N/A'}, "
-        f"eval_tok={eval_tok if isinstance(eval_tok, int) else 'N/A'}, "
-        f"overhead={format_metric(metric_obj.get('overhead_sec'))}"
-    )
+    if metric_obj.get("backend") == "openai":
+        total_tok = metric_obj.get("total_tokens")
+        tps = metric_obj.get("eval_tps")
+        tps_str = f"{tps:.1f}t/s" if isinstance(tps, float) else "N/A"
+        print(
+            f"[{label} LLM/API] wall={format_metric(wall)}, "
+            f"prompt_tok={prompt_tok if isinstance(prompt_tok, int) else 'N/A'}, "
+            f"eval_tok={eval_tok if isinstance(eval_tok, int) else 'N/A'}, "
+            f"total_tok={total_tok if isinstance(total_tok, int) else 'N/A'}, "
+            f"~{tps_str}"
+        )
+    else:
+        print(
+            f"[{label} LLM] wall={format_metric(wall)}, "
+            f"load={format_metric(metric_obj.get('load_sec'))}, "
+            f"prompt_eval={format_metric(metric_obj.get('prompt_sec'))}, "
+            f"eval={format_metric(metric_obj.get('eval_sec'))}, "
+            f"prompt_tok={prompt_tok if isinstance(prompt_tok, int) else 'N/A'}, "
+            f"eval_tok={eval_tok if isinstance(eval_tok, int) else 'N/A'}, "
+            f"overhead={format_metric(metric_obj.get('overhead_sec'))}"
+        )
 
 
 def debug_brain_result(brain_result):
@@ -157,6 +172,30 @@ def main():
 
     tts.speak("대화 준비가 되었습니다. 엔터 키를 누르고 말씀해 주세요.")
 
+    # 세션 단기 기억
+    session = SessionContext()
+
+    # ── InterruptibleExecutor 초기화 ──────────────────────────────────────
+    executor = InterruptibleExecutor(bot)
+
+    # ── LangGraph 빌드 ────────────────────────────────────────────────────
+    # get_session() 은 클로저로 최신 session 객체를 반환한다.
+    # session 은 매 턴 끝에 재할당되므로 직접 참조 대신 getter 를 쓴다.
+    def get_session():
+        return session
+
+    app = build_phil_graph(
+        bot=bot,
+        tts=tts,
+        stt_model=stt_model,
+        executor=executor,
+        get_session=get_session,
+        get_state_fn=get_robot_state_snapshot,
+        run_brain_turn_fn=run_brain_turn,
+        classifier_model=CLASSIFIER_MODEL,
+        planner_model=PLANNER_MODEL,
+    )
+
     try:
         while True:
             key = input("\n⌨️ [Enter] 듣기 / 'q' 종료 >> ")
@@ -164,37 +203,68 @@ def main():
                 print("에이전트 종료")
                 break
 
+            # ── 실행 중이면 인터럽트 ──────────────────────────────────────
+            # Enter 를 누른 시점에 executor 가 살아있으면 즉시 중단한다.
+            # executor.cancel() 은 로봇에 's' 를 전송하고 스레드를 중단한다.
+            if executor.is_running():
+                print("⚡ [인터럽트] 이전 동작을 중단합니다.")
+                executor.cancel()
+
             audio_data = record_audio()
-            # 녹음에 실패했으면 이번 턴의 나머지 처리는 건너뛰고 다음 입력을 받는다.
             if audio_data is None:
                 continue
 
+            robot_state = get_robot_state_snapshot()
+
+            
             user_text = transcribe_user_speech(stt_model, audio_data)
-            # 음성 인식 결과가 비어 있으면 이번 턴을 종료하고 다시 입력 대기로 돌아간다.
             if not user_text:
                 continue
 
+            # clarification 대기 중인지 안내한다.
+            if session.pending_clarification_q:
+                print(f"💬 [Clarification 대기 중] 필의 질문: {session.pending_clarification_q}")
+
             print("🧠 생각 중...")
 
-            # 상태 수신 스레드가 갱신 중인 값을 그대로 넘기지 않도록 스냅샷을 만든다.
-            robot_state = get_robot_state_snapshot()
-            brain_result = run_brain_turn(
-                user_text=user_text,
-                raw_robot_state=robot_state,
-                classifier_model_name=CLASSIFIER_MODEL,     # classifier 모델은 현재 고정
-                planner_model_name=PLANNER_MODEL,
-                capture_metrics=True,
-            )
+            # ── LangGraph 실행 ────────────────────────────────────────────
+            initial_state = {
+                "user_text": user_text,
+                "robot_hw_state": robot_state,
+                "plan_type": "none",
+                "speech": "",
+                "commands": [],
+                "play_modifier": {},
+                "brain_result": {},
+                "was_interrupted": False,
+            }
 
-            debug_brain_result(brain_result)
-            execute_validated_plan(bot, brain_result.validated_plan)
+            final_state = app.invoke(initial_state)
 
-            print(f"🤖 Phil: {brain_result.validated_plan.speech}")
-            tts.speak(brain_result.validated_plan.speech, stream=True)
+            # ── TTS 메인 스레드에서 호출 ─────────────────────────────────
+            # MeloTTS(내부 PyTorch + C 라이브러리)는 스레드 안전하지 않다.
+            # executor 는 백그라운드에서 이미 실행 중이고, TTS 는 메인 스레드에서
+            # 호출한다. TCP send 는 거의 즉시 완료되므로 실질적으로 동시에 진행된다.
+            speech = final_state.get("speech", "")
+            if speech:
+                print(f"🤖 Phil: {speech}")
+                tts.speak(speech, stream=True)
+
+            # ── 디버그 출력 ───────────────────────────────────────────────
+            brain_result_obj = final_state.get("brain_result", {}).get("_obj")
+            if brain_result_obj is not None:
+                debug_brain_result(brain_result_obj)
+                print(f"[Graph] plan_type={final_state.get('plan_type')} | "
+                      f"interrupted={final_state.get('was_interrupted')}")
+
+                # ── 세션 갱신 ─────────────────────────────────────────────
+                session = update_session(session, user_text, brain_result_obj)
 
     except KeyboardInterrupt:
         print("\n종료합니다.")
     finally:
+        if executor.is_running():
+            executor.cancel()
         bot.close()
 
 

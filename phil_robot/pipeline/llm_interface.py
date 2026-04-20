@@ -9,8 +9,10 @@ try:
         CLASSIFIER_MODEL,
         OLLAMA_KEEP_ALIVE,
         OLLAMA_THINK,
+        OPENAI_API_KEY,
         PLANNER_CHAT_OPT,
         PLANNER_MODEL,
+        detect_backend,
     )
     from .failure import build_llm_call_failure_json
 except (ImportError, ValueError):
@@ -19,8 +21,10 @@ except (ImportError, ValueError):
         CLASSIFIER_MODEL,
         OLLAMA_KEEP_ALIVE,
         OLLAMA_THINK,
+        OPENAI_API_KEY,
         PLANNER_CHAT_OPT,
         PLANNER_MODEL,
+        detect_backend,
     )
     try:
         from pipeline.failure import build_llm_call_failure_json
@@ -116,11 +120,75 @@ def build_chat_metrics(resp: Any, wall_sec: float, err_msg: str = "") -> Dict[st
     }
 
 
+def call_openai_json_llm(model_name, system_prompt, user_input_json, capture_metrics: bool = False):
+    import openai as _openai
+    client = _openai.OpenAI(api_key=OPENAI_API_KEY)
+    oai_model = model_name
+    start_sec = time.time()
+    try:
+        response = client.chat.completions.create(
+            model=oai_model,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_input_json},
+            ],
+            response_format={"type": "json_object"},
+        )
+        raw_text = response.choices[0].message.content
+        if not capture_metrics:
+            return raw_text
+
+        wall_sec = time.time() - start_sec
+        usage = response.usage
+        prompt_tok = usage.prompt_tokens if usage else None
+        eval_tok = usage.completion_tokens if usage else None
+        total_tok = usage.total_tokens if usage else None
+        rough_tps = float(total_tok) / wall_sec if isinstance(total_tok, int) and wall_sec > 0 else None
+        metrics = {
+            "wall_sec": wall_sec,
+            "load_sec": None,
+            "prompt_tokens": prompt_tok,
+            "prompt_sec": None,
+            "prompt_tps": None,
+            "eval_tokens": eval_tok,
+            "eval_sec": None,
+            "eval_tps": rough_tps,
+            "total_tokens": total_tok,
+            "infer_sec": None,
+            "meta_sec": None,
+            "overhead_sec": None,
+            "backend": "openai",
+            "error": "",
+        }
+        return raw_text, metrics
+    except Exception as exc:
+        err_msg = f"OpenAI call failed: {exc}"
+        raw_text = build_llm_call_failure_json(err_msg)
+        if not capture_metrics:
+            return raw_text
+
+        wall_sec = time.time() - start_sec
+        metrics = {
+            "wall_sec": wall_sec,
+            "load_sec": None,
+            "prompt_tokens": None,
+            "prompt_sec": None,
+            "prompt_tps": None,
+            "eval_tokens": None,
+            "eval_sec": None,
+            "eval_tps": None,
+            "infer_sec": None,
+            "meta_sec": None,
+            "overhead_sec": None,
+            "error": err_msg,
+        }
+        return raw_text, metrics
+
+
 def call_json_llm(model_name, system_prompt, user_input_json, capture_metrics: bool = False):
-    """
-    현재는 단일 JSON 호출 래퍼다.
-    이후 intent 분류 호출과 planner 호출을 분리할 때 이 파일이 공통 입구가 된다.
-    """
+    if detect_backend(model_name) == "openai":
+        return call_openai_json_llm(model_name, system_prompt, user_input_json, capture_metrics)
+
     start_sec = time.time()
     try:
         response = ollama.chat(**build_chat_req(model_name, system_prompt, user_input_json))

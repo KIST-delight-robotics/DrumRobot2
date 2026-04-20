@@ -23,6 +23,7 @@ PLANNER_RESPONSE_SCHEMA_EXAMPLE = {
     "c": [],
     "t": "안녕하세요!",
     "r": "simple greeting",
+    "q": None,  # clarification 필요 시 질문 문자열, 평소에는 null 또는 생략
 }
 
 SKILL_CATALOG_TEXT = describe_skills_for_prompt()
@@ -81,10 +82,12 @@ DOMAIN_INSTRUCTIONS = {
 - 이름, 정체, 자기소개를 묻는 질문이 들어오면 현재 상태 설명보다 필의 정체성을 우선 소개한다.
 - robot_state 에 직접 보이는 근거만 설명하고, current_song/progress 만으로 지금 연주 중이라고 추측하지 않는다. can_move=false 이고 busy=false 면 안전 키 상태를 먼저 설명한다.
 - 사과, 설명, 안내를 명확하게 하되 장황하게 늘어놓지 않는다.""",
-    PLANNER_DOMAIN_STOP: """당신은 stop planner 다.
-- 멈춤, 정지, 종료, 홈 자세 복귀 요청에 집중한다.
-- 가능한 경우 posture 또는 system skill 을 사용한다.
-- speech 는 짧고 명확하게 현재 중단/종료 의도를 전달한다.
+    PLANNER_DOMAIN_STOP: """당신은 stop/resume planner 다.
+- 멈춤, 정지, 종료, 홈 자세 복귀, 연주 재개 요청에 집중한다.
+- 연주 일시정지(멈춰, 잠깐, 스톱, 정지) 요청에는 op_cmd 에 "pause" 를 사용한다.
+- 연주 재개(다시 해, 계속 해, 이어서 해) 요청에는 op_cmd 에 "resume" 을 사용한다.
+- 홈 복귀는 "h", 완전 종료는 "s" 를 사용한다.
+- speech 는 짧고 명확하게 현재 중단/재개 의도를 전달한다.
 - unrelated motion 이나 social skill 은 넣지 않는다.""",
     PLANNER_DOMAIN_DEFAULT: """당신은 generic planner 다.
 - 입력 의도가 불명확할 때는 보수적으로 행동한다.
@@ -126,6 +129,7 @@ planner 입력에는 다음 정보가 함께 들어온다.
 - look:0,110
 - gesture:wave
 - move:L_wrist,90
+- move:R_wrist,90
 - wait:2
 - p:TIM
 
@@ -134,7 +138,8 @@ planner 입력에는 다음 정보가 함께 들어온다.
   "s": ["미리 정의된 skill"],
   "c": ["low-level 명령"],
   "t": "출력될 문장",
-  "r": "planner 판단 이유"
+  "r": "planner 판단 이유",
+  "q": "clarification 질문 (필요할 때만, 평소엔 생략 또는 null)"
 }}
 
 출력 규칙:
@@ -143,6 +148,8 @@ planner 입력에는 다음 정보가 함께 들어온다.
 - c 는 low-level command 문자열 배열이다. 없으면 [] 를 사용한다.
 - t 는 TTS 로 읽을 한국어 문장이다.
 - r 는 짧은 판단 이유다.
+- q 는 clarification 이 필요할 때만 채운다. 예: 각도 없는 관절 이동 요청 → "허리를 몇 도로 돌릴까요?".
+  q 가 채워지면 s 와 c 는 반드시 [] 로 두고, t 는 q 와 같은 내용으로 둔다.
 """
 
 
@@ -160,20 +167,33 @@ def get_planner_system_prompt(planner_domain: str) -> str:
     return f"{PLANNER_SHARED_RULES}\n\n도메인 규칙:\n{domain_instruction}"
 
 
-def build_planner_input_json(robot_state: Dict, user_text: str, intent_result: Dict, planner_domain: str) -> str:
-    """planner 에 넘길 입력 JSON 문자열을 만든다."""
+def build_planner_input_json(
+    robot_state: Dict,
+    user_text: str,
+    intent_result: Dict,
+    planner_domain: str,
+    session_summary: Dict = None,
+) -> str:
+    """
+    planner 에 넘길 입력 JSON 문자열을 만든다.
+    session_summary 가 있으면 최근 대화 히스토리와 마지막 동작 상태를 포함한다.
+    """
     state_summary = build_planner_state_summary(robot_state)
     needs_motion = bool(intent_result.get("needs_motion", False))
-    return json.dumps(
-        {
-            "planner_domain": planner_domain,
-            "robot_state": state_summary,
-            "needs_motion": needs_motion,
-            "user_text": user_text,
-        },
-        ensure_ascii=False,
-        indent=2,
-    )
+
+    payload = {
+        "planner_domain": planner_domain,
+        "robot_state": state_summary,
+        "needs_motion": needs_motion,
+        "user_text": user_text,
+    }
+
+    # session 정보가 있으면 포함한다.
+    # planner 는 recent_turns 로 이전 맥락을, last_joint/look/play 로 상태를 참조한다.
+    if session_summary:
+        payload["session"] = session_summary
+
+    return json.dumps(payload, ensure_ascii=False, indent=2)
 
 
 def _sanitize_speech(speech: str) -> str:
@@ -205,6 +225,8 @@ def parse_plan_response(response_text: str) -> Dict:
     )
     raw_speech = response_data.get("speech", response_data.get("t", FALLBACK_MESSAGE))
     raw_reason = response_data.get("reason", response_data.get("r", ""))
+    # "q" 필드: clarification 질문. null 또는 생략이면 빈 문자열로 처리한다.
+    raw_clarification = response_data.get("clarification_question", response_data.get("q", None))
 
     if isinstance(raw_skills, list):
         result["skills"] = [skill.strip() for skill in raw_skills if isinstance(skill, str) and skill.strip()]
@@ -213,6 +235,10 @@ def parse_plan_response(response_text: str) -> Dict:
     result["speech"] = _sanitize_speech(raw_speech)
     if isinstance(raw_reason, str):
         result["reason"] = raw_reason.strip()
+    if isinstance(raw_clarification, str) and raw_clarification.strip():
+        result["clarification_question"] = raw_clarification.strip()
+    else:
+        result["clarification_question"] = ""
 
     return result
 
@@ -227,6 +253,7 @@ def enforce_intent_constraints(planner_result: Dict, intent_result: Dict) -> Dic
         "op_cmd": list(planner_result.get("op_cmd", planner_result.get("commands", []))),
         "speech": sanitize_message(planner_result.get("speech", FALLBACK_MESSAGE)),
         "reason": planner_result.get("reason", ""),
+        "clarification_question": planner_result.get("clarification_question", ""),
     }
 
     intent = intent_result.get("intent", "unknown")
@@ -251,7 +278,7 @@ def enforce_intent_constraints(planner_result: Dict, intent_result: Dict) -> Dic
             command for command in normalized["op_cmd"] if command.startswith(allowed_prefixes)
         ]
     elif intent == "stop_request":
-        allowed_prefixes = ("h", "s", "wait:")
+        allowed_prefixes = ("h", "s", "pause", "resume", "wait:")
         normalized["op_cmd"] = [
             command for command in normalized["op_cmd"] if command.startswith(allowed_prefixes)
         ]
