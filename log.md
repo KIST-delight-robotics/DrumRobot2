@@ -3,6 +3,158 @@
 프로젝트에서 의미 있는 변경을 할 때마다 한국시간(KST, UTC+9) 기준의 날짜, 시간, 요약을 기록합니다.
 최신 항목이 위로 오도록 추가합니다.
 
+## 2026-04-17
+- 23:40 KST (UTC+9) — feat: OpenAI GPT 백엔드 지원 추가 (PHIL_LLM_BACKEND=openai)
+  - 수정 파일: `phil_robot/config.py`, `phil_robot/pipeline/llm_interface.py`
+  - 메모: `PHIL_LLM_BACKEND=openai` 환경변수로 gpt-4o-mini 전환. `.env`의 OM_API_KEY 자동 로드. openai==1.49.0 (Python 3.8 호환).
+- 22:20 KST (UTC+9) — fix: 모터 실행 대기 루프에서 pause 명령 무시되던 버그 수정
+  - 수정 파일: `DrumRobot2/src/DrumRobot.cpp`
+  - 메모: 궤적 생성은 실시간보다 빠르므로 실제 연주 시간 전체가 `while(!getFixationFlag())` 루프에서 소비됨. 이 루프 안에서 `checkPlayInterrupts()`를 호출하지 않아 pause 명령이 Idle 복귀 후에야 처리되던 문제. `wait_loop_pause` 플래그를 두어 buffer 소진 후 Pause 상태로 전환하도록 수정. 재개 시 `initializePlayState()` 리셋 후 처음부터 재생.
+
+- 21:10 KST (UTC+9) — fix: allMotorsUnConected SIL root fix + debounce 제거
+  - 수정 파일:
+    - `DrumRobot2/src/DrumRobot.cpp`: `initializeCanManager()`에서 `openSilVcan` 후 `allMotorsUnConected = false` 추가. vcan이 열리면 CAN 피드백 경로가 있으므로 "연결됨"으로 갱신해 `is_fixed` 강제 override 해제
+    - `phil_robot/pipeline/robot_graph.py`: `_wait_for_fixed_then_home`에서 debounce(0.5초) 제거. `policy_gesture`는 전체 trajectory를 commandBuffer에 한 번에 push하므로 sub-move 사이 공백 없음 → debounce 불필요
+  - 메모: `AgentAction.cpp` 확인 결과 `policy_moveJoint`는 동기 호출로 모든 보간 tick을 즉시 push. 제스처 완료 후 처음 `is_fixed=true`가 곧 실제 완료 시점
+
+- 19:30 KST (UTC+9) — fix: 홈 복귀 오발 + pause 명령 불통 2건 수정
+  - 수정 파일:
+    - `phil_robot/pipeline/robot_graph.py`: `_wait_for_fixed_then_home`에 (1) 움직임 미감지 시 홈 복귀 스킵(SIL allMotorsUnConected 대응), (2) 0.5초 debounce 추가. 제스처 서브무브 사이 일시적 fixed 상태로 인한 오발 방지
+    - `phil_robot/pipeline/command_validator.py`: `INTERRUPT_COMMANDS = {"pause", "resume"}` 추가. validate_command 최상단에서 무조건 통과. 기존엔 "알 수 없는 명령"으로 reject되어 Python이 아예 전송하지 않던 버그 수정
+    - `phil_robot/pipeline/brain_pipeline.py`: `_detect_play_interrupt` 추가. 연주 중(state==2) 멈춰/스톱/정지/resume 키워드를 LLM 없이 즉시 pause/resume 명령으로 변환하는 deterministic shortcut 추가
+
+## 2026-04-17
+- 10:55 KST (UTC+9) — feat: Drum_intheloop close-loop vcan feedback 구현 (Phase 0~4)
+  - 수정/신규 파일:
+    - `Drum_intheloop/TODO.md`: close-loop vcan 구현 마스터 플랜 추가 (Phase 0~7 상세 절차)
+    - `Drum_intheloop/sil/vcan_state_writer.py` (신규): PyBullet joint state → vcan0 struct can_frame 피드백 송신기. TMotor(Servo mode) / Maxon(CANopen PDO) 프레임 인코딩 구현
+    - `Drum_intheloop/sil/pybullet_backend.py`: `read_joint_states()` 메서드 추가 (PyBullet getJointState → {urdf_joint_name: deg})
+    - `Drum_intheloop/sil/SilCommandPipeReader.py`: VcanStateWriter 통합. tick 처리 후 joint state를 vcan0으로 전송. `--no-vcan` / `--vcan` 인수 추가
+    - `DrumRobot2/include/managers/CanManager.hpp`: `openSilVcan()` 선언 추가
+    - `DrumRobot2/src/CanManager.cpp`: `openSilVcan()` 구현 추가. vcan0 소켓 열기 + disconnected 모터에 fd 할당
+    - `DrumRobot2/src/DrumRobot.cpp`: `initializeCanManager()` 에 `canManager.openSilVcan("vcan0")` 호출 추가
+    - `Drum_intheloop/requirements.txt`: `python-can` 추가
+    - `Drum_intheloop/setup_vcan.sh` (신규): vcan0 커널 모듈 로드 및 인터페이스 설정 스크립트
+  - 메모:
+    - conda env `sil` (Python 3.10 + pybullet + python-can 4.6.1) 생성 완료
+    - 닫힌 루프 경로: PyBullet stepSim → vcan0 CAN frame → C++ recv loop → motor.jointAngle 갱신
+    - 실행 전 `sudo bash setup_vcan.sh` 로 vcan0 인터페이스 올려야 함
+    - `--no-vcan` 플래그로 open-loop 디버그 모드 유지 가능
+    - C++ 빌드 확인: 경고 2개(기존), 에러 없음
+
+## 2026-04-17
+- 17:40 KST (UTC+9) — fix: Pause 상태에서 modifier/액션 명령 처리 및 gate 개폐 수정
+  - 수정 파일: `DrumRobot2/src/DrumRobot.cpp`
+  - 메모:
+    - `pauseStateRoutine()` 진입 시 `agentSocket.openGate()` 추가 — Pause 중에도 look/gesture/move 명령 수신 허용
+    - `resume` 처리 시 `agentSocket.closeGate()` 추가 — 연주 재개 시 gate 다시 닫기
+    - `handleModifier()` 처리 추가 — Pause 중 `tempo_scale:` / `velocity_delta:` 명령을 즉시 `active_modifier`에 반영
+    - 그 외 알 수 없는 명령은 `agentAction.executeCommand()` 호출 — look/gesture/move 등 실행 가능
+
+- 14:00 KST (UTC+9) — 문서 현행화: README/아키텍처/구조 문서를 현재 코드 기준으로 업데이트
+  - 수정 파일:
+    - `Drum_intheloop/README.md`: tick 기반 frame 배치 처리 모델로 전체 프로토콜 설명 교체 (per-command → tick-batched), 페달/드럼패드 시각화 사실 추가, `colors.py` 디렉터리 구조에 추가, `joint_map.py` 항목에 PEDAL_JOINTS/DRUM_PAD_SPEC 등 신규 테이블 기재, idle return 기능 추가
+    - `phil_robot/docs/LLM_PIPELINE_ARCHITECTURE_KR.md`: `ValidatedPlan` 필드명 `raw_op_cmds`/`expanded_op_cmds`/`resolved_op_cmds`/`valid_op_cmds`/`rejected_op_cmds`로 수정, `play_modifier`/`clarification_question` 필드 추가, 신규 컴포넌트(LangGraph state machine, InterruptibleExecutor, session) 섹션 추가, 아키텍처 다이어그램 업데이트
+    - `phil_robot/docs/PROJECT_STRUCTURE_KR.md`: pipeline/ 파일 목록에 `robot_graph.py`/`state_graph.py`/`exec_thread.py`/`session.py`/`play_modifier.py` 추가, tests/ 파일 목록 현행화, docs/ 파일 목록에 신규 문서 추가
+    - `phil_robot/docs/LANGGRAPH_STATE_MACHINE_KR.md`: 상단에 "구현 완료(2026-04-16)" 표시 추가
+
+## 2026-04-16
+- 00:10 KST (UTC+9) — session 단기 기억 + clarification 되묻기 지원 추가
+  - 수정/추가 파일:
+    - `phil_robot/pipeline/session.py` (신규): `SessionContext` 단기 기억 — 대화 히스토리, 마지막 관절/시선/연주 상태, clarification pending 상태 관리
+    - `phil_robot/pipeline/planner.py`: planner 출력 스키마에 `q` (clarification 질문) 필드 추가; `enforce_intent_constraints`가 `clarification_question` 보존하도록 수정; `build_planner_input_json`에 `session_summary` 파라미터 추가
+    - `phil_robot/pipeline/validator.py`: `ValidatedPlan`에 `clarification_question` 필드 추가
+    - `phil_robot/pipeline/brain_pipeline.py`: `run_brain_turn`에 `session` 파라미터 추가; clarification 텍스트 합치기 (`resolve_clarification_text`); `session_summary` planner input 포함; greeting shortcut 추가
+    - `phil_robot/phil_brain.py`: `SessionContext` 초기화 및 매 턴 `update_session` 호출; `robot_graph.py`에 `session` 주입
+  - 메모: "허리 돌려" → "몇 도로?" → "30도" 흐름 지원. session 없으면 기존 stateless 동작 동일.
+
+- 23:55 KST (UTC+9) — 드럼 연주 중 pause/resume 및 실시간 modifier 적용 구현
+  - 수정/추가 파일:
+    - `DrumRobot2/include/managers/AgentSocket.hpp`: `isInterruptCmd()` 선언 추가
+    - `DrumRobot2/src/AgentSocket.cpp`: `isInterruptCmd()` 구현 — pause/resume/h/modifier 명령은 gate 닫혀도 큐에 삽입
+    - `DrumRobot2/include/tasks/DrumRobot.hpp`: `play_file_index`, `pause_requested`, `is_resuming` 멤버 변수 및 `checkPlayInterrupts()`, `pauseStateRoutine()` 선언 추가
+    - `DrumRobot2/src/DrumRobot.cpp`:
+      - `checkPlayInterrupts()`: 연주 루프 내에서 pause 플래그 세팅 및 modifier 즉시 반영
+      - `pauseStateRoutine()`: Pause 상태 대기, resume 시 `is_resuming=true`+Play 전환, h 시 홈 복귀
+      - `runPlayProcess()`: `fileIndex` 로컬→`play_file_index` 멤버화, fresh-start/resume 분기, while 루프 상단에 `checkPlayInterrupts()` + pause 체크 삽입
+      - `stateMachine()`: Pause 케이스에 `pauseStateRoutine()` 연결
+      - `processInput()`: pause/resume 핸들러 추가 (Idle 상태 방어)
+      - `idealStateRoutine()`: 명령 디스패치에 pause/resume 추가
+    - `phil_robot/pipeline/intent_classifier.py`: stop_request 분류 기준에 일시정지/재개 발화 추가
+    - `phil_robot/pipeline/planner.py`: PLANNER_DOMAIN_STOP 프롬프트에 pause/resume 명령 안내 추가, stop_request allowed_prefixes에 "pause"/"resume" 추가
+  - 메모: 연주 악보 파일 단위(~2.4s)로 pause 위치 저장. resume 시 해당 파일 인덱스부터 재개. 연주 중 velocity/tempo modifier도 다음 마디부터 즉시 반영됨
+
+- 23:30 KST (UTC+9) — LangGraph 스타일 상태 기계 도입 (비동기 실행 + 동작 전이 + 홈 복귀)
+  - 수정/추가 파일:
+    - `phil_robot/pipeline/state_graph.py` (신규): LangGraph 호환 경량 StateGraph 구현 (Python 3.8 + aarch64 환경에서 langgraph 패키지 설치 불가하여 대체 구현. API 동일)
+    - `phil_robot/pipeline/exec_thread.py` (신규): `InterruptibleExecutor` — 로봇 명령을 백그라운드 스레드에서 실행하며 cancel() 호출 시 'stop' 전송 + wait: 명령도 즉시 중단
+    - `phil_robot/pipeline/robot_graph.py` (신규): LangGraph 상태 기계 — `process→execute→return_home` 노드, `PhilState` TypedDict, plan_type 판단 로직
+    - `phil_robot/phil_brain.py` (수정): 동기 blocking 루프를 InterruptibleExecutor + LangGraph app.invoke() 구조로 교체. Enter 누름 순간 executor.cancel() 인터럽트, TTS 백그라운드 병렬 실행, 동작 완료 후 on_done_cb 로 홈 복귀
+    - `phil_robot/docs/LANGGRAPH_STATE_MACHINE_KR.md` (신규): 작업 전체 맥락·설계·기대 동작 문서
+  - 메모: 박사 피드백("전환이 너무 로봇 같다") 대응. TODO.md의 'LangGraph 도입 검토' 항목 완료. Python 3.9+ 업그레이드 시 state_graph.py → langgraph 교체는 import 한 줄 변경으로 가능
+
+- 19:00 KST (UTC+9) — 드럼 패드를 drum_position.txt 실제 좌표 기반으로 교체
+  - 수정 파일:
+    - `Drum_intheloop/sil/joint_map.py`: `DRUM_PAD_SPEC` 업데이트 (hardcoded position 제거, 드럼/심벌 반지름 분리), `DRUM_INSTRUMENT_NAMES` / `DRUM_HEAD_INDICES` 추가
+    - `Drum_intheloop/sil/pybullet_backend.py`: `_base_z_shift` 추가, `_place_robot_on_ground()`에서 z_shift 저장, `_load_drum_positions()` 추가 (robot→world 좌표 변환), `_add_drum_pad()` 교체 (10개 악기, 드럼/심벌 크기 구분)
+  - 메모: 변환 수식 wx=rx, wy=rz, wz=-ry+z_shift (base orientation -π/2,0,0 기준), 좌우 손 타격 위치 평균값을 악기 중심으로 사용
+
+- 18:10 KST (UTC+9) — wave 제스처 개선 및 policy_moveJoint에 moveTime 파라미터 추가
+  - 수정 파일:
+    - `DrumRobot2/include/tasks/AgentAction.hpp`: `policy_moveJoint`에 `float moveTime = 2.0f` 파라미터 추가
+    - `DrumRobot2/src/AgentAction.cpp`: `policy_moveJoint` 구현에서 `move_time` 하드코딩 제거, 파라미터 사용; wave 제스처를 arm1/arm3 oscillation 구조에서 arm2 올리기 + wrist만 1.0f 속도로 4회 왕복 구조로 재설계
+  - 메모: arm2를 20→45도로 올려 팔이 인사 자세로 올라가게 하고, 손목 oscillation 범위를 ±25도로 확대, 각 step 1초(기존 2초 대비 2배 빠름)
+- 14:30 KST (UTC+9) — Drum_intheloop 로봇 컬러 테마 적용, 바닥 teal 색상, 드럼 패드 추가
+  - 수정 파일:
+    - `Drum_intheloop/sil/colors.py`: `PLANE_RGBA`를 `IVORY`에서 `TEAL`로 변경
+    - `Drum_intheloop/sil/joint_map.py`: `DRUM_PAD_SPEC` 추가 (snare 추정 위치, 내/외경, 색상)
+    - `Drum_intheloop/sil/pybullet_backend.py`: `PLANE_RGBA`/`ROBOT_THEME` import 추가, `start()`에서 바닥 색상 적용 및 `_apply_visual_theme()`/`_add_drum_pad()` 호출, 두 메서드 구현
+  - 메모: URDF에 별도 드럼 위치 마커 없음 → DRUM_PAD_SPEC에서 페달 기준 snare 추정 위치 사용. 드럼 패드는 외부(검정)+내부(흰색) 두 개 GEOM_CYLINDER로 구성
+
+## 2026-04-15
+- 00:10 KST (UTC+9) — SIL 페달 시각화 추가 (R_foot / L_foot)
+  - 수정 파일:
+    - `Drum_intheloop/sil/joint_map.py`: `PRODUCTION_TO_URDF_JOINT`에 `R_foot → pedal_right`, `L_foot → pedal_left` 가상 키 추가
+    - `Drum_intheloop/sil/pybullet_backend.py`: `_add_pedals()` 추가 (GEOM_BOX, baseMass=0 MultiBody 2개), `_tilt_pedal()` 추가 (발뒤꿈치 피벗 기울기 애니메이션), `apply_targets()`에서 pedal_right/pedal_left 키 감지 후 `_tilt_pedal` 호출
+  - 메모: URDF 건드리지 않음. 오른발 적갈색 / 왼발 남색으로 구분. 위치는 `_PEDAL_R_POS`, `_PEDAL_L_POS` 상수로 조정 가능.
+
+- 23:55 KST (UTC+9) — 인사 shortcut 및 SIL idle return 추가
+  - 수정 파일:
+    - `phil_robot/pipeline/brain_pipeline.py`: `_is_greeting_wave()` 추가, `run_brain_turn` 진입 직후 pre-classifier shortcut 삽입 — '안녕'+'반가워' 동시 포함 시 LLM 없이 `wave_hi` + "안녕하세요! 반가워요." 즉시 반환
+    - `Drum_intheloop/sil/SilCommandPipeReader.py`: `IDLE_RETURN_SEC=5.0` 상수 추가, 메인 루프에 idle return 로직 추가 — 빈 tick이 5초 이상 지속되면 startup pose로 복귀 (SIL 전용)
+  - 메모: greeting shortcut은 분류기 LLM 호출을 건너뛰어 응답 지연 없음. SIL idle return은 `idle_returned` 플래그로 중복 적용 방지.
+
+- 23:30 KST (UTC+9) — SIL DXL/CAN 싱크 수정: tick 기반 frame 배치 처리 및 AgentAction DXL trajectory 보간 추가
+  - 수정 파일:
+    - `DrumRobot2/include/managers/SilCommandPipeWriter.hpp`: `writeTick()` 선언 추가
+    - `DrumRobot2/src/SilCommandPipeWriter.cpp`: `writeTick()` 구현 (`{"kind":"tick"}` 한 줄 전송)
+    - `DrumRobot2/src/DrumRobot.cpp`: sendLoopForThread에서 silWriter를 함수 스코프 static으로 올리고, 매 1ms 루프 끝에 `silWriter.writeTick()` 호출
+    - `DrumRobot2/include/tasks/AgentAction.hpp`: `lastPanRad`, `lastTiltRad` 멤버 추가
+    - `DrumRobot2/src/AgentAction.cpp`: `policy_lookAt`을 단일 push → 5ms 단위 사인 보간 trajectory 200개 push로 변경
+    - `Drum_intheloop/sil/SilCommandPipeReader.py`: tick 메시지 파싱 추가, 메인 루프를 frame_targets 배치 방식으로 변경 (tick 수신 시 apply+step)
+  - 메모: tick이 Python reader의 1ms frame 경계 역할을 하여 DXL/TMotor/Maxon 명령이 같은 stepSimulation 안에 atomic하게 적용됨.
+    AgentAction policy_lookAt도 PathManager처럼 중간 각도 trajectory를 push해 SIL에서 부드러운 고개 움직임이 재현됨.
+
+## 2026-04-15
+- 22:00 KST (UTC+9) — session memory (Level 1) 추가: 세션 단기 기억 및 clarification flow 구현
+  - 수정 파일:
+    - `phil_robot/pipeline/session.py` (신규): `SessionContext`, `update_session`, `build_session_summary`, `resolve_clarification_text`
+    - `phil_robot/pipeline/planner.py`: planner input에 `session_summary` 주입, 출력 스키마에 `q` (clarification) 필드 추가
+    - `phil_robot/pipeline/validator.py`: `ValidatedPlan`에 `clarification_question` 필드 추가
+    - `phil_robot/pipeline/brain_pipeline.py`: `run_brain_turn`에 `session` 파라미터 추가, clarification text 병합 처리
+    - `phil_robot/phil_brain.py`: `SessionContext` 생명주기 관리, 매 턴 `update_session` 호출
+  - 메모: "거기서 더 올려", "아까 그 노래", 사용자 이름 기억 등 multi-turn 맥락 처리 가능해짐.
+    clarification flow ("허리 돌려" → "몇 도로?" → "30도") 추가. session=None 시 기존 stateless 동작 유지.
+
+- 21:00 KST (UTC+9) — CLAUDE.md 파일 추가: AGENTS.md 및 주요 문서 자동 로드 설정
+  - 수정 파일: `CLAUDE.md`, `Drum_intheloop/CLAUDE.md`, `phil_robot/CLAUDE.md`, `phil_robot/eval/CLAUDE.md`, `legacy/phil_intheloop/CLAUDE.md`
+  - 메모: Claude Code가 각 디렉터리 작업 시 AGENTS.md, README, TODO 등을 자동으로 컨텍스트에 포함한다.
+
+## 2026-04-14
+- 17:01 KST (UTC+9) — `motion_resolver`에 다단계 상대이동 파서를 얇게 추가해 `손목 30도 내리고 1초 뒤에 10도 더 내려`, `손목 30도씩 두번 내려` 같은 문장을 state snapshot 기준 누적 절대각 시퀀스로 다시 계산하도록 보강했습니다.
+  - 수정 파일: `phil_robot/pipeline/motion_resolver.py`, `phil_robot/tests/test_planner_benchmark.py`, `phil_robot/TODO.md`, `log.md`
+  - 메모: planner prompt와 validator 규칙은 건드리지 않고 resolver 쪽 함수만 추가했습니다. `py_compile`은 통과했고, `build_validated_plan()` 직접 호출로 `scenario_20/21` 기대 명령이 각각 `move:R_wrist,20 -> wait:1 -> move:R_wrist,10`, `move:R_wrist,40 -> move:R_wrist,10`으로 나오는 것도 확인했습니다. `unittest`는 환경의 `ollama` import 부재 때문에 전체 모듈 로드가 막혀 직접 실행 확인으로 대체했습니다.
+
 ## 2026-04-08
 - 15:00 KST (UTC+9) — `phil_robot/TODO.md`의 `Now` 우선순위를 현재 이슈 기준으로 다시 정리해, `planner 의미 해석 / resolver 계산 분리`와 `classifier routing / shortcut` 보강을 맨 위로 올리고 `failure taxonomy`는 `Parking Lot`으로 내렸습니다.
   - 수정 파일: `phil_robot/TODO.md`, `log.md`

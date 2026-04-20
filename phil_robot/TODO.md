@@ -21,6 +21,9 @@
     - planner 출력에 `joint`, `mode`, `value`, `wait` 같은 중간 표현을 둔다.
     - resolver는 이를 누적 절대각 시퀀스로 변환한다.
     - validator는 최종 절대각 명령만 검증한다.
+  - 진행 메모:
+    - `2026-04-14` 기준으로 `motion_resolver.py`에 `N초 뒤에 N도 더`와 `N도씩 두번` 텍스트를 직접 읽는 다단계 상대이동 파서를 먼저 추가했다.
+    - 이번 단계에서는 planner prompt와 validator 규칙은 그대로 두고, resolver에서 누적 절대각 시퀀스만 다시 계산한다.
 
 - [ ] `classifier routing / shortcut` 보강
   - 목표: 짧은 social-motion 발화가 `chat`으로 빠지지 않게 classifier routing을 먼저 안정화한다.
@@ -199,13 +202,15 @@
     - 직전 행동
     - 에러 상태 / 에러 원인
 
-- [ ] `LangGraph-style state graph` 도입 여부 검토
+- [x] `LangGraph-style state graph` 도입 여부 검토
   - 목표: 장기적으로 pause/resume, confirmation, recovery, multi-step routing을 상태 그래프로 관리할지 판단한다.
-  - 전제:
-    - scenario eval
-    - failure taxonomy
-    - recovery flow
-    가 어느 정도 정리된 뒤 검토
+  - 메모:
+    - `2026-04-16` 기준으로 LangGraph 스타일 상태 기계 도입 완료.
+    - Python 3.8 + aarch64 제약으로 langgraph 패키지 대신 `pipeline/state_graph.py` 경량 호환 구현 사용. API 동일.
+    - `pipeline/robot_graph.py`에 `process→execute→return_home` 노드 구성.
+    - `pipeline/exec_thread.py`에 `InterruptibleExecutor` 구현 (cancel 시 'stop' 명령 전송 + wait 즉시 중단).
+    - 동작 완료 후 홈 복귀(`h`), Enter 누름 시 이전 동작 즉시 중단, TTS 동시 실행.
+    - 상세 설계: `docs/LANGGRAPH_STATE_MACHINE_KR.md`
 
 - [ ] `memory / RAG` 장기 구조 검토
   - 목표: 제어 path와 분리된 knowledge path를 설계한다.

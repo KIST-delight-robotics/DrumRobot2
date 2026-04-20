@@ -59,14 +59,19 @@ LLM 제어 파이프라인의 핵심 로직을 모은 계층이다.
 - `planner.py`
 - `validator.py`
 - `executor.py`
+- `command_executor.py`
 - `skills.py`
 - `state_adapter.py`
 - `motion_resolver.py`
 - `command_validator.py`
-- `command_executor.py`
+- `play_modifier.py`
 - `llm_interface.py`
 - `failure.py`
 - `response_parser.py`
+- `robot_graph.py`
+- `state_graph.py`
+- `exec_thread.py`
+- `session.py`
 
 ### `runtime/`
 
@@ -118,6 +123,11 @@ LLM 제어 파이프라인의 핵심 로직을 모은 계층이다.
 - `test_drum4.py`
 - `test_speech.py`
 - `client_test.py`
+- `test_intent_classifier.py`
+- `test_llm_interface.py`
+- `test_melo_engine.py`
+- `test_planner_benchmark.py`
+- `test_stt_llm_format_compare.py`
 
 구분 기준:
 
@@ -136,6 +146,10 @@ LLM 제어 파이프라인의 핵심 로직을 모은 계층이다.
 - `CLASSIFIER_BENCHMARK_REPORT_KR.md`
 - `PROJECT_STRUCTURE.md`
 - `PROJECT_STRUCTURE_KR.md`
+- `LANGGRAPH_STATE_MACHINE_KR.md`
+- `PHIL_SEQUENCE_DIAGRAM_KR.md`
+- `DECISION_LAYER_ROADMAP_KR.md`
+- `FORMAT_COMPARE_BENCHMARK_KR.md`
 
 구분 기준:
 

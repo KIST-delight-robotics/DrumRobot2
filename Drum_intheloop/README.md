@@ -62,7 +62,9 @@
 5. `head_tilt`는 C++/DXL 쪽 정면이 `90deg`, URDF 쪽 정면이 `0deg`라서 Python에서 `-90deg` 보정합니다.
 6. body CAN joint는 `joint_map.py`의 per-joint transform 테이블로 각도 의미를 보정합니다.
 7. 팔 외형이 실기와 다르게 보이는 문제는 원본 URDF/STL이 아니라 `urdf_tools.py`의 runtime patch에서 실험 중입니다.
-8. 현재 backend는 `resetJointState()`를 쓰므로 “메시지 도착 cadence”는 따르지만, simulator 내부의 actuator interpolation dt는 없는 즉시 적용형 viewer에 가깝습니다.
+8. 현재 backend는 `resetJointState()` 기반이라 actuator interpolation timing은 없습니다. 단, C++ send loop가 매 1ms마다 `tick` 메시지를 보내 같은 구간의 TMotor/Maxon/DXL 명령이 동일한 `stepSimulation()` 안에 atomic하게 적용됩니다.
+9. 실제 관절 명령 없이 빈 tick만 `IDLE_RETURN_SEC`(5초) 이상 이어지면 startup pose로 자동 복귀합니다. SIL 전용 기능입니다.
+10. `pybullet_backend.py`는 URDF 로봇 외에 페달 2개(R_foot/L_foot)와 드럼 패드를 별도 MultiBody로 시각화합니다. 페달은 `joint_map.py`의 `PEDAL_JOINTS`/`PEDAL_SPEC`, 드럼 패드는 `DRUM_PAD_SPEC`/`DRUM_PAD_OFFSET`/`DRUM_INSTRUMENT_NAMES`로 설정합니다.
 
 ## 빠른 실행 순서
 
@@ -153,29 +155,33 @@ reader가 읽는 NDJSON 예시는 다음과 같은 형태입니다.
 
 ### 메시지 한 줄이 실제로 어떻게 소비되는가
 
-현재 pipe protocol은 “한 robot tick 전체를 한 번에 묶어 보내는 batch”가 아니라, “소비된 actuator command 하나를 NDJSON 한 줄로 쓰는 방식”입니다.
+현재 pipe protocol은 **command 메시지**와 **tick 메시지** 두 종류로 이루어집니다.
 
-- `SilCommandPipeWriter`는 `tmotor`/`maxon`/`dxl` command를 각각 한 줄씩 생성해 FIFO에 씁니다.
-- `SilCommandPipeReader`는 `for raw_line in pipe`로 줄 단위로 읽습니다.
-- `build_joint_targets()`는 현재 한 메시지를 보통 한 개 URDF joint target으로 바꿉니다.
-- 그 다음 Python main loop가 그 한 메시지에 대해 `apply_targets()`와 `step()`를 바로 실행합니다.
+- `SilCommandPipeWriter`는 `tmotor`/`maxon`/`dxl` command를 각각 한 줄씩 FIFO에 씁니다.
+- C++ send loop는 매 **1ms** 끝마다 `{“kind”:”tick”}` 한 줄을 FIFO에 씁니다. 이 tick이 1ms frame 경계 역할을 합니다.
+- `SilCommandPipeReader`는 command를 받을 때마다 `frame_targets`에 누적하고, tick을 받을 때 한꺼번에 apply → step합니다.
 
 즉 현재 의미 단위는 아래와 같습니다.
 
 ```text
-NDJSON 1줄
--> Python dict 1개
--> joint target dict 1개
--> resetJointState(...) 적용
--> stepSimulation() 1회
--> optional sleep
+command NDJSON 줄 수신
+  -> Python dict → frame_targets에 누적
+
+tick 수신 (frame_targets 있음)
+  -> frame_targets 전체를 resetJointState(...)로 한 번에 적용
+  -> stepSimulation() 1회
+  -> optional sleep
+  -> frame_targets 초기화
+
+tick 수신 (frame_targets 없음 = 빈 tick)
+  -> idle 판정 → IDLE_RETURN_SEC(5초) 초과 시 startup pose 복귀
 ```
 
 중요:
 
-- “한 번 읽어서 로봇 전체 joint를 전부 atomically 갱신한다”는 개념은 현재 없습니다.
-- 같은 5ms 구간 안에 여러 명령이 연달아 와도, reader는 그 줄들을 하나씩 순서대로 처리합니다.
-- 따라서 simulator에서는 중간 자세가 잠깐 보일 수 있습니다.
+- 같은 1ms 구간 안에 들어온 TMotor/Maxon/DXL 명령은 동일한 `stepSimulation()` 안에 **atomic하게** 적용됩니다.
+- tick이 frame 경계 역할을 하므로, DXL과 CAN 모터의 joint target이 같은 step 안에 정렬됩니다.
+- tick이 오지 않으면 apply와 step이 일어나지 않습니다. C++ send loop가 살아있는 것이 전제입니다.
 
 ### 2. `command_types.py`
 
@@ -234,13 +240,19 @@ mapped_deg = bias_deg + reference_deg + sign * (target_deg - reference_deg)
 주요 테이블:
 
 - `PRODUCTION_TO_URDF_JOINT`
-  - 예: `L_arm2 -> left_shoulder_2`
+  - 예: `L_arm2 -> left_shoulder_2`, `R_foot -> pedal_right`
 - `PRODUCTION_TO_URDF_CAN_TRANSFORM`
   - joint별 `reference_deg`, `sign`, `bias_deg`
 - `LOOK_JOINTS`
   - `pan -> head`, `tilt -> head_2`
 - `URDF_JOINT_LIMITS_DEG`
   - runtime URDF에 다시 써 넣을 joint 범위
+- `PEDAL_JOINTS` / `PEDAL_SPEC`
+  - 가상 페달 MultiBody 키와 geometry/위치/색상 정의
+- `DRUM_PAD_SPEC` / `DRUM_PAD_OFFSET`
+  - 드럼 패드 geometry/색상 정의와 전체 위치 보정치
+- `DRUM_INSTRUMENT_NAMES` / `DRUM_HEAD_INDICES` / `DRUM_PAD_SKIP_INDICES`
+  - `drum_position.txt` 열 순서, 드럼 헤드 인덱스, 배치 제외 인덱스
 
 현재 눈여겨볼 포인트:
 
@@ -321,7 +333,7 @@ mapped_deg = bias_deg + reference_deg + sign * (target_deg - reference_deg)
 - `DXL` 소비/export: 현재 `5ms`마다
 - CAN receive loop: `100us`
 
-중요한 점은, 이 주기들이 있다고 해서 pipe에 “5ms짜리 완성된 한 프레임 묶음”이 생기는 것은 아니라는 것입니다. 현재 exporter는 명령 하나가 실제로 소비될 때마다 그 command를 NDJSON 한 줄로 씁니다.
+중요한 점은, 이 주기들이 있다고 해서 pipe에 “5ms짜리 완성된 한 프레임 묶음”이 생기는 것은 아니라는 것입니다. exporter는 명령 하나가 소비될 때마다 NDJSON 한 줄로 씁니다. 단, C++ send loop는 매 1ms 끝마다 `tick` 메시지를 추가로 씁니다.
 
 ### 2. Python reader가 읽고 적용하는 주기
 
@@ -333,26 +345,34 @@ startup:
   backend.start()
   apply startup preset
   stepSimulation() 1회
-  "Listening on named pipe"
+  “Listening on named pipe”
 
 runtime per message:
   pipe에서 다음 줄이 들어올 때까지 block
-  줄 1개 수신
-  JSON parse
-  production -> URDF joint target 변환
-  apply_targets()
-  stepSimulation() 1회
-  if --sleep > 0: time.sleep(args.sleep)
+  줄 1개 수신 (command 또는 tick)
+
+  command인 경우:
+    JSON parse → production -> URDF joint target 변환 → frame_targets에 누적
+
+  tick인 경우:
+    frame_targets가 있으면:
+      apply_targets(frame_targets)
+      stepSimulation() 1회
+      if --sleep > 0: time.sleep(args.sleep)
+      frame_targets 초기화, last_motion_time 갱신
+    frame_targets가 없으면 (빈 tick):
+      idle 판정 → (time - last_motion_time) > IDLE_RETURN_SEC 이면 startup pose 복귀
+
   다음 줄 읽기
 ```
 
 즉 reader는 평소에 “100us마다 polling”하는 구조가 아닙니다.
 
 - 데이터가 없으면 FIFO read에서 그냥 block됩니다.
-- 데이터가 들어오면 그 줄을 처리합니다.
-- `--sleep`은 idle polling 주기가 아니라, “한 메시지를 적용한 뒤 다음 메시지로 넘어가기 전에 넣는 추가 지연”입니다.
+- command는 누적되고, tick이 와야 실제 apply + step이 일어납니다.
+- `--sleep`은 tick 처리 후 다음 줄로 넘어가기 전의 추가 지연입니다.
 
-기본값 `--sleep 0.0001`은 `100us`입니다. 따라서 현재 기본 동작은 “메시지 1개 적용 후 최대 100us 정도 쉬고 다음 줄을 읽는 형태”로 이해하는 것이 가장 가깝습니다.
+기본값 `--sleep 0.0001`은 `100us`입니다.
 
 ### 3. `stepSimulation()`의 실제 의미
 
@@ -372,41 +392,43 @@ runtime per message:
 하지만 actuator interpolation timing은 없음
 ```
 
-### 4. 한 5ms 구간에서 실제로 보이는 것
+### 4. 한 1ms 구간에서 실제로 보이는 것
 
-예를 들어 C++ 쪽에서 같은 짧은 구간 안에 아래 command들이 순서대로 pipe에 써졌다고 가정하겠습니다.
+예를 들어 C++ 쪽에서 같은 1ms 구간 안에 아래 command들이 순서대로 pipe에 써졌다고 가정하겠습니다.
 
 ```text
 t = 0.0 ms   maxon command A write
 t = 0.2 ms   tmotor command B write
 t = 0.3 ms   dxl command C write
+t = 1.0 ms   tick write (C++ send loop 끝)
 ```
 
-현재 simulator에서의 처리 그림은 아래에 더 가깝습니다.
+현재 simulator에서의 처리 그림은 아래와 같습니다.
 
 ```text
 Python reader:
-  A 읽음 -> apply A -> step 1회 -> sleep 100us
-  B 읽음 -> apply B -> step 1회 -> sleep 100us
-  C 읽음 -> apply C -> step 1회 -> sleep 100us
+  A 읽음 -> frame_targets에 누적
+  B 읽음 -> frame_targets에 누적
+  C 읽음 -> frame_targets에 누적
+  tick 읽음 -> apply A+B+C 동시 -> step 1회 -> sleep 100us
 ```
 
 즉 지금 구조는:
 
-- `A+B+C`를 한 번에 합쳐 “robot tick 1개”로 처리하지 않습니다.
-- 각 command 사이에 독립적인 `stepSimulation()`이 있습니다.
-- 그래서 엄밀히는 현재 viewer가 command stream을 순차 재생하는 구조입니다.
+- 같은 tick 구간의 `A+B+C`는 하나의 `stepSimulation()` 안에 **atomic하게** 들어갑니다.
+- tick 경계가 C++ 1ms send loop와 맞춰져 DXL/TMotor/Maxon frame이 정렬됩니다.
+- 따라서 같은 1ms 구간 명령에 한해서는 simulator가 실기와 비슷한 frame 동기성을 가집니다.
 
 ### 5. 왜 이 설명이 중요한가
 
 이 차이를 알아야 아래 현상을 올바르게 해석할 수 있습니다.
 
 - READY 자세가 실기와 살짝 다르게 보일 때:
-  - startup preset, 첫 pipe command, 순차 적용 순서를 같이 봐야 합니다.
+  - startup preset, 첫 pipe command, tick 도착 순서를 같이 봐야 합니다.
 - 동작이 뚝뚝 끊겨 보일 때:
   - reader 문제라기보다 `resetJointState()` 기반 즉시 적용 구조 영향일 수 있습니다.
 - “한 step 안에 모든 joint가 같이 들어간다”고 기대했는데 다르게 보일 때:
-  - 현재 protocol이 batch가 아니라 per-command line이라는 점을 봐야 합니다.
+  - tick 경계가 1ms이므로, 다른 1ms 구간에 걸친 명령은 여전히 별도 step으로 들어갑니다.
 
 ### 7. `urdf_tools.py`
 
@@ -450,17 +472,19 @@ Python reader:
 - [requirements.txt](/home/shy/robot_project/Drum_intheloop/requirements.txt)
   - Python 의존성. 현재 `pybullet`
 - [sil/SilCommandPipeReader.py](/home/shy/robot_project/Drum_intheloop/sil/SilCommandPipeReader.py)
-  - ingress, startup pose, main loop
+  - ingress, startup pose, tick 기반 frame 배치 처리, idle return, main loop
 - [sil/command_types.py](/home/shy/robot_project/Drum_intheloop/sil/command_types.py)
   - C++ payload 대응 자료구조
 - [sil/command_applier.py](/home/shy/robot_project/Drum_intheloop/sil/command_applier.py)
   - production command -> URDF joint target 변환
 - [sil/joint_map.py](/home/shy/robot_project/Drum_intheloop/sil/joint_map.py)
-  - 이름/각도 transform/limit 정의
+  - 이름/각도 transform/limit 정의, 페달/드럼패드 spec
+- [sil/colors.py](/home/shy/robot_project/Drum_intheloop/sil/colors.py)
+  - PyBullet 시각 테마 색상 상수 (바닥, 로봇, 페달)
 - [sil/robot_spec.py](/home/shy/robot_project/Drum_intheloop/sil/robot_spec.py)
   - motor catalog와 startup pose
 - [sil/pybullet_backend.py](/home/shy/robot_project/Drum_intheloop/sil/pybullet_backend.py)
-  - PyBullet backend
+  - PyBullet backend, 페달/드럼패드 MultiBody 시각화
 - [sil/urdf_tools.py](/home/shy/robot_project/Drum_intheloop/sil/urdf_tools.py)
   - runtime URDF 생성과 pose/limit patch
 - [tests/pipe_demo_reader.py](/home/shy/robot_project/Drum_intheloop/tests/pipe_demo_reader.py)
@@ -476,9 +500,9 @@ Python reader:
 
 - raw CAN frame을 재생하지 않고
 - C++에서 이미 해석된 목표 각도를 복사해
-- Python에서 줄 단위로 읽어 바로 joint state로 넣습니다
+- Python에서 tick 경계마다 frame_targets를 한꺼번에 joint state로 넣습니다
 
-즉 실기 버스 지연, 제어 loop 주기, PID profile, “한 tick 전체를 동시에 적용하는 frame 경계”를 재현하지 않습니다.
+즉 실기 버스 지연, 제어 loop 주기, PID profile을 재현하지 않습니다. 1ms frame 경계 정렬은 tick 메시지로 맞추지만, 실기 수준의 CAN timing fidelity는 아닙니다.
 
 ### 2. DXL timing 문제는 아직 남아 있습니다
 

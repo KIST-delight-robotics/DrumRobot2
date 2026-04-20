@@ -166,6 +166,64 @@ class PlannerBenchmarkTest(unittest.TestCase):
             ],
         )
 
+    def test_build_validated_plan_resolves_relative_wait_sequence(self) -> None:
+        plan_obj = build_validated_plan(
+            user_text="손목 30도 내리고 1초 뒤에 10도 더 내려",
+            robot_state={
+                "state": 0,
+                "is_lock_key_removed": True,
+                "is_fixed": True,
+                "current_angles": {"R_wrist": 50.0},
+                "last_action": "move:R_wrist,50",
+            },
+            classifier_result={
+                "intent": "motion_request",
+                "needs_motion": True,
+                "needs_dialogue": False,
+                "risk_level": "medium",
+            },
+            planner_result={
+                "skills": [],
+                "op_cmd": ["move:L_wrist,30", "wait:1", "move:L_wrist,40"],
+                "speech": "손목을 30도 내리고 1초 후에 10도 더 내립니다.",
+                "reason": "relative wait sequence",
+            },
+        )
+
+        self.assertEqual(plan_obj.valid_op_cmds, ["move:R_wrist,20", "wait:1", "move:R_wrist,10"])
+        self.assertIn("30도", plan_obj.speech)
+        self.assertIn("1초", plan_obj.speech)
+        self.assertIn("10도", plan_obj.speech)
+
+    def test_build_validated_plan_resolves_relative_repeat_sequence(self) -> None:
+        plan_obj = build_validated_plan(
+            user_text="손목 30도씩 두번 내려.",
+            robot_state={
+                "state": 0,
+                "is_lock_key_removed": True,
+                "is_fixed": True,
+                "current_angles": {"R_wrist": 70.0},
+                "last_action": "move:R_wrist,70",
+            },
+            classifier_result={
+                "intent": "motion_request",
+                "needs_motion": True,
+                "needs_dialogue": False,
+                "risk_level": "medium",
+            },
+            planner_result={
+                "skills": [],
+                "op_cmd": ["move:L_wrist,30", "wait:1", "move:L_wrist,30", "wait:1"],
+                "speech": "손목을 30도씩 두 번 내립니다.",
+                "reason": "relative repeat sequence",
+            },
+        )
+
+        self.assertEqual(plan_obj.valid_op_cmds, ["move:R_wrist,40", "move:R_wrist,10"])
+        self.assertIn("두번", plan_obj.speech)
+        self.assertIn("30도", plan_obj.speech)
+        self.assertIn("60도", plan_obj.speech)
+
     def test_parse_plan_response_accepts_compact_schema(self) -> None:
         parsed_obj = parse_plan_response(
             '{"s":["wave_hi"],"c":["gesture:wave"],"t":"안녕하세요!","r":"wave ok"}'
