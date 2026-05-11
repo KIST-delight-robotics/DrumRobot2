@@ -1089,6 +1089,17 @@ void DrumRobot::processInput(const std::string &input, string flagName)
     }
     else if (input == "u" && flagName == "isHome")
     {
+        int cmd;
+        std::cout << "Update drum position automatically(1) / manually(2)\n";
+        std::cin >> cmd;
+
+        if (cmd == 1)
+        {
+            drumDetector = std::make_unique<DrumDetector>(pathManager, testManager);
+            drumDetector->detectDrums();
+            std::cout << "\nDrum position updated automatically!!!\n";
+            drumDetector.reset();
+        }
         pathManager.setDrumCoordinate();
         pathManager.setAddStanceAngle();
 

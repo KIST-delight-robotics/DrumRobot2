@@ -87,6 +87,9 @@ public:
     void setDrumCoordinate();   // 임시로 이동 private -> public
     void setAddStanceAngle();
 
+    // DrumDetector
+    std::vector<std::vector<Eigen::VectorXd>> hit_Candidates;
+    
 private:
     TMotorCommandParser TParser; ///< T 모터 명령어 파서.
     MaxonCommandParser MParser;  ///< Maxon 모터 명령어 파서
@@ -133,6 +136,8 @@ private:
         VectorXd nextStateR;            // 이전 시간, 이전 악기, 상태
         VectorXd nextStateL;
 
+        int finalInstR;
+        int finalInstL;
     }TrajectoryData;
 
     // task space 궤적
@@ -287,7 +292,7 @@ private:
     pair<VectorXd, double> getTargetPosition(VectorXd &inst, char RL);
     double calTimeScaling(double ti, double tf, double t);
     VectorXd makeTaskSpacePath(VectorXd &Pi, VectorXd &Pf, int initialOffset, int finalOffset, double s);
-    VectorXd getWaistParams(VectorXd &pR, VectorXd &pL, double theta7, double theta8);
+    VectorXd getWaistParams(VectorXd &pR, VectorXd &pL, double theta7, double theta8, bool evaluateOnly = false);
     void storeWaistParams(int n, VectorXd &waistParams);
 
     //////////////////////////////////// Hit Trajectory
