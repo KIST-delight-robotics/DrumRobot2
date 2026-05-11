@@ -812,6 +812,54 @@ void PathManager::genTaskSpaceTrajectory(MatrixXd &measureMatrix, int n)
     measureStateR = data.nextStateR;
     measureStateL = data.nextStateL;
 
+    // 후보 평가: i=0 시점에서 최적 타격점 선정 (루프 진입 전)
+    VectorXd selectedPositionR = data.finalPositionR;
+    VectorXd selectedPositionL = data.finalPositionL;
+
+    int instR = data.finalInstR - 1;    // hit_Candidates[0]에 snare(1) 후보가 들어있음
+    int instL = data.finalInstL - 1;
+    bool hasCandidatesR = (instR >= 0 && instR <= static_cast<int>(hit_Candidates.size()) && !hit_Candidates[instR].empty());
+    bool hasCandidatesL = (instL >= 0 && instL <= static_cast<int>(hit_Candidates.size()) && !hit_Candidates[instL].empty());
+
+    if (hasCandidatesR && hasCandidatesL)
+    {
+        double tR0 = data.t1 - data.initialTimeR;
+        double tL0 = data.t1 - data.initialTimeL;
+        double sR0 = calTimeScaling(0.0, data.finalTimeR - data.initialTimeR, tR0);
+        double sL0 = calTimeScaling(0.0, data.finalTimeL - data.initialTimeL, tL0);
+        double wristR0 = sR0 * (data.finalWristAngleR - data.initialWristAngleR) + data.initialWristAngleR;
+        double wristL0 = sL0 * (data.finalWristAngleL - data.initialWristAngleL) + data.initialWristAngleL;
+
+        double best_waist_angle_range = 0.0;
+        int best_indexR = 0, best_indexL = 0;
+
+        for (size_t j = 0; j < hit_Candidates[instR].size(); j++)
+        {
+            VectorXd coordinatesR = makeTaskSpacePath(data.initialPositionR, hit_Candidates[instR][j], data.initialOffsetR, data.finalOffsetR, sR0);
+            for (size_t k = 0; k < hit_Candidates[instL].size(); k++)
+            {
+                VectorXd coordinatesL = makeTaskSpacePath(data.initialPositionL, hit_Candidates[instL][k], data.initialOffsetL, data.finalOffsetL, sL0);
+
+                VectorXd waistParams = getWaistParams(coordinatesR, coordinatesL, wristR0, wristL0, true);
+                double waist_angle_range = waistParams(1) - waistParams(0);
+                if (waist_angle_range > best_waist_angle_range)
+                {
+                    best_waist_angle_range = waist_angle_range;
+                    best_indexR = j;
+                    best_indexL = k;
+                }
+            }
+        }
+
+        selectedPositionR = hit_Candidates[instR][best_indexR];
+        selectedPositionL = hit_Candidates[instL][best_indexL];
+    }
+    else    //hit_Candidates에 문제가 있는 경우 기존 drum_position.txt 기반 타격점 사용
+    {
+        selectedPositionR = data.finalPositionR;
+        selectedPositionL = data.finalPositionL;
+    }
+
     for (int i = 0; i < n; i++)
     {
         TaskSpaceTrajectory TT;
@@ -823,10 +871,10 @@ void PathManager::genTaskSpaceTrajectory(MatrixXd &measureMatrix, int n)
         // time scaling (s : 0 -> 1)
         sR = calTimeScaling(0.0, data.finalTimeR - data.initialTimeR, tR);
         sL = calTimeScaling(0.0, data.finalTimeL - data.initialTimeL, tL);
-        
+
         // task space 경로
-        TT.trajectoryR = makeTaskSpacePath(data.initialPositionR, data.finalPositionR, data.initialOffsetR, data.finalOffsetR, sR);
-        TT.trajectoryL = makeTaskSpacePath(data.initialPositionL, data.finalPositionL, data.initialOffsetL, data.finalOffsetL, sL);
+        TT.trajectoryR = makeTaskSpacePath(data.initialPositionR, selectedPositionR, data.initialOffsetR, data.finalOffsetR, sR);
+        TT.trajectoryL = makeTaskSpacePath(data.initialPositionL, selectedPositionL, data.initialOffsetL, data.finalOffsetL, sL);
 
         // IK 풀기 위한 손목 각도
         TT.wristAngleR = sR * (data.finalWristAngleR - data.initialWristAngleR) + data.initialWristAngleR;
@@ -886,6 +934,9 @@ PathManager::TrajectoryData PathManager::getTrajectoryData(MatrixXd &measureMatr
     data.finalTimeL = dataL.first(12);
 
     // 악기
+    data.finalInstR = dataR.first(24);
+    data.finalInstL = dataL.first(24);
+
     VectorXd initialInstrumentR = dataR.first.block(2, 0, 10, 1);
     VectorXd initialInstrumentL = dataL.first.block(2, 0, 10, 1);
 
@@ -928,7 +979,7 @@ pair<VectorXd, VectorXd> PathManager::parseTrajectoryData(VectorXd &t, VectorXd 
     //    S       FT      MT      HT      HH       R      RC      LC       S        S        S        S        S        S     Open HH   RB
 
     VectorXd initialInstrument = VectorXd::Zero(10), finalInstrument = VectorXd::Zero(10);
-    VectorXd outputVector = VectorXd::Zero(24);
+    VectorXd outputVector = VectorXd::Zero(25);
 
     VectorXd nextStateVector;
 
@@ -1049,7 +1100,7 @@ pair<VectorXd, VectorXd> PathManager::parseTrajectoryData(VectorXd &t, VectorXd 
 
     initialInstrument(instrumentMapping[initialInstNum]) = 1.0;
     finalInstrument(instrumentMapping[finalInstNum]) = 1.0;
-    outputVector << initialT, initialOffset, initialInstrument, finalT, finalOffset, finalInstrument;
+    outputVector << initialT, initialOffset, initialInstrument, finalT, finalOffset, finalInstrument, finalInstNum;
 
     nextStateVector.resize(4);
     nextStateVector << initialT, initialInstNum, nextState, initialOffset;
@@ -1219,7 +1270,7 @@ VectorXd PathManager::makeTaskSpacePath(VectorXd &Pi, VectorXd &Pf, int initialO
     return Ps;
 }
 
-VectorXd PathManager::getWaistParams(VectorXd &pR, VectorXd &pL, double theta7, double theta8)
+VectorXd PathManager::getWaistParams(VectorXd &pR, VectorXd &pL, double theta7, double theta8, bool evaluateOnly)
 {
     std::vector<VectorXd> Qarr;
     int j = 0;      // 솔루션 개수
@@ -1247,8 +1298,11 @@ VectorXd PathManager::getWaistParams(VectorXd &pR, VectorXd &pL, double theta7, 
 
     if (j == 0)
     {
-        std::cout << "Error : Waist Range (IK is not solved!!)\n";
-        state.main = Main::Error;
+        if (!evaluateOnly)
+        {
+            std::cout << "Error : Waist Range (IK is not solved!!)\n";
+            state.main = Main::Error;
+        }
 
         output(0) = 0;
         output(1) = 0;
@@ -2610,6 +2664,7 @@ std::vector<PathManager::WaistParameter> PathManager::waistParamsQueueToVector()
     for (int i = 0; i < size; i++)
     {
         WaistParameter temp = waistParameterQueue.front();
+        func.appendToCSV("waist_parameter_queue", false, temp.optimized_q0, temp.min_q0, temp.max_q0);
         waistParameterQueue.pop();
         waistParameterQueue.push(temp);
         WP.push_back(temp);

@@ -69,6 +69,9 @@ public:
 
     void SendTestProcess();
 
+    void move_waist(float target_deg);
+    void getMotorPos(float c_MotorAngle[]);
+
     bool isMaxonEnable = false;
     bool hitTest = 0;
 
@@ -116,7 +119,6 @@ private:
     struct can_frame frame;
 
     /*Value Test Code*/
-    void getMotorPos(float c_MotorAngle[]);
     vector<float> makeProfile(float Q1[], float Q2[], vector<float> &Vmax, float acc, float t, float t2);
     vector<float> cal_Vmax(float q1[], float q2[],  float acc, float t2);
     void FK(float arr[]);
@@ -181,7 +183,7 @@ private:
     void saveCoefficientsToCSV(const pcl::ModelCoefficients::Ptr& coefficients);
     void saveCloudToCSV(const pcl::PointCloud<pcl::PointXYZ>::Ptr& cloud, const std::string& filename);
     void cap_pc_3times();
-    void move_waist(float target_deg);
+
     void get_marker_pose();
 
 };

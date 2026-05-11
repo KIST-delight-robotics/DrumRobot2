@@ -27,3 +27,7 @@ Thumbs.db
 
 # 충돌 룩업 테이블
 include/table/
+
+# claude
+.claude/
+CLAUDE.md

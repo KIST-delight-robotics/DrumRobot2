@@ -33,6 +33,7 @@
 #include "../include/managers/TestManager.hpp"
 #include "../include/USBIO_advantech/USBIO_advantech.hpp"
 #include "../include/tasks/Functions.hpp"
+#include "../include/tasks/DrumDetector.hpp"
 #include "../include/dxl_sdk/dynamixel_sdk.h"
 
 using namespace std;
@@ -241,4 +242,5 @@ private:
 
     void generateCodeFromMIDI(std::string midPath, std::string veloPath, int recordingIndex, bool startFlag, bool endFlag);
 
+    std::unique_ptr<DrumDetector> drumDetector;
 };
