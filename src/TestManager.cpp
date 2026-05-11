@@ -2493,6 +2493,8 @@ void TestManager::saveCoefficientsToCSV(const pcl::ModelCoefficients::Ptr& coeff
         return;
     }
 
+    file << std::fixed << std::setprecision(4);
+
     // coefficients의 values 벡터에 저장된 모든 값을 CSV 형식으로 파일에 작성
     for (size_t i = 0; i < coefficients->values.size(); ++i) {
         file << coefficients->values[i];
@@ -2538,6 +2540,7 @@ void TestManager::cap_pc_3times()   // 허리를 회전시키며 point cloud를 
     cfg.enable_stream(RS2_STREAM_COLOR, width, height, RS2_FORMAT_BGR8, fps);
     cfg.enable_stream(RS2_STREAM_DEPTH, width, height, RS2_FORMAT_Z16, fps);
     rs2::pipeline_profile profile = pipe.start(cfg);
+    rs2::align align_to_color(RS2_STREAM_COLOR);
     auto color_stream = profile.get_stream(RS2_STREAM_COLOR).as<rs2::video_stream_profile>();
 
     rs2::device dev = profile.get_device();
@@ -2553,7 +2556,7 @@ void TestManager::cap_pc_3times()   // 허리를 회전시키며 point cloud를 
     thresh_filter.set_option(RS2_OPTION_MAX_DISTANCE, 0.6f);
 
     rs2::decimation_filter dec_filter;
-    dec_filter.set_option(RS2_OPTION_FILTER_MAGNITUDE, 2.0f);
+    dec_filter.set_option(RS2_OPTION_FILTER_MAGNITUDE, 4.0f);
 
     rs2::spatial_filter spat_filter;
     spat_filter.set_option(RS2_OPTION_FILTER_SMOOTH_ALPHA, 0.5f);
@@ -2604,6 +2607,7 @@ void TestManager::cap_pc_3times()   // 허리를 회전시키며 point cloud를 
 
         for (int i = 0; i < warmup_frames; i++) {
             rs2::frameset frames = pipe.wait_for_frames();
+            frames = align_to_color.process(frames);
             rs2::frame filtered = frames.get_depth_frame();
 
             filtered = thresh_filter.process(filtered);
@@ -2616,6 +2620,7 @@ void TestManager::cap_pc_3times()   // 허리를 회전시키며 point cloud를 
         }
 
         rs2::frameset final_frames = pipe.wait_for_frames();
+        final_frames = align_to_color.process(final_frames);
         rs2::frame filtered = final_frames.get_depth_frame();
         filtered = thresh_filter.process(filtered);
         filtered = dec_filter.process(filtered);
@@ -2645,11 +2650,11 @@ void TestManager::cap_pc_3times()   // 허리를 회전시키며 point cloud를 
     }
     saveCloudToCSV(combined_world_cloud, "../combined_pc_original.csv");
 
-    // // 2. VoxelGrid 필터
-    // pcl::VoxelGrid<pcl::PointXYZ> vg;
-    // vg.setInputCloud(combined_world_cloud);
-    // vg.setLeafSize(0.005f, 0.005f, 0.005f);     // 3D 공간을 5x5x5 정육면체로 쪼개서 내부 점들의 평균 한 점으로 downsampling
-    // vg.filter(*combined_world_cloud);
+    // 2. VoxelGrid 필터
+    pcl::VoxelGrid<pcl::PointXYZ> vg;
+    vg.setInputCloud(combined_world_cloud);
+    vg.setLeafSize(0.005f, 0.005f, 0.005f);     // 3D 공간을 5x5x5 정육면체로 쪼개서 내부 점들의 평균 한 점으로 downsampling
+    vg.filter(*combined_world_cloud);
 
     // Statistical Outlier Removal 필터
     pcl::StatisticalOutlierRemoval<pcl::PointXYZ> sor;
@@ -2664,7 +2669,7 @@ void TestManager::cap_pc_3times()   // 허리를 회전시키며 point cloud를 
     std::vector<pcl::PointIndices> cluster_indices;
     std::vector<std::vector<pcl::PointIndices>> total_indicies;
     pcl::EuclideanClusterExtraction<pcl::PointXYZ> ec;
-    ec.setClusterTolerance(0.005);      // 점 간 유클리드 거리가 5mm 이하인 점들을 하나의 clustering
+    ec.setClusterTolerance(0.008);      // 점 간 유클리드 거리가 5mm 이하인 점들을 하나의 clustering
     ec.setMinClusterSize(300);    
     ec.setMaxClusterSize(50000);  
     ec.setSearchMethod(tree);
@@ -2688,7 +2693,7 @@ void TestManager::cap_pc_3times()   // 허리를 회전시키며 point cloud를 
         seg.setOptimizeCoefficients(true);
         seg.setModelType(pcl::SACMODEL_CIRCLE3D);
         seg.setMethodType(pcl::SAC_RANSAC);
-        seg.setDistanceThreshold(0.03);
+        seg.setDistanceThreshold(0.02);
         seg.setMaxIterations(1000);
         seg.setRadiusLimits(0.125, 0.205); // 드럼 크기 제약
 
