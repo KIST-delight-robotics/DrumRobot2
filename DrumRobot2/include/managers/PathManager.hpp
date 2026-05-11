@@ -21,6 +21,7 @@
 #include <sstream>
 #include <iomanip>
 #include <filesystem>
+#include <chrono>
 #include <iostream>
 #include <vector>
 #include <limits>
@@ -65,6 +66,11 @@ public:
     bool endOfPlayCommand = false;
     bool startOfPlay = false;
     double bpmOfScore = 100.0;      ///< 악보의 BPM 정보.
+    bool isSlowingDown = false;
+    double slowDownAccum = 0.0;
+    double initialBpm = 0.0;
+    int stopMeasure = -1;
+    int currentMeasure = 0;
     string maxonMode = "unknown";
     int Kp, Kd;
     double kpMin;
@@ -77,6 +83,9 @@ public:
     void initPlayStateValue();
     void processLine(MatrixXd &measureMatrix);
     void clearCommandBuffers();
+    size_t getBufferSize();
+
+    std::atomic<size_t> gen_count{0};  ///< 생성된 명령 누적 수 (로그용)
 
     // DXL
     std::queue<vector<vector<float>>> dxlCommandBuffer;
@@ -261,6 +270,10 @@ private:
     /////////////////////////////////////////////////////////////////////////// Play
     int lineOfScore = 0;                    ///< 현재 악보 읽은 줄.
     const int preCreatedLine = 3;           ///< 미리 궤적을 생성할 줄
+    const int MAX_LINE_AHEAD = 3;           ///< 소비 추정 대비 최대 선행 줄 수
+
+    std::chrono::steady_clock::time_point playStartTime;
+    bool hasPlayStartTime = false;
 
     void avoidCollision(MatrixXd &measureMatrix);
     void genTrajectory(MatrixXd &measureMatrix);

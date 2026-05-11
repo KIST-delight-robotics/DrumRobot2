@@ -84,9 +84,9 @@ DOMAIN_INSTRUCTIONS = {
 - 사과, 설명, 안내를 명확하게 하되 장황하게 늘어놓지 않는다.""",
     PLANNER_DOMAIN_STOP: """당신은 stop/resume planner 다.
 - 멈춤, 정지, 종료, 홈 자세 복귀, 연주 재개 요청에 집중한다.
-- 연주 일시정지(멈춰, 잠깐, 스톱, 정지) 요청에는 op_cmd 에 "pause" 를 사용한다.
+- 연주 일시정지(멈춰, 잠깐, 스톱, 정지, 그만) 요청에는 op_cmd 에 "pause" 를 사용한다.
 - 연주 재개(다시 해, 계속 해, 이어서 해) 요청에는 op_cmd 에 "resume" 을 사용한다.
-- 홈 복귀는 "h", 완전 종료는 "s" 를 사용한다.
+- 홈 복귀는 "h" 를 사용한다.
 - speech 는 짧고 명확하게 현재 중단/재개 의도를 전달한다.
 - unrelated motion 이나 social skill 은 넣지 않는다.""",
     PLANNER_DOMAIN_DEFAULT: """당신은 generic planner 다.
@@ -122,7 +122,8 @@ planner 입력에는 다음 정보가 함께 들어온다.
 사용 가능한 low-level command 예시:
 - r
 - h
-- s
+- pause
+- resume
 - look:30,90
 - look:-30,90
 - look:0,70
@@ -278,7 +279,7 @@ def enforce_intent_constraints(planner_result: Dict, intent_result: Dict) -> Dic
             command for command in normalized["op_cmd"] if command.startswith(allowed_prefixes)
         ]
     elif intent == "stop_request":
-        allowed_prefixes = ("h", "s", "pause", "resume", "wait:")
+        allowed_prefixes = ("h", "pause", "resume", "wait:")
         normalized["op_cmd"] = [
             command for command in normalized["op_cmd"] if command.startswith(allowed_prefixes)
         ]

@@ -2144,8 +2144,9 @@ void DrumRobot::checkPlayInterrupts()
     {
         if (command == "pause")
         {
-            cout << ">>> [Play] 일시정지 요청." << endl;
-            pause_requested = true;
+            cout << ">>> [Play] 감속 정지 요청." << endl;
+            pathManager.isSlowingDown = true;
+            pathManager.stopMeasure = pathManager.currentMeasure;
         }
         else if (handleModifier(command))
         {
@@ -2349,7 +2350,7 @@ void DrumRobot::runPlayProcess()
                         pause_requested = false;
                         mid_file_pause = true;
                         cout << ">>> [Play] 일시정지 요청. 즉시 정지합니다." << endl;
-                        pathManager.clearCommandBuffers();
+                        // pathManager.clearCommandBuffers();  // 감속 정지로 대체
                         break;
                     }
 
@@ -2380,7 +2381,7 @@ void DrumRobot::runPlayProcess()
                             pause_requested = false;
                             mid_file_pause = true;
                             cout << ">>> [Play] 일시정지 요청. 즉시 정지합니다." << endl;
-                            pathManager.clearCommandBuffers();
+                            // pathManager.clearCommandBuffers();  // 감속 정지로 대체
                             break;
                         }
 
@@ -2412,7 +2413,7 @@ void DrumRobot::runPlayProcess()
                         pause_requested = false;
                         file_pause = true;
                         cout << ">>> [Play] 일시정지 요청. 즉시 정지합니다." << endl;
-                        pathManager.clearCommandBuffers();
+                        // pathManager.clearCommandBuffers();  // 감속 정지로 대체
                         break;
                     }
                     usleep(1000);

@@ -32,7 +32,7 @@ def get_mem_usage():
 
 
 def record_audio():
-    """마이크로 소리를 듣고 1차원 float 배열로 반환"""
+    """마이크로 소리를 듣고 1차원 float 배열로 반환"""   
     print(f"\n🎤 듣는 중... ({RECORD_SECONDS}초)")
     try:
         audio = sd.rec(

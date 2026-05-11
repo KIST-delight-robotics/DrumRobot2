@@ -3,6 +3,20 @@
 프로젝트에서 의미 있는 변경을 할 때마다 한국시간(KST, UTC+9) 기준의 날짜, 시간, 요약을 기록합니다.
 최신 항목이 위로 오도록 추가합니다.
 
+## 2026-05-08
+- 14:15 KST (UTC+9) — phil_brain 정지 명령을 "s" → "pause"로 통일 (감속 보간 연동)
+  - 수정 파일: `phil_robot/pipeline/exec_thread.py`, `phil_robot/pipeline/robot_graph.py`, `phil_robot/pipeline/planner.py`
+  - 메모: executor.cancel()이 "s"(C++ shutdown)를 보내고 있어 Play 중 감속 보간이 작동하지 않던 문제 수정. "pause" 명령으로 통일하여 C++ PathManager의 isSlowingDown → BPM 점진 감소 경로가 정상 동작하도록 연결. planner 프롬프트와 allowed_prefixes에서도 "s"를 제거.
+
+- 22:00 KST (UTC+9) — 감속 정지(gradual fade-out) 1차 구현
+  - 수정 파일: `DrumRobot2/include/managers/PathManager.hpp`, `DrumRobot2/src/PathManager.cpp`, `DrumRobot2/src/DrumRobot.cpp`
+  - 메모: pause 명령 수신 시 즉시 버퍼 클리어 대신 BPM을 점진적으로 감소시키는 방식으로 변경. 매 0.6 score beat(1박)마다 initialBpm의 10%씩 감소. 마디번호 0인 악보에는 적용 안 됨.
+
+## 2026-05-07
+- 17:40 KST (UTC+9) — commandBuffer backpressure 구현: solveIKandPushCommand() 진입 시 버퍼 상한 체크 및 [BUF] 로그 추가
+  - 수정 파일: `DrumRobot2/include/managers/PathManager.hpp`, `DrumRobot2/src/PathManager.cpp`
+  - 메모: push 직전 시점(solveIKandPushCommand)에서 getBufferSize() 체크. MAX_BUFFER_COMMANDS=1500(~3마디). [BUF] 로그로 동기화 확인 가능.
+
 ## 2026-04-20
 - 15:53 KST (UTC+9) — 문서 현행화: README 및 아키텍처 문서에 점진적 파일 기반 실행(Incremental File-Based Execution) 및 일시정지/재개(Pause/Resume) 매커니즘 반영
   - 수정 파일: `README.md`, `phil_robot/docs/LLM_PIPELINE_ARCHITECTURE_KR.md`

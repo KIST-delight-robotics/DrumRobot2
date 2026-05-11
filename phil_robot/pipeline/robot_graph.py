@@ -113,7 +113,7 @@ def _infer_plan_type(validated_plan: "ValidatedPlan", classifier_intent: str) ->
         return "chat" if classifier_intent in ("chat", "status_question") else "none"
 
     has_play = any(c.startswith("p:") or c == "r" for c in cmds)
-    has_stop = any(c == "s" for c in cmds)
+    has_stop = any(c == "pause" for c in cmds)
     has_move = any(c.startswith("move:") or c.startswith("gesture:") for c in cmds)
     has_look_only = all(c.startswith(_LOOK_ONLY_PREFIXES) or c.startswith("wait:") for c in cmds)
 

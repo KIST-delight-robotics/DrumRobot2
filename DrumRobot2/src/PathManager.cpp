@@ -77,20 +77,69 @@ void PathManager::initPlayStateValue()
     preDiff = 0.0;              // 브레이크 판단(필터)에 사용될 전 허리 차이값
 
     getVelocityRadps(true, 0.0, 0);     // 속도 계산을 위한 초기값
+
+    hasPlayStartTime = false;
+    gen_count = 0;
+
+    initialBpm = bpmOfScore;
+    isSlowingDown = false;
+    slowDownAccum = 0.0;
+    stopMeasure = -1;
+    currentMeasure = 0;
 }
 
 void PathManager::processLine(MatrixXd &measureMatrix)
 {
     lineOfScore++;
     std::cout << "\n//////////////////////////////// Read Measure : " << lineOfScore << "\n";
-    // std::cout << measureMatrix;
-    // std::cout << "\n ////////////// \n";
 
-    // ***허리 브레이크 테스트용*** // (이인우)
-    // sleep(1);
+    // genTrajectory 전에 백프레셔 체크
+    // preCreatedLine만큼은 대기 없이 선행 생성, 이후부터 제한
+    if (startOfPlay && hasPlayStartTime)
+    {
+        auto now = std::chrono::steady_clock::now();
+        double elapsed = std::chrono::duration<double>(now - playStartTime).count();
+        double line_duration = 0.6 * 100.0 / bpmOfScore;
+        int estimatedConsumed = (int)(elapsed / line_duration);
+        int ahead = lineOfScore - preCreatedLine - estimatedConsumed;
+
+        while (ahead > MAX_LINE_AHEAD)
+        {
+            usleep(5000);
+            now = std::chrono::steady_clock::now();
+            elapsed = std::chrono::duration<double>(now - playStartTime).count();
+            line_duration = 0.6 * 100.0 / bpmOfScore;  // BPM 변경 반영
+            estimatedConsumed = (int)(elapsed / line_duration);
+            ahead = lineOfScore - preCreatedLine - estimatedConsumed;
+        }
+
+        std::cout << "[BUF] line=" << lineOfScore << " consumed~" << estimatedConsumed
+                  << " ahead=" << ahead << "\n";
+        func.appendToCSV("buf_log", false, (float)lineOfScore, (float)estimatedConsumed, (float)ahead);
+    }
 
     if (measureMatrix.rows() > 1)
     {
+        currentMeasure = (int)measureMatrix(0, 0);
+
+        if (isSlowingDown && currentMeasure != 0 && currentMeasure > stopMeasure)
+        {
+            slowDownAccum += measureMatrix(1, 1);
+            while (slowDownAccum >= 0.6)
+            {
+                bpmOfScore -= initialBpm * 0.1;
+                slowDownAccum -= 0.6;
+
+                if (bpmOfScore <= initialBpm * 0.1)
+                {
+                    bpmOfScore = initialBpm * 0.1;
+                    endOfPlayCommand = true;
+                    break;
+                }
+            }
+            std::cout << "[FADE] measure=" << currentMeasure << " bpm=" << bpmOfScore << "\n";
+        }
+
         // avoidCollision(measureMatrix);  // 충돌 회피
         genTrajectory(measureMatrix);   // 궤적 생성
     }
@@ -99,6 +148,27 @@ void PathManager::processLine(MatrixXd &measureMatrix)
     {
         solveIKandPushCommand();        // IK & 명령 생성
     }
+}
+
+size_t PathManager::getBufferSize()
+{
+    if (motors.empty()) return 0;
+
+    size_t total = 0;
+    for (auto &motor_pair : motors)
+    {
+        if (std::shared_ptr<TMotor> tMotor = std::dynamic_pointer_cast<TMotor>(motor_pair.second))
+        {
+            std::lock_guard<std::mutex> lock(tMotor->bufferMutex);
+            total += tMotor->commandBuffer.size();
+        }
+        else if (std::shared_ptr<MaxonMotor> maxonMotor = std::dynamic_pointer_cast<MaxonMotor>(motor_pair.second))
+        {
+            std::lock_guard<std::mutex> lock(maxonMotor->bufferMutex);
+            total += maxonMotor->commandBuffer.size();
+        }
+    }
+    return total;
 }
 
 void PathManager::clearCommandBuffers()
@@ -126,6 +196,8 @@ void PathManager::clearCommandBuffers()
     
     std::lock_guard<std::mutex> lock(dxlBufferMutex);
     std::queue<vector<vector<float>>>().swap(dxlCommandBuffer);
+
+    gen_count = 0;
 }
 
 // Private
@@ -775,10 +847,10 @@ void PathManager::genTrajectory(MatrixXd &measureMatrix)
 {
     int n = getNumCommands(measureMatrix);      // 명령 개수
     
-    genTaskSpaceTrajectory(measureMatrix, n);   // task space 궤적 생성
-    genHitTrajectory(measureMatrix, n);         // 타격 궤적 생성
-    genPedalTrajectory(measureMatrix, n);       // 발모터 궤적 생성
-    genDxlTrajectory(measureMatrix, n);         // DXL모터 궤적 생성
+    genTaskSpaceTrajectory(measureMatrix, n);   // task space 궤적 생성, taskSpaceQueue에 저장
+    genHitTrajectory(measureMatrix, n);         // 타격 궤적 생성, HitQueue에 저장
+    genPedalTrajectory(measureMatrix, n);       // 발모터 궤적 생성, pedalQueue에 저장
+    genDxlTrajectory(measureMatrix, n);         // DXL모터 궤적 생성, DXLQueue에 저장
 
     ///////////////////////////////////////////////////////////// 읽은 줄 삭제
     MatrixXd tmpMatrix(measureMatrix.rows() - 1, measureMatrix.cols());
@@ -800,6 +872,12 @@ void PathManager::solveIKandPushCommand()
     while(!startOfPlay) // 시작 신호 받을 때까지 대기
     {
         usleep(500);
+    }
+
+    if (!hasPlayStartTime)
+    {
+        playStartTime = std::chrono::steady_clock::now();
+        hasPlayStartTime = true;
     }
 
     for (int i = 0; i < n; i++)
@@ -829,6 +907,9 @@ void PathManager::solveIKandPushCommand()
         pushCommandBuffer(q, KpRatioR, KpRatioL);                           // 명령 생성 후 push
         pushDxlBuffer(q0);
     }
+
+    gen_count += n;
+    std::cout << "[BUF] gen=" << gen_count.load() << " (+" << n << ")\n";
 
     if (waistParameterQueue.empty())    // DrumRobot 에게 끝났음 알리기
     {

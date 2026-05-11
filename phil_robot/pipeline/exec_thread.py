@@ -54,7 +54,7 @@ class InterruptibleExecutor:
         """
         self._stop.set()
         try:
-            self._bot.send_command("s\n")
+            self._bot.send_command("pause\n")
         except Exception:
             pass  # 소켓이 닫혀 있어도 cancel 자체는 계속 진행한다
 
