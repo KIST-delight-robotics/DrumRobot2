@@ -566,8 +566,8 @@ void DrumDetector::detectDrums()
     std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> accumulated_clouds;
     pcl::PointCloud<pcl::PointXYZ>::Ptr filtered_cloud(new pcl::PointCloud<pcl::PointXYZ>);
 
-    // std::vector<float> angles = {30.0f, 20.0f, 10.0f, 0.0f, -10.0f, -20.0f, -30.0f};
-    std::vector<float> angles = {0.0f};
+    std::vector<float> angles = {30.0f, 20.0f, 0.0f, -10.0f, -20.0f, -30.0f, 10.0f};
+    // std::vector<float> angles = {0.0f};
     for (float angle : angles) {
         std::cout << angle << "도 위치로 로봇 이동..." << std::endl;
         testManager.move_waist(angle);
