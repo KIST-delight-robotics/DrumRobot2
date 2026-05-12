@@ -3959,3 +3959,57 @@ double PathManager::getTheta(double l1, double theta)
 
     return theta_m;
 }
+
+// load candidates and set hit candidates
+void PathManager::setHitCandidates()
+{
+    std::string filePath = "../../DepthCamera/pcd/drum_candidates.txt";
+    std::ifstream file(filePath);
+    if (!file.is_open())
+    {
+        std::cerr << "[setHitCandidates] 파일을 열 수 없습니다: " << filePath << std::endl;
+        return;
+    }
+
+    hit_Candidates.clear();
+
+    std::string line;
+    while (std::getline(file, line))
+    {
+        std::stringstream ss(line);
+        std::string token;
+
+        std::getline(ss, token, ',');
+        int drum_id = std::stoi(token);
+        int index = drum_id - 1;
+        if (index < 0) continue;
+
+        if (static_cast<int>(hit_Candidates.size()) <= index)
+            hit_Candidates.resize(index + 1);
+
+        double x, y, z;
+        std::getline(ss, token, ',');
+        x = std::stod(token);
+        std::getline(ss, token, ',');
+        y = std::stod(token);
+        std::getline(ss, token, ',');
+        z = std::stod(token);
+
+        Eigen::VectorXd pt(3);
+        pt << x, y, z;
+        hit_Candidates[index].push_back(pt);
+    }
+
+    file.close();
+
+    std::cout << "[setHitCandidates] 로드 완료 (" << hit_Candidates.size() << " drums)" << std::endl;
+    for (size_t i = 0; i < hit_Candidates.size(); ++i)
+    {
+        std::cout << "  drum_id " << i + 1 << " : " << hit_Candidates[i].size() << " candidates" << std::endl;
+        for (size_t j = 0; j < hit_Candidates[i].size(); ++j)
+        {
+            const Eigen::VectorXd &pt = hit_Candidates[i][j];
+            std::cout << "    [" << j << "] x=" << pt(0) << ", y=" << pt(1) << ", z=" << pt(2) << std::endl;
+        }
+    }
+}

@@ -309,8 +309,8 @@ void DrumDetector::detectCircles(pcl::PointCloud<pcl::PointXYZ>::Ptr& pointcloud
 
 
         if (inliers->indices.size() <= 200 || coeffs->values.size() < 7)
-        // continue;
-            return;
+            continue;
+            // return;
 
         std::cout << " i found!! \n";
         std::cout << "   inliers=" << inliers->indices.size() << " coeffs=" << coeffs->values.size() << std::endl;
@@ -430,7 +430,7 @@ std::vector<Eigen::VectorXd> DrumDetector::selectCandidateForOneCircle(const pcl
     Eigen::Vector3f u = seed.cross(normal).normalized();
     Eigen::Vector3f v = normal.cross(u).normalized();
 
-    if (DB == 'D')
+    if (DB == 'D')  // 드럼 악기인 경우
     {
         int numRings = 2;
         int numAngles = 4;
@@ -449,29 +449,23 @@ std::vector<Eigen::VectorXd> DrumDetector::selectCandidateForOneCircle(const pcl
             }
         }
     }
-    // 이거 반원 안됨. 이상한 모양임 수정필요
     else
     {
-        int numRings = 3;
-        int numAngles = 3;
-        candidate.reserve(numRings * numAngles);
+        float rk = radius * 0.8f;
 
-        Eigen::Vector2f dirToCenter(center.x(), center.y());
+        Eigen::Vector3f toRobot = -center;
+        float projU = toRobot.dot(u);
+        float projV = toRobot.dot(v);
+        float baseAngle = std::atan2(projV, projU);
 
-        for (int k = 1; k <= numRings; ++k)
+        int numCandidates = 3;
+        candidate.reserve(numCandidates);
+
+        for (int j = -1; j <= 1; ++j)
         {
-            float rk = radius * static_cast<float>(k) / static_cast<float>(numRings + 1);
-            for (int j = 0; j < numAngles; ++j)
-            {
-                float theta = 2.0f * M_PI * static_cast<float>(j) / static_cast<float>(numAngles);
-                Eigen::Vector3f point = center + rk * (std::cos(theta) * u + std::sin(theta) * v);
-
-                Eigen::Vector2f offset(point.x() - center.x(), point.y() - center.y());
-                if (offset.dot(dirToCenter) >= 0)
-                    continue;
-
-                candidate.push_back(point.cast<double>());
-            }
+            float theta = baseAngle + static_cast<float>(j) * (M_PI / 4.0f);
+            Eigen::Vector3f point = center + rk * (std::cos(theta) * u + std::sin(theta) * v);
+            candidate.push_back(point.cast<double>());
         }
     }
 
@@ -485,7 +479,8 @@ std::vector<std::vector<Eigen::VectorXd>> DrumDetector::selectCandidates(const s
 
     for (size_t i = 0; i < drum_coeffs.size(); ++i)
     {
-        char DB = (i < 4) ? 'D' : 'B'; // D: 드럼, B: 벨류
+        // char DB = (i < 4) ? 'D' : 'B'; // D: 드럼, B: 벨류
+        char DB = 'B'; // 테스트용: 모두 벨류 후보로 생성
         std::vector<Eigen::VectorXd> candidates = selectCandidateForOneCircle(drum_coeffs[i], DB);
         std::cout << "[HitCandidates] drum " << i << ": " << candidates.size() << " candidates generated" << std::endl;
         all_candidates.push_back(candidates);
@@ -565,8 +560,8 @@ void DrumDetector::detectDrums()
     std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> accumulated_clouds;
     pcl::PointCloud<pcl::PointXYZ>::Ptr filtered_cloud(new pcl::PointCloud<pcl::PointXYZ>);
 
-    std::vector<float> angles = {30.0f, 20.0f, 0.0f, -10.0f, -20.0f, -30.0f, 10.0f};
-    // std::vector<float> angles = {0.0f};
+    // std::vector<float> angles = {30.0f, 20.0f, 0.0f, -10.0f, -20.0f, -30.0f, 10.0f};
+    std::vector<float> angles = {0.0f};
     for (float angle : angles) {
         std::cout << angle << "도 위치로 로봇 이동..." << std::endl;
         testManager.move_waist(angle);

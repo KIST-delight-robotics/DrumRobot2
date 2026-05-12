@@ -89,6 +89,7 @@ public:
 
     // DrumDetector
     std::vector<std::vector<Eigen::VectorXd>> hit_Candidates;
+    void setHitCandidates();
     
 private:
     TMotorCommandParser TParser; ///< T 모터 명령어 파서.
