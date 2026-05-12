@@ -41,7 +41,7 @@ void DrumDetector::initCamera()
     }
 
     if (depth_sensor.supports(RS2_OPTION_LASER_POWER)) {
-        depth_sensor.set_option(RS2_OPTION_LASER_POWER, 150.0f);
+        depth_sensor.set_option(RS2_OPTION_LASER_POWER, 200.0f);
         std::cout << "레이저 파워가 150으로 설정되었습니다." << std::endl;
     }
 
@@ -50,23 +50,23 @@ void DrumDetector::initCamera()
     thresh_filter.set_option(RS2_OPTION_MAX_DISTANCE, 0.6f);
     
     // Decimation Filter: 해상도를 낮춰 연산량 감소 및 기본 노이즈 완화
-    dec_filter.set_option(RS2_OPTION_FILTER_MAGNITUDE, 2.0f); 
+    dec_filter.set_option(RS2_OPTION_FILTER_MAGNITUDE, 4.0f); 
     // 기본값: 2.0 (해상도를 1/2로 줄임, 848x480 -> 424x240)
 
     // Spatial Filter: 평면(드럼 헤드)을 펴주고 엣지를 보존
-    spat_filter.set_option(RS2_OPTION_FILTER_SMOOTH_ALPHA, 1.0f); 
+    spat_filter.set_option(RS2_OPTION_FILTER_SMOOTH_ALPHA, 0.5f); 
     // 기본값: 0.5 (1.0이면 필터링 없음, 낮을수록 스무딩 강함)
     spat_filter.set_option(RS2_OPTION_FILTER_SMOOTH_DELTA, 20.0f); 
     // 기본값: 20.0 (엣지를 판단하는 임계값. 드럼 곡면을 펴기 위해 유지)
-    spat_filter.set_option(RS2_OPTION_FILTER_MAGNITUDE, 5.0f);    
+    spat_filter.set_option(RS2_OPTION_FILTER_MAGNITUDE, 3.0f);    
     // 기본값: 2.0 (필터 반복 횟수)
 
     // Temporal Filter: 프레임 누적을 통한 시간적 노이즈(깜빡임) 제거
-    temp_filter.set_option(RS2_OPTION_FILTER_SMOOTH_ALPHA, 0.2f); 
+    temp_filter.set_option(RS2_OPTION_FILTER_SMOOTH_ALPHA, 0.4f); 
     // 기본값: 0.4 (낮을수록 이전 프레임의 가중치가 높아짐. 드럼이 정지 상태라면 0.1~0.2도 좋음)
     temp_filter.set_option(RS2_OPTION_FILTER_SMOOTH_DELTA, 20.0f); 
     // 기본값: 20.0
-    temp_filter.set_option(RS2_OPTION_HOLES_FILL, 8.0f);          
+    temp_filter.set_option(RS2_OPTION_HOLES_FILL, 3.0f);          
     // 기본값: 3.0 (과거 데이터를 기반으로 구멍을 유지하는 정도)
 
     // // Hole Filling Filter: 누락된 뎁스 픽셀 메우기
@@ -116,7 +116,7 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr DrumDetector::removeOutliers(pcl::PointCloud
     pcl::StatisticalOutlierRemoval<pcl::PointXYZ> sor;
     sor.setInputCloud(pointcloud);
     sor.setMeanK(50);
-    sor.setStddevMulThresh(0.7);
+    sor.setStddevMulThresh(1.0);
     sor.filter(*filtered);
 
     return filtered;
@@ -147,7 +147,7 @@ std::vector<pcl::PointIndices> DrumDetector::extractClusters(pcl::PointCloud<pcl
     tree->setInputCloud(pointcloud);
 
     pcl::EuclideanClusterExtraction<pcl::PointXYZ> ec;
-    ec.setClusterTolerance(0.007);
+    ec.setClusterTolerance(0.008);
     ec.setMinClusterSize(300);
     ec.setMaxClusterSize(50000);
     ec.setSearchMethod(tree);
@@ -163,7 +163,7 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr DrumDetector::transform2RobotFrame(pcl::Poin
 
     Eigen::Matrix4f T_cam2robot = makeCam2RobotMatrix(waist_angle_rad);
     pcl::transformPointCloud(*pointcloud, *transformed, T_cam2robot);
-    
+
     return transformed;
 }
 
@@ -449,6 +449,7 @@ std::vector<Eigen::VectorXd> DrumDetector::selectCandidateForOneCircle(const pcl
             }
         }
     }
+    // 이거 반원 안됨. 이상한 모양임 수정필요
     else
     {
         int numRings = 3;
@@ -477,8 +478,6 @@ std::vector<Eigen::VectorXd> DrumDetector::selectCandidateForOneCircle(const pcl
     return candidate;
 }
 
-// 벨류 악기들은 후보군 선정 방식 변경해야함.
-// 타격 후보군들 시각화.
 std::vector<std::vector<Eigen::VectorXd>> DrumDetector::selectCandidates(const std::vector<pcl::ModelCoefficients::Ptr>& drum_coeffs)
 {
     std::vector<std::vector<Eigen::VectorXd>> all_candidates;
@@ -486,7 +485,7 @@ std::vector<std::vector<Eigen::VectorXd>> DrumDetector::selectCandidates(const s
 
     for (size_t i = 0; i < drum_coeffs.size(); ++i)
     {
-        char DB = (i < 5) ? 'D' : 'B'; // D: 드럼, B: 벨류
+        char DB = (i < 4) ? 'D' : 'B'; // D: 드럼, B: 벨류
         std::vector<Eigen::VectorXd> candidates = selectCandidateForOneCircle(drum_coeffs[i], DB);
         std::cout << "[HitCandidates] drum " << i << ": " << candidates.size() << " candidates generated" << std::endl;
         all_candidates.push_back(candidates);
@@ -510,8 +509,8 @@ void DrumDetector::visualizeDrums(const std::vector<pcl::PointCloud<pcl::PointXY
         {80,  255, 80 },  // green
         {80,  140, 255},  // blue
         {255, 220, 60 },  // yellow
-        {255, 120, 255},  // magenta
-        {80,  255, 240},  // cyan
+        {255, 120, 255},  // magenta(pink)
+        {80,  255, 240},  // cyan(mint)
         {255, 170, 70 },  // orange
         {180, 110, 255},  // purple
     };
@@ -566,8 +565,7 @@ void DrumDetector::detectDrums()
     std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> accumulated_clouds;
     pcl::PointCloud<pcl::PointXYZ>::Ptr filtered_cloud(new pcl::PointCloud<pcl::PointXYZ>);
 
-    // std::vector<float> angles = {30.0f, 20.0f, 10.0f, 0.0f, -10.0f, -20.0f, -30.0f};
-    std::vector<float> angles = {0.0f};
+    std::vector<float> angles = {30.0f, 20.0f, 0.0f, -10.0f, -20.0f, -30.0f, 10.0f};
     for (float angle : angles) {
         std::cout << angle << "도 위치로 로봇 이동..." << std::endl;
         testManager.move_waist(angle);
@@ -594,12 +592,13 @@ void DrumDetector::detectDrums()
         temp_cloud = convertRs2PointsToPcl(points, depth_stream);
 
         filtered_cloud = removeOutliers(temp_cloud);
-        filtered_cloud = downSampling(filtered_cloud);
+        // filtered_cloud = downSampling(filtered_cloud);
         filtered_cloud = transform2RobotFrame(filtered_cloud, c_MotorAngle[0]);
 
         accumulated_clouds.push_back(filtered_cloud);
     }
 
+    visualizeDrums(accumulated_clouds);
     bool use_registration = false;
     pcl::PointCloud<pcl::PointXYZ>::Ptr full_clouds(new pcl::PointCloud<pcl::PointXYZ>);
     if (use_registration)
@@ -612,6 +611,9 @@ void DrumDetector::detectDrums()
             *full_clouds += *c;
     }
 
+    // 5, 7 악기 너무 pointcloud가 적어서 원 검출이 힘듦.
+    full_clouds = removeOutliers(full_clouds);
+    full_clouds = downSampling(full_clouds);
     savePointsToCSV("test", full_clouds);
     visualizeDrums({full_clouds});
 
