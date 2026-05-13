@@ -1,5 +1,26 @@
 # Change Log
 
+## 2026-05-12
+- 14:22 KST (UTC+9) — 백프레셔 제어를 줄 수 기반에서 시간 기반으로 변경
+  - 수정 파일: `DrumRobot2/include/managers/PathManager.hpp`, `DrumRobot2/src/PathManager.cpp`
+  - 메모: 기존 `0.6 * 100 / bpm` 고정 line_duration 대신, 각 줄의 실제 박자(`measureMatrix(1,1)`)를 초로 환산하여 `score_time`에 누적. `MAX_LINE_AHEAD`(줄 수) → `MAX_TIME_AHEAD`(1.5초)로 변경. 0.3박 줄에서 ahead 과대 추정되던 문제 해결.
+
+- 10:36 KST (UTC+9) — L_arm3 버퍼 로그 CSV에 line 컬럼 추가 (line,measure,buffer_size)
+  - 수정 파일: `DrumRobot2/src/DrumRobot.cpp`, `DrumRobot2/include/tasks/DrumRobot.hpp`
+  - 메모: bufLogLine 카운터 추가. readMeasure()에서 measureMatrix에 행이 append될 때마다 증가. CSV가 악보 파일 누적 줄 번호 / 마디 번호 / 버퍼 크기를 함께 기록.
+
+
+- 10:31 KST (UTC+9) — L_arm3 버퍼 로그 CSV: 타임스탬프 기반 파일명으로 변경 + measure 컬럼을 measureMatrix 첫 열(마디 번호)로 수정
+  - 수정 파일: `DrumRobot2/src/DrumRobot.cpp`
+  - 메모: 기존 인덱스 기반(Larm3_buf0.csv)은 프로그램 재실행마다 덮어씌워지는 문제 있음. 타임스탬프(Larm3_buf_20260512_1031.csv) 방식으로 변경. bufLogMeasure는 measureMatrix 마지막 행의 첫 열 값(마디 번호)으로 갱신하도록 수정.
+
+- 10:09 KST (UTC+9) — L_arm3 버퍼 로그 CSV 저장 경로를 절대경로로 변경
+
+  - 수정 파일: `DrumRobot2/src/DrumRobot.cpp`
+  - 메모: 기존 상대경로(`buf_log0.csv` → `bin/` 아래 저장)에서 `/home/shy/robot_project/DrumRobot_data/Larm3_buf/buf_log<N>.csv`로 변경. 저장 자체는 정상 동작 중이었음(101KB 확인).
+
+
+
 프로젝트에서 의미 있는 변경을 할 때마다 한국시간(KST, UTC+9) 기준의 날짜, 시간, 요약을 기록합니다.
 최신 항목이 위로 오도록 추가합니다.
 

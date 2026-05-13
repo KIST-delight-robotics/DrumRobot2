@@ -270,7 +270,7 @@ private:
     /////////////////////////////////////////////////////////////////////////// Play
     int lineOfScore = 0;                    ///< 현재 악보 읽은 줄.
     const int preCreatedLine = 3;           ///< 미리 궤적을 생성할 줄
-    const int MAX_LINE_AHEAD = 3;           ///< 소비 추정 대비 최대 선행 줄 수
+    double score_time = 0.0;               ///< hasPlayStartTime 이후 누적 악보 시간 [s]
 
     std::chrono::steady_clock::time_point playStartTime;
     bool hasPlayStartTime = false;

@@ -79,6 +79,7 @@ void PathManager::initPlayStateValue()
     getVelocityRadps(true, 0.0, 0);     // 속도 계산을 위한 초기값
 
     hasPlayStartTime = false;
+    score_time = 0.0;
     gen_count = 0;
 
     initialBpm = bpmOfScore;
@@ -93,29 +94,34 @@ void PathManager::processLine(MatrixXd &measureMatrix)
     lineOfScore++;
     std::cout << "\n//////////////////////////////// Read Measure : " << lineOfScore << "\n";
 
-    // genTrajectory 전에 백프레셔 체크
-    // preCreatedLine만큼은 대기 없이 선행 생성, 이후부터 제한
-    if (startOfPlay && hasPlayStartTime)
+    // genTrajectory 전에 백프레셔 제어
+    // hasPlayStartTime 이전(선행 생성) 구간은 score_time 누적 안 함 → 자동 스킵
+    if (hasPlayStartTime && measureMatrix.rows() > 1)
     {
-        auto now = std::chrono::steady_clock::now();
-        double elapsed = std::chrono::duration<double>(now - playStartTime).count();
-        double line_duration = 0.6 * 100.0 / bpmOfScore;
-        int estimatedConsumed = (int)(elapsed / line_duration);
-        int ahead = lineOfScore - preCreatedLine - estimatedConsumed;
+        double cur_dur = measureMatrix(1, 1) * 100.0 / bpmOfScore;
+        score_time += cur_dur;
 
-        while (ahead > MAX_LINE_AHEAD)
+        double elapsed = std::chrono::duration<double>(
+            std::chrono::steady_clock::now() - playStartTime).count();
+        double max_ahead = preCreatedLine * 0.6 * 100.0 / bpmOfScore;
+        double time_ahead = score_time - elapsed;
+
+        while (time_ahead > max_ahead)
         {
             usleep(5000);
-            now = std::chrono::steady_clock::now();
-            elapsed = std::chrono::duration<double>(now - playStartTime).count();
-            line_duration = 0.6 * 100.0 / bpmOfScore;  // BPM 변경 반영
-            estimatedConsumed = (int)(elapsed / line_duration);
-            ahead = lineOfScore - preCreatedLine - estimatedConsumed;
+            elapsed = std::chrono::duration<double>(
+                std::chrono::steady_clock::now() - playStartTime).count();
+            max_ahead = preCreatedLine * 0.6 * 100.0 / bpmOfScore;  // BPM 변경 반영
+            time_ahead = score_time - elapsed;
         }
 
-        std::cout << "[BUF] line=" << lineOfScore << " consumed~" << estimatedConsumed
-                  << " ahead=" << ahead << "\n";
-        func.appendToCSV("buf_log", false, (float)lineOfScore, (float)estimatedConsumed, (float)ahead);
+        std::cout << "[BUF] line=" << lineOfScore
+                  << " score_t=" << score_time
+                  << " elapsed=" << elapsed
+                  << " ahead=" << time_ahead << "s\n";
+        func.appendToCSV("buf_log", false,
+                         (float)lineOfScore, (float)score_time,
+                         (float)elapsed, (float)time_ahead);
     }
 
     if (measureMatrix.rows() > 1)

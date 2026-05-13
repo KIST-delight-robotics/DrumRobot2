@@ -716,6 +716,27 @@ void DrumRobot::sendLoopForThread()
 
         if (cycleCounter == 0) // 5ms마다 실행
         {
+            if (state.main == Main::Play && bufLogFile.is_open())
+            {
+                auto it = motors.find("L_arm3");
+                if (it != motors.end())
+                {
+                    if (auto tMotor = dynamic_pointer_cast<TMotor>(it->second))
+                    {
+                        std::lock_guard<std::mutex> lock(tMotor->bufferMutex);
+                        size_t buf = tMotor->commandBuffer.size();
+                        bufLogPrevSize = buf;
+
+                        // measureMatrix 첫 열 = 마디 번호
+                        if (measureMatrix.rows() > 1)
+                        {
+                            bufLogMeasure = static_cast<int>(measureMatrix(measureMatrix.rows() - 1, 0));
+                        }
+
+                        bufLogFile << bufLogLine << "," << bufLogMeasure << "," << buf << "\n";
+                    }
+                }
+            }
             // fixeFlags를 확인해서 1개라도 false면 무빙, 엘스 fixed
             bool isMoving = false;
             for (const auto &fixFlag : fixFlags)
@@ -2094,6 +2115,7 @@ bool DrumRobot::readMeasure(ifstream& inputFile)
         else
         {
             measureMatrix.conservativeResize(measureMatrix.rows() + 1, measureMatrix.cols());
+            bufLogLine++;   // 악보 줄 카운터
             for (int i = 0; i < 8; i++)
             {
                 double cell_value = stod(items[i]);
@@ -2311,6 +2333,20 @@ void DrumRobot::runPlayProcess()
 
         cout << ">>> [System] 연주 시작 트리거 (Start)" << endl;
         pathManager.startOfPlay = true;
+
+        // CSV 파일 열기 (타임스탬프 기반 이름 → 덮어쓰기 방지)
+        {
+            time_t now = time(nullptr);
+            char ts[32];
+            strftime(ts, sizeof(ts), "%Y%m%d_%H%M%S", localtime(&now));
+            string csvName = string("/home/shy/robot_project/DrumRobot_data/Larm3_buf/Larm3_buf_") + ts + ".csv";
+            bufLogFile.open(csvName);
+        }
+        bufLogFile << "line,measure,buffer_size\n";
+        bufLogMeasure = 0;
+        bufLogLine    = 0;
+        bufLogPrevSize = 0;
+
     } // end of fresh-start block
 
     // =================================================================
@@ -2498,6 +2534,9 @@ void DrumRobot::runPlayProcess()
     {
         flagObj.setAddStanceFlag(FlagClass::READY); // Play 반복 시 Ready 으로 이동
     }
+
+    // CSV 파일 닫기
+    bufLogFile.close();
     
     state.main = Main::AddStance;
 

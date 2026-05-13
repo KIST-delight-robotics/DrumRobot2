@@ -220,6 +220,13 @@ private:
     PlayModifier pending_modifier;
     PlayModifier active_modifier;
 
+    // 버퍼 로그 CSV
+    std::ofstream bufLogFile;
+    int           bufLogFileIndex = 0;
+    int           bufLogMeasure   = 0;
+    int           bufLogLine      = 0;   // 악보 파일 누적 줄 번호
+    size_t        bufLogPrevSize  = 0;
+
     int play_file_index = 0;                  ///< 현재 연주 중인 악보 파일 인덱스 (pause 복원용)
     std::atomic<bool> pause_requested{false}; ///< Play 루프에서 pause 처리를 위한 플래그
     bool is_resuming = false;                 ///< true면 runPlayProcess가 저장된 위치에서 재개
