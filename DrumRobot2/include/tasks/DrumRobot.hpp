@@ -212,6 +212,12 @@ private:
         int velocity_delta = 0;
     };
 
+    struct ScoreCursor
+    {
+        int file_index = -1;
+        int measure_num = -1;
+    };
+
     MatrixXd measureMatrix;     ///< 궤적을 생성하기 위해 읽은 악보 부분 (마디)
     const double measureThreshold = 2.4;     ///< 한번에 읽을 악보의 크기. [s]
     double measureTotalTime = 0.0;     ///< 악보를 읽는 동안 누적 시간. [s]
@@ -228,6 +234,11 @@ private:
 
     int play_file_index = 0;                  ///< 현재 연주 중인 악보 파일 인덱스 (pause 복원용)
     bool is_resuming = false;                 ///< true면 runPlayProcess가 저장된 위치에서 재개
+    std::vector<ScoreCursor> measure_cursor;  ///< measureMatrix 각 행의 원본 악보 위치
+    ScoreCursor pause_point;                  ///< 감속 정지 후 재개할 악보 위치
+    bool pause_pending = false;               ///< 다음 processLine 직전에 checkpoint 저장 필요
+    const int lead_in_rows = 4;               ///< resume 전 무타격 한마디 행 수
+    const double lead_in_beat = 0.600;        ///< 무타격 한 줄의 박자값
 
     std::string txtBaseFolderPath = "../include/codes/";    // 악보 폴더 경로
     std::string wavBaseFolderPath = "../include/music/";    // 음악 폴더 경로
@@ -271,10 +282,19 @@ private:
     bool hasPlayModifier(const PlayModifier &modifier) const;
     double applyTempoScale(double bpm) const;
     double applyVelocityDelta(double value) const;
+    void resetMeasureBuffer();
+    void appendLeadIn();
+    void dropMeasureCursor();
+    void savePausePoint();
+    bool seekScoreMeasure(std::ifstream &inputFile, int measureNum);
+    void waitFixedMotion();
+    void pushResumeReady();
+    void beginResumePlay();
+    void completePauseStop();
+    bool completePauseIfDone();
     bool readMeasure(std::ifstream& inputFile);  // 한번에 읽을 악보의 크기(measureThreshold)만큼 읽으면 true 반환
     void runPlayProcess();
     void checkPlayInterrupts();   // 연주 중 pause/modifier 명령 처리
-    void pauseStateRoutine();     // Pause 상태 대기 루틴
 
     //////////////////////////////////////////////////////////////// 
 

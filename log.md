@@ -1,6 +1,56 @@
 # Change Log
 
 ## 2026-05-13
+- 17:23 KST (UTC+9) — pause Home 전환 대기 조건을 fixation 기준으로 축소
+  - 수정 파일: `DrumRobot2/src/DrumRobot.cpp`, `DrumRobot2/include/tasks/DrumRobot.hpp`
+  - 메모: `waitQueuedMotion()`이 `getBufferSize() > 0`까지 기다려 `is_fixed=true`인데도 Play 상태에 갇힐 수 있어, `waitFixedMotion()`으로 이름/조건을 줄였다. 이제 감속 정지 후 fixed만 확인하고 1초 뒤 Home AddStance로 넘어간다.
+
+## 2026-05-13
+- 17:04 KST (UTC+9) — AddStance 상태 복귀 위치 원복
+  - 수정 파일: `DrumRobot2/src/DrumRobot.cpp`
+  - 메모: pause 전용 Home 분기를 제거한 뒤에도 남아 있던 `runAddStanceProcess()`의 `state.main = Main::Ideal` 위치 변경을 원래 흐름으로 되돌렸다. AddStance는 자세 명령을 push한 뒤 기존처럼 Ideal 상태로 복귀한다.
+
+## 2026-05-13
+- 16:50 KST (UTC+9) — 미사용 Pause 상태 루틴 제거
+  - 수정 파일: `DrumRobot2/src/DrumRobot.cpp`, `DrumRobot2/include/tasks/DrumRobot.hpp`
+  - 메모: pause 후 Home 이동이 `Ideal`로 복귀하고 `resume`도 `Ideal`에서 마지막 checkpoint를 사용하도록 바뀌어, 더 이상 진입하지 않는 `pauseStateRoutine()`과 state machine의 `Main::Pause` 분기를 제거했다.
+
+## 2026-05-13
+- 16:48 KST (UTC+9) — pause 전용 상태 전환 제거 및 Ideal resume 재개로 단순화
+  - 수정 파일: `DrumRobot2/src/DrumRobot.cpp`, `DrumRobot2/include/tasks/DrumRobot.hpp`
+  - 메모: `pause_home_pending` 분기를 제거해 감속 정지 후 Home AddStance가 끝나면 기존처럼 `Ideal`로 돌아가게 했다. `Ideal` 상태의 `resume` 명령은 마지막 `pause_point` 기준 Ready 이동 후 재개하도록 연결했다.
+
+## 2026-05-13
+- 16:39 KST (UTC+9) — pause checkpoint를 마지막 점 값으로 단순화하고 Home 전환을 AddStance로 연결
+  - 수정 파일: `DrumRobot2/src/DrumRobot.cpp`, `DrumRobot2/include/tasks/DrumRobot.hpp`
+  - 메모: `has_pause_point`와 `clearPausePoint()` 기반 유효성/삭제 흐름을 제거하고, pause 시점마다 `pause_point`를 최신 checkpoint로 덮어쓰도록 단순화했다. 감속 정지 완료 후 1초 대기한 뒤 `Main::AddStance` Home 이동을 태우고, Home 완료 후 `Main::Pause`로 진입하도록 연결했다.
+
+## 2026-05-13
+- 16:23 KST (UTC+9) — 감속 중 resume 예약 방어 제거
+  - 수정 파일: `DrumRobot2/src/DrumRobot.cpp`, `DrumRobot2/include/tasks/DrumRobot.hpp`
+  - 메모: 사용 흐름을 `pause → 감속 정지 → Home → Pause → resume → Ready → checkpoint 마디 재개`로 단순화하기 위해 Play 상태에서 들어온 `resume` 예약 처리(`resume_pending`)를 제거했다. 재개는 Pause 상태에서 명시적으로 받은 `resume`만 처리한다.
+
+## 2026-05-13
+- 16:13 KST (UTC+9) — 감속 중 들어온 resume 명령 유실 방지
+  - 수정 파일: `DrumRobot2/src/DrumRobot.cpp`, `DrumRobot2/include/tasks/DrumRobot.hpp`
+  - 메모: Play 상태에서 감속 정지가 아직 Pause 전환을 끝내기 전에 `resume`이 들어오면 기존에는 `checkPlayInterrupts()`가 무시했다. `resume_pending` 예약 플래그와 공통 resume 진입 helper를 추가해 감속 완료 후 Home 경유, Ready 이동, checkpoint 재개가 이어지도록 했다.
+
+## 2026-05-13
+- 15:50 KST (UTC+9) — 감속 정지 완료 후 Play 상태에 남는 pause 전환 누락 보강
+  - 수정 파일: `DrumRobot2/src/DrumRobot.cpp`, `DrumRobot2/include/tasks/DrumRobot.hpp`
+  - 메모: `isSlowingDown`과 `endOfPlayCommand`가 이미 참인 상태를 루프 경계/파일 대기 구간에서도 감지해 `completePauseStop()`을 태우도록 helper를 추가했다. stop 후 Home 경유 자세로 이동하고 `Main::Pause`에 들어가야 resume 명령이 Pause 루틴에서 처리된다.
+
+## 2026-05-13
+- 15:22 KST (UTC+9) — pause/resume checkpoint를 파일 줄 번호에서 악보 마디번호 기준으로 변경
+  - 수정 파일: `DrumRobot2/src/DrumRobot.cpp`, `DrumRobot2/include/tasks/DrumRobot.hpp`
+  - 메모: `ScoreCursor`가 원본 row 대신 첫 번째 컬럼의 마디번호를 저장하도록 변경. resume 시 해당 마디번호의 첫 행으로 seek한 뒤 무타격 lead-in을 붙여 마디 처음부터 다시 생성한다.
+
+## 2026-05-13
+- 14:43 KST (UTC+9) — pause/resume 재개점을 processLine 기준으로 저장하고 Home/Ready 경유 재개 흐름 추가
+  - 수정 파일: `DrumRobot2/src/DrumRobot.cpp`, `DrumRobot2/include/tasks/DrumRobot.hpp`
+  - 메모: pause 수신 후 다음 `processLine()` 직전의 악보 file/row checkpoint를 저장하도록 변경. 감속 명령 소진 뒤 내부 Home 이동을 끝낸 후 Pause에 진입하고, resume 시 Ready 이동 후 무타격 4줄 lead-in을 붙여 checkpoint부터 다시 궤적을 생성한다.
+
+## 2026-05-13
 - 13:18 KST (UTC+9) — 파일 단위 fixation 대기 구간에 예전 첫 파일 latch 로직 누락 메모 명시
   - 수정 파일: `DrumRobot2/src/DrumRobot.cpp`
   - 메모: 기존 runPlayProcess에는 첫 파일에서 send loop가 명령 소비를 시작했는지만 확인하는 짧은 대기가 있었음. 현재 해당 latch 로직이 빠져 있고 fixed 복귀 대기 방식이 분할 악보/연속 재생 끊김을 만들 수 있어 TODO 주석으로 표시.

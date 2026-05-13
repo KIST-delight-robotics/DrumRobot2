@@ -677,7 +677,7 @@ void DrumRobot::stateMachine()
             }
             case Main::Pause:
             {
-                pauseStateRoutine();
+                state.main = Main::Ideal;
                 break;
             }
         }
@@ -1389,8 +1389,7 @@ void DrumRobot::processInput(const string &input, string flagName)
     }
     else if (cmd == "resume")
     {
-        // Idle 상태에서 resume 요청 — 일시정지 상태가 아니므로 무시
-        cout << ">>> [Resume] 현재 일시정지 상태가 아닙니다." << endl;
+        beginResumePlay();
     }
     else if (input == "s" && flagName == "isHome")
     {
@@ -1521,8 +1520,7 @@ void DrumRobot::runAddStanceProcess()
 
 void DrumRobot::initializePlayState()
 {
-    measureMatrix.resize(1, 9);
-    measureMatrix = MatrixXd::Zero(1, 9);
+    resetMeasureBuffer();
 
     endOfScore = false;
     measureTotalTime = 0.0;     ///< 악보 총 누적 시간. [s]
@@ -2065,6 +2063,211 @@ double DrumRobot::applyVelocityDelta(double value) const
     return next_value;
 }
 
+void DrumRobot::resetMeasureBuffer()
+{
+    measureMatrix.resize(1, 9);
+    measureMatrix = MatrixXd::Zero(1, 9);
+
+    measure_cursor.clear();
+    ScoreCursor cursor;
+    measure_cursor.push_back(cursor);
+}
+
+void DrumRobot::appendLeadIn()
+{
+    for (int i = 0; i < lead_in_rows; i++)
+    {
+        int row_num = measureMatrix.rows();
+        measureMatrix.conservativeResize(row_num + 1, measureMatrix.cols());
+        measureMatrix.row(row_num).setZero();
+        measureMatrix(row_num, 0) = 0.0;
+        measureMatrix(row_num, 1) = lead_in_beat;
+
+        measureTotalTime += lead_in_beat * 100.0 / pathManager.bpmOfScore;
+        measureMatrix(row_num, 8) = measureTotalTime;
+
+        ScoreCursor cursor;
+        measure_cursor.push_back(cursor);
+    }
+}
+
+void DrumRobot::dropMeasureCursor()
+{
+    if (!measure_cursor.empty())
+    {
+        measure_cursor.erase(measure_cursor.begin());
+    }
+
+    while (measure_cursor.size() > static_cast<size_t>(measureMatrix.rows()))
+    {
+        measure_cursor.pop_back();
+    }
+
+    while (measure_cursor.size() < static_cast<size_t>(measureMatrix.rows()))
+    {
+        ScoreCursor cursor;
+        measure_cursor.push_back(cursor);
+    }
+}
+
+void DrumRobot::savePausePoint()
+{
+    if (!pause_pending)
+    {
+        return;
+    }
+
+    for (int i = 0; i < static_cast<int>(measure_cursor.size()); i++)
+    {
+        ScoreCursor cursor = measure_cursor[i];
+        if (cursor.file_index < 0 || cursor.measure_num < 0)
+        {
+            continue;
+        }
+
+        pause_point = cursor;
+        pause_pending = false;
+        cout << ">>> [Pause] 재개 checkpoint 저장: file="
+             << pause_point.file_index << ", measure=" << pause_point.measure_num << endl;
+        return;
+    }
+}
+
+bool DrumRobot::seekScoreMeasure(ifstream &inputFile, int measureNum)
+{
+    if (measureNum < 0)
+    {
+        return false;
+    }
+
+    string row;
+
+    while (inputFile.good())
+    {
+        streampos row_pos = inputFile.tellg();
+        if (!getline(inputFile, row))
+        {
+            break;
+        }
+
+        istringstream iss(row);
+        string item;
+        vector<string> items;
+
+        while (getline(iss, item, '\t'))
+        {
+            item = trimWhitespace(item);
+            items.push_back(item);
+        }
+
+        if (items.empty())
+        {
+            continue;
+        }
+
+        if (items[0] == "bpm")
+        {
+            double score_bpm = stod(items[1]);
+            pathManager.bpmOfScore = applyTempoScale(score_bpm);
+            continue;
+        }
+
+        if (items[0] == "end" || stod(items[0]) < 0)
+        {
+            return false;
+        }
+
+        int row_measure = static_cast<int>(stod(items[0]));
+        if (row_measure == measureNum)
+        {
+            inputFile.clear();
+            inputFile.seekg(row_pos);
+            return true;
+        }
+
+        if (row_measure > measureNum)
+        {
+            return false;
+        }
+    }
+
+    return false;
+}
+
+void DrumRobot::waitFixedMotion()
+{
+    if (allMotorsUnConected)
+    {
+        return;
+    }
+
+    chrono::steady_clock::time_point start_deadline =
+        chrono::steady_clock::now() + chrono::milliseconds(500);
+
+    while (chrono::steady_clock::now() < start_deadline)
+    {
+        if (!flagObj.getFixationFlag())
+        {
+            break;
+        }
+
+        usleep(1000);
+    }
+
+    while (!flagObj.getFixationFlag() && !allMotorsUnConected)
+    {
+        usleep(1000);
+    }
+}
+
+void DrumRobot::pushResumeReady()
+{
+    flagObj.setAddStanceFlag(FlagClass::READY);
+    pathManager.genAndPushAddStance(flagObj.getAddStanceFlag());
+    waitFixedMotion();
+}
+
+void DrumRobot::beginResumePlay()
+{
+    cout << ">>> [Resume] Ready 자세 이동 후 연주를 재개합니다. (file="
+         << pause_point.file_index << ", measure=" << pause_point.measure_num << ")" << endl;
+    agentSocket.closeGate();
+    pathManager.isSlowingDown = false;
+    pathManager.endOfPlayCommand = false;
+    if (pathManager.initialBpm > 0.0)
+    {
+        pathManager.bpmOfScore = pathManager.initialBpm;
+    }
+
+    pushResumeReady();
+    is_resuming = true;
+    state.main = Main::Play;
+}
+
+void DrumRobot::completePauseStop()
+{
+    waitFixedMotion();
+
+    cout << ">>> [Play] 감속 정지 완료. 저장 위치: file="
+         << pause_point.file_index << ", measure=" << pause_point.measure_num << endl;
+    cout << ">>> [Pause] 1초 후 Home 자세로 이동합니다." << endl;
+
+    sleep(1);
+    flagObj.setAddStanceFlag(FlagClass::HOME);
+    state.main = Main::AddStance;
+}
+
+bool DrumRobot::completePauseIfDone()
+{
+    if (pathManager.isSlowingDown && pathManager.endOfPlayCommand)
+    {
+        completePauseStop();
+        return true;
+    }
+
+    return false;
+}
+
 bool DrumRobot::readMeasure(ifstream& inputFile)
 {
     // 이인우: stod 예외처리 해줘야 함
@@ -2114,8 +2317,10 @@ bool DrumRobot::readMeasure(ifstream& inputFile)
         }
         else
         {
-            measureMatrix.conservativeResize(measureMatrix.rows() + 1, measureMatrix.cols());
+            int row_num = measureMatrix.rows();
+            measureMatrix.conservativeResize(row_num + 1, measureMatrix.cols());
             bufLogLine++;   // 악보 줄 카운터
+
             for (int i = 0; i < 8; i++)
             {
                 double cell_value = stod(items[i]);
@@ -2124,15 +2329,20 @@ bool DrumRobot::readMeasure(ifstream& inputFile)
                     cell_value = applyVelocityDelta(cell_value);
                 }
 
-                measureMatrix(measureMatrix.rows() - 1, i) = cell_value;
+                measureMatrix(row_num, i) = cell_value;
             }
 
+            ScoreCursor cursor;
+            cursor.file_index = play_file_index;
+            cursor.measure_num = static_cast<int>(measureMatrix(row_num, 0));
+            measure_cursor.push_back(cursor);
+
             // total time 누적
-            measureTotalTime += measureMatrix(measureMatrix.rows() - 1, 1) * 100.0 / pathManager.bpmOfScore;
-            measureMatrix(measureMatrix.rows() - 1, 8) = measureTotalTime;
+            measureTotalTime += measureMatrix(row_num, 1) * 100.0 / pathManager.bpmOfScore;
+            measureMatrix(row_num, 8) = measureTotalTime;
 
             // timeSum 누적
-            timeSum += measureMatrix(measureMatrix.rows() - 1, 1);
+            timeSum += measureMatrix(row_num, 1);
 
             // timeSum이 threshold를 넘으면 true 반환
             if (timeSum > measureThreshold)
@@ -2167,6 +2377,10 @@ void DrumRobot::checkPlayInterrupts()
         if (command == "pause")
         {
             cout << ">>> [Play] 감속 정지 요청." << endl;
+            if (!pathManager.isSlowingDown)
+            {
+                pause_pending = true;
+            }
             pathManager.isSlowingDown = true;
         }
         else if (handleModifier(command))
@@ -2179,85 +2393,31 @@ void DrumRobot::checkPlayInterrupts()
     }
 }
 
-void DrumRobot::pauseStateRoutine()
-{
-    cout << ">>> [Pause] 일시정지 상태. 'resume' 또는 'h' 명령을 기다립니다." << endl;
-    arduino.setHeadLED(Arduino::IDLE);
-    agentSocket.openGate(); // Pause 중에는 look/gesture/modifier 등 명령 수신 허용
-
-    while (state.main == Main::Pause)
-    {
-        string input = agentSocket.popCommand();
-
-        if (!input.empty())
-        {
-            vector<string> commands = agentAction.unpackCommands(input);
-            for (const string& command : commands)
-            {
-                if (command == "resume")
-                {
-                    cout << ">>> [Resume] 연주를 재개합니다. (파일 인덱스: " << play_file_index << ")" << endl;
-                    agentSocket.closeGate(); // 연주 재개 시 gate 다시 닫기
-                    pathManager.isSlowingDown = false;
-                    if (pathManager.initialBpm > 0.0)
-                    {
-                        pathManager.bpmOfScore = pathManager.initialBpm;
-                    }
-                    is_resuming = true;
-                    state.main = Main::Play;
-                    return;
-                }
-                else if (command == "h")
-                {
-                    cout << ">>> [Pause->Home] 홈으로 복귀합니다." << endl;
-                    play_file_index = 0;
-                    is_resuming = false;
-                    endOfScore = false;
-                    flagObj.setAddStanceFlag(FlagClass::HOME);
-                    agentSocket.openGate();
-                    state.main = Main::AddStance;
-                    return;
-                }
-                else if (handleModifier(command))
-                {
-                    // Pause 중 modifier 즉시 적용 — resume 후 readMeasure에서 반영됨
-                    active_modifier = pending_modifier;
-                    pending_modifier = PlayModifier();
-                    cout << ">>> [Pause] modifier 적용. 재개 시 반영됩니다." << endl;
-                }
-                else
-                {
-                    // look/gesture/move 등 액션 명령 처리
-                    agentAction.executeCommand(command);
-                }
-            }
-        }
-
-        usleep(10000); // 10ms
-    }
-}
-
 void DrumRobot::runPlayProcess()
 {
     string txtPath;
     string txtIndexPath;
+    bool need_resume_seek = false;
+    int resume_file = -1;
+    int resume_measure = -1;
 
     if (is_resuming)
     {
         // -------------------------------------------------------
-        // Resume 경로: 저장된 play_file_index에서 재개
+        // Resume 경로: 저장된 processLine checkpoint에서 재개
         // -------------------------------------------------------
+        resume_file = pause_point.file_index;
+        resume_measure = pause_point.measure_num;
+        play_file_index = resume_file;
+        need_resume_seek = true;
+
         is_resuming = false;
-        endOfScore = false;
-        measureTotalTime = 0.0;
-        measureMatrix.resize(1, 9);
-        measureMatrix = MatrixXd::Zero(1, 9);
+        initializePlayState();
         txtPath = txtBaseFolderPath + nextSongCode;
         pathManager.startOfPlay = true;
-        pathManager.endOfPlayCommand = false; // [수정] Resume 시 초기화 누락 방지
         arduino.setHeadLED(Arduino::PLAYING);
-        cout << ">>> [Resume] '" << nextSongCode << "' 파일 인덱스 "
-             << play_file_index << " 에서 재개합니다." << endl;
+        cout << ">>> [Resume] '" << nextSongCode << "' file=" << resume_file
+             << ", measure=" << resume_measure << " 에서 lead-in 후 재개합니다." << endl;
     }
     else
     {
@@ -2265,6 +2425,7 @@ void DrumRobot::runPlayProcess()
         // Fresh start 경로: 처음부터 연주
         // -------------------------------------------------------
         play_file_index = 0;
+        pause_pending = false;
 
         // 1. 초기화
         initializePlayState();
@@ -2306,7 +2467,6 @@ void DrumRobot::runPlayProcess()
         }
 
         // (4) 연주 설정 강제 주입
-        bool useMagenta = false;
         repeatNum = 1;
         currentIterations = 1;
 
@@ -2356,8 +2516,17 @@ void DrumRobot::runPlayProcess()
     // =================================================================
     while (!endOfScore)
     {
+        if (completePauseIfDone())
+        {
+            return;
+        }
+
         // 연주 중 인터럽트(pause/modifier) 처리
         checkPlayInterrupts();
+        if (completePauseIfDone())
+        {
+            return;
+        }
 
         ifstream inputFile;
         txtIndexPath = txtPath + to_string(play_file_index) + ".txt";
@@ -2373,20 +2542,45 @@ void DrumRobot::runPlayProcess()
             }
             else
             {
+                if (need_resume_seek && play_file_index == resume_file)
+                {
+                    if (!seekScoreMeasure(inputFile, resume_measure))
+                    {
+                        cout << ">>> [Resume] checkpoint 위치를 찾을 수 없습니다: "
+                             << txtIndexPath << " measure=" << resume_measure << endl;
+                        inputFile.close();
+                        state.main = Main::Error;
+                        return;
+                    }
+
+                    pathManager.initialBpm = pathManager.bpmOfScore;
+                    appendLeadIn();
+                    need_resume_seek = false;
+
+                    cout << ">>> [Resume] 무타격 lead-in " << lead_in_rows
+                         << "줄을 추가했습니다." << endl;
+                }
+
                 while(readMeasure(inputFile))    // 한마디 분량 미만으로 남을 때까지 궤적/명령 생성
                 {
                     checkPlayInterrupts();
 
+                    if (pathManager.isSlowingDown)
+                    {
+                        savePausePoint();
+                    }
+
+                    int rows_before = measureMatrix.rows();
                     pathManager.processLine(measureMatrix);
+                    if (measureMatrix.rows() < rows_before)
+                    {
+                        dropMeasureCursor();
+                    }
+
                     if (pathManager.isSlowingDown && pathManager.endOfPlayCommand)
                     {
                         inputFile.close();
-                        while (!flagObj.getFixationFlag() && !allMotorsUnConected)
-                        {
-                            usleep(1000);
-                        }
-                        cout << ">>> [Play] 감속 정지 완료. 저장 파일 인덱스: " << play_file_index << endl;
-                        state.main = Main::Pause;
+                        completePauseIfDone();
                         return;
                     }
 
@@ -2396,21 +2590,33 @@ void DrumRobot::runPlayProcess()
                     }
                 }
 
+                if (completePauseIfDone())
+                {
+                    inputFile.close();
+                    return;
+                }
+
                 // 마지막 파일이면 잔여 명령도 여기서 생성
                 if (endOfScore)
                 {
                     while (!pathManager.endOfPlayCommand)
                     {
+                        if (pathManager.isSlowingDown)
+                        {
+                            savePausePoint();
+                        }
+
+                        int rows_before = measureMatrix.rows();
                         pathManager.processLine(measureMatrix);
+                        if (measureMatrix.rows() < rows_before)
+                        {
+                            dropMeasureCursor();
+                        }
+
                         if (pathManager.isSlowingDown && pathManager.endOfPlayCommand)
                         {
                             inputFile.close();
-                            while (!flagObj.getFixationFlag() && !allMotorsUnConected)
-                            {
-                                usleep(1000);
-                            }
-                            cout << ">>> [Play] 감속 정지 완료. 저장 파일 인덱스: " << play_file_index << endl;
-                            state.main = Main::Pause;
+                            completePauseIfDone();
                             return;
                         }
 
@@ -2419,6 +2625,12 @@ void DrumRobot::runPlayProcess()
                             return;
                         }
                     }
+                }
+
+                if (completePauseIfDone())
+                {
+                    inputFile.close();
+                    return;
                 }
 
                 inputFile.close(); // 파일 닫기
@@ -2430,7 +2642,17 @@ void DrumRobot::runPlayProcess()
                 // 파일 단위 실행 완료 대기 - 버퍼가 소진될 때까지 기다림
                 while (!flagObj.getFixationFlag() && !allMotorsUnConected)
                 {
+                    if (completePauseIfDone())
+                    {
+                        return;
+                    }
+
                     usleep(1000);
+                }
+
+                if (completePauseIfDone())
+                {
+                    return;
                 }
 
                 play_file_index++; // 다음 파일 열 준비
