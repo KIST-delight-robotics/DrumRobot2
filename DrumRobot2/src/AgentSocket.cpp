@@ -207,14 +207,14 @@ void AgentSocket::runServerLoop() {
                     read_json = false;
                 }
 
-                // ★ 안전장치: 셔터(게이트)가 닫혀있으면 명령 폐기
+                // ★ 안전장치: 게이트가 닫혀있으면 명령 폐기
                 // 단, pause/resume/h/modifier 같은 인터럽트 명령은 gate 무시하고 통과
                 if (!isGateOpen.load() && !isInterruptCmd(cmd_text)) {
                     std::cout << "[Safeguard] 로봇 보호 상태: 명령 폐기 -> " << cmd_text << std::endl;
                     continue;
                 }
 
-                // ★ 중요: 큐에 넣을 때는 자물쇠(Mutex) 잠그기
+                // ★ 중요: 큐에 넣을 때는 Mutex
                 std::lock_guard<std::mutex> lock(queueMutex);
                 commandQueue.push(cmd_text);
                 

@@ -1,5 +1,25 @@
 # Change Log
 
+## 2026-05-13
+- 13:18 KST (UTC+9) — 파일 단위 fixation 대기 구간에 예전 첫 파일 latch 로직 누락 메모 명시
+  - 수정 파일: `DrumRobot2/src/DrumRobot.cpp`
+  - 메모: 기존 runPlayProcess에는 첫 파일에서 send loop가 명령 소비를 시작했는지만 확인하는 짧은 대기가 있었음. 현재 해당 latch 로직이 빠져 있고 fixed 복귀 대기 방식이 분할 악보/연속 재생 끊김을 만들 수 있어 TODO 주석으로 표시.
+
+## 2026-05-13
+- 12:39 KST (UTC+9) — 감속 정지와 무관한 Play 루프 인터럽트 체크 축소
+  - 수정 파일: `DrumRobot2/src/DrumRobot.cpp`
+  - 메모: pause 감속 적용 지점은 파일 루프 시작과 `readMeasure()` 처리 루프로 한정. EOF 잔여 생성 루프와 fixation 대기 루프의 `checkPlayInterrupts()` 호출은 실제 감속 적용 의미가 약해 제거.
+
+## 2026-05-13
+- 11:23 KST (UTC+9) — 감속 정지 단위를 한 줄 처리 단위로 변경하고 완료 시 Pause 전환 연결
+  - 수정 파일: `DrumRobot2/include/managers/PathManager.hpp`, `DrumRobot2/src/PathManager.cpp`, `DrumRobot2/src/DrumRobot.cpp`
+  - 메모: pause 이후 `processLine()` 한 번마다 `initialBpm`의 10%씩 BPM을 낮추도록 변경. 최저 BPM 도달 시 Play 루프가 버퍼 소진을 기다린 뒤 Pause 상태로 전환하도록 최소 경로 추가. 기존 0.6 누적/마디 기준 감속 상태는 제거.
+
+## 2026-05-13
+- 10:53 KST (UTC+9) — 연주 루프의 미사용 `pause_requested` 즉시 정지 분기 제거
+  - 수정 파일: `DrumRobot2/include/tasks/DrumRobot.hpp`, `DrumRobot2/src/DrumRobot.cpp`
+  - 메모: 현재 pause 명령은 `checkPlayInterrupts()`의 감속 정지 경로로 처리되므로, true로 설정되지 않는 `pause_requested`와 즉시 버퍼 비움 잔여 주석을 정리. Magenta/키보드/sync 경로는 보존.
+
 ## 2026-05-12
 - 14:22 KST (UTC+9) — 백프레셔 제어를 줄 수 기반에서 시간 기반으로 변경
   - 수정 파일: `DrumRobot2/include/managers/PathManager.hpp`, `DrumRobot2/src/PathManager.cpp`

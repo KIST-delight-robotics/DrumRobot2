@@ -84,8 +84,6 @@ void PathManager::initPlayStateValue()
 
     initialBpm = bpmOfScore;
     isSlowingDown = false;
-    slowDownAccum = 0.0;
-    stopMeasure = -1;
     currentMeasure = 0;
 }
 
@@ -128,22 +126,19 @@ void PathManager::processLine(MatrixXd &measureMatrix)
     {
         currentMeasure = (int)measureMatrix(0, 0);
 
-        if (isSlowingDown && currentMeasure != 0 && currentMeasure > stopMeasure)
+        if (isSlowingDown && !endOfPlayCommand && currentMeasure != 0)
         {
-            slowDownAccum += measureMatrix(1, 1);
-            while (slowDownAccum >= 0.6)
-            {
-                bpmOfScore -= initialBpm * 0.1;
-                slowDownAccum -= 0.6;
+            bpmOfScore -= initialBpm * 0.1;
 
-                if (bpmOfScore <= initialBpm * 0.1)
-                {
-                    bpmOfScore = initialBpm * 0.1;
-                    endOfPlayCommand = true;
-                    break;
-                }
+            if (bpmOfScore <= initialBpm * 0.1)
+            {
+                bpmOfScore = initialBpm * 0.1;
+                endOfPlayCommand = true;
             }
-            std::cout << "[FADE] measure=" << currentMeasure << " bpm=" << bpmOfScore << "\n";
+
+            std::cout << "[FADE] line=" << lineOfScore
+                      << " measure=" << currentMeasure
+                      << " bpm=" << bpmOfScore << "\n";
         }
 
         // avoidCollision(measureMatrix);  // 충돌 회피

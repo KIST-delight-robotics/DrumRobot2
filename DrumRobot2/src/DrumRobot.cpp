@@ -2168,7 +2168,6 @@ void DrumRobot::checkPlayInterrupts()
         {
             cout << ">>> [Play] 감속 정지 요청." << endl;
             pathManager.isSlowingDown = true;
-            pathManager.stopMeasure = pathManager.currentMeasure;
         }
         else if (handleModifier(command))
         {
@@ -2199,6 +2198,11 @@ void DrumRobot::pauseStateRoutine()
                 {
                     cout << ">>> [Resume] 연주를 재개합니다. (파일 인덱스: " << play_file_index << ")" << endl;
                     agentSocket.closeGate(); // 연주 재개 시 gate 다시 닫기
+                    pathManager.isSlowingDown = false;
+                    if (pathManager.initialBpm > 0.0)
+                    {
+                        pathManager.bpmOfScore = pathManager.initialBpm;
+                    }
                     is_resuming = true;
                     state.main = Main::Play;
                     return;
@@ -2355,14 +2359,6 @@ void DrumRobot::runPlayProcess()
         // 연주 중 인터럽트(pause/modifier) 처리
         checkPlayInterrupts();
 
-        if (pause_requested.load())
-        {
-            pause_requested = false;
-            cout << ">>> [Play] 일시정지. 저장 파일 인덱스: " << play_file_index << endl;
-            state.main = Main::Pause;
-            return; // gate는 닫힌 채 유지 — pauseStateRoutine에서 처리
-        }
-
         ifstream inputFile;
         txtIndexPath = txtPath + to_string(play_file_index) + ".txt";
         inputFile.open(txtIndexPath); // 파일 열기
@@ -2377,20 +2373,22 @@ void DrumRobot::runPlayProcess()
             }
             else
             {
-                bool mid_file_pause = false;
                 while(readMeasure(inputFile))    // 한마디 분량 미만으로 남을 때까지 궤적/명령 생성
                 {
                     checkPlayInterrupts();
-                    if (pause_requested.load())
-                    {
-                        pause_requested = false;
-                        mid_file_pause = true;
-                        cout << ">>> [Play] 일시정지 요청. 즉시 정지합니다." << endl;
-                        // pathManager.clearCommandBuffers();  // 감속 정지로 대체
-                        break;
-                    }
 
                     pathManager.processLine(measureMatrix);
+                    if (pathManager.isSlowingDown && pathManager.endOfPlayCommand)
+                    {
+                        inputFile.close();
+                        while (!flagObj.getFixationFlag() && !allMotorsUnConected)
+                        {
+                            usleep(1000);
+                        }
+                        cout << ">>> [Play] 감속 정지 완료. 저장 파일 인덱스: " << play_file_index << endl;
+                        state.main = Main::Pause;
+                        return;
+                    }
 
                     if (state.main == Main::Error) {
                         lastErrorReason = "자세 계산 실패! 역기구학(IK) 계산 결과 팔이 닿지 않거나 꼬이는 궤적입니다.";
@@ -2398,30 +2396,24 @@ void DrumRobot::runPlayProcess()
                     }
                 }
 
-                if (mid_file_pause)
-                {
-                    inputFile.close();
-                    cout << ">>> [Play] 일시정지. 저장 파일 인덱스: " << play_file_index << endl;
-                    state.main = Main::Pause;
-                    return;
-                }
-
                 // 마지막 파일이면 잔여 명령도 여기서 생성
                 if (endOfScore)
                 {
                     while (!pathManager.endOfPlayCommand)
                     {
-                        checkPlayInterrupts();
-                        if (pause_requested.load())
+                        pathManager.processLine(measureMatrix);
+                        if (pathManager.isSlowingDown && pathManager.endOfPlayCommand)
                         {
-                            pause_requested = false;
-                            mid_file_pause = true;
-                            cout << ">>> [Play] 일시정지 요청. 즉시 정지합니다." << endl;
-                            // pathManager.clearCommandBuffers();  // 감속 정지로 대체
-                            break;
+                            inputFile.close();
+                            while (!flagObj.getFixationFlag() && !allMotorsUnConected)
+                            {
+                                usleep(1000);
+                            }
+                            cout << ">>> [Play] 감속 정지 완료. 저장 파일 인덱스: " << play_file_index << endl;
+                            state.main = Main::Pause;
+                            return;
                         }
 
-                        pathManager.processLine(measureMatrix);
                         if (state.main == Main::Error) {
                             lastErrorReason = "자세 계산 실패! 역기구학(IK) 계산 결과 팔이 닿지 않거나 꼬이는 궤적입니다.";
                             return;
@@ -2429,37 +2421,16 @@ void DrumRobot::runPlayProcess()
                     }
                 }
 
-                if (mid_file_pause)
-                {
-                    inputFile.close();
-                    cout << ">>> [Play] 일시정지. 저장 파일 인덱스: " << play_file_index << endl;
-                    state.main = Main::Pause;
-                    return;
-                }
-
                 inputFile.close(); // 파일 닫기
 
-                // 파일 단위 실행 완료 대기 — 버퍼가 소진될 때까지 기다린 뒤 pause 여부 판단
-                bool file_pause = false;
+                // TODO: 예전 runPlayProcess의 첫 파일 latch 로직이 현재 여기에서 빠져 있다.
+                // 예전에는 send loop가 command를 집어 fixed -> moving으로 바꾸는지만 짧게 확인했다.
+                // 현재는 파일 단위로 fixed 복귀를 기다리므로, 분할 악보/연속 재생에서 끊김이
+                // 생기면 이 구간을 다시 검토한다.
+                // 파일 단위 실행 완료 대기 - 버퍼가 소진될 때까지 기다림
                 while (!flagObj.getFixationFlag() && !allMotorsUnConected)
                 {
-                    checkPlayInterrupts();
-                    if (pause_requested.load())
-                    {
-                        pause_requested = false;
-                        file_pause = true;
-                        cout << ">>> [Play] 일시정지 요청. 즉시 정지합니다." << endl;
-                        // pathManager.clearCommandBuffers();  // 감속 정지로 대체
-                        break;
-                    }
                     usleep(1000);
-                }
-
-                if (file_pause)
-                {
-                    cout << ">>> [Play] 일시정지. 저장 파일 인덱스: " << play_file_index << endl;
-                    state.main = Main::Pause;
-                    return;
                 }
 
                 play_file_index++; // 다음 파일 열 준비

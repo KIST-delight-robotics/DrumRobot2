@@ -15,7 +15,6 @@
 #include <iomanip>
 #include <iostream>
 #include <fstream>
-#include <atomic>
 #include <cmath>
 #include <chrono>
 #include <SFML/Audio.hpp>
@@ -228,7 +227,6 @@ private:
     size_t        bufLogPrevSize  = 0;
 
     int play_file_index = 0;                  ///< 현재 연주 중인 악보 파일 인덱스 (pause 복원용)
-    std::atomic<bool> pause_requested{false}; ///< Play 루프에서 pause 처리를 위한 플래그
     bool is_resuming = false;                 ///< true면 runPlayProcess가 저장된 위치에서 재개
 
     std::string txtBaseFolderPath = "../include/codes/";    // 악보 폴더 경로

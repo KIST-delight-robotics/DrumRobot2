@@ -67,9 +67,7 @@ public:
     bool startOfPlay = false;
     double bpmOfScore = 100.0;      ///< 악보의 BPM 정보.
     bool isSlowingDown = false;
-    double slowDownAccum = 0.0;
     double initialBpm = 0.0;
-    int stopMeasure = -1;
     int currentMeasure = 0;
     string maxonMode = "unknown";
     int Kp, Kd;
