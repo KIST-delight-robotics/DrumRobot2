@@ -114,15 +114,13 @@ _PAUSE_KEYWORDS = {"멈춰", "멈춰봐", "잠깐", "스톱", "정지", "그만"
 _RESUME_KEYWORDS = {"다시", "계속", "이어서", "재개", "resume"}
 
 
-def _detect_play_interrupt(user_text: str, adapted_state: dict):
+def _detect_play_interrupt(user_text: str):
     """
-    연주 중(state==2) pause/resume 발화를 감지한다.
+    pause/resume 발화를 감지한다.
     LLM 없이 키워드 매칭으로 직접 처리해 지연을 줄인다.
 
     반환값: "pause" | "resume" | None
     """
-    if adapted_state.get("state") != 2:
-        return None
     text = user_text.strip()
     if any(kw in text for kw in _PAUSE_KEYWORDS):
         return "pause"
@@ -162,10 +160,10 @@ def run_brain_turn(
     # pipeline/prefilter.py 로 분리하는 것이 맞다.
     # ===========================================================
     # Shortcut path:
-    # 연주 중 pause/resume 발화는 LLM latency 없이 즉시 처리한다.
+    # pause/resume 발화는 LLM latency 없이 즉시 처리한다.
     # C++ gate 는 이미 pause/resume 을 interrupt 명령으로 허용하므로
     # 여기서 빠르게 내보내는 것이 사용자 체감에 직접적 영향을 준다.
-    play_interrupt = _detect_play_interrupt(user_text, adapted_state)
+    play_interrupt = _detect_play_interrupt(user_text)
     if play_interrupt is not None:
         speech_map = {"pause": "잠깐 멈출게요.", "resume": "다시 연주할게요."}
         classifier_result = {
@@ -178,7 +176,7 @@ def run_brain_turn(
             "skills": [],
             "op_cmd": [play_interrupt],
             "speech": speech_map[play_interrupt],
-            "reason": f"연주 중 {play_interrupt} 키워드 감지 → 직접 처리",
+            "reason": f"{play_interrupt} 키워드 감지 → 직접 처리",
         }
         validated_plan = build_validated_plan(
             user_text=user_text,

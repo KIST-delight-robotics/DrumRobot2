@@ -2168,7 +2168,9 @@ bool DrumRobot::seekScoreMeasure(ifstream &inputFile, int measureNum)
         if (items[0] == "bpm")
         {
             double score_bpm = stod(items[1]);
-            pathManager.bpmOfScore = applyTempoScale(score_bpm);
+            double play_bpm = applyTempoScale(score_bpm);
+            pathManager.bpmOfScore = play_bpm;
+            pathManager.initialBpm = play_bpm;
             continue;
         }
 
@@ -2234,10 +2236,6 @@ void DrumRobot::beginResumePlay()
     agentSocket.closeGate();
     pathManager.isSlowingDown = false;
     pathManager.endOfPlayCommand = false;
-    if (pathManager.initialBpm > 0.0)
-    {
-        pathManager.bpmOfScore = pathManager.initialBpm;
-    }
 
     pushResumeReady();
     is_resuming = true;
@@ -2247,6 +2245,7 @@ void DrumRobot::beginResumePlay()
 void DrumRobot::completePauseStop()
 {
     waitFixedMotion();
+    pathManager.clearCommandBuffers();
 
     cout << ">>> [Play] 감속 정지 완료. 저장 위치: file="
          << pause_point.file_index << ", measure=" << pause_point.measure_num << endl;
@@ -2255,6 +2254,7 @@ void DrumRobot::completePauseStop()
     sleep(1);
     flagObj.setAddStanceFlag(FlagClass::HOME);
     state.main = Main::AddStance;
+    agentSocket.openGate();
 }
 
 bool DrumRobot::completePauseIfDone()
@@ -2302,7 +2302,9 @@ bool DrumRobot::readMeasure(ifstream& inputFile)
         {
             // cout << "\n bpm : " << pathManager.bpmOfScore;
             double score_bpm = stod(items[1]);
-            pathManager.bpmOfScore = applyTempoScale(score_bpm);
+            double play_bpm = applyTempoScale(score_bpm);
+            pathManager.bpmOfScore = play_bpm;
+            pathManager.initialBpm = play_bpm;
             // cout << " -> " << pathManager.bpmOfScore << "\n";
         }
         else if (items[0] == "end")                     // 종료 코드
@@ -2477,7 +2479,6 @@ void DrumRobot::runPlayProcess()
         if (pathManager.bpmOfScore <= 0) {
             pathManager.bpmOfScore = 100.0;
         }
-        pathManager.bpmOfScore = applyTempoScale(pathManager.bpmOfScore);
 
     // 2. 모터 제어 모드 확정 (CSP: 위치 제어)
     // (InitializePos에서 이미 했지만, 안전을 위해 확실히 고정)
@@ -2553,7 +2554,6 @@ void DrumRobot::runPlayProcess()
                         return;
                     }
 
-                    pathManager.initialBpm = pathManager.bpmOfScore;
                     appendLeadIn();
                     need_resume_seek = false;
 
@@ -2735,7 +2735,6 @@ void DrumRobot::runPlayProcess()
 
     // 게이트 개방
     agentSocket.openGate();
-    cout << " [System] 연주 종료. 명령 수신 게이트 개방." << endl;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

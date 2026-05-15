@@ -237,7 +237,7 @@ private:
     std::vector<ScoreCursor> measure_cursor;  ///< measureMatrix 각 행의 원본 악보 위치
     ScoreCursor pause_point;                  ///< 감속 정지 후 재개할 악보 위치
     bool pause_pending = false;               ///< 다음 processLine 직전에 checkpoint 저장 필요
-    const int lead_in_rows = 4;               ///< resume 전 무타격 한마디 행 수
+    const int lead_in_rows = 8;               ///< resume 전 무타격 한마디 행 수
     const double lead_in_beat = 0.600;        ///< 무타격 한 줄의 박자값
 
     std::string txtBaseFolderPath = "../include/codes/";    // 악보 폴더 경로

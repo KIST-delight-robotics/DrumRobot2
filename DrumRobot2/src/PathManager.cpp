@@ -82,7 +82,6 @@ void PathManager::initPlayStateValue()
     score_time = 0.0;
     gen_count = 0;
 
-    initialBpm = bpmOfScore;
     isSlowingDown = false;
     currentMeasure = 0;
 }
@@ -194,6 +193,7 @@ void PathManager::clearCommandBuffers()
     std::queue<WaistParameter>().swap(waistParameterQueue);
     std::queue<HitTrajectory>().swap(hitQueue);
     std::queue<PedalTrajectory>().swap(pedalQueue);
+    std::queue<DXLTrajectory>().swap(DXLQueue);
     
     std::lock_guard<std::mutex> lock(dxlBufferMutex);
     std::queue<vector<vector<float>>>().swap(dxlCommandBuffer);

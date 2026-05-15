@@ -1,5 +1,15 @@
 # Change Log
 
+## 2026-05-15
+- 14:27 KST (UTC+9) — pause 감속 정지 후 잔여 큐 정리 및 BPM 기준값 복원 정리
+  - 수정 파일: `DrumRobot2/src/PathManager.cpp`, `DrumRobot2/src/DrumRobot.cpp`, `DrumRobot2/include/tasks/DrumRobot.hpp`
+  - 메모: pause 완료 시 남은 command/task/hit/pedal/DXL 큐를 정리하고, txt의 `bpm` 줄을 읽을 때 `bpmOfScore`와 `initialBpm`을 함께 갱신하도록 정리했다. 이전 연주의 감속 BPM이 다음 연주 fade 기준값으로 남는 문제를 막고, resume lead-in을 8줄로 늘렸다.
+
+## 2026-05-14
+- 13:57 KST (UTC+9) — pause/resume 음성 shortcut의 Play 상태 제한 제거
+  - 수정 파일: `phil_robot/pipeline/brain_pipeline.py`
+  - 메모: pause 후 Home/Ideal 상태에서도 `resume` 명령이 유효하므로 `state == 2`일 때만 빠른 경로를 타던 조건을 제거했다. 이제 pause/resume 키워드는 상태와 무관하게 직접 interrupt 명령으로 전달된다.
+
 ## 2026-05-13
 - 17:23 KST (UTC+9) — pause Home 전환 대기 조건을 fixation 기준으로 축소
   - 수정 파일: `DrumRobot2/src/DrumRobot.cpp`, `DrumRobot2/include/tasks/DrumRobot.hpp`
