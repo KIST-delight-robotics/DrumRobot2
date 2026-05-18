@@ -1,6 +1,9 @@
 # Change Log
 
 ## 2026-05-18
+- 15:58 KST (UTC+9) — play modifier 발화가 연주 중 motion block 문구로 덮이지 않도록 수정
+  - 수정 파일: `phil_robot/pipeline/validator.py`, `log.md`
+  - 메모: `tempo_scale`/`velocity_delta`가 파싱된 경우 validator가 modifier 성공 발화를 우선 사용하게 해, 실제 명령이 전송됐는데도 "지금은 연주 중이라 다른 동작을 할 수 없습니다."가 세션 히스토리에 남는 문제를 줄였다.
 - 13:49 KST (UTC+9) — play modifier 적용 변경사항 커밋 범위 정리
   - 수정 파일: `DrumRobot2/include/tasks/DrumRobot.hpp`, `DrumRobot2/src/DrumRobot.cpp`, `DrumRobot2/src/PathManager.cpp`, `phil_robot/pipeline/validator.py`, `log.md`
   - 메모: current/next modifier 분리, Play 중 tempo/velocity modifier 적용 경로, validator modifier 전달 단순화, HitData 주석 변경을 이번 브랜치 커밋 범위로 함께 기록했다.

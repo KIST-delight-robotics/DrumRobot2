@@ -69,6 +69,18 @@ def build_partial_execution_message(valid_op_cmds: List[str], rejected_op_cmds: 
     return "가능한 동작만 먼저 수행할게요. 일부 동작은 범위나 현재 상태 제한 때문에 제외했습니다."
 
 
+def build_play_modifier_message(play_modifier: PlayModifier) -> str:
+    if play_modifier.tempo_scale < 1.0:
+        return "연주 속도를 느리게 하겠습니다."
+    if play_modifier.tempo_scale > 1.0:
+        return "연주 속도를 빠르게 하겠습니다."
+    if play_modifier.velocity_delta < 0:
+        return "연주 세기를 약하게 하겠습니다."
+    if play_modifier.velocity_delta > 0:
+        return "연주 세기를 강하게 하겠습니다."
+    return ""
+
+
 def build_validated_plan(
     user_text: str,
     robot_state: Dict,
@@ -86,6 +98,7 @@ def build_validated_plan(
     resolution = resolve_motion_commands(user_text, expanded_op_cmds, robot_state)
     validation = validate_commands(resolution.op_cmds, robot_state)
     play_modifier = parse_play_modifier(user_text)
+    has_play_modifier = not play_modifier.is_identity()
 
     warnings = list(skill_warnings)
     warnings.extend(resolution.warnings)
@@ -94,7 +107,9 @@ def build_validated_plan(
     speech = planner_result.get("speech", "")
 
     # planner 가 거절 대사를 만들지 못해도 validator 가 최종 사용자 메시지를 보수적으로 보정한다.
-    if resolution.message_override:
+    if has_play_modifier:
+        speech = build_play_modifier_message(play_modifier) or speech
+    elif resolution.message_override:
         speech = resolution.message_override
     elif resolution.speech_override and has_actionable_motion_command(validation.valid_commands):
         speech = resolution.speech_override
