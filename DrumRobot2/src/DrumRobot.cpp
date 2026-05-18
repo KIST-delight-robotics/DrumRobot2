@@ -1462,7 +1462,7 @@ void DrumRobot::idealStateRoutine()
 
                 lastExecutedCmd = command; // 마지막으로 실행된 명령어 저장
 
-                if (handleModifier(command))
+                if (applyModifier(command))
                 {
                     continue;
                 }
@@ -1973,51 +1973,50 @@ string DrumRobot::trimWhitespace(const string &str)
     return str.substr(first, (last - first + 1));
 }
 
-bool DrumRobot::handleModifier(const string &command)
+bool DrumRobot::applyModifier(const string &command)
 {
-    size_t delimiter_pos = command.find(':');
-    if (delimiter_pos == string::npos)
-    {
-        return false;
-    }
+    Main main_state = state.main.load();
+    PlayModifier &modifier = (main_state == Main::Play) ? play_modifier : next_modifier;
 
-    string key = command.substr(0, delimiter_pos);
-    string value_text = command.substr(delimiter_pos + 1);
-
-    try
+    const string tempo_key = "tempo_scale:";
+    const string velocity_key = "velocity_delta:";
+    size_t pos = command.find(tempo_key);
+    if (pos != string::npos)
     {
-        if (key == "tempo_scale")
+        modifier.tempo_scale = stod(command.substr(pos + tempo_key.length()));
+
+        if (main_state == Main::Play)
         {
-            double scale = stod(value_text);
-            if (scale <= 0.0)
-            {
-                cout << ">>> [Modifier] tempo_scale는 0보다 커야 합니다: " << value_text << endl;
-                return true;
-            }
-
-            pending_modifier.tempo_scale = scale;
-
-            ostringstream scale_text;
-            scale_text << fixed << setprecision(2) << scale;
-            cout << ">>> [Modifier] tempo_scale 설정: " << scale_text.str() << endl;
-            return true;
+            pathManager.bpmOfScore = pathManager.initialBpm * modifier.tempo_scale;
         }
 
-        if (key == "velocity_delta")
-        {
-            int delta = stoi(value_text);
-            pending_modifier.velocity_delta = delta;
-            cout << ">>> [Modifier] velocity_delta 설정: " << delta << endl;
-            return true;
-        }
+        return true;
     }
-    catch (const exception &error)
+
+    pos = command.find(velocity_key);
+    if (pos != string::npos)
     {
-        cout << ">>> [Modifier] 파싱 실패: " << command << " (" << error.what() << ")" << endl;
+        modifier.velocity_delta = stoi(command.substr(pos + velocity_key.length()));
         return true;
     }
 
     return false;
+}
+
+void DrumRobot::activateNextModifier()
+{
+    play_modifier = next_modifier;
+    next_modifier = PlayModifier();
+
+    if (!hasPlayModifier(play_modifier))
+    {
+        return;
+    }
+
+    ostringstream modifier_text;
+    modifier_text << fixed << setprecision(2) << play_modifier.tempo_scale;
+    cout << ">>> [Modifier] 이번 연주 적용: tempo_scale=" << modifier_text.str()
+         << ", velocity_delta=" << play_modifier.velocity_delta << endl;
 }
 
 bool DrumRobot::hasPlayModifier(const PlayModifier &modifier) const
@@ -2032,12 +2031,12 @@ bool DrumRobot::hasPlayModifier(const PlayModifier &modifier) const
 
 double DrumRobot::applyTempoScale(double bpm) const
 {
-    if (active_modifier.tempo_scale <= 0.0)
+    if (play_modifier.tempo_scale <= 0.0)
     {
         return bpm;
     }
 
-    return bpm * active_modifier.tempo_scale;
+    return bpm * play_modifier.tempo_scale;
 }
 
 double DrumRobot::applyVelocityDelta(double value) const
@@ -2047,7 +2046,7 @@ double DrumRobot::applyVelocityDelta(double value) const
         return 0.0;
     }
 
-    double next_value = value + static_cast<double>(active_modifier.velocity_delta);
+    double next_value = value + static_cast<double>(play_modifier.velocity_delta);
 
     if (next_value < 1.0)
     {
@@ -2168,9 +2167,8 @@ bool DrumRobot::seekScoreMeasure(ifstream &inputFile, int measureNum)
         if (items[0] == "bpm")
         {
             double score_bpm = stod(items[1]);
-            double play_bpm = applyTempoScale(score_bpm);
-            pathManager.bpmOfScore = play_bpm;
-            pathManager.initialBpm = play_bpm;
+            pathManager.initialBpm = score_bpm;
+            pathManager.bpmOfScore = applyTempoScale(score_bpm);
             continue;
         }
 
@@ -2302,9 +2300,8 @@ bool DrumRobot::readMeasure(ifstream& inputFile)
         {
             // cout << "\n bpm : " << pathManager.bpmOfScore;
             double score_bpm = stod(items[1]);
-            double play_bpm = applyTempoScale(score_bpm);
-            pathManager.bpmOfScore = play_bpm;
-            pathManager.initialBpm = play_bpm;
+            pathManager.initialBpm = score_bpm;
+            pathManager.bpmOfScore = applyTempoScale(score_bpm);
             // cout << " -> " << pathManager.bpmOfScore << "\n";
         }
         else if (items[0] == "end")                     // 종료 코드
@@ -2385,11 +2382,8 @@ void DrumRobot::checkPlayInterrupts()
             }
             pathManager.isSlowingDown = true;
         }
-        else if (handleModifier(command))
+        else if (applyModifier(command))
         {
-            // 다음 마디부터 즉시 반영
-            active_modifier = pending_modifier;
-            pending_modifier = PlayModifier();
             cout << ">>> [Play] modifier 즉시 적용." << endl;
         }
     }
@@ -2457,16 +2451,7 @@ void DrumRobot::runPlayProcess()
             return;
         }
 
-        active_modifier = pending_modifier;
-        pending_modifier = PlayModifier();
-
-        if (hasPlayModifier(active_modifier))
-        {
-            ostringstream modifier_text;
-            modifier_text << fixed << setprecision(2) << active_modifier.tempo_scale;
-            cout << ">>> [Modifier] 이번 연주 적용: tempo_scale=" << modifier_text.str()
-                 << ", velocity_delta=" << active_modifier.velocity_delta << endl;
-        }
+        activateNextModifier();
 
         // (4) 연주 설정 강제 주입
         repeatNum = 1;

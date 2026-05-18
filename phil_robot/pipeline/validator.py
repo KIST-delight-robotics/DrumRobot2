@@ -85,13 +85,7 @@ def build_validated_plan(
 
     resolution = resolve_motion_commands(user_text, expanded_op_cmds, robot_state)
     validation = validate_commands(resolution.op_cmds, robot_state)
-    parsed_modifier = parse_play_modifier(user_text)
-    has_play_intent = classifier_result.get("intent") == "play_request"
-    has_valid_play = any(command.startswith("p:") for command in validation.valid_commands)
-    if has_play_intent and has_valid_play and not parsed_modifier.is_identity():
-        play_modifier = parsed_modifier
-    else:
-        play_modifier = None
+    play_modifier = parse_play_modifier(user_text)
 
     warnings = list(skill_warnings)
     warnings.extend(resolution.warnings)

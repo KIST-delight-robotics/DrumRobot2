@@ -1,5 +1,16 @@
 # Change Log
 
+## 2026-05-18
+- 13:49 KST (UTC+9) — play modifier 적용 변경사항 커밋 범위 정리
+  - 수정 파일: `DrumRobot2/include/tasks/DrumRobot.hpp`, `DrumRobot2/src/DrumRobot.cpp`, `DrumRobot2/src/PathManager.cpp`, `phil_robot/pipeline/validator.py`, `log.md`
+  - 메모: current/next modifier 분리, Play 중 tempo/velocity modifier 적용 경로, validator modifier 전달 단순화, HitData 주석 변경을 이번 브랜치 커밋 범위로 함께 기록했다.
+- 13:03 KST (UTC+9) — current-play modifier의 실제 반영 범위 정리
+  - 수정 파일: `DrumRobot2/src/DrumRobot.cpp`, `DrumRobot2/include/tasks/DrumRobot.hpp`
+  - 메모: `next_modifier`/`play_modifier` 구조를 유지하되 `applyModifier()`가 현재 `Main::Play` 여부로 저장 대상을 고르게 정리했다. Play 중 `tempo_scale`은 즉시 `bpmOfScore = initialBpm * tempo_scale`로 반영되고, `velocity_delta`는 `play_modifier`에 저장되어 이후 `readMeasure()`가 새로 읽는 양손 velocity 컬럼(4/5)에 적용된다.
+- 10:53 KST (UTC+9) — 연주 modifier transport 라우팅을 단순화하고 current-play 적용 경로를 정리
+  - 수정 파일: `phil_robot/pipeline/validator.py`, `DrumRobot2/src/DrumRobot.cpp`, `DrumRobot2/include/tasks/DrumRobot.hpp`
+  - 메모: Python validator가 play 여부와 무관하게 `parse_play_modifier()` 결과를 싣도록 단순화했다. C++에서는 `handleModifier()`를 현재 상태 기준으로 `next_modifier` 또는 `play_modifier`에 값을 넣는 `applyModifier()`로 바꾸고, 연주 시작 시 `activateNextModifier()`가 next-play 값을 current-play 값으로 승격하도록 정리했다. `readMeasure()`와 `seekScoreMeasure()`의 BPM 처리도 원본 BPM은 `initialBpm`, 실제 연주 BPM은 `bpmOfScore`로 분리했다.
+
 ## 2026-05-15
 - 14:27 KST (UTC+9) — pause 감속 정지 후 잔여 큐 정리 및 BPM 기준값 복원 정리
   - 수정 파일: `DrumRobot2/src/PathManager.cpp`, `DrumRobot2/src/DrumRobot.cpp`, `DrumRobot2/include/tasks/DrumRobot.hpp`

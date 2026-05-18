@@ -222,8 +222,8 @@ private:
     const double measureThreshold = 2.4;     ///< 한번에 읽을 악보의 크기. [s]
     double measureTotalTime = 0.0;     ///< 악보를 읽는 동안 누적 시간. [s]
     bool endOfScore = false;           ///< 악보의 종료 코드 확인
-    PlayModifier pending_modifier;
-    PlayModifier active_modifier;
+    PlayModifier next_modifier;
+    PlayModifier play_modifier;
 
     // 버퍼 로그 CSV
     std::ofstream bufLogFile;
@@ -278,7 +278,8 @@ private:
     bool checkPreconditions(bool useMagenta, std::string txtPath);
     std::string selectPlayMode();
     std::string trimWhitespace(const std::string &str);
-    bool handleModifier(const std::string &command);
+    bool applyModifier(const std::string &command);
+    void activateNextModifier();
     bool hasPlayModifier(const PlayModifier &modifier) const;
     double applyTempoScale(double bpm) const;
     double applyVelocityDelta(double value) const;

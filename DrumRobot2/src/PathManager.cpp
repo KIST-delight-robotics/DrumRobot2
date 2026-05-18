@@ -1499,6 +1499,7 @@ MatrixXd PathManager::divideMatrix(MatrixXd &measureMatrix)
     return parsedMatrix;
 }
 
+// 타격 감지 및 타격 관련 데이터
 PathManager::HitData PathManager::getHitData(MatrixXd &measureMatrix, VectorXd &stateR, VectorXd &stateL)
 {
     HitData hitData;
