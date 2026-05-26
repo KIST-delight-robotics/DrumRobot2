@@ -78,6 +78,8 @@ void PathManager::initPlayStateValue()
 
     curInst = 1;
     nextInst = 1;
+
+    hasLastHit = false;
 }
 
 void PathManager::processLine(MatrixXd &measureMatrix)
@@ -92,7 +94,8 @@ void PathManager::processLine(MatrixXd &measureMatrix)
 
     if (measureMatrix.rows() > 1)
     {
-        // avoidCollision(measureMatrix);  // 충돌 회피
+        int n = getNumCommands(measureMatrix);
+        avoidCollision(measureMatrix, n);  // 충돌 회피 // 260518 temp
         genTrajectory(measureMatrix);   // 궤적 생성
     }
 
@@ -690,13 +693,13 @@ void PathManager::pushAddStanceDXL(string flagName)
 /*                                    Play                                    */
 ////////////////////////////////////////////////////////////////////////////////
 
-void PathManager::avoidCollision(MatrixXd &measureMatrix)
+void PathManager::avoidCollision(MatrixXd &measureMatrix, int n)
 {
-    if (detectCollision(measureMatrix))    // 충돌 예측
+    if (detectCollision(measureMatrix, n))    // 충돌 예측
     {
         for (int priority = 0; priority < 5; priority++)    // 수정방법 중 우선순위 높은 것부터 시도
         {
-            if (modifyMeasure(measureMatrix, priority))     // 주어진 방법으로 회피되면 measureMatrix를 바꾸고 True 반환
+            if (modifyMeasure(measureMatrix, priority, n))     // 주어진 방법으로 회피되면 measureMatrix를 바꾸고 True 반환
             {
                 std::cout << measureMatrix;
                 std::cout << "\n 충돌 회피 성공 \n";
@@ -713,7 +716,7 @@ void PathManager::avoidCollision(MatrixXd &measureMatrix)
 void PathManager::genTrajectory(MatrixXd &measureMatrix)
 {
     int n = getNumCommands(measureMatrix);      // 명령 개수
-    
+
     genTaskSpaceTrajectory(measureMatrix, n);   // task space 궤적 생성
     genHitTrajectory(measureMatrix, n);         // 타격 궤적 생성
     genPedalTrajectory(measureMatrix, n);       // 발모터 궤적 생성
@@ -766,6 +769,7 @@ void PathManager::solveIKandPushCommand()
         for (int i = 0; i < 12; i++)
         {
             test_q.push_back(q(i));
+            // test_q.push_back(q(i) * M_PI / 180.0);
         }
         func.appendToCSV("simulation", false, test_q);
     }
@@ -807,58 +811,10 @@ void PathManager::genTaskSpaceTrajectory(MatrixXd &measureMatrix, int n)
     double dt = canManager.DTSECOND;
 
     // 출발 시간/위치, 도착 시간/위치
-    TrajectoryData data = getTrajectoryData(measureMatrix, measureStateR, measureStateL);
+    TrajectoryData data = getTrajectoryData(measureMatrix, measureStateR, measureStateL, n, true);
     // state update
     measureStateR = data.nextStateR;
     measureStateL = data.nextStateL;
-
-    // 후보 평가: i=0 시점에서 최적 타격점 선정 (루프 진입 전)
-    VectorXd selectedPositionR = data.finalPositionR;
-    VectorXd selectedPositionL = data.finalPositionL;
-
-    int instR = data.finalInstR - 1;    // hit_Candidates[0]에 snare(1) 후보가 들어있음
-    int instL = data.finalInstL - 1;
-    bool hasCandidatesR = (instR >= 0 && instR <= static_cast<int>(hit_Candidates.size()) && !hit_Candidates[instR].empty());
-    bool hasCandidatesL = (instL >= 0 && instL <= static_cast<int>(hit_Candidates.size()) && !hit_Candidates[instL].empty());
-
-    if (hasCandidatesR && hasCandidatesL)
-    {
-        double tR0 = data.t1 - data.initialTimeR;
-        double tL0 = data.t1 - data.initialTimeL;
-        double sR0 = calTimeScaling(0.0, data.finalTimeR - data.initialTimeR, tR0);
-        double sL0 = calTimeScaling(0.0, data.finalTimeL - data.initialTimeL, tL0);
-        double wristR0 = sR0 * (data.finalWristAngleR - data.initialWristAngleR) + data.initialWristAngleR;
-        double wristL0 = sL0 * (data.finalWristAngleL - data.initialWristAngleL) + data.initialWristAngleL;
-
-        double best_waist_angle_range = 0.0;
-        int best_indexR = 0, best_indexL = 0;
-
-        for (size_t j = 0; j < hit_Candidates[instR].size(); j++)
-        {
-            VectorXd coordinatesR = makeTaskSpacePath(data.initialPositionR, hit_Candidates[instR][j], data.initialOffsetR, data.finalOffsetR, sR0);
-            for (size_t k = 0; k < hit_Candidates[instL].size(); k++)
-            {
-                VectorXd coordinatesL = makeTaskSpacePath(data.initialPositionL, hit_Candidates[instL][k], data.initialOffsetL, data.finalOffsetL, sL0);
-
-                VectorXd waistParams = getWaistParams(coordinatesR, coordinatesL, wristR0, wristL0, true);
-                double waist_angle_range = waistParams(1) - waistParams(0);
-                if (waist_angle_range > best_waist_angle_range)
-                {
-                    best_waist_angle_range = waist_angle_range;
-                    best_indexR = j;
-                    best_indexL = k;
-                }
-            }
-        }
-
-        selectedPositionR = hit_Candidates[instR][best_indexR];
-        selectedPositionL = hit_Candidates[instL][best_indexL];
-    }
-    else    //hit_Candidates에 문제가 있는 경우 기존 drum_position.txt 기반 타격점 사용
-    {
-        selectedPositionR = data.finalPositionR;
-        selectedPositionL = data.finalPositionL;
-    }
 
     for (int i = 0; i < n; i++)
     {
@@ -873,8 +829,8 @@ void PathManager::genTaskSpaceTrajectory(MatrixXd &measureMatrix, int n)
         sL = calTimeScaling(0.0, data.finalTimeL - data.initialTimeL, tL);
 
         // task space 경로
-        TT.trajectoryR = makeTaskSpacePath(data.initialPositionR, selectedPositionR, data.initialOffsetR, data.finalOffsetR, sR);
-        TT.trajectoryL = makeTaskSpacePath(data.initialPositionL, selectedPositionL, data.initialOffsetL, data.finalOffsetL, sL);
+        TT.trajectoryR = makeTaskSpacePath(data.initialPositionR, data.finalPositionR, data.initialOffsetR, data.finalOffsetR, sR);
+        TT.trajectoryL = makeTaskSpacePath(data.initialPositionL, data.finalPositionL, data.initialOffsetL, data.finalOffsetL, sL);
 
         // IK 풀기 위한 손목 각도
         TT.wristAngleR = sR * (data.finalWristAngleR - data.initialWristAngleR) + data.initialWristAngleR;
@@ -894,13 +850,17 @@ void PathManager::genTaskSpaceTrajectory(MatrixXd &measureMatrix, int n)
         if (i == 0)
         {
             // 명령 개수, 허리 범위, 최적화 각도 계산 및 저장
+            // std::chrono::steady_clock::time_point t_start = std::chrono::steady_clock::now();
             VectorXd waistParams = getWaistParams(TT.trajectoryR, TT.trajectoryL, TT.wristAngleR, TT.wristAngleL);
+            // std::chrono::steady_clock::time_point t_end = std::chrono::steady_clock::now();
+            // double elapsed_us = std::chrono::duration<double, std::micro>(t_end - t_start).count();
+            // std::cout << "[genTaskSpaceTrajectory] getWaistParams elapsed: " << elapsed_us << " us" << std::endl;
             storeWaistParams(n, waistParams);
         }
     }
 }
 
-PathManager::TrajectoryData PathManager::getTrajectoryData(MatrixXd &measureMatrix, VectorXd &stateR, VectorXd &stateL)
+PathManager::TrajectoryData PathManager::getTrajectoryData(MatrixXd &measureMatrix, VectorXd &stateR, VectorXd &stateL, int n, bool printlog)
 {
     TrajectoryData data;
 
@@ -917,8 +877,9 @@ PathManager::TrajectoryData PathManager::getTrajectoryData(MatrixXd &measureMatr
     // std::cout << "\n /// t1 -> t2 : " << data.t1 << " -> " << data.t2 << " : " << data.t2 - data.t1 <<  "\n";
 
     // 오른팔, 왼팔 각각 타격 감지 및 궤적 생성에 필요한 정보 parsing
-    // [initialTime, initialOffset, initialInstrument(10), finalTime, finalOffset, finalInstrument(10)]
-    // [initialT, initialInstNum, nextState, initialOffset]
+    // outputVector(27) : [initialT, initialOffset, initialInstrument(10), finalT, finalOffset, finalInstrument(10), initialInstNum, finalInstNum, isMakingTrajectory]
+    // nextStateVector  : [initialT, initialInstNum, nextState, initialOffset]
+    //  isMakingTrajectory = 1 : 이전 줄에서 시작된 궤적이 진행 중 → 신규 타격점 선정 금지
     pair<VectorXd, VectorXd> dataR = parseTrajectoryData(measureTime, measureInstrumentR, measureOffsetR, measureHihat, stateR);
     pair<VectorXd, VectorXd> dataL = parseTrajectoryData(measureTime, measureInstrumentL, measureOffsetL, measureHihat, stateL);
 
@@ -933,10 +894,6 @@ PathManager::TrajectoryData PathManager::getTrajectoryData(MatrixXd &measureMatr
     data.finalTimeR = dataR.first(12);
     data.finalTimeL = dataL.first(12);
 
-    // 악기
-    data.finalInstR = dataR.first(24);
-    data.finalInstL = dataL.first(24);
-
     VectorXd initialInstrumentR = dataR.first.block(2, 0, 10, 1);
     VectorXd initialInstrumentL = dataL.first.block(2, 0, 10, 1);
 
@@ -949,13 +906,6 @@ PathManager::TrajectoryData PathManager::getTrajectoryData(MatrixXd &measureMatr
     pair<VectorXd, double> finalTagetR = getTargetPosition(finalInstrumentR, 'R');
     pair<VectorXd, double> finalTagetL = getTargetPosition(finalInstrumentL, 'L');
 
-    // position
-    data.initialPositionR = initialTagetR.first;
-    data.initialPositionL = initialTagetL.first;
-
-    data.finalPositionR = finalTagetR.first;
-    data.finalPositionL = finalTagetL.first;
-
     // 타격 시 손목 각도
     data.initialWristAngleR = initialTagetR.second;
     data.initialWristAngleL = initialTagetL.second;
@@ -965,9 +915,122 @@ PathManager::TrajectoryData PathManager::getTrajectoryData(MatrixXd &measureMatr
 
     // 타격 강도
     data.initialOffsetR = dataR.first(1);
-    data.initialOffsetL= dataL.first(1);
-    data.finalOffsetR= dataR.first(13);
-    data.finalOffsetL= dataL.first(13);
+    data.initialOffsetL = dataL.first(1);
+
+    data.finalOffsetR = dataR.first(13);
+    data.finalOffsetL = dataL.first(13);
+
+    // 첫 호출 초기화 : 이전 도착점이 없으면 drum_position 기반 initial 좌표로 시드
+    // 첫 measureState는 [0, 1, 0, 0]로 양 손 모두 스네어에서 시작. 연주 시작 시 taskspace 좌표는 drum_position.txt 기반 좌표로 둠.
+    if (!hasLastHit)
+    {
+        lastFinalPositionR = initialTagetR.first;   // snare, drum_position.txt 기반 좌표
+        lastFinalPositionL = initialTagetL.first;
+        lastInitialPositionR = initialTagetR.first;
+        lastInitialPositionL = initialTagetL.first;
+        hasLastHit = true;
+    }
+
+    // 악기 번호
+    int initialInstR = static_cast<int>(dataR.first(24));
+    int initialInstL = static_cast<int>(dataL.first(24));
+    int finalInstR = static_cast<int>(dataR.first(25));
+    int finalInstL = static_cast<int>(dataL.first(25));
+
+    // isMakingTrajectory : 1 이면 이전 줄에서 시작된 궤적이 진행 중 → 신규 타격점 선정 금지
+    int isMakingTrajectoryR = static_cast<int>(dataR.first(26));
+    int isMakingTrajectoryL = static_cast<int>(dataL.first(26));
+
+    data.finalPositionR = finalTagetR.first;
+    data.finalPositionL = finalTagetL.first;
+
+    if(isMakingTrajectoryR == 1)    // 궤적 생성 중
+    {
+        data.initialPositionR = lastInitialPositionR;
+        data.finalPositionR = lastFinalPositionR;
+    }
+    else if(isMakingTrajectoryR == 2)    // 타격을 찾지 못함(제자리 대기)
+    {
+        data.initialPositionR = lastFinalPositionR;
+        data.finalPositionR = lastFinalPositionR;
+
+        if(printlog) lastInitialPositionR = data.initialPositionR;
+    }
+    else
+    {
+        data.initialPositionR = lastFinalPositionR;
+        if(printlog) lastInitialPositionR = data.initialPositionR;
+
+        // data.finalPostionR 미정
+    }
+    if(isMakingTrajectoryL == 1)
+    {
+        data.initialPositionL = lastInitialPositionL;
+        data.finalPositionL = lastFinalPositionL;
+    }
+    else if(isMakingTrajectoryL == 2)
+    {
+        data.initialPositionL = lastFinalPositionL;
+        data.finalPositionL = lastFinalPositionL;
+
+        if(printlog) lastInitialPositionL = data.initialPositionL;
+    }
+    else
+    {
+        data.initialPositionL = lastFinalPositionL;
+        if(printlog) lastInitialPositionL = data.initialPositionL;
+
+        // data.finalPositionL 미정
+    }
+
+    // hit_Candidates 문제 시 drum_position.txt 기반 좌표로 fallback
+    VectorXd fallbackR = finalTagetR.first;
+    VectorXd fallbackL = finalTagetL.first;
+    std::pair<VectorXd, VectorXd> selected;
+
+
+    if(isMakingTrajectoryR == 0 || isMakingTrajectoryL == 0)
+    {
+        selected = selectHitTarget(data, finalInstR, finalInstL, fallbackR, fallbackL,
+                                    isMakingTrajectoryR, isMakingTrajectoryL, n);
+    }
+
+    if(isMakingTrajectoryR == 0)
+    {
+        data.finalPositionR = selected.first;
+    }
+    if(isMakingTrajectoryL == 0)
+    {
+        data.finalPositionL = selected.second;
+    }
+    
+
+    if(printlog)
+    {
+        if(isMakingTrajectoryR == 0)
+        {
+            lastFinalPositionR = data.finalPositionR;
+        }
+        if(isMakingTrajectoryL == 0)
+        {
+            lastFinalPositionL = data.finalPositionL;
+        }
+    
+        std::cout << "\n /// initialInstR : " << initialInstR << " / initialInstL : " << initialInstL;
+        std::cout << "\n /// initialPositionR : " << data.initialPositionR(0) << ", " << data.initialPositionR(1) << ", " << data.initialPositionR(2) 
+                << " / initialPositionL : " << data.initialPositionL(0) << ", " << data.initialPositionL(1) << ", " << data.initialPositionL(2);
+        std::cout << "\n /// isMakingR : " << isMakingTrajectoryR << " / " << "isMakingL : " << isMakingTrajectoryL;
+        std::cout << "\n /// finalInstR : " << finalInstR << " / finalInstL : " << finalInstL;
+        std::cout << "\n /// finalPositionR : " << data.finalPositionR(0) << ", " << data.finalPositionR(1) << ", " << data.finalPositionR(2) 
+                << " / finalPositionL : " << data.finalPositionL(0) << ", " << data.finalPositionL(1) << ", " << data.finalPositionL(2);
+    }
+
+    // // 주석 해제 시 기존 drum_position.txt 기반 좌표로 고정
+    // data.initialPositionR = initialTagetR.first;
+    // data.initialPositionL = initialTagetL.first;
+
+    // data.finalPositionR = finalTagetR.first;
+    // data.finalPositionL = finalTagetL.first;
 
     return data;
 }
@@ -979,7 +1042,7 @@ pair<VectorXd, VectorXd> PathManager::parseTrajectoryData(VectorXd &t, VectorXd 
     //    S       FT      MT      HT      HH       R      RC      LC       S        S        S        S        S        S     Open HH   RB
 
     VectorXd initialInstrument = VectorXd::Zero(10), finalInstrument = VectorXd::Zero(10);
-    VectorXd outputVector = VectorXd::Zero(25);
+    VectorXd outputVector = VectorXd::Zero(27);
 
     VectorXd nextStateVector;
 
@@ -991,6 +1054,8 @@ pair<VectorXd, VectorXd> PathManager::parseTrajectoryData(VectorXd &t, VectorXd 
     int detectInst = 0, initialInstNum, finalInstNum, prevInitialInstNum;
     int prevState, nextState;
     int detectOffset = 0, initialOffset, finalOffset, prevOffset;
+
+    int isMakingTrajectory = 0;
 
     // 타격 감지
     for (int i = 1; i < t.rows(); i++)
@@ -1032,6 +1097,8 @@ pair<VectorXd, VectorXd> PathManager::parseTrajectoryData(VectorXd &t, VectorXd 
 
             initialOffset = prevOffset;
             finalOffset = detectOffset;
+
+            isMakingTrajectory = 1;     // 타격 시작 및 종료 지점을 변경하지 않게하기 위함
         }
         else
         {
@@ -1062,6 +1129,8 @@ pair<VectorXd, VectorXd> PathManager::parseTrajectoryData(VectorXd &t, VectorXd 
 
                 initialOffset = 0;
                 finalOffset = 0;
+
+                isMakingTrajectory = 2;     // 동일 악기에 대해서 타격점이 변하면 타격을 하게 되는데 이를 방지하기 위함
             }
         }
     }
@@ -1095,12 +1164,14 @@ pair<VectorXd, VectorXd> PathManager::parseTrajectoryData(VectorXd &t, VectorXd 
 
             initialOffset = offset(0);
             finalOffset = 0;
+
+            isMakingTrajectory = 2;
         }
     }
 
     initialInstrument(instrumentMapping[initialInstNum]) = 1.0;
     finalInstrument(instrumentMapping[finalInstNum]) = 1.0;
-    outputVector << initialT, initialOffset, initialInstrument, finalT, finalOffset, finalInstrument, finalInstNum;
+    outputVector << initialT, initialOffset, initialInstrument, finalT, finalOffset, finalInstrument, initialInstNum, finalInstNum, isMakingTrajectory;
 
     nextStateVector.resize(4);
     nextStateVector << initialT, initialInstNum, nextState, initialOffset;
@@ -1347,6 +1418,7 @@ void PathManager::storeWaistParams(int n, VectorXd &waistParams)
     WP.min_q0 = waistParams(0);
     WP.max_q0 = waistParams(1);
     WP.optimized_q0 = waistParams(2);
+    func.appendToCSV("waist_params", false, waistParams(0), waistParams(1), waistParams(2));
 
     waistParameterQueue.push(WP);
 }
@@ -2664,7 +2736,6 @@ std::vector<PathManager::WaistParameter> PathManager::waistParamsQueueToVector()
     for (int i = 0; i < size; i++)
     {
         WaistParameter temp = waistParameterQueue.front();
-        func.appendToCSV("waist_parameter_queue", false, temp.optimized_q0, temp.min_q0, temp.max_q0);
         waistParameterQueue.pop();
         waistParameterQueue.push(temp);
         WP.push_back(temp);
@@ -3050,7 +3121,7 @@ float PathManager::getVelocityRadps(bool restart, double q, int can_id)
 /*                              Detect Collision                              */
 ////////////////////////////////////////////////////////////////////////////////
 
-bool PathManager::detectCollision(MatrixXd &measureMatrix)
+bool PathManager::detectCollision(MatrixXd &measureMatrix, int n)
 {
     VectorXd measureTime = measureMatrix.col(10);
     VectorXd measureOffsetR = measureMatrix.col(4);
@@ -3069,7 +3140,7 @@ bool PathManager::detectCollision(MatrixXd &measureMatrix)
     {
         MatrixXd tmpMatrix = measureMatrix.block(i,0,measureMatrix.rows()-i,measureMatrix.cols());
 
-        TrajectoryData data = getTrajectoryData(tmpMatrix, stateDCR, stateDCL);
+        TrajectoryData data = getTrajectoryData(tmpMatrix, stateDCR, stateDCL, n, false);
         stateDCR = data.nextStateR;
         stateDCL = data.nextStateL;
 
@@ -3281,7 +3352,7 @@ std::pair<size_t, size_t> PathManager::getBitIndex(size_t offsetIndex)
 /*                              Avoid Collision                               */
 ////////////////////////////////////////////////////////////////////////////////
 
-bool PathManager::modifyMeasure(MatrixXd &measureMatrix, int priority)
+bool PathManager::modifyMeasure(MatrixXd &measureMatrix, int priority, int n)
 {
     // 주어진 방법으로 회피되면 measureMatrix를 바꾸고 True 반환
 
@@ -3321,7 +3392,7 @@ bool PathManager::modifyMeasure(MatrixXd &measureMatrix, int priority)
         // std::cout << modifedMatrix;
         // std::cout << "\n ////////////// \n";
 
-        if (!detectCollision(modifedMatrix))   // 충돌 예측
+        if (!detectCollision(modifedMatrix, n))   // 충돌 예측
         {
             // std::cout << "\n 성공 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! \n";
             
@@ -4012,4 +4083,147 @@ void PathManager::setHitCandidates()
             std::cout << "    [" << j << "] x=" << pt(0) << ", y=" << pt(1) << ", z=" << pt(2) << std::endl;
         }
     }
+}
+
+std::pair<VectorXd, VectorXd> PathManager::selectHitTarget(TrajectoryData &data,
+    int finalInstR, int finalInstL,
+    VectorXd fallbackPositionR, VectorXd fallbackPositionL,
+    int isMakingTrajectoryR, int isMakingTrajectoryL,
+    int n)
+{
+    // hit_Candidates[0] 에 snare(1) 후보가 들어있음
+    // finalInstR/L : 1 ~ 8
+    // instR/L      : 0 ~ 7
+    // 강시우(260518) : finalInstR/L이 0인 경우 예외처리 필요
+    // int instR = (finalInstR == 9) ? 4 : finalInstR - 1;
+    // int instL = (finalInstL == 9) ? 4 : finalInstL - 1;
+
+    int instR = finalInstR - 1;
+    int instL = finalInstL - 1;
+
+    bool hasCandidatesR = (instR >= 0 && instR < static_cast<int>(hit_Candidates.size()) && !hit_Candidates[instR].empty());
+    bool hasCandidatesL = (instL >= 0 && instL < static_cast<int>(hit_Candidates.size()) && !hit_Candidates[instL].empty());
+    std::vector<VectorXd> candR;
+    std::vector<VectorXd> candL;
+
+    // 진행 중인 팔은 이전 줄에서 시작된 궤적을 이어가야 하므로,
+    // data.finalPositionR/L (= lastFinalPositionR/L) 하나만 후보로 사용한다.
+    if (isMakingTrajectoryR == 1)
+    {
+        candR.push_back(data.finalPositionR);
+    }
+    else if (hasCandidatesR)
+    {
+        candR = hit_Candidates[instR];
+    }
+    else
+    {
+        std::cout << "[selectHitTarget] 후보점 없음 (instR=" << finalInstR << ")" << std::endl;
+    }
+
+    if (isMakingTrajectoryL == 1)
+    {
+        candL.push_back(data.finalPositionL);
+    }
+    else if (hasCandidatesL)
+    {
+        candL = hit_Candidates[instL];
+    }
+    else
+    {
+        std::cout << "[selectHitTarget] 후보점 없음 (instL=" << finalInstL << ")" << std::endl;
+    }
+
+    int best_indexR = -1, best_indexL = -1;
+    double best_waist_angle_range = -std::numeric_limits<double>::infinity();
+
+    double sR, sL;
+    double dt = canManager.DTSECOND;
+
+    double ex_waist_angle_range = 0.0;
+
+    int i = n - 1;
+    // 시간 변환
+    double tR = dt * i + data.t1 - data.initialTimeR;
+    double tL = dt * i + data.t1 - data.initialTimeL;
+
+    // time scaling (s : 0 -> 1)
+    sR = calTimeScaling(0.0, data.finalTimeR - data.initialTimeR, tR);
+    sL = calTimeScaling(0.0, data.finalTimeL - data.initialTimeL, tL);
+
+    // IK 풀기 위한 손목 각도
+    double wristAngleR = sR * (data.finalWristAngleR - data.initialWristAngleR) + data.initialWristAngleR;
+    double wristAngleL = sL * (data.finalWristAngleL - data.initialWristAngleL) + data.initialWristAngleL;
+
+    // 양손이 같은 악기를 칠 때 충돌/자세 회피를 위해 특정 후보 인덱스 제외
+    bool sameInst = (finalInstR == finalInstL);
+    bool sameInst1to4 = sameInst && (finalInstR >= 1 && finalInstR <= 4);
+    bool sameInst5to8 = sameInst && (finalInstR >= 5 && finalInstR <= 8);
+
+    for (size_t j = 0; j < candR.size(); j++)
+    {
+        if (sameInst1to4 && (j == 4 || j == 8)) continue;
+        if (sameInst5to8 && j == 2) continue;
+
+        VectorXd targetR = candR[j];
+        targetR(0) = targetR(0) + 0.02;
+        for (size_t k = 0; k < candL.size(); k++)
+        {
+            if (sameInst1to4 && (k == 2 || k == 6)) continue;
+            if (sameInst5to8 && k == 0) continue;
+
+            VectorXd targetL = candL[k];
+            targetL(0) = targetL(0) - 0.02;
+
+            // task space 경로
+            VectorXd trajectoryR = makeTaskSpacePath(data.initialPositionR, targetR, data.initialOffsetR, data.finalOffsetR, sR);
+            VectorXd trajectoryL = makeTaskSpacePath(data.initialPositionL, targetL, data.initialOffsetL, data.finalOffsetL, sL);
+
+            VectorXd waistParams = getWaistParams(trajectoryR, trajectoryL, wristAngleR, wristAngleL, true);
+            double waist_angle_range = waistParams(1) - waistParams(0);
+            if (waist_angle_range > best_waist_angle_range)
+            {
+                best_waist_angle_range = waist_angle_range;
+                best_indexR = static_cast<int>(j);
+                best_indexL = static_cast<int>(k);
+                
+                // std::cout << "\n best_waist_range is " << best_waist_angle_range;
+                // std::cout << "best index R, L is " << best_indexR << ", " << best_indexL;
+            }
+        }
+    }
+    // VectorXd trajectoryR = makeTaskSpacePath(data.initialPositionR, data.finalPositionR, data.initialOffsetR, data.finalOffsetR, sR);
+    // VectorXd trajectoryL = makeTaskSpacePath(data.initialPositionL, data.finalPositionL, data.initialOffsetL, data.finalOffsetL, sL);
+
+    // VectorXd waistParams = getWaistParams(trajectoryR, trajectoryL, wristAngleR, wristAngleL, true);
+    // ex_waist_angle_range = waistParams(1) - waistParams(0);
+    // std::cout << "\n /// ex_waist_range is " << ex_waist_angle_range;
+
+    // (3)과 .resize(3) 차이 알기
+    VectorXd selectedPositionR(3);
+    VectorXd selectedPositionL(3);
+    if (best_indexR >= 0 && best_indexL >= 0)
+    {
+        selectedPositionR = candR[best_indexR];
+        selectedPositionR(0) = selectedPositionR(0) + 0.02;
+        selectedPositionL = candL[best_indexL];
+        selectedPositionL(0) = candL[best_indexL](0) - 0.02;
+        // if (ex_waist_angle_range > best_waist_angle_range)
+        // {
+        //     selectedPositionR = data.finalPositionR;
+        //     selectedPositionL = data.finalPositionL;
+        //     best_indexR = 99;
+        //     best_indexL = 99;
+        // }
+        func.appendToCSV("CandidateSelection", false,
+            static_cast<float>(finalInstR), static_cast<float>(finalInstL), best_indexR, best_indexL);
+    }
+    else
+    {
+        std::cout << "[selectHitTarget] 평가 가능한 후보 없음 - fallback 사용 (instR=" << finalInstR << ", instL=" << finalInstL << ")" << std::endl;
+        selectedPositionR = fallbackPositionR;
+        selectedPositionL = fallbackPositionL;
+    }
+
+    return std::make_pair(selectedPositionR, selectedPositionL);
 }

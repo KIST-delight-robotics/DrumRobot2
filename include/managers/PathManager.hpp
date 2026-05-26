@@ -137,8 +137,6 @@ private:
         VectorXd nextStateR;            // 이전 시간, 이전 악기, 상태
         VectorXd nextStateL;
 
-        int finalInstR;
-        int finalInstL;
     }TrajectoryData;
 
     // task space 궤적
@@ -275,7 +273,7 @@ private:
     int lineOfScore = 0;                    ///< 현재 악보 읽은 줄.
     const int preCreatedLine = 3;           ///< 미리 궤적을 생성할 줄
 
-    void avoidCollision(MatrixXd &measureMatrix);
+    void avoidCollision(MatrixXd &measureMatrix, int n);
     void genTrajectory(MatrixXd &measureMatrix);
     void solveIKandPushCommand();
 
@@ -287,7 +285,7 @@ private:
 
     int getNumCommands(MatrixXd &measureMatrix);
     void genTaskSpaceTrajectory(MatrixXd &measureMatrix, int n);
-    PathManager::TrajectoryData getTrajectoryData(MatrixXd &measureMatrix, VectorXd &stateR, VectorXd &stateL);
+    PathManager::TrajectoryData getTrajectoryData(MatrixXd &measureMatrix, VectorXd &stateR, VectorXd &stateL, int n, bool printlog);
     pair<VectorXd, VectorXd> parseTrajectoryData(VectorXd &t, VectorXd &inst, VectorXd &offset, VectorXd &hihat, VectorXd &stateVector);
     int checkOpenHihat(int instNum, int isHihat);
     pair<VectorXd, double> getTargetPosition(VectorXd &inst, char RL);
@@ -363,7 +361,7 @@ private:
     //////////////////////////////////// Detect Collision
     std::string tablePath = "../include/table/TABLE.bin";    // 테이블 위치
 
-    bool detectCollision(MatrixXd &measureMatrix);
+    bool detectCollision(MatrixXd &measureMatrix, int n);
     int findDetectionRange(MatrixXd &measureMatrix);
     bool checkTable(VectorXd PR, VectorXd PL, double hitR, double hitL);
     size_t getFlattenIndex(const std::vector<size_t>& indices, const std::vector<size_t>& dims);
@@ -378,7 +376,7 @@ private:
         { 4, "Delete"}
     };
 
-    bool modifyMeasure(MatrixXd &measureMatrix, int priority);
+    bool modifyMeasure(MatrixXd &measureMatrix, int priority, int n);
     pair<int, int> findModificationRange(VectorXd t, VectorXd instR, VectorXd instL);
     bool modifyCrash(MatrixXd &measureMatrix, int num);
     bool switchHands(MatrixXd &measureMatrix, int num);
@@ -390,5 +388,16 @@ private:
     VectorXd solveGeometricIK(VectorXd &pR, VectorXd &pL, double theta0, double theta7, double theta8, bool printError);
     double getLength(double theta);
     double getTheta(double l1, double theta);
+
+    //////////////////////////////////// DrumDetector
+    VectorXd lastFinalPositionR, lastFinalPositionL;
+    VectorXd lastInitialPositionR, lastInitialPositionL;
+    bool hasLastHit = false;
+
+    std::pair<VectorXd, VectorXd> selectHitTarget(TrajectoryData &data,
+        int finalInstR, int finalInstL,
+        VectorXd fallbackPositionR, VectorXd fallbackPositionL,
+        int isMakingTrajectoryR, int isMakingTrajectoryL,
+        int n);
 
 };

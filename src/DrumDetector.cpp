@@ -1,5 +1,9 @@
 #include "../include/tasks/DrumDetector.hpp"
 
+#include <vtkRenderWindow.h>
+#include <vtkRenderWindowInteractor.h>
+#include <vtkSmartPointer.h>
+
 DrumDetector::DrumDetector(PathManager &pathManagerRef, TestManager &testManagerRef)
     : pathManager(pathManagerRef), testManager(testManagerRef),
       align_to_color(RS2_STREAM_COLOR),
@@ -541,18 +545,34 @@ void DrumDetector::visualizeDrums(const std::vector<pcl::PointCloud<pcl::PointXY
         }
     }
 
-    while (!viewer->wasStopped())
+    // ===== 종료 처리 =====
+
+    viewer->removeAllPointClouds();
+    viewer->removeAllShapes();
+    viewer->removeAllCoordinateSystems();
+
+    viewer->close();
+
+    // VTK RenderWindow 강제 finalize
+    if (viewer->getRenderWindow())
     {
-        viewer->spinOnce(100);
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        viewer->getRenderWindow()->Finalize();
     }
 
-    // 완전 종료 — VTK 리소스까지 정리
-    // viewer->removeAllPointClouds();
-    // viewer->removeAllShapes();
-    // viewer->getRenderWindow()->Finalize();
-    viewer->close();
     viewer.reset();
+
+//     while (!viewer->wasStopped())
+//     {
+//         viewer->spinOnce(100);
+//         std::this_thread::sleep_for(std::chrono::milliseconds(100));
+//     }
+
+//     // 완전 종료 — VTK 리소스까지 정리
+//     // viewer->removeAllPointClouds();
+//     // viewer->removeAllShapes();
+//     // viewer->getRenderWindow()->Finalize();
+//     viewer->close();
+//     viewer.reset();
 }
 
 void DrumDetector::detectDrums()

@@ -1891,6 +1891,9 @@ void DrumRobot::runPlayProcess()
     {
         pathManager.processLine(measureMatrix);
     }
+    int stop;
+    std::cout << "\n plz input any int : ";
+    std::cin >> stop;
 
     if(txtPath == magentaCodePath)
     {

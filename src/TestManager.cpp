@@ -2812,7 +2812,7 @@ void TestManager::move_waist(float target_deg)
     while(t_now <= move_time)
     {   
         float Q = ((target_rad - start_rad) / 2.0f) * cos(M_PI * (t_now / move_time + 1.0f)) + ((target_rad + start_rad) / 2.0f);
-        func.appendToCSV("waist log", false, Q);
+        // func.appendToCSV("waist log", false, Q);
         for (auto &entry : motors)
         {
             if (entry.first == "waist")
