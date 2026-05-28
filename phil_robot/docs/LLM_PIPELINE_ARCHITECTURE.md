@@ -168,7 +168,7 @@ This makes planner output more reproducible and easier to validate.
 │        phil_brain.py         │
 │      orchestration layer     │
 └──────────────┬───────────────┘
-               │ raw_robot_state snapshot
+               │ robot_state snapshot
                v
 ┌──────────────────────────────┐
 │       state_adapter.py       │
@@ -180,7 +180,7 @@ This makes planner output more reproducible and easier to validate.
         │                             │
         v                             v
 ┌──────────────────────┐    ┌──────────────────────────┐
-│ full adapted state   │    │ classifier state summary │
+│ full robot_state     │    │ classifier state summary │
 └──────────┬───────────┘    └──────────────┬───────────┘
            │                               │
            │                               v
@@ -276,7 +276,7 @@ flowchart TD
     B --> C[phil_brain.py orchestration]
     C --> D[state_adapter.adapt_robot_state]
 
-    D --> E[intent_classifier.build_classifier_input_json]
+    D --> E[intent_classifier.build_classifier_input]
     E --> F[llm_interface.call_json_llm classifier]
     F --> G[parse_intent_response + normalize_intent_result]
 
@@ -284,7 +284,7 @@ flowchart TD
     H -->|yes| I[build_joint_angle_answer or direct status response]
     H -->|no| J[planner.select_planner_domain]
     J --> K[planner.get_planner_system_prompt]
-    G --> L[planner.build_planner_input_json]
+    G --> L[planner.build_planner_input]
     K --> M[llm_interface.call_json_llm planner]
     L --> M
     M --> N[planner.parse_plan_response]
@@ -333,9 +333,8 @@ File: [state_adapter.py](/home/shy/robot_project/phil_robot/pipeline/state_adapt
 
 Responsibilities:
 
-- normalize raw robot state from C++
-- map internal song codes to display labels
-- alias `error_message` -> `error_detail`
+- pass through the C++ robot state snapshot
+- keep source `error_message` and `current_angles` in summaries
 - preserve full runtime state for low-level Python control logic
 - build LLM-facing state summaries
 - detect joint-angle status queries
@@ -399,8 +398,6 @@ Responsibilities:
 
 - classify user intent
 - estimate `needs_motion`
-- estimate `needs_dialogue`
-- provide a coarse `risk_level`
 - apply post-parse normalization for motion-bearing intents
 - force angle-question utterances into `status_question`
 
@@ -409,9 +406,7 @@ Output schema:
 ```json
 {
   "intent": "chat | motion_request | play_request | status_question | stop_request | unknown",
-  "needs_motion": true,
-  "needs_dialogue": true,
-  "risk_level": "low | medium | high"
+  "needs_motion": true
 }
 ```
 
@@ -616,7 +611,7 @@ On the C++ side:
 1. User speaks.
 2. Whisper STT converts audio to text.
 3. [phil_brain.py](/home/shy/robot_project/phil_robot/phil_brain.py) acquires a stable state snapshot from [phil_client.py](/home/shy/robot_project/phil_robot/runtime/phil_client.py).
-4. [state_adapter.py](/home/shy/robot_project/phil_robot/pipeline/state_adapter.py) normalizes the raw runtime state.
+4. [state_adapter.py](/home/shy/robot_project/phil_robot/pipeline/state_adapter.py) passes the runtime state snapshot through to the pipeline.
 5. [intent_classifier.py](/home/shy/robot_project/phil_robot/pipeline/intent_classifier.py) builds a compact classifier input JSON.
 6. [llm_interface.py](/home/shy/robot_project/phil_robot/pipeline/llm_interface.py) calls the classifier model.
 7. If the utterance is a supported deterministic status query such as a joint-angle question, [brain_pipeline.py](/home/shy/robot_project/phil_robot/pipeline/brain_pipeline.py) answers directly from the current state snapshot.

@@ -84,15 +84,15 @@ def build_play_modifier_message(play_modifier: PlayModifier) -> str:
 def build_validated_plan(
     user_text: str,
     robot_state: Dict,
-    classifier_result: Dict,
-    planner_result: Dict,
+    classifier_output: Dict,
+    planner_output: Dict,
 ) -> ValidatedPlan:
     """
     classifier + planner 결과를 실제 실행 가능한 plan 으로 정리한다.
     이 단계가 끝나면 phil_brain.py 는 더 이상 명령 보정 규칙을 알 필요가 없다.
     """
-    skill_op_cmds, skill_warnings = expand_skills(planner_result.get("skills", []))
-    planner_op_cmds = list(planner_result.get("op_cmd", planner_result.get("commands", [])))
+    skill_op_cmds, skill_warnings = expand_skills(planner_output.get("skills", []))
+    planner_op_cmds = list(planner_output.get("op_cmd", planner_output.get("commands", [])))
     expanded_op_cmds = skill_op_cmds + planner_op_cmds
 
     resolution = resolve_motion_commands(user_text, expanded_op_cmds, robot_state)
@@ -104,7 +104,7 @@ def build_validated_plan(
     warnings.extend(resolution.warnings)
     warnings.extend(validation.warnings)
 
-    speech = planner_result.get("speech", "")
+    speech = planner_output.get("speech", "")
 
     # planner 가 거절 대사를 만들지 못해도 validator 가 최종 사용자 메시지를 보수적으로 보정한다.
     if has_play_modifier:
@@ -115,17 +115,17 @@ def build_validated_plan(
         speech = resolution.speech_override
     elif has_actionable_motion_command(validation.valid_commands) and validation.rejected_commands:
         speech = build_partial_execution_message(validation.valid_commands, validation.rejected_commands)
-    elif classifier_result.get("needs_motion", False) and not has_actionable_motion_command(validation.valid_commands):
+    elif classifier_output.get("needs_motion", False) and not has_actionable_motion_command(validation.valid_commands):
         speech = build_motion_block_message(robot_state)
     elif (
-        classifier_result.get("intent") == "motion_request"
+        classifier_output.get("intent") == "motion_request"
         and user_text_requests_motion(user_text)
         and not has_actionable_motion_command(validation.valid_commands)
     ):
         speech = build_motion_block_message(robot_state)
 
     return ValidatedPlan(
-        skills=list(planner_result.get("skills", [])),
+        skills=list(planner_output.get("skills", [])),
         raw_op_cmds=planner_op_cmds,
         expanded_op_cmds=expanded_op_cmds,
         resolved_op_cmds=list(resolution.op_cmds),
@@ -133,7 +133,7 @@ def build_validated_plan(
         rejected_op_cmds=list(validation.rejected_commands),
         warnings=warnings,
         speech=speech,
-        reason=planner_result.get("reason", ""),
+        reason=planner_output.get("reason", ""),
         play_modifier=play_modifier,
-        clarification_question=planner_result.get("clarification_question", ""),
+        clarification_question=planner_output.get("clarification_question", ""),
     )

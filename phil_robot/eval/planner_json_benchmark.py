@@ -7,14 +7,14 @@ from phil_robot.config import CLASSIFIER_MODEL, PLANNER_MODEL
 from phil_robot.pipeline.failure import FALLBACK_MESSAGE
 from phil_robot.pipeline.intent_classifier import (
     CLASSIFIER_SYSTEM_PROMPT,
-    build_classifier_input_json,
+    build_classifier_input,
     is_ambiguous_follow_up,
     normalize_intent_result,
     parse_intent_response,
 )
 from phil_robot.pipeline.llm_interface import call_json_llm
 from phil_robot.pipeline.planner import (
-    build_planner_input_json,
+    build_planner_input,
     enforce_intent_constraints,
     get_planner_system_prompt,
     parse_plan_response,
@@ -30,14 +30,14 @@ class PreparedPlannerCase:
     tags: List[str] = field(default_factory=list)
     user_text: str = ""
     expected: Dict[str, Any] = field(default_factory=dict)
-    adapted_state: Dict[str, Any] = field(default_factory=dict)
-    classifier_input_json: str = ""
+    robot_state: Dict[str, Any] = field(default_factory=dict)
+    classifier_input: str = ""
     classifier_raw_response_text: str = ""
-    classifier_result: Dict[str, Any] = field(default_factory=dict)
+    classifier_output: Dict[str, Any] = field(default_factory=dict)
     classifier_metrics: Dict[str, Any] = field(default_factory=dict)
     planner_domain: str = ""
     planner_system_prompt: str = ""
-    planner_input_json: str = ""
+    planner_input: str = ""
     planner_enabled: bool = True
     shortcut_reason: str = ""
     shortcut_plan: Dict[str, Any] = field(default_factory=dict)
@@ -80,8 +80,8 @@ def p95_num(num_list: List[float]) -> Optional[float]:
     return sorted_list[idx_num]
 
 
-def _build_shortcut_plan(user_text: str, adapted_state: Dict[str, Any], classifier_result: Dict[str, Any]) -> Tuple[bool, str, Dict[str, Any]]:
-    if classifier_result.get("intent") == "unknown" and is_ambiguous_follow_up(user_text):
+def _build_shortcut_plan(user_text: str, robot_state: Dict[str, Any], classifier_output: Dict[str, Any]) -> Tuple[bool, str, Dict[str, Any]]:
+    if classifier_output.get("intent") == "unknown" and is_ambiguous_follow_up(user_text):
         return (
             True,
             "ambiguous_follow_up",
@@ -94,14 +94,14 @@ def _build_shortcut_plan(user_text: str, adapted_state: Dict[str, Any], classifi
         )
 
     joint_name = detect_joint_angle_query(user_text)
-    if classifier_result.get("intent") == "status_question" and joint_name:
+    if classifier_output.get("intent") == "status_question" and joint_name:
         return (
             True,
             "joint_angle_shortcut",
             {
                 "skills": [],
                 "op_cmd": [],
-                "speech": build_joint_angle_answer(adapted_state, joint_name),
+                "speech": build_joint_angle_answer(robot_state, joint_name),
                 "reason": "현재 관절 각도 조회는 상태 스냅샷에서 직접 응답",
             },
         )
@@ -115,50 +115,50 @@ def prepare_planner_case(
     capture_classifier_metrics: bool = False,
 ) -> PreparedPlannerCase:
     user_text = case["user_text"]
-    adapted_state = adapt_robot_state(case["robot_state"])
-    classifier_input_json = build_classifier_input_json(adapted_state, user_text)
+    robot_state = adapt_robot_state(case["robot_state"])
+    classifier_input = build_classifier_input(robot_state, user_text)
 
     if capture_classifier_metrics:
         classifier_raw_response_text, classifier_metrics = call_json_llm(
             model_name=classifier_name,
             system_prompt=CLASSIFIER_SYSTEM_PROMPT,
-            user_input_json=classifier_input_json,
+            user_input_json=classifier_input,
             capture_metrics=True,
         )
     else:
         classifier_raw_response_text = call_json_llm(
             model_name=classifier_name,
             system_prompt=CLASSIFIER_SYSTEM_PROMPT,
-            user_input_json=classifier_input_json,
+            user_input_json=classifier_input,
         )
         classifier_metrics = {}
 
-    classifier_result = parse_intent_response(classifier_raw_response_text)
-    classifier_result = normalize_intent_result(classifier_result, user_text)
-    planner_domain = select_planner_domain(classifier_result)
-    shortcut_hit, shortcut_reason, shortcut_plan = _build_shortcut_plan(user_text, adapted_state, classifier_result)
+    classifier_output = parse_intent_response(classifier_raw_response_text)
+    classifier_output = normalize_intent_result(classifier_output, user_text)
+    planner_domain = select_planner_domain(classifier_output)
+    shortcut_hit, shortcut_reason, shortcut_plan = _build_shortcut_plan(user_text, robot_state, classifier_output)
     planner_enabled = not shortcut_hit
 
     if planner_enabled:
         planner_system_prompt = get_planner_system_prompt(planner_domain)
-        planner_input_json = build_planner_input_json(adapted_state, user_text, classifier_result, planner_domain)
+        planner_input = build_planner_input(robot_state, user_text, classifier_output, planner_domain)
     else:
         planner_system_prompt = ""
-        planner_input_json = ""
+        planner_input = ""
 
     return PreparedPlannerCase(
         id=case["id"],
         tags=list(case.get("tags", [])),
         user_text=user_text,
         expected=dict(case.get("expected", {})),
-        adapted_state=adapted_state,
-        classifier_input_json=classifier_input_json,
+        robot_state=robot_state,
+        classifier_input=classifier_input,
         classifier_raw_response_text=classifier_raw_response_text,
-        classifier_result=classifier_result,
+        classifier_output=classifier_output,
         classifier_metrics=dict(classifier_metrics),
         planner_domain=planner_domain,
         planner_system_prompt=planner_system_prompt,
-        planner_input_json=planner_input_json,
+        planner_input=planner_input,
         planner_enabled=planner_enabled,
         shortcut_reason=shortcut_reason,
         shortcut_plan=shortcut_plan,
@@ -194,42 +194,40 @@ def execute_prepared_case(
             planner_raw_response_text, planner_metrics = call_json_llm(
                 model_name=planner_name,
                 system_prompt=prepared_case.planner_system_prompt,
-                user_input_json=prepared_case.planner_input_json,
+                user_input_json=prepared_case.planner_input,
                 capture_metrics=True,
             )
         else:
             planner_raw_response_text = call_json_llm(
                 model_name=planner_name,
                 system_prompt=prepared_case.planner_system_prompt,
-                user_input_json=prepared_case.planner_input_json,
+                user_input_json=prepared_case.planner_input,
             )
         planner_duration_sec = time.time() - start_sec
-        planner_result = parse_plan_response(planner_raw_response_text)
-        planner_result = enforce_intent_constraints(planner_result, prepared_case.classifier_result)
+        planner_output = parse_plan_response(planner_raw_response_text)
+        planner_output = enforce_intent_constraints(planner_output, prepared_case.classifier_output)
         planner_parse_ok = loads_json_obj(planner_raw_response_text)
         planner_is_fallback = (
             not planner_parse_ok
-            or planner_result.get("speech") == FALLBACK_MESSAGE
-            or str(planner_result.get("reason", "")).startswith("LLM call failed:")
+            or planner_output.get("speech") == FALLBACK_MESSAGE
+            or str(planner_output.get("reason", "")).startswith("LLM call failed:")
         )
     else:
         planner_raw_response_text = ""
-        planner_result = dict(prepared_case.shortcut_plan)
+        planner_output = dict(prepared_case.shortcut_plan)
         planner_parse_ok = True
         planner_is_fallback = False
 
     validated_plan = build_validated_plan(
         user_text=prepared_case.user_text,
-        robot_state=prepared_case.adapted_state,
-        classifier_result=prepared_case.classifier_result,
-        planner_result=planner_result,
+        robot_state=prepared_case.robot_state,
+        classifier_output=prepared_case.classifier_output,
+        planner_output=planner_output,
     )
 
     actual = {
-        "intent": prepared_case.classifier_result.get("intent"),
-        "needs_motion": prepared_case.classifier_result.get("needs_motion"),
-        "needs_dialogue": prepared_case.classifier_result.get("needs_dialogue"),
-        "risk_level": prepared_case.classifier_result.get("risk_level"),
+        "intent": prepared_case.classifier_output.get("intent"),
+        "needs_motion": prepared_case.classifier_output.get("needs_motion"),
         "planner_domain": prepared_case.planner_domain,
         "skills": list(validated_plan.skills),
         "raw_op_cmds": list(validated_plan.raw_op_cmds),
@@ -248,10 +246,10 @@ def execute_prepared_case(
 
     return {
         "actual": actual,
-        "planner_result": planner_result,
+        "planner_output": planner_output,
         "validated_plan": validated_plan,
         "planner_duration_sec": planner_duration_sec,
         "planner_metrics": dict(planner_metrics),
-        "planner_input_chars": len(prepared_case.planner_input_json),
+        "planner_input_chars": len(prepared_case.planner_input),
         "planner_response_chars": len(planner_raw_response_text) if isinstance(planner_raw_response_text, str) else 0,
     }

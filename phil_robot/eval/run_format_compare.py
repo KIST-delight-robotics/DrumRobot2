@@ -20,7 +20,7 @@ if PROJECT_ROOT not in sys.path:
 from phil_robot.config import CLASSIFIER_MODEL, PLANNER_MODEL
 from phil_robot.pipeline.intent_classifier import (
     CLASSIFIER_SYSTEM_PROMPT,
-    build_classifier_input_json,
+    build_classifier_input,
     normalize_intent_result,
     parse_intent_response,
 )
@@ -66,14 +66,14 @@ def build_legacy_prompt(domain_name: str) -> str:
 
 planner 입력에는 다음 정보가 함께 들어온다.
 - robot_state: 현재 로봇 상태 요약
-- intent_result: 1차 classifier 결과
+- classifier_output: 1차 classifier output
 - planner_domain: 현재 planner 도메인
 - user_text: 사용자 발화
 
 공통 규칙:
 - 당신의 이름은 필(Phil)이며, KIST에서 개발된 지능형 휴머노이드 드럼 로봇이다.
-- intent_result 를 반드시 따른다.
-- intent_result.needs_motion 이 false 면 CMD 줄은 출력하지 않는다.
+- classifier_output 을 반드시 따른다.
+- classifier_output.needs_motion 이 false 면 CMD 줄은 출력하지 않는다.
 - 안전 키 잠김, 연주 중, 에러 상태, 이동 중이면 무리하게 명령을 만들지 않는다.
 - SAY 문장은 자연스러운 한국어 문장만 쓴다. 괄호 설명문은 금지한다.
 - move 명령은 move:L_wrist,90 처럼 실제 모터 이름을 바로 쓴다.
@@ -108,13 +108,13 @@ planner 입력에는 다음 정보가 함께 들어온다.
 def build_mode_input(
     robot_state: Dict[str, Any],
     user_text: str,
-    intent_result: Dict[str, Any],
+    classifier_output: Dict[str, Any],
     domain_name: str,
     mode_name: str,
 ) -> str:
     payload = {
         "robot_state": build_planner_state_summary(robot_state),
-        "intent_result": intent_result,
+        "classifier_output": classifier_output,
         "planner_domain": domain_name,
         "user_text": user_text,
         "response_mode": mode_name,
@@ -257,22 +257,22 @@ def parse_json(raw_text: str) -> Dict[str, Any]:
 
 
 def run_classifier(user_text: str, robot_state: Dict[str, Any]) -> Tuple[Dict[str, Any], str]:
-    clf_input = build_classifier_input_json(robot_state, user_text)
+    clf_input = build_classifier_input(robot_state, user_text)
     raw_text, _ = call_chat(CLASSIFIER_MODEL, CLASSIFIER_SYSTEM_PROMPT, clf_input, True)
-    intent_obj = parse_intent_response(raw_text)
-    intent_obj = normalize_intent_result(intent_obj, user_text)
-    domain_name = select_planner_domain(intent_obj)
-    return intent_obj, domain_name
+    classifier_output = parse_intent_response(raw_text)
+    classifier_output = normalize_intent_result(classifier_output, user_text)
+    domain_name = select_planner_domain(classifier_output)
+    return classifier_output, domain_name
 
 
 def run_mode(
     mode_name: str,
     user_text: str,
     robot_state: Dict[str, Any],
-    intent_obj: Dict[str, Any],
+    classifier_output: Dict[str, Any],
     domain_name: str,
 ) -> Dict[str, Any]:
-    mode_input = build_mode_input(robot_state, user_text, intent_obj, domain_name, mode_name)
+    mode_input = build_mode_input(robot_state, user_text, classifier_output, domain_name, mode_name)
     if mode_name == MODE_JSON:
         sys_text = get_planner_system_prompt(domain_name)
         raw_text, met_obj = call_chat(PLANNER_MODEL, sys_text, mode_input, True)
@@ -345,7 +345,7 @@ def build_md(
     line_list.append(f"- case_count: `{len(case_rows)}`")
     line_list.append(f"- classifier_model: `{CLASSIFIER_MODEL}`")
     line_list.append(f"- planner_model: `{PLANNER_MODEL}`")
-    line_list.append("- method: classifier는 케이스마다 한 번만 실행하고, 같은 `intent_result`를 재사용해 planner 단계만 `legacy_str`와 `json`으로 비교했다.")
+    line_list.append("- method: classifier는 케이스마다 한 번만 실행하고, 같은 `classifier_output`을 재사용해 planner 단계만 `legacy_str`와 `json`으로 비교했다.")
     line_list.append("- method: smoke 케이스 앞의 10개를 사용했고, 각 모드는 케이스당 1회 실행했다. 즉 모드별 총 10회다.")
     line_list.append("- method: Ollama 호출은 `temperature=0`으로 고정했다.")
     line_list.append("- method: 측정 전에 classifier와 planner 두 모드를 각각 1회씩 warm-up 하고, 그 호출은 통계에서 제외했다.")
@@ -467,20 +467,20 @@ def main() -> int:
         robot_state = adapt_robot_state(case_obj["robot_state"])
 
         print(f"[{idx}/{len(use_list)}] {case_id} :: classifier")
-        intent_obj, domain_name = run_classifier(user_text, robot_state)
+        classifier_output, domain_name = run_classifier(user_text, robot_state)
 
         print(f"[{idx}/{len(use_list)}] {case_id} :: legacy_str")
-        str_row = run_mode(MODE_STR, user_text, robot_state, intent_obj, domain_name)
+        str_row = run_mode(MODE_STR, user_text, robot_state, classifier_output, domain_name)
 
         print(f"[{idx}/{len(use_list)}] {case_id} :: json")
-        json_row = run_mode(MODE_JSON, user_text, robot_state, intent_obj, domain_name)
+        json_row = run_mode(MODE_JSON, user_text, robot_state, classifier_output, domain_name)
 
         case_row = {
             "id": case_id,
             "tags": case_obj.get("tags", []),
             "user_text": user_text,
             "planner_domain": domain_name,
-            "intent_result": intent_obj,
+            "classifier_output": classifier_output,
             MODE_STR: str_row,
             MODE_JSON: json_row,
         }
@@ -499,7 +499,7 @@ def main() -> int:
             "planner_model": PLANNER_MODEL,
             "temperature": 0,
             "notes": [
-                "Classifier ran once per case and planner compared legacy_str vs json with shared intent_result.",
+                "Classifier ran once per case and planner compared legacy_str vs json with shared classifier_output.",
                 "One warm-up call was executed for classifier and both planner modes before timed runs.",
                 "Prompt/output token metrics come from Ollama prompt_eval_* and eval_* metadata.",
             ],

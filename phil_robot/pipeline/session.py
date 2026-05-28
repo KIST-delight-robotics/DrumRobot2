@@ -92,7 +92,7 @@ def update_session(
         ctx.history = ctx.history[-MAX_HISTORY_TURNS:]
 
     # ── 마지막 상태 갱신 ──────────────────────────────────────────────────
-    ctx.last_intent = brain_result.classifier_result.get("intent", "")
+    ctx.last_intent = brain_result.classifier_output.get("intent", "")
     ctx.last_speech = validated.speech
 
     # 실행된 명령에서 관절/시선/연주 상태를 추출한다.

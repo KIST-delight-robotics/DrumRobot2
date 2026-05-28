@@ -57,8 +57,8 @@
 - [x] `planner latency isolation benchmark` 추가
   - 목표: classifier 영향 없이 planner 자체의 latency와 output variability를 따로 측정한다.
   - 조건:
-    - 동일 `classifier_result`
-    - 동일 `planner_input_json`
+    - 동일 `classifier_output`
+    - 동일 `planner_input`
     - warm/cold 조건 분리 가능하면 기록
   - 기록 항목:
     - planner input JSON 길이
@@ -99,7 +99,7 @@
   - 목표: 바로 직전 문맥을 기억해 `거기서 더`, `아까처럼`, `그 노래` 같은 지시를 안정적으로 처리한다.
   - 범위:
     - 직전 intent
-    - 직전 planner result
+    - 직전 `planner_output`
     - 직전 confirmed target
     - 직전 clarification state
 
@@ -107,7 +107,7 @@
   - 목표: 여러 planner 모델을 같은 조건에서 비교해 planner 후보를 고른다.
   - 비교 조건:
     - 동일 `cases`
-    - 동일 `classifier_result` 또는 동일 `planner_input_json`
+    - 동일 `classifier_output` 또는 동일 `planner_input`
     - 동일 validator / executor 규칙
   - 비교 항목:
     - planner pass rate
@@ -116,7 +116,7 @@
     - speech quality
     - avg / median / p95 planner latency
   - 메모:
-    - `eval/run_planner_benchmark.py`를 JSON-only fixed fixture 방식으로 바꿔, classifier 를 케이스당 한 번만 실행하고 모든 planner 모델을 같은 `planner_input_json` 위에서 비교하도록 정리했다.
+    - `eval/run_planner_benchmark.py`를 JSON-only fixed fixture 방식으로 바꿔, classifier 를 케이스당 한 번만 실행하고 모든 planner 모델을 같은 `planner_input` 위에서 비교하도록 정리했다.
 
 - [ ] `classifier prefilter` 도입
   - 목표: 자주 나오는 저모호도 발화를 rule-based shortcut으로 먼저 처리해 classifier latency를 줄인다.

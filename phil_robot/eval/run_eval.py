@@ -29,7 +29,6 @@ DEFAULT_DOC_DIR = os.path.join(CURRENT_DIR, "eval_docs")
 CHECK_LABELS = {
     "classifier.intent": "의도",
     "classifier.needs_motion": "움직임 필요",
-    "classifier.needs_dialogue": "대화 필요",
     "planner.domain": "도메인",
     "planner.skills_exact": "스킬 일치",
     "planner.skills_any_of": "스킬 후보",
@@ -43,7 +42,6 @@ CHECK_LABELS = {
 FAIL_LABELS = {
     "classifier.intent": "의도 불일치",
     "classifier.needs_motion": "움직임 필요 불일치",
-    "classifier.needs_dialogue": "대화 필요 불일치",
     "planner.domain": "도메인 불일치",
     "planner.skills_exact": "스킬 불일치",
     "planner.skills_any_of": "스킬 후보 불일치",
@@ -364,8 +362,6 @@ def fix_note(row_obj: Dict[str, Any]) -> str:
         return "의도 분류가 기대와 다릅니다."
     if first_name == "classifier.needs_motion":
         return "움직임 필요 여부가 기대와 다릅니다."
-    if first_name == "classifier.needs_dialogue":
-        return "대화 필요 여부가 기대와 다릅니다."
     if first_name.startswith("classifier."):
         return "classifier 결과가 기대와 다릅니다."
     return "자동 비교 기준을 통과하지 못했습니다."
@@ -626,13 +622,6 @@ def evaluate_actual(expected: Dict[str, Any], actual: Dict[str, Any]) -> Tuple[L
             expected["needs_motion"],
             actual["needs_motion"],
         )
-    if "needs_dialogue" in expected:
-        add_check(
-            "classifier.needs_dialogue",
-            actual["needs_dialogue"] == expected["needs_dialogue"],
-            expected["needs_dialogue"],
-            actual["needs_dialogue"],
-        )
     if "planner_domain" in expected:
         add_check(
             "planner.domain",
@@ -781,8 +770,8 @@ def evaluate_case(
 
     planner_is_fallback = False
     if planner_called:
-        planner_reason = result.planner_result.get("reason", "")
-        planner_speech = result.planner_result.get("speech", "")
+        planner_reason = result.planner_output.get("reason", "")
+        planner_speech = result.planner_output.get("speech", "")
         planner_is_fallback = (
             not planner_parse_ok
             or planner_speech == FALLBACK_MESSAGE
@@ -790,10 +779,8 @@ def evaluate_case(
         )
 
     actual = {
-        "intent": result.classifier_result.get("intent"),
-        "needs_motion": result.classifier_result.get("needs_motion"),
-        "needs_dialogue": result.classifier_result.get("needs_dialogue"),
-        "risk_level": result.classifier_result.get("risk_level"),
+        "intent": result.classifier_output.get("intent"),
+        "needs_motion": result.classifier_output.get("needs_motion"),
         "planner_domain": result.planner_domain,
         "skills": list(result.validated_plan.skills),
         "raw_op_cmds": list(result.validated_plan.raw_op_cmds),

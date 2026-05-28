@@ -157,9 +157,9 @@ def main() -> int:
                 "tags": list(prepared_case.tags),
                 "user_text": prepared_case.user_text,
                 "planner_domain": prepared_case.planner_domain,
-                "classifier_result": dict(prepared_case.classifier_result),
-                "planner_input_json": prepared_case.planner_input_json,
-                "planner_input_chars": len(prepared_case.planner_input_json),
+                "classifier_output": dict(prepared_case.classifier_output),
+                "planner_input": prepared_case.planner_input,
+                "planner_input_chars": len(prepared_case.planner_input),
                 "warm_runs": warm_runs,
                 "summary": build_case_summary(warm_runs),
             }
@@ -178,8 +178,8 @@ def main() -> int:
         extra_meta={
             "json_production_path": True,
             "planner_benchmark_mode": "json_only_fixed_classifier_fixture",
-            "fixed_classifier_result": True,
-            "fixed_planner_input_json": True,
+            "fixed_classifier_output": True,
+            "fixed_planner_input": True,
             "warmup_runs_per_case": args.warmup_runs,
             "measured_runs_per_case": args.repeats,
             "cold_condition_note": "cold run is recorded from the first planner-enabled case before per-case warm-up.",

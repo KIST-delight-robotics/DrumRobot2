@@ -15,55 +15,42 @@ class IntentClassifierTest(unittest.TestCase):
             '{\n'
             '  "i": "P",\n'
             '  "m": 1,\n'
-            '  "d": 1,\n'
         )
 
         result = parse_intent_response(raw_text)
 
         self.assertEqual(result["intent"], "play_request")
         self.assertTrue(result["needs_motion"])
-        self.assertTrue(result["needs_dialogue"])
-        self.assertEqual(result["risk_level"], "medium")
 
     def test_parse_intent_response_reads_compact_json(self) -> None:
-        raw_text = '{"i":"Q","m":0,"d":1,"r":"H"}'
+        raw_text = '{"i":"Q","m":0}'
 
         result = parse_intent_response(raw_text)
 
         self.assertEqual(result["intent"], "status_question")
         self.assertFalse(result["needs_motion"])
-        self.assertTrue(result["needs_dialogue"])
-        self.assertEqual(result["risk_level"], "high")
 
     def test_normalize_intent_result_promotes_play_request_keywords(self) -> None:
         raw_result = {
             "intent": "unknown",
             "needs_motion": False,
-            "needs_dialogue": True,
-            "risk_level": "medium",
         }
 
         result = normalize_intent_result(raw_result, "그대에게 연주해줘")
 
         self.assertEqual(result["intent"], "play_request")
         self.assertTrue(result["needs_motion"])
-        self.assertTrue(result["needs_dialogue"])
-        self.assertEqual(result["risk_level"], "medium")
 
     def test_normalize_intent_result_promotes_identity_confirmation_to_motion(self) -> None:
         raw_result = {
             "intent": "chat",
             "needs_motion": False,
-            "needs_dialogue": True,
-            "risk_level": "low",
         }
 
         result = normalize_intent_result(raw_result, "너의 이름 필 맞지?")
 
         self.assertEqual(result["intent"], "motion_request")
         self.assertTrue(result["needs_motion"])
-        self.assertTrue(result["needs_dialogue"])
-        self.assertEqual(result["risk_level"], "medium")
 
     def test_looks_like_identity_confirmation_motion(self) -> None:
         self.assertTrue(looks_like_identity_confirmation_motion("너의 이름 필 맞지?"))
@@ -74,16 +61,12 @@ class IntentClassifierTest(unittest.TestCase):
         raw_result = {
             "intent": "chat",
             "needs_motion": False,
-            "needs_dialogue": True,
-            "risk_level": "low",
         }
 
         result = normalize_intent_result(raw_result, "준비")
 
         self.assertEqual(result["intent"], "motion_request")
         self.assertTrue(result["needs_motion"])
-        self.assertTrue(result["needs_dialogue"])
-        self.assertEqual(result["risk_level"], "medium")
 
     def test_looks_like_ready_pose_request(self) -> None:
         self.assertTrue(looks_like_ready_pose_request("준비"))
@@ -94,16 +77,12 @@ class IntentClassifierTest(unittest.TestCase):
         raw_result = {
             "intent": "play_request",
             "needs_motion": True,
-            "needs_dialogue": True,
-            "risk_level": "medium",
         }
 
         result = normalize_intent_result(raw_result, "너 무슨 노래 연주할 수 있니?")
 
         self.assertEqual(result["intent"], "chat")
         self.assertFalse(result["needs_motion"])
-        self.assertTrue(result["needs_dialogue"])
-        self.assertEqual(result["risk_level"], "low")
 
     def test_looks_like_play_request_requires_more_than_song_name(self) -> None:
         self.assertFalse(looks_like_play_request("그대에게"))

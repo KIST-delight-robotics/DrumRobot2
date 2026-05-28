@@ -261,9 +261,9 @@ def build_smoke_row(prepared_case: PreparedPlannerCase, planner_name: str) -> Di
             "planner": dict(exec_obj["planner_metrics"]),
         },
         "benchmark_fixture": {
-            "classifier_result": dict(prepared_case.classifier_result),
+            "classifier_output": dict(prepared_case.classifier_output),
             "planner_domain": prepared_case.planner_domain,
-            "planner_input_json": prepared_case.planner_input_json,
+            "planner_input": prepared_case.planner_input,
             "planner_input_chars": exec_obj["planner_input_chars"],
             "planner_response_chars": exec_obj["planner_response_chars"],
             "planner_enabled": prepared_case.planner_enabled,
@@ -414,8 +414,8 @@ def run_smoke(
             "warmup_excluded": True,
             "json_production_path": True,
             "planner_benchmark_mode": "json_only_fixed_classifier_fixture",
-            "fixed_classifier_result": True,
-            "fixed_planner_input_json": True,
+            "fixed_classifier_output": True,
+            "fixed_planner_input": True,
         },
     )
     save_report(rep_path, row_list, sum_obj, meta_obj)
@@ -550,7 +550,7 @@ def build_round_md(round_obj: Dict[str, Any]) -> str:
     line_list.append("## Notes")
     line_list.append("")
     line_list.append("- 이 round benchmark 는 JSON production planner path 만 사용한다.")
-    line_list.append("- classifier 는 케이스당 한 번만 실행해 `classifier_result` 와 `planner_input_json` 을 고정하고, 각 planner 모델은 같은 fixture 위에서만 비교했다.")
+    line_list.append("- classifier 는 케이스당 한 번만 실행해 `classifier_output` 와 `planner_input` 을 고정하고, 각 planner 모델은 같은 fixture 위에서만 비교했다.")
     line_list.append("- avg / median / p95 dt 는 별도 str 모드 비교가 아니라 smoke run 중 planner wall-clock 기준이다.")
     line_list.append("- 비교/추천 문단은 의도적으로 넣지 않았다.")
     return "\n".join(line_list)

@@ -130,7 +130,7 @@ Python 3.8에서 import 자체가 TypeError로 실패한다.
 
 class PhilState(TypedDict):
     user_text: str          # 이번 턴 사용자 발화
-    robot_hw_state: dict    # get_robot_state_snapshot() 스냅샷
+    robot_state: dict       # get_robot_state_snapshot() 스냅샷
     plan_type: str          # "motion" | "play" | "chat" | "stop" | "none"
     speech: str             # 필이 할 말
     commands: list          # 실행할 op_cmd 목록
@@ -223,12 +223,12 @@ class InterruptibleExecutor:
 | s 정지 | `stop` | ✗ |
 | 대화 응답 | `chat` | ✗ |
 
-`plan_type`은 `process_node`에서 classifier result + executed skills의 category를
+`plan_type`은 `process_node`에서 `classifier_output` + executed skills의 category를
 보고 판단한다. 구체적으로:
 - `validated_plan.skills`에 `social` 또는 `posture` category 가 있으면 `"motion"`
 - `validated_plan.valid_op_cmds`에 `move:`가 있고 `play`가 없으면 `"motion"`
 - `validated_plan.skills`에 `play` category가 있으면 `"play"`
-- 그 외 → classifier result의 intent를 그대로 사용
+- 그 외 → `classifier_output.intent`를 그대로 사용
 
 ---
 

@@ -7,7 +7,7 @@ try:
     # 예: from phil_robot.pipeline.brain_pipeline import run_brain_turn
     from .intent_classifier import (
         CLASSIFIER_SYSTEM_PROMPT,           # classifier system prompt
-        build_classifier_input_json,        # classifier 입력 JSON 생성
+        build_classifier_input,        # classifier 입력 JSON 생성
         is_ambiguous_follow_up,             # history 없이 해석 어려운 초단문 follow-up 감지
         normalize_intent_result,            # classifier 결과 후처리/정규화
         parse_intent_response,              # classifier JSON 응답 파싱
@@ -16,7 +16,7 @@ try:
     # JSON 형식 LLM 호출 공통 래퍼
     from .llm_interface import call_json_llm
     from .planner import (
-        build_planner_input_json,           # planner 입력 JSON 생성
+        build_planner_input,           # planner 입력 JSON 생성
         enforce_intent_constraints,         # planner 결과를 intent/domain 기준으로 한 번 더 정리
         get_planner_system_prompt,          # domain별 planner system prompt 생성
         parse_plan_response,                # planner JSON 응답 파싱
@@ -45,7 +45,7 @@ except (ImportError, ValueError):
     # 예: cd phil_robot && python phil_brain.py
     from pipeline.intent_classifier import (
         CLASSIFIER_SYSTEM_PROMPT,           # classifier system prompt
-        build_classifier_input_json,        # classifier 입력 JSON 생성
+        build_classifier_input,        # classifier 입력 JSON 생성
         is_ambiguous_follow_up,             # history 없이 해석 어려운 초단문 follow-up 감지
         normalize_intent_result,            # classifier 결과 후처리/정규화
         parse_intent_response,              # classifier JSON 응답 파싱
@@ -54,7 +54,7 @@ except (ImportError, ValueError):
     # JSON 형식 LLM 호출 공통 래퍼
     from pipeline.llm_interface import call_json_llm
     from pipeline.planner import (
-        build_planner_input_json,           # planner 입력 JSON 생성
+        build_planner_input,           # planner 입력 JSON 생성
         enforce_intent_constraints,         # planner 결과를 intent/domain 기준으로 한 번 더 정리
         get_planner_system_prompt,          # domain별 planner system prompt 생성
         parse_plan_response,                # planner JSON 응답 파싱
@@ -89,14 +89,14 @@ except (ImportError, ValueError):
 
 @dataclass
 class BrainTurnResult:
-    classifier_input_json: str
-    classifier_result: Dict
+    classifier_input: str
+    classifier_output: Dict
     planner_domain: str
-    planner_input_json: str
+    planner_input: str
     classifier_raw_response_text: str
     planner_raw_response_text: str
-    planner_result: Dict
-    adapted_state: Dict
+    planner_output: Dict
+    robot_state: Dict
     validated_plan: ValidatedPlan = field(default_factory=ValidatedPlan)
     classifier_duration_sec: float = 0.0
     planner_duration_sec: float = 0.0
@@ -131,7 +131,7 @@ def _detect_play_interrupt(user_text: str):
 
 def run_brain_turn(
     user_text,
-    raw_robot_state,
+    robot_state,
     classifier_model_name=CLASSIFIER_MODEL,
     planner_model_name=PLANNER_MODEL,
     capture_metrics: bool = False,
@@ -141,12 +141,15 @@ def run_brain_turn(
     한 턴의 LLM 처리 파이프라인.
     1차 classifier 와 2차 planner 를 분리해, 각 역할을 독립적으로 다룰 수 있게 한다.
 
+    robot_state: dict
+        get_robot_state_snapshot() 으로 만든 스냅샷 복사본이다.
+        함수 초반에 adapt_robot_state() 를 거쳐 dict 여부만 확인한 뒤 같은 이름으로 계속 사용한다.
     session: SessionContext | None
         세션 단기 기억. None 이면 기존 stateless 동작과 동일하다.
         - clarification 대기 상태라면, user_text 와 이전 발화를 합쳐서 처리한다.
         - planner input 에 최근 대화 히스토리와 마지막 동작 상태를 포함한다.
     """
-    adapted_state = adapt_robot_state(raw_robot_state)
+    robot_state = adapt_robot_state(robot_state)
 
     # ===========================================================
     # [이동 필요] 이 shortcut은 phil_brain.py 의 orchestration 진입점으로 옮겨야 한다.
@@ -166,13 +169,11 @@ def run_brain_turn(
     play_interrupt = _detect_play_interrupt(user_text)
     if play_interrupt is not None:
         speech_map = {"pause": "잠깐 멈출게요.", "resume": "다시 연주할게요."}
-        classifier_result = {
+        classifier_output = {
             "intent": "stop_request",
             "needs_motion": False,
-            "needs_dialogue": True,
-            "risk_level": "low",
         }
-        planner_result = {
+        planner_output = {
             "skills": [],
             "op_cmd": [play_interrupt],
             "speech": speech_map[play_interrupt],
@@ -180,31 +181,29 @@ def run_brain_turn(
         }
         validated_plan = build_validated_plan(
             user_text=user_text,
-            robot_state=adapted_state,
-            classifier_result=classifier_result,
-            planner_result=planner_result,
+            robot_state=robot_state,
+            classifier_output=classifier_output,
+            planner_output=planner_output,
         )
         return BrainTurnResult(
-            classifier_input_json="",
-            classifier_result=classifier_result,
+            classifier_input="",
+            classifier_output=classifier_output,
             planner_domain="stop",
-            planner_input_json="",
+            planner_input="",
             classifier_raw_response_text="",
             planner_raw_response_text="",
-            planner_result=planner_result,
-            adapted_state=adapted_state,
+            planner_output=planner_output,
+            robot_state=robot_state,
             validated_plan=validated_plan,
         )
     # ===========================================================
 
     if _is_greeting_wave(user_text):
-        classifier_result = {
+        classifier_output = {
             "intent": "motion_request",
             "needs_motion": True,
-            "needs_dialogue": True,
-            "risk_level": "low",
         }
-        planner_result = {
+        planner_output = {
             "skills": ["wave_hi"],
             "op_cmd": [],
             "speech": "안녕하세요! 반가워요.",
@@ -212,19 +211,19 @@ def run_brain_turn(
         }
         validated_plan = build_validated_plan(
             user_text=user_text,
-            robot_state=adapted_state,
-            classifier_result=classifier_result,
-            planner_result=planner_result,
+            robot_state=robot_state,
+            classifier_output=classifier_output,
+            planner_output=planner_output,
         )
         return BrainTurnResult(
-            classifier_input_json="",
-            classifier_result=classifier_result,
+            classifier_input="",
+            classifier_output=classifier_output,
             planner_domain="motion",
-            planner_input_json="",
+            planner_input="",
             classifier_raw_response_text="",
             planner_raw_response_text="",
-            planner_result=planner_result,
-            adapted_state=adapted_state,
+            planner_output=planner_output,
+            robot_state=robot_state,
             validated_plan=validated_plan,
         )
     # ===========================================================
@@ -235,46 +234,42 @@ def run_brain_turn(
     if session is not None:
         user_text = resolve_clarification_text(session, user_text)
 
-    classifier_input_json = build_classifier_input_json(adapted_state, user_text)
+    classifier_input = build_classifier_input(robot_state, user_text)
     classifier_start_time = time.time()
     if capture_metrics:
         classifier_raw_response_text, classifier_metrics = call_json_llm(
             model_name=classifier_model_name,
             system_prompt=CLASSIFIER_SYSTEM_PROMPT,
-            user_input_json=classifier_input_json,
+            user_input_json=classifier_input,
             capture_metrics=True,
         )
     else:
         classifier_raw_response_text = call_json_llm(
             model_name=classifier_model_name,
             system_prompt=CLASSIFIER_SYSTEM_PROMPT,
-            user_input_json=classifier_input_json,
+            user_input_json=classifier_input,
         )
         classifier_metrics = {}
     classifier_duration_sec = time.time() - classifier_start_time
-    classifier_result = parse_intent_response(classifier_raw_response_text)
-    classifier_result = normalize_intent_result(classifier_result, user_text)
+    classifier_output = parse_intent_response(classifier_raw_response_text)
+    classifier_output = normalize_intent_result(classifier_output, user_text)
     if detect_repertoire_query(user_text):
-        classifier_result["intent"] = "chat"
-        classifier_result["needs_motion"] = False
-        classifier_result["needs_dialogue"] = True
-        classifier_result["risk_level"] = "low"
+        classifier_output["intent"] = "chat"
+        classifier_output["needs_motion"] = False
     wave_play_request = detect_wave_play_request(user_text)
     if wave_play_request is not None:
-        classifier_result["intent"] = "play_request"
-        classifier_result["needs_motion"] = True
-        classifier_result["needs_dialogue"] = True
-        classifier_result["risk_level"] = "medium"
+        classifier_output["intent"] = "play_request"
+        classifier_output["needs_motion"] = True
 
-    planner_domain = select_planner_domain(classifier_result)
+    planner_domain = select_planner_domain(classifier_output)
     joint_angle_query = detect_joint_angle_query(user_text)
     identity_query = detect_identity_confirmation_query(user_text)
 
     # Shortcut path:
     # history 가 없는 상태에서 "왜?" 같은 초단문을 planner 로 넘기면
     # 실제 근거 없는 이유를 만들어낼 수 있어 clarification 으로 바로 응답한다.
-    if classifier_result.get("intent") == "unknown" and is_ambiguous_follow_up(user_text):
-        planner_result = {
+    if classifier_output.get("intent") == "unknown" and is_ambiguous_follow_up(user_text):
+        planner_output = {
             "skills": [],
             "op_cmd": [],
             "speech": "무엇이 왜 그런지 조금만 더 구체적으로 말씀해 주세요.",
@@ -282,19 +277,19 @@ def run_brain_turn(
         }
         validated_plan = build_validated_plan(
             user_text=user_text,
-            robot_state=adapted_state,
-            classifier_result=classifier_result,
-            planner_result=planner_result,
+            robot_state=robot_state,
+            classifier_output=classifier_output,
+            planner_output=planner_output,
         )
         return BrainTurnResult(
-            classifier_input_json=classifier_input_json,
-            classifier_result=classifier_result,
+            classifier_input=classifier_input,
+            classifier_output=classifier_output,
             planner_domain=planner_domain,
-            planner_input_json="",
+            planner_input="",
             classifier_raw_response_text=classifier_raw_response_text,
             planner_raw_response_text="",
-            planner_result=planner_result,
-            adapted_state=adapted_state,
+            planner_output=planner_output,
+            robot_state=robot_state,
             validated_plan=validated_plan,
             classifier_duration_sec=classifier_duration_sec,
             planner_duration_sec=0.0,
@@ -307,7 +302,7 @@ def run_brain_turn(
     # 지원 곡 목록 질문은 실행 가능 명령이 필요 없고,
     # 안전 키 상태와 무관하게 고정된 repertoire 답변을 주는 편이 더 안정적이다.
     if detect_repertoire_query(user_text):
-        planner_result = {
+        planner_output = {
             "skills": [],
             "op_cmd": [],
             "speech": build_repertoire_answer(),
@@ -315,19 +310,19 @@ def run_brain_turn(
         }
         validated_plan = build_validated_plan(
             user_text=user_text,
-            robot_state=adapted_state,
-            classifier_result=classifier_result,
-            planner_result=planner_result,
+            robot_state=robot_state,
+            classifier_output=classifier_output,
+            planner_output=planner_output,
         )
         return BrainTurnResult(
-            classifier_input_json=classifier_input_json,
-            classifier_result=classifier_result,
+            classifier_input=classifier_input,
+            classifier_output=classifier_output,
             planner_domain=planner_domain,
-            planner_input_json="",
+            planner_input="",
             classifier_raw_response_text=classifier_raw_response_text,
             planner_raw_response_text="",
-            planner_result=planner_result,
-            adapted_state=adapted_state,
+            planner_output=planner_output,
+            robot_state=robot_state,
             validated_plan=validated_plan,
             classifier_duration_sec=classifier_duration_sec,
             planner_duration_sec=0.0,
@@ -339,16 +334,16 @@ def run_brain_turn(
     # Shortcut path:
     # 이름 확인형 질문은 필의 정체성이 고정돼 있으므로,
     # yes/no 몸짓과 발화를 deterministic 하게 고정하는 편이 더 안정적이다.
-    if identity_query is not None and classifier_result.get("intent") == "motion_request":
+    if identity_query is not None and classifier_output.get("intent") == "motion_request":
         if identity_query["is_robot_name"]:
-            planner_result = {
+            planner_output = {
                 "skills": ["nod_yes"],
                 "op_cmd": [],
                 "speech": "네, 제 이름은 필이에요.",
                 "reason": "이름 확인 질문은 필의 정체성을 기준으로 직접 응답",
             }
         else:
-            planner_result = {
+            planner_output = {
                 "skills": ["shake_no"],
                 "op_cmd": [],
                 "speech": "아니요, 제 이름은 필이에요.",
@@ -356,19 +351,19 @@ def run_brain_turn(
             }
         validated_plan = build_validated_plan(
             user_text=user_text,
-            robot_state=adapted_state,
-            classifier_result=classifier_result,
-            planner_result=planner_result,
+            robot_state=robot_state,
+            classifier_output=classifier_output,
+            planner_output=planner_output,
         )
         return BrainTurnResult(
-            classifier_input_json=classifier_input_json,
-            classifier_result=classifier_result,
+            classifier_input=classifier_input,
+            classifier_output=classifier_output,
             planner_domain=planner_domain,
-            planner_input_json="",
+            planner_input="",
             classifier_raw_response_text=classifier_raw_response_text,
             planner_raw_response_text="",
-            planner_result=planner_result,
-            adapted_state=adapted_state,
+            planner_output=planner_output,
+            robot_state=robot_state,
             validated_plan=validated_plan,
             classifier_duration_sec=classifier_duration_sec,
             planner_duration_sec=0.0,
@@ -381,7 +376,7 @@ def run_brain_turn(
     # 손 인사 후 특정 곡 재생 요청은 현재 skill 조합이 정해져 있으므로,
     # planner 자유생성 대신 고정 시퀀스로 처리해 wave/play 동시 성공률을 높인다.
     if wave_play_request is not None:
-        planner_result = {
+        planner_output = {
             "skills": ["wave_hi", wave_play_request["play_skill"]],
             "op_cmd": [],
             "speech": f"손을 흔들며 인사하고, {wave_play_request['song_label']}를 연주할게요.",
@@ -389,19 +384,19 @@ def run_brain_turn(
         }
         validated_plan = build_validated_plan(
             user_text=user_text,
-            robot_state=adapted_state,
-            classifier_result=classifier_result,
-            planner_result=planner_result,
+            robot_state=robot_state,
+            classifier_output=classifier_output,
+            planner_output=planner_output,
         )
         return BrainTurnResult(
-            classifier_input_json=classifier_input_json,
-            classifier_result=classifier_result,
+            classifier_input=classifier_input,
+            classifier_output=classifier_output,
             planner_domain=planner_domain,
-            planner_input_json="",
+            planner_input="",
             classifier_raw_response_text=classifier_raw_response_text,
             planner_raw_response_text="",
-            planner_result=planner_result,
-            adapted_state=adapted_state,
+            planner_output=planner_output,
+            robot_state=robot_state,
             validated_plan=validated_plan,
             classifier_duration_sec=classifier_duration_sec,
             planner_duration_sec=0.0,
@@ -413,9 +408,9 @@ def run_brain_turn(
     # Shortcut path:
     # 특정 관절의 현재 각도를 묻는 상태 질의는 planner 를 거치지 않고
     # 현재 상태 스냅샷에서 직접 답해 더 빠르고 안정적으로 처리한다.
-    if classifier_result.get("intent") == "status_question" and joint_angle_query:
-        deterministic_speech = build_joint_angle_answer(adapted_state, joint_angle_query)
-        planner_result = {
+    if classifier_output.get("intent") == "status_question" and joint_angle_query:
+        deterministic_speech = build_joint_angle_answer(robot_state, joint_angle_query)
+        planner_output = {
             "skills": [],
             "op_cmd": [],
             "speech": deterministic_speech,
@@ -423,19 +418,19 @@ def run_brain_turn(
         }
         validated_plan = build_validated_plan(
             user_text=user_text,
-            robot_state=adapted_state,
-            classifier_result=classifier_result,
-            planner_result=planner_result,
+            robot_state=robot_state,
+            classifier_output=classifier_output,
+            planner_output=planner_output,
         )
         return BrainTurnResult(
-            classifier_input_json=classifier_input_json,
-            classifier_result=classifier_result,
+            classifier_input=classifier_input,
+            classifier_output=classifier_output,
             planner_domain=planner_domain,
-            planner_input_json="",
+            planner_input="",
             classifier_raw_response_text=classifier_raw_response_text,
             planner_raw_response_text="",
-            planner_result=planner_result,
-            adapted_state=adapted_state,
+            planner_output=planner_output,
+            robot_state=robot_state,
             validated_plan=validated_plan,
             classifier_duration_sec=classifier_duration_sec,
             planner_duration_sec=0.0,
@@ -451,44 +446,44 @@ def run_brain_turn(
 
     # session 이 있으면 최근 대화 히스토리와 마지막 동작 상태를 planner input 에 포함한다.
     session_summary = build_session_summary(session) if session is not None else None
-    planner_input_json = build_planner_input_json(
-        adapted_state, user_text, classifier_result, planner_domain, session_summary
+    planner_input = build_planner_input(
+        robot_state, user_text, classifier_output, planner_domain, session_summary
     )
     planner_start_time = time.time()
     if capture_metrics:
         planner_raw_response_text, planner_metrics = call_json_llm(
             model_name=planner_model_name,
             system_prompt=planner_system_prompt,
-            user_input_json=planner_input_json,
+            user_input_json=planner_input,
             capture_metrics=True,
         )
     else:
         planner_raw_response_text = call_json_llm(
             model_name=planner_model_name,
             system_prompt=planner_system_prompt,
-            user_input_json=planner_input_json,
+            user_input_json=planner_input,
         )
         planner_metrics = {}
     planner_duration_sec = time.time() - planner_start_time
 
-    planner_result = parse_plan_response(planner_raw_response_text)
-    planner_result = enforce_intent_constraints(planner_result, classifier_result)
+    planner_output = parse_plan_response(planner_raw_response_text)
+    planner_output = enforce_intent_constraints(planner_output, classifier_output)
     validated_plan = build_validated_plan(
         user_text=user_text,
-        robot_state=adapted_state,
-        classifier_result=classifier_result,
-        planner_result=planner_result,
+        robot_state=robot_state,
+        classifier_output=classifier_output,
+        planner_output=planner_output,
     )
 
     return BrainTurnResult(
-        classifier_input_json=classifier_input_json,
-        classifier_result=classifier_result,
+        classifier_input=classifier_input,
+        classifier_output=classifier_output,
         planner_domain=planner_domain,
-        planner_input_json=planner_input_json,
+        planner_input=planner_input,
         classifier_raw_response_text=classifier_raw_response_text,
         planner_raw_response_text=planner_raw_response_text,
-        planner_result=planner_result,
-        adapted_state=adapted_state,
+        planner_output=planner_output,
+        robot_state=robot_state,
         validated_plan=validated_plan,
         classifier_duration_sec=classifier_duration_sec,
         planner_duration_sec=planner_duration_sec,

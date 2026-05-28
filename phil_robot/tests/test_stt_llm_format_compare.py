@@ -118,10 +118,9 @@ def build_test_state() -> Dict:
     state["state"] = 0
     state["is_fixed"] = True
     state["is_lock_key_removed"] = True
-    state["error_detail"] = "None"
+    state["error_message"] = "None"
     state["last_action"] = "None"
     state["current_song"] = "None"
-    state["current_song_label"] = "None"
     state["progress"] = "idle"
     return state
 
@@ -133,60 +132,48 @@ def infer_intent(user_text: str) -> Dict:
         return {
             "intent": "unknown",
             "needs_motion": False,
-            "needs_dialogue": True,
-            "risk_level": "low",
         }
 
     if any(word in text for word in STOP_WORDS):
         return {
             "intent": "stop_request",
             "needs_motion": True,
-            "needs_dialogue": True,
-            "risk_level": "medium",
         }
 
     if any(word in text for word in PLAY_WORDS):
         return {
             "intent": "play_request",
             "needs_motion": True,
-            "needs_dialogue": True,
-            "risk_level": "medium",
         }
 
     if detect_joint_angle_query(text) is not None or any(word in text for word in STATUS_WORDS):
         return {
             "intent": "status_question",
             "needs_motion": False,
-            "needs_dialogue": True,
-            "risk_level": "low",
         }
 
     if any(word in text for word in MOTION_WORDS):
         return {
             "intent": "motion_request",
             "needs_motion": True,
-            "needs_dialogue": True,
-            "risk_level": "medium",
         }
 
     return {
         "intent": "chat",
         "needs_motion": False,
-        "needs_dialogue": True,
-        "risk_level": "low",
     }
 
 
 def build_compare_input_json(
     robot_state: Dict,
     user_text: str,
-    intent_result: Dict,
+    classifier_output: Dict,
     planner_domain: str,
     response_mode: str,
 ) -> str:
     payload = {
         "robot_state": build_planner_state_summary(robot_state),
-        "intent_result": intent_result,
+        "classifier_output": classifier_output,
         "planner_domain": planner_domain,
         "user_text": user_text,
         "response_mode": response_mode,
@@ -213,14 +200,14 @@ def build_legacy_system_prompt(planner_domain: str) -> str:
 
 planner 입력에는 다음 정보가 함께 들어온다.
 - robot_state: 현재 로봇 상태 요약
-- intent_result: 테스트용 추정 intent 결과
+- classifier_output: 테스트용 classifier output
 - planner_domain: 현재 planner 도메인
 - user_text: 사용자 발화
 
 공통 규칙:
 - 당신의 이름은 필(Phil)이며, KIST에서 개발된 지능형 휴머노이드 드럼 로봇이다.
-- intent_result 를 반드시 따른다.
-- intent_result.needs_motion 이 false 면 CMD 줄은 출력하지 않는다.
+- classifier_output 을 반드시 따른다.
+- classifier_output.needs_motion 이 false 면 CMD 줄은 출력하지 않는다.
 - 안전 키 잠김, 연주 중, 에러 상태, 이동 중이면 무리하게 명령을 만들지 않는다.
 - SAY 문장은 TTS 용 자연스러운 한국어 문장만 쓴다. 괄호 설명문은 금지한다.
 - move 명령은 move:L_wrist,90 처럼 실제 모터 이름을 바로 쓴다.
@@ -331,7 +318,7 @@ def print_turn_log(
     llm_sec: float,
     turn_sec: float,
     llm_metrics: Dict[str, Optional[float]],
-    intent_result: Dict,
+    classifier_output: Dict,
     planner_domain: str,
     input_json: str,
     raw_text: str,
@@ -355,7 +342,7 @@ def print_turn_log(
         f"meta_sec={format_metric_value(llm_metrics.get('meta_sec'), 's')}, "
         f"overhead_sec={format_metric_value(llm_metrics.get('overhead_sec'), 's')}"
     )
-    print(f"🧭 추정 intent: {intent_result}")
+    print(f"🧭 classifier output: {classifier_output}")
     print(f"🧭 planner_domain: {planner_domain}")
     print(f"🧾 planner 입력:\n{input_json}")
     print(f"🤖 원본 출력:\n{raw_text}")
@@ -399,12 +386,12 @@ def main() -> None:
 
         response_mode = MODE_STR if key == "0" else MODE_JSON
         robot_state = build_test_state()
-        intent_result = infer_intent(user_text)
-        planner_domain = select_planner_domain(intent_result)
+        classifier_output = infer_intent(user_text)
+        planner_domain = select_planner_domain(classifier_output)
         input_json = build_compare_input_json(
             robot_state=robot_state,
             user_text=user_text,
-            intent_result=intent_result,
+            classifier_output=classifier_output,
             planner_domain=planner_domain,
             response_mode=response_mode,
         )
@@ -452,7 +439,7 @@ def main() -> None:
             llm_sec=llm_sec,
             turn_sec=turn_sec,
             llm_metrics=llm_metrics,
-            intent_result=intent_result,
+            classifier_output=classifier_output,
             planner_domain=planner_domain,
             input_json=input_json,
             raw_text=raw_text,

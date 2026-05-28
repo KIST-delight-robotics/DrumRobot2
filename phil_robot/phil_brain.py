@@ -137,11 +137,11 @@ def print_llm_metrics(label, metric_obj):
 
 def debug_brain_result(brain_result):
     """LLM 입력, 내부 thinking, validator 경고를 한 곳에서 출력"""
-    print(f"🧭 [Classifier 입력]\n{brain_result.classifier_input_json}")
-    print(f"🧭 [Classifier 결과] {brain_result.classifier_result}")
+    print(f"🧭 [Classifier 입력]\n{brain_result.classifier_input}")
+    print(f"🧭 [Classifier 결과] {brain_result.classifier_output}")
     print(f"🧭 [Planner Domain] {brain_result.planner_domain}")
-    print(f"🧐 [Planner 입력]\n{brain_result.planner_input_json}")
-    print(f"🗺️ [Planner 결과] {brain_result.planner_result}")
+    print(f"🧐 [Planner 입력]\n{brain_result.planner_input}")
+    print(f"🗺️ [Planner 결과] {brain_result.planner_output}")
     print(
         f"⏱️ LLM 처리 시간: 총 {brain_result.llm_duration_sec:.2f}초 "
         f"(classifier {brain_result.classifier_duration_sec:.2f}초 + planner {brain_result.planner_duration_sec:.2f}초)"
@@ -230,7 +230,7 @@ def main():
             # ── LangGraph 실행 ────────────────────────────────────────────
             initial_state = {
                 "user_text": user_text,
-                "robot_hw_state": robot_state,
+                "robot_state": robot_state,
                 "plan_type": "none",
                 "speech": "",
                 "commands": [],

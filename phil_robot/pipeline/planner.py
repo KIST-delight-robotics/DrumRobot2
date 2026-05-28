@@ -154,10 +154,10 @@ planner 입력에는 다음 정보가 함께 들어온다.
 """
 
 
-def select_planner_domain(intent_result: Dict) -> str:
+def select_planner_domain(classifier_output: Dict) -> str:
     """classifier intent 를 planner 도메인으로 변환한다."""
-    intent = intent_result.get("intent", "unknown")
-    if intent == "chat" and intent_result.get("needs_motion", False):
+    intent = classifier_output.get("intent", "unknown")
+    if intent == "chat" and classifier_output.get("needs_motion", False):
         return PLANNER_DOMAIN_MOTION
     return INTENT_TO_DOMAIN.get(intent, PLANNER_DOMAIN_DEFAULT)
 
@@ -168,10 +168,10 @@ def get_planner_system_prompt(planner_domain: str) -> str:
     return f"{PLANNER_SHARED_RULES}\n\n도메인 규칙:\n{domain_instruction}"
 
 
-def build_planner_input_json(
+def build_planner_input(
     robot_state: Dict,
     user_text: str,
-    intent_result: Dict,
+    classifier_output: Dict,
     planner_domain: str,
     session_summary: Dict = None,
 ) -> str:
@@ -180,7 +180,7 @@ def build_planner_input_json(
     session_summary 가 있으면 최근 대화 히스토리와 마지막 동작 상태를 포함한다.
     """
     state_summary = build_planner_state_summary(robot_state)
-    needs_motion = bool(intent_result.get("needs_motion", False))
+    needs_motion = bool(classifier_output.get("needs_motion", False))
 
     payload = {
         "planner_domain": planner_domain,
@@ -244,28 +244,28 @@ def parse_plan_response(response_text: str) -> Dict:
     return result
 
 
-def enforce_intent_constraints(planner_result: Dict, intent_result: Dict) -> Dict:
+def enforce_intent_constraints(planner_output: Dict, classifier_output: Dict) -> Dict:
     """
     classifier 결과를 planner 뒤에서도 한 번 더 강제한다.
     planner 가 습관적으로 gesture/look 를 붙여도 여기서 정리한다.
     """
     normalized = {
-        "skills": list(planner_result.get("skills", [])),
-        "op_cmd": list(planner_result.get("op_cmd", planner_result.get("commands", []))),
-        "speech": sanitize_message(planner_result.get("speech", FALLBACK_MESSAGE)),
-        "reason": planner_result.get("reason", ""),
-        "clarification_question": planner_result.get("clarification_question", ""),
+        "skills": list(planner_output.get("skills", [])),
+        "op_cmd": list(planner_output.get("op_cmd", planner_output.get("commands", []))),
+        "speech": sanitize_message(planner_output.get("speech", FALLBACK_MESSAGE)),
+        "reason": planner_output.get("reason", ""),
+        "clarification_question": planner_output.get("clarification_question", ""),
     }
 
-    intent = intent_result.get("intent", "unknown")
-    needs_motion = intent_result.get("needs_motion", False)
+    intent = classifier_output.get("intent", "unknown")
+    needs_motion = classifier_output.get("needs_motion", False)
 
     if not needs_motion:
         normalized["skills"] = []
         normalized["op_cmd"] = []
         return normalized
 
-    planner_domain = select_planner_domain(intent_result)
+    planner_domain = select_planner_domain(classifier_output)
     allowed_categories = DOMAIN_ALLOWED_SKILL_CATEGORIES.get(planner_domain, set())
     if allowed_categories:
         normalized["skills"] = filter_skills_by_allowed_categories(

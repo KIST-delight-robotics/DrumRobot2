@@ -39,8 +39,6 @@
 검사 항목:
 - `intent`
 - `needs_motion`
-- `needs_dialogue`
-- `risk_level`
 
 ### Planner 레이어
 검사 항목:
@@ -194,7 +192,7 @@ planner round-1 전체 배치를 순차 실행하려면:
 
 기본 동작:
 - manifest 의 후보 순서를 그대로 따라 prep -> smoke 를 순차 실행합니다.
-- classifier 는 케이스당 한 번만 실행해 `classifier_result` 와 `planner_input_json` 을 고정하고, 각 planner 모델은 같은 JSON fixture 위에서만 비교합니다.
+- classifier 는 케이스당 한 번만 실행해 `classifier_output` 와 `planner_input` 을 고정하고, 각 planner 모델은 같은 JSON fixture 위에서만 비교합니다.
 - `config.py`는 수정하지 않고 benchmark 러너 내부에서 classifier/planner 모델을 주입합니다.
 - round summary 는 `PLANNER_MODEL_BENCHMARK_ROUND1.json`, `PLANNER_MODEL_BENCHMARK_ROUND1_KR.md`에 저장됩니다.
 
@@ -209,7 +207,7 @@ planner latency isolation benchmark 를 따로 실행하려면:
 ```
 
 기본 동작:
-- classifier 는 케이스당 한 번만 실행해 fixture 를 만들고, 같은 `planner_input_json` 위에서 planner 만 반복 호출합니다.
+- classifier 는 케이스당 한 번만 실행해 fixture 를 만들고, 같은 `planner_input` 위에서 planner 만 반복 호출합니다.
 - 기본값은 case 당 warm-up `1`회 제외, warm run `3`회 측정입니다.
 - 리포트에는 planner input 길이, response 길이, avg / median / p95 latency 와 output variability 가 들어갑니다.
 

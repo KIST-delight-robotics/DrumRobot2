@@ -28,7 +28,7 @@ user_text = listen_user_text(stt_model=stt_model, is_speaking_fn=is_tts_active)
 
 - 반환값은 `str` 또는 빈 문자열로 한다.
 - 빈 문자열이면 현재와 동일하게 이번 턴을 스킵한다.
-- `run_brain_turn(user_text, raw_robot_state, ...)` 호출 계약은 바꾸지 않는다.
+- `run_brain_turn(user_text, robot_state, ...)` 호출 계약을 사용한다.
 - TTS streaming 경로는 유지하고, final text가 확정된 뒤에만 실행한다.
 
 ### 2. online_stt.py 책임 범위

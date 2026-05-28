@@ -9,7 +9,7 @@ from phil_robot.pipeline.planner import (
     DOMAIN_INSTRUCTIONS,
     PLANNER_SHARED_RULES,
     PLANNER_RESPONSE_SCHEMA_EXAMPLE,
-    build_planner_input_json,
+    build_planner_input,
     get_planner_system_prompt,
     parse_plan_response,
 )
@@ -31,15 +31,13 @@ class PlannerBenchmarkTest(unittest.TestCase):
         self.assertIn("준비 자세", prompt_text)
         self.assertIn("unrelated social skill", prompt_text)
 
-    def test_planner_input_json_keeps_user_text_last(self) -> None:
-        input_json = build_planner_input_json(
+    def test_planner_input_keeps_user_text_last(self) -> None:
+        input_json = build_planner_input(
             robot_state={"state": 0, "is_lock_key_removed": True},
             user_text="손 흔들어줘",
-            intent_result={
+            classifier_output={
                 "intent": "motion_request",
                 "needs_motion": True,
-                "needs_dialogue": False,
-                "risk_level": "medium",
             },
             planner_domain="motion",
         )
@@ -58,7 +56,7 @@ class PlannerBenchmarkTest(unittest.TestCase):
     def test_planner_response_schema_example_uses_compact_keys(self) -> None:
         self.assertEqual(
             PLANNER_RESPONSE_SCHEMA_EXAMPLE,
-            {"s": [], "c": [], "t": "안녕하세요!", "r": "simple greeting"},
+            {"s": [], "c": [], "t": "안녕하세요!", "r": "simple greeting", "q": None},
         )
 
     def test_wave_hi_skill_no_longer_forces_forward_look(self) -> None:
@@ -108,13 +106,11 @@ class PlannerBenchmarkTest(unittest.TestCase):
                 "current_angles": {"R_wrist": 20.0},
                 "last_action": "move:R_wrist,20",
             },
-            classifier_result={
+            classifier_output={
                 "intent": "motion_request",
                 "needs_motion": True,
-                "needs_dialogue": True,
-                "risk_level": "medium",
             },
-            planner_result={
+            planner_output={
                 "skills": ["wave_hi"],
                 "op_cmd": [],
                 "speech": "안녕하세요!",
@@ -135,13 +131,11 @@ class PlannerBenchmarkTest(unittest.TestCase):
                 "is_fixed": True,
                 "current_angles": {},
             },
-            classifier_result={
+            classifier_output={
                 "intent": "motion_request",
                 "needs_motion": True,
-                "needs_dialogue": True,
-                "risk_level": "medium",
             },
-            planner_result={
+            planner_output={
                 "skills": ["arm_up", "wait:3", "arm_down"],
                 "op_cmd": [],
                 "speech": "양팔을 올렸다가 3초 뒤에 내립니다.",
@@ -176,13 +170,11 @@ class PlannerBenchmarkTest(unittest.TestCase):
                 "current_angles": {"R_wrist": 50.0},
                 "last_action": "move:R_wrist,50",
             },
-            classifier_result={
+            classifier_output={
                 "intent": "motion_request",
                 "needs_motion": True,
-                "needs_dialogue": False,
-                "risk_level": "medium",
             },
-            planner_result={
+            planner_output={
                 "skills": [],
                 "op_cmd": ["move:L_wrist,30", "wait:1", "move:L_wrist,40"],
                 "speech": "손목을 30도 내리고 1초 후에 10도 더 내립니다.",
@@ -205,13 +197,11 @@ class PlannerBenchmarkTest(unittest.TestCase):
                 "current_angles": {"R_wrist": 70.0},
                 "last_action": "move:R_wrist,70",
             },
-            classifier_result={
+            classifier_output={
                 "intent": "motion_request",
                 "needs_motion": True,
-                "needs_dialogue": False,
-                "risk_level": "medium",
             },
-            planner_result={
+            planner_output={
                 "skills": [],
                 "op_cmd": ["move:L_wrist,30", "wait:1", "move:L_wrist,30", "wait:1"],
                 "speech": "손목을 30도씩 두 번 내립니다.",
@@ -262,24 +252,22 @@ class PlannerBenchmarkTest(unittest.TestCase):
             reason="wave ok",
         )
         turn_obj = BrainTurnResult(
-            classifier_input_json="{}",
-            classifier_result={
+            classifier_input="{}",
+            classifier_output={
                 "intent": "motion_request",
                 "needs_motion": True,
-                "needs_dialogue": False,
-                "risk_level": "medium",
             },
             planner_domain="motion",
-            planner_input_json="{}",
+            planner_input="{}",
             classifier_raw_response_text='{"intent":"motion_request"}',
             planner_raw_response_text='{"skills":[],"op_cmd":["gesture:wave"],"speech":"안녕하세요!","reason":"wave ok"}',
-            planner_result={
+            planner_output={
                 "skills": [],
                 "op_cmd": ["gesture:wave"],
                 "speech": "안녕하세요!",
                 "reason": "wave ok",
             },
-            adapted_state={},
+            robot_state={},
             validated_plan=plan_obj,
             classifier_duration_sec=0.1,
             planner_duration_sec=0.2,
@@ -354,17 +342,17 @@ class PlannerBenchmarkTest(unittest.TestCase):
             "robot_state": {"state": 0, "is_lock_key_removed": True},
             "expected": {},
         }
-        mock_call.return_value = '{"intent":"motion_request","needs_motion":true,"needs_dialogue":true,"risk_level":"low"}'
+        mock_call.return_value = '{"intent":"motion_request","needs_motion":true}'
 
         prepared_case = prepare_planner_case(case_obj)
 
         self.assertTrue(prepared_case.planner_enabled)
-        self.assertTrue(prepared_case.planner_input_json)
+        self.assertTrue(prepared_case.planner_input)
         self.assertEqual(prepared_case.shortcut_reason, "")
 
     @patch("phil_robot.pipeline.brain_pipeline.call_json_llm")
     def test_run_brain_turn_shortcuts_repertoire_question(self, mock_call) -> None:
-        mock_call.return_value = '{"i":"P","m":1,"d":1,"r":"M"}'
+        mock_call.return_value = '{"i":"P","m":1}'
 
         turn_obj = run_brain_turn(
             "너 무슨 노래 연주할 수 있니?",
@@ -381,10 +369,10 @@ class PlannerBenchmarkTest(unittest.TestCase):
         )
 
         mock_call.assert_called_once()
-        self.assertEqual(turn_obj.classifier_result["intent"], "chat")
-        self.assertFalse(turn_obj.classifier_result["needs_motion"])
+        self.assertEqual(turn_obj.classifier_output["intent"], "chat")
+        self.assertFalse(turn_obj.classifier_output["needs_motion"])
         self.assertEqual(turn_obj.planner_domain, "chat")
-        self.assertEqual(turn_obj.planner_input_json, "")
+        self.assertEqual(turn_obj.planner_input, "")
         self.assertEqual(turn_obj.planner_raw_response_text, "")
         self.assertEqual(turn_obj.validated_plan.valid_op_cmds, [])
         self.assertIn("This Is Me", turn_obj.validated_plan.speech)
@@ -394,7 +382,7 @@ class PlannerBenchmarkTest(unittest.TestCase):
 
     @patch("phil_robot.pipeline.brain_pipeline.call_json_llm")
     def test_run_brain_turn_shortcuts_identity_confirmation_negative(self, mock_call) -> None:
-        mock_call.return_value = '{"i":"C","m":1,"d":1,"r":"M"}'
+        mock_call.return_value = '{"i":"C","m":1}'
 
         turn_obj = run_brain_turn(
             "너의 이름은 모펫이니?",
@@ -411,16 +399,16 @@ class PlannerBenchmarkTest(unittest.TestCase):
         )
 
         mock_call.assert_called_once()
-        self.assertEqual(turn_obj.classifier_result["intent"], "motion_request")
+        self.assertEqual(turn_obj.classifier_output["intent"], "motion_request")
         self.assertEqual(turn_obj.planner_domain, "motion")
-        self.assertEqual(turn_obj.planner_input_json, "")
+        self.assertEqual(turn_obj.planner_input, "")
         self.assertEqual(turn_obj.planner_raw_response_text, "")
         self.assertEqual(turn_obj.validated_plan.valid_op_cmds, ["gesture:shake"])
         self.assertEqual(turn_obj.validated_plan.speech, "아니요, 제 이름은 필이에요.")
 
     @patch("phil_robot.pipeline.brain_pipeline.call_json_llm")
     def test_run_brain_turn_shortcuts_wave_then_play_song(self, mock_call) -> None:
-        mock_call.return_value = '{"i":"M","m":1,"d":1,"r":"M"}'
+        mock_call.return_value = '{"i":"M","m":1}'
 
         turn_obj = run_brain_turn(
             "손흔들고 This Is Me 연주해줘.",
@@ -437,9 +425,9 @@ class PlannerBenchmarkTest(unittest.TestCase):
         )
 
         mock_call.assert_called_once()
-        self.assertEqual(turn_obj.classifier_result["intent"], "play_request")
+        self.assertEqual(turn_obj.classifier_output["intent"], "play_request")
         self.assertEqual(turn_obj.planner_domain, "play")
-        self.assertEqual(turn_obj.planner_input_json, "")
+        self.assertEqual(turn_obj.planner_input, "")
         self.assertEqual(turn_obj.planner_raw_response_text, "")
         self.assertEqual(turn_obj.validated_plan.valid_op_cmds, ["gesture:wave", "r", "p:TIM"])
         self.assertIn("This Is Me", turn_obj.validated_plan.speech)
@@ -597,7 +585,6 @@ class PlannerBenchmarkTest(unittest.TestCase):
             {
                 "intent": None,
                 "needs_motion": None,
-                "needs_dialogue": None,
                 "planner_domain": None,
                 "skills": [],
                 "valid_op_cmds": [],

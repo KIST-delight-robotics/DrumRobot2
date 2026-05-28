@@ -63,7 +63,7 @@ class PhilState(TypedDict):
     """
     # ── 입력 ──────────────────────────────────────────────────────────
     user_text: str
-    robot_hw_state: dict
+    robot_state: dict
 
     # ── process_node 가 채우는 값 ──────────────────────────────────────
     plan_type: str        # "motion" | "play" | "stop" | "chat" | "none"
@@ -168,7 +168,7 @@ def make_process_node(bot, tts, stt_model, executor, get_session, run_brain_turn
         session = get_session()
         brain_result = run_brain_turn_fn(
             user_text=state["user_text"],
-            raw_robot_state=state["robot_hw_state"],
+            robot_state=state["robot_state"],
             classifier_model_name=classifier_model,
             planner_model_name=planner_model,
             capture_metrics=True,
@@ -176,7 +176,7 @@ def make_process_node(bot, tts, stt_model, executor, get_session, run_brain_turn
         )
 
         validated = brain_result.validated_plan
-        classifier_intent = brain_result.classifier_result.get("intent", "none")
+        classifier_intent = brain_result.classifier_output.get("intent", "none")
         plan_type = _infer_plan_type(validated, classifier_intent)
         commands = _extract_commands(validated)
 

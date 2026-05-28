@@ -1,5 +1,30 @@
 # Change Log
 
+## 2026-05-27
+- 17:19 KST (UTC+9) — classifier 출력에서 `risk_level` 필드 제거
+  - 수정 파일: `phil_robot/pipeline/intent_classifier.py`, `phil_robot/pipeline/failure.py`, `phil_robot/pipeline/brain_pipeline.py`, `phil_robot/eval/run_eval.py`, `phil_robot/eval/planner_json_benchmark.py`, `phil_robot/tests/test_intent_classifier.py`, `phil_robot/tests/test_planner_benchmark.py`, `phil_robot/tests/test_stt_llm_format_compare.py`, `phil_robot/docs/LLM_PIPELINE_ARCHITECTURE.md`, `phil_robot/docs/LLM_PIPELINE_ARCHITECTURE_KR.md`, `phil_robot/docs/PHIL_SEQUENCE_DIAGRAM_KR.md`, `phil_robot/eval/README.md`
+  - 메모: 실행 제어와 초기 graph state 구성에 쓰지 않던 `risk_level`을 classifier prompt/schema/default/parser/평가 출력에서 제거해 classifier output을 `intent`, `needs_motion` 2필드로 단순화했다.
+
+## 2026-05-27
+- 17:11 KST (UTC+9) — classifier 출력에서 `needs_dialogue` 필드 제거
+  - 수정 파일: `phil_robot/pipeline/intent_classifier.py`, `phil_robot/pipeline/failure.py`, `phil_robot/pipeline/brain_pipeline.py`, `phil_robot/eval/run_eval.py`, `phil_robot/eval/planner_json_benchmark.py`, `phil_robot/tests/test_intent_classifier.py`, `phil_robot/tests/test_planner_benchmark.py`, `phil_robot/tests/test_stt_llm_format_compare.py`, `phil_robot/docs/LLM_PIPELINE_ARCHITECTURE.md`, `phil_robot/docs/LLM_PIPELINE_ARCHITECTURE_KR.md`, `phil_robot/docs/PHIL_SEQUENCE_DIAGRAM_KR.md`, `phil_robot/eval/README.md`
+  - 메모: planner 입력이나 실행 제어에서 쓰지 않던 `needs_dialogue`를 classifier prompt/schema/default/parser/평가 출력에서 제거해 classifier output을 `intent`, `needs_motion`, `risk_level` 3필드로 단순화했다.
+
+## 2026-05-27
+- 16:11 KST (UTC+9) — phil_robot LLM 파이프라인 입출력 이름을 `*_input`/`*_output`으로 통일
+  - 수정 파일: `phil_robot/pipeline/brain_pipeline.py`, `phil_robot/pipeline/intent_classifier.py`, `phil_robot/pipeline/planner.py`, `phil_robot/pipeline/validator.py`, `phil_robot/pipeline/robot_graph.py`, `phil_robot/pipeline/session.py`, `phil_robot/phil_brain.py`, `phil_robot/eval/*.py`, `phil_robot/tests/*.py`, `phil_robot/docs/*.md`, `phil_robot/PLAN.md`, `phil_robot/TODO.md`
+  - 메모: `classifier_input_json`, `classifier_result`, `planner_input_json`, `planner_result`를 각각 `classifier_input`, `classifier_output`, `planner_input`, `planner_output`로 정리하고 builder 함수와 benchmark/report 메타데이터도 같은 이름으로 맞췄다.
+
+## 2026-05-27
+- 15:08 KST (UTC+9) — phil_robot 상태 adapter의 보강 필드 제거
+  - 수정 파일: `phil_robot/pipeline/state_adapter.py`, `phil_robot/pipeline/failure.py`, `phil_robot/tests/test_stt_llm_format_compare.py`, `phil_robot/docs/LLM_PIPELINE_ARCHITECTURE_KR.md`, `phil_robot/docs/LLM_PIPELINE_ARCHITECTURE.md`, `phil_robot/docs/PHIL_SEQUENCE_DIAGRAM_KR.md`, `log.md`
+  - 메모: `current_song_label`과 `error_detail` alias를 제거하고, `error_message`와 원본 `current_angles`를 그대로 summary에 반영하도록 단순화했다.
+
+## 2026-05-27
+- 14:13 KST (UTC+9) — phil_robot 로봇 상태 전달 이름을 `robot_state`로 통일
+  - 수정 파일: `phil_robot/pipeline/robot_graph.py`, `phil_robot/pipeline/brain_pipeline.py`, `phil_robot/pipeline/state_adapter.py`, `phil_robot/phil_brain.py`, `phil_robot/eval/run_voice_io_benchmark.py`, `phil_robot/eval/planner_json_benchmark.py`, `phil_robot/tests/test_planner_benchmark.py`, `phil_robot/docs/LANGGRAPH_STATE_MACHINE_KR.md`, `phil_robot/docs/LLM_PIPELINE_ARCHITECTURE_KR.md`, `phil_robot/docs/LLM_PIPELINE_ARCHITECTURE.md`, `phil_robot/docs/CURRENT_FUNCTION_SPECS_KR.md`, `phil_robot/PLAN.md`, `log.md`
+  - 메모: `robot_hw_state`, `raw_robot_state`, `adapted_state`처럼 같은 스냅샷을 레이어마다 다르게 부르던 이름을 정리하고, 상태 스냅샷은 `robot_state`로 전달하도록 맞췄다.
+
 ## 2026-05-18
 - 15:58 KST (UTC+9) — play modifier 발화가 연주 중 motion block 문구로 덮이지 않도록 수정
   - 수정 파일: `phil_robot/pipeline/validator.py`, `log.md`

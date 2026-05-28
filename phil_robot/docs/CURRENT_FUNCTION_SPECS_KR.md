@@ -55,16 +55,16 @@
 - **`run_brain_turn(...)`**
   - 1턴의 LLM 처리를 통괄합니다. (Classifier ➔ Planner ➔ Validator)
   - **주의(누더기 포인트)**: LLM을 부르기 전에 연주 중 일시정지, "안녕" 인사 처리, 관절 각도 질문 등 뻔한 질문은 LLM을 안 거치고 여기서 직접 정답을 만들어치우는 땜질(Shortcut) 로직이 잔뜩 들어있습니다.
-- **`_detect_play_interrupt(user_text, adapted_state)`**
+- **`_detect_play_interrupt(user_text)`**
   - 연주 중일 때 사용자가 "멈춰"라고 했는지 LLM 없이 빠르게 문자열 매칭으로만 확인합니다. 지연 시간을 없애기 위한 편법입니다.
 
 ### `pipeline/intent_classifier.py`
-- **`build_classifier_input_json()`**: 상태와 사용자 말을 가벼운 JSON으로 포장합니다.
+- **`build_classifier_input()`**: 상태와 사용자 말을 가벼운 JSON으로 포장합니다.
 - **`parse_intent_response()`**: LLM이 뱉은 답변에서 `intent`(의도)를 파싱합니다.
 - **`normalize_intent_result()`**: LLM이 헷갈린 의도를 안전하게 보정해 줍니다.
 
 ### `pipeline/planner.py`
-- **`select_planner_domain(classifier_result)`**: 의도에 따라 어떤 프롬프트(chat, play, motion 등)를 쓸지 결정합니다.
+- **`select_planner_domain(classifier_output)`**: 의도에 따라 어떤 프롬프트(chat, play, motion 등)를 쓸지 결정합니다.
 - **`parse_plan_response()`**: LLM이 작성한 행동 계획(명령어, 대사)을 JSON에서 추출합니다.
 
 ---
@@ -75,7 +75,7 @@
 LLM이 만든 계획을 로봇이 이해할 수 있는 최종 형태로 번역하고 위험한 명령을 걸러냅니다.
 
 - **`build_validated_plan(...)`**
-  - LLM의 원시 계획(`planner_result`)을 받아서 최종 검열 통과증(`ValidatedPlan`)을 발급합니다.
+  - LLM의 원시 계획(`planner_output`)을 받아서 최종 검열 통과증(`ValidatedPlan`)을 발급합니다.
   - 이 안에서 `skills.py`를 불러 "안녕 인사하기" 같은 추상적 스킬을 `[gesture:wave, wait:2]`처럼 풀어냅니다.
   - 이 안에서 `motion_resolver.py`를 불러 "조금만 더 올려" 같은 상대적 요청을 "50도 위치로 이동" 같은 절대 각도로 계산합니다.
   - 마지막으로 `command_validator.py`를 통해 존재하지 않는 모터나 위험한 각도로 이동하는 걸 막아냅니다.

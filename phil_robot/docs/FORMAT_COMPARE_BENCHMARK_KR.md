@@ -5,7 +5,7 @@
 - case_count: `10`
 - classifier_model: `qwen3:4b-instruct-2507-q4_K_M`
 - planner_model: `qwen3:30b-a3b-instruct-2507-q4_K_M`
-- method: classifier는 케이스마다 한 번만 실행하고, 같은 `intent_result`를 재사용해 planner 단계만 `legacy_str`와 `json`으로 비교했다.
+- method: classifier는 케이스마다 한 번만 실행하고, 같은 `classifier_output`을 재사용해 planner 단계만 `legacy_str`와 `json`으로 비교했다.
 - method: smoke 케이스 앞의 10개를 사용했고, 각 모드는 케이스당 1회 실행했다. 즉 모드별 총 10회다.
 - method: Ollama 호출은 `temperature=0`으로 고정했다.
 - method: 측정 전에 classifier와 planner 두 모드를 각각 1회씩 warm-up 하고, 그 호출은 통계에서 제외했다.

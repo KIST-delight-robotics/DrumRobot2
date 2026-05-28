@@ -19,12 +19,12 @@ sequenceDiagram
     Snap->>Snap: 현재 ROBOT_STATE를 복사해 고정\nget_robot_state_snapshot()
     STT-->>Classifier: user_text = "그대에게 빠르게 연주해줘."
     Snap-->>Classifier: system_info = classifier state summary
-    Note over Classifier: classifier_input_json = { system_info, user_text }
+    Note over Classifier: classifier_input = { system_info, user_text }
     Classifier-->>Planner: planner_domain = play, needs_motion = true
     STT-->>Planner: user_text = "그대에게 빠르게 연주해줘."
     Snap-->>Planner: robot_state = planner state summary
-    Note over Planner: planner_input_json = { planner_domain, robot_state, needs_motion, user_text }
-    Planner-->>Validator: planner_result = play_ty_short + speech
+    Note over Planner: planner_input = { planner_domain, robot_state, needs_motion, user_text }
+    Planner-->>Validator: planner_output = play_ty_short + speech
 
     opt play request + 빠르게/느리게/세게/약하게
         Validator->>Modifier: parse_play_modifier(user_text)
@@ -83,7 +83,7 @@ user_text = "그대에게 빠르게 연주해줘."
 ### 2. classifier 입력
 
 classifier는 state 전체를 그대로 받지 않고, `build_classifier_state_summary()`로 요약한 `system_info`와 `user_text`를 받습니다.
-호출 순서는 `STT 완료 -> snapshot 캡처 -> classifier_input_json 생성`입니다.
+호출 순서는 `STT 완료 -> snapshot 캡처 -> classifier_input 생성`입니다.
 
 ```json
 {
@@ -92,9 +92,8 @@ classifier는 state 전체를 그대로 받지 않고, `build_classifier_state_s
     "can_move": true,
     "busy": false,
     "current_song": "None",
-    "current_song_label": "None",
     "last_action": "idle_home",
-    "error_detail": "None"
+    "error_message": "None"
   },
   "user_text": "그대에게 빠르게 연주해줘."
 }
@@ -102,14 +101,12 @@ classifier는 state 전체를 그대로 받지 않고, `build_classifier_state_s
 
 ### 3. classifier 출력 예시
 
-classifier 출력 필드는 4개입니다.
+classifier 출력 필드는 2개입니다.
 
 ```json
 {
   "intent": "play_request",
-  "needs_motion": true,
-  "needs_dialogue": true,
-  "risk_level": "medium"
+  "needs_motion": true
 }
 ```
 
@@ -124,9 +121,9 @@ classifier 출력 필드는 4개입니다.
 ### 4. planner 입력
 
 planner는 입력으로 ROBOT_STATE와 도메인, 모션 필요 유무, `user_text`를 받습니다.
-즉 호출 순서는 `classifier 출력 -> planner_domain 선택 -> planner_input_json 생성 -> planner 호출`입니다.
+즉 호출 순서는 `classifier 출력 -> planner_domain 선택 -> planner_input 생성 -> planner 호출`입니다.
 출력 스키마 예시는 user JSON에 넣지 않고 system prompt에 포함되어 있습니다.
-아래 구조로 `build_planner_input_json()`이 만들어집니다.
+아래 구조로 `build_planner_input()`이 만들어집니다.
 
 ```json
 {
@@ -137,11 +134,10 @@ planner는 입력으로 ROBOT_STATE와 도메인, 모션 필요 유무, `user_te
     "is_fixed": true,
     "busy": false,
     "current_song": "None",
-    "current_song_label": "None",
     "bpm": 100,
     "progress": "unknown",
     "last_action": "idle_home",
-    "error_detail": "None",
+    "error_message": "None",
     "current_angles": {
       "waist": 0.0,
       "R_arm1": 45.0,
@@ -151,9 +147,7 @@ planner는 입력으로 ROBOT_STATE와 도메인, 모션 필요 유무, `user_te
       "L_arm2": 0.0,
       "L_arm3": 20.0,
       "R_wrist": 90.0,
-      "L_wrist": 90.0,
-      "R_foot": null,
-      "L_foot": null
+      "L_wrist": 90.0
     }
   },
   "needs_motion": true,
@@ -231,10 +225,10 @@ executor에서 modifier를 play command보다 먼저 붙입니다.
 
 ```text
 user_text
--> classifier_input_json
--> intent_result(play_request, needs_motion=true, needs_dialogue=true, risk_level=medium)
--> planner_input_json(planner_domain=play, needs_motion=true)
--> planner_result(skills=["play_ty_short"])
+-> classifier_input
+-> classifier_output(play_request, needs_motion=true)
+-> planner_input(planner_domain=play, needs_motion=true)
+-> planner_output(skills=["play_ty_short"])
 -> play_modifier(tempo_scale=1.10)
 -> validated_plan(valid_op_cmds=["r","p:TY_short"])
 -> requested_transport_cmds(["tempo_scale:1.10","r","p:TY_short"])

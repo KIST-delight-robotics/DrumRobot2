@@ -124,7 +124,7 @@ def build_speech_rows(case_list: List[Dict[str, Any]]) -> List[Dict[str, str]]:
         print(f"[LLM] 답변 문장 준비 {idx_num}/{len(case_list)} :: {case_obj['id']}")
         brain_obj = run_brain_turn(
             user_text=case_obj["user_text"],
-            raw_robot_state=case_obj["robot_state"],
+            robot_state=case_obj["robot_state"],
             classifier_model_name=CLASSIFIER_MODEL,
             planner_model_name=PLANNER_MODEL,
             capture_metrics=False,

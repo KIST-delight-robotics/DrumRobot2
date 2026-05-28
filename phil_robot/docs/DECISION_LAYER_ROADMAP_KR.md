@@ -113,11 +113,11 @@
 
 입력:
 - `user_text`
-- `classifier_result`
-- adapted state
+- `classifier_output`
+- `robot_state`
 
 출력:
-- planner result
+- `planner_output`
 - skill / symbolic command
 - speech
 
@@ -148,8 +148,8 @@
 
 입력 후보:
 - `user_text`
-- `classifier_result`
-- `planner_result`
+- `classifier_output`
+- `planner_output`
 - expanded `op_cmds`
 - `robot_state`
 - `turn_history`
@@ -209,7 +209,7 @@
 - play modifier gate
 
 현재 modifier gate:
-- `classifier_result.intent == "play_request"`
+- `classifier_output.intent == "play_request"`
 - 실제 valid command 안에 `p:`가 살아남음
 - parsed modifier가 identity가 아님
 
@@ -318,8 +318,8 @@ rule-based interrupt
 ```python
 def resolve_play_modifier(
     user_text,
-    classifier_result,
-    planner_result,
+    classifier_output,
+    planner_output,
     robot_state,
     turn_history=None,
 ):
