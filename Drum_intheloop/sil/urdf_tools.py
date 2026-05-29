@@ -4,8 +4,6 @@ from pathlib import Path
 from typing import Tuple
 from xml.etree import ElementTree as ET
 
-from .joint_map import URDF_JOINT_LIMITS_DEG
-
 PACKAGE_PREFIX = "package://drumrobot_RL_urdf/"
 
 # ================================================================
@@ -82,7 +80,7 @@ def build_runtime_urdf(source_urdf: Path, output_dir: Path) -> Path:
     Build a runtime-only URDF that PyBullet can load directly.
 
     The checked-in URDF stays untouched. We only rewrite mesh paths and
-    repair zeroed joint limits in a generated copy.
+    apply runtime link pose patches in a generated copy.
     """
     source_urdf = source_urdf.resolve()
     output_dir = output_dir.resolve()
@@ -108,21 +106,6 @@ def build_runtime_urdf(source_urdf: Path, output_dir: Path) -> Path:
             continue
 
         _set_link_origin_pose(link, patch_pose["xyz_m"], patch_pose["rpy_deg"])
-
-    for joint in root.findall("joint"):
-        joint_name = joint.get("name", "")
-        if joint_name not in URDF_JOINT_LIMITS_DEG:
-            continue
-
-        limit = joint.find("limit")
-        if limit is None:
-            limit = ET.SubElement(joint, "limit")
-
-        lower_deg, upper_deg = URDF_JOINT_LIMITS_DEG[joint_name]
-        limit.set("lower", str(_deg_to_rad(lower_deg)))
-        limit.set("upper", str(_deg_to_rad(upper_deg)))
-        limit.set("effort", "50")
-        limit.set("velocity", "2.5")
 
     output_path = output_dir / f"{source_urdf.stem}.pybullet.urdf"
     tree.write(output_path, encoding="utf-8", xml_declaration=True)

@@ -1,7 +1,6 @@
 // DrumRobot2/src/DrumRobot.cpp
 
 #include "../include/tasks/DrumRobot.hpp"
-#include "../include/managers/SilCommandPipeWriter.hpp"
 
 using namespace std;
 
@@ -223,17 +222,6 @@ void DrumRobot::initializeCanManager()
     canManager.initializeCAN();
     canManager.checkCanPortsStatus();
     allMotorsUnConected = canManager.setMotorsSocket(); // 연결된 모터 없음 : 테스트 모드
-
-    // SIL 모드: vcan0 을 열고 disconnected 모터에 할당한다.
-    // Python SilCommandPipeReader 가 tick 후 vcan0 으로 joint state 피드백을 보내면
-    // recv loop 가 motor.jointAngle 을 갱신해 close-loop 가 완성된다.
-    canManager.openSilVcan("vcan0");
-
-    // vcan 피드백 경로가 열렸으면 "연결됨"으로 갱신한다.
-    // allMotorsUnConected=true 이면 sendLoopForThread 에서 is_fixed 가
-    // 항상 true 로 강제돼 홈 복귀 오발이 일어나므로, SIL 에서도 반드시 해제한다.
-    if (canManager.isSilModeEnabled())
-        allMotorsUnConected = false;
 }
 
 void DrumRobot::motorSettingCmd()
@@ -280,12 +268,6 @@ void DrumRobot::motorSettingCmd()
         shared_ptr<GenericMotor> motor = motorPair.second;
         if (shared_ptr<MaxonMotor> maxonMotor = dynamic_pointer_cast<MaxonMotor>(motorPair.second))
         {
-            if (canManager.isSilModeEnabled() && !maxonMotor->isConected)
-            {
-                std::cout << "[SIL] Skip Maxon setup for disconnected motor [" << name << "]" << std::endl;
-                continue;
-            }
-
             // CSP Settings
             maxoncmd.getCSPMode(*maxonMotor, &frame);
             canManager.sendAndRecv(motor, frame);
@@ -532,11 +514,6 @@ void DrumRobot::maxonMotorEnable()
         shared_ptr<GenericMotor> motor = motorPair.second;
         if (shared_ptr<MaxonMotor> maxonMotor = dynamic_pointer_cast<MaxonMotor>(motor))
         {
-            if (canManager.isSilModeEnabled() && !maxonMotor->isConected)
-            {
-                continue;
-            }
-
             maxoncmd.getHomeMode(*maxonMotor, &frame);
             canManager.txFrame(motor, frame);
 
@@ -586,11 +563,6 @@ void DrumRobot::setMaxonMotorMode(string targetMode)
         shared_ptr<GenericMotor> motor = motorPair.second;
         if (shared_ptr<MaxonMotor> maxonMotor = dynamic_pointer_cast<MaxonMotor>(motorPair.second))
         {
-            if (canManager.isSilModeEnabled() && !maxonMotor->isConected)
-            {
-                continue;
-            }
-
             if (targetMode == "CSV")    // Cyclic Sync Velocity Mode
             {
                 maxoncmd.getCSVMode(*maxonMotor, &frame);
@@ -698,7 +670,6 @@ void DrumRobot::sendLoopForThread()
 {
     sleep(2);   // read thead에서 clear / initial pos Path 생성 할 때까지 기다림
 
-    static SilCommandPipeWriter silWriter; // SIL frame tick 전용 (DXL 블록과 공유)
     int cycleCounter = 0; // 주기 조절을 위한 변수 (Tmotor : 5ms, Maxon : 1ms)
     sendLoopPeriod = chrono::steady_clock::now();
     while (state.main != Main::Shutdown)
@@ -802,8 +773,6 @@ void DrumRobot::sendLoopForThread()
         // DXL
         if (cycleCounter == 0)
         {
-            silWriter.setEnabled(canManager.isSilModeEnabled());
-            
             vector<vector<float>> dxlCommand;
             bool hasDxlCommand = false;
             {
@@ -819,28 +788,11 @@ void DrumRobot::sendLoopForThread()
 
             if (hasDxlCommand)
             {
-                // 실제로 소비되는 DXL command를 head_pan/head_tilt 값으로 pipe에 내보낸다.
-                if (dxlCommand.size() >= 2)
-                {
-                    if (dxlCommand[0].size() >= 3)
-                    {
-                        silWriter.writeDxl("head_pan", dxlCommand[0][2]);
-                    }
-                    if (dxlCommand[1].size() >= 3)
-                    {
-                        silWriter.writeDxl("head_tilt", dxlCommand[1][2]);
-                    }
-                }
-
                 dxl.syncWrite(dxlCommand);
 
                 map<int, float> pos_act = dxl.syncRead();
             }
         }
-
-        // 1ms 주기마다 SIL frame tick 전송 (Python reader의 frame 경계 기준)
-        silWriter.setEnabled(canManager.isSilModeEnabled());
-        silWriter.writeTick();
 
         if (isWriteError)
         {

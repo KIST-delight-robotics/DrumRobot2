@@ -11,6 +11,7 @@
 #include <thread>
 #include <cerrno>
 #include <cstring>
+#include <algorithm>
 #include <sstream>
 #include <iomanip>
 #include <iostream>

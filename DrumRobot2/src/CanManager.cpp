@@ -1,25 +1,11 @@
 // CanManager.cpp
 #include "../include/managers/CanManager.hpp"
-#include "../include/managers/SilCommandPipeWriter.hpp"
-#include <cstdlib>
 
 // For Qt
 // #include "../managers/CanManager.hpp"
 CanManager::CanManager(std::map<std::string, std::shared_ptr<GenericMotor>> &motorsRef, Functions &funRef, USBIO &usbioRef)
     : motors(motorsRef), func(funRef), usbio(usbioRef)
 {
-    const char *silModeEnv = std::getenv("DRUM_SIL_MODE");
-    if (silModeEnv != nullptr)
-    {
-        silModeEnabled = std::string(silModeEnv) == "1";
-        std::cout << "[SIL] DRUM_SIL_MODE=" << silModeEnv
-                  << " -> SIL mode " << (silModeEnabled ? "enabled" : "disabled") << std::endl;
-    }
-    else
-    {
-        silModeEnabled = false;
-        std::cout << "[SIL] DRUM_SIL_MODE not set -> SIL mode disabled" << std::endl;
-    }
 }
 
 CanManager::~CanManager()
@@ -98,15 +84,30 @@ void CanManager::activateCanPort(const char *port)
     sleep(2);
 }
 
+void CanManager::activateVcanPort(const char *port)
+{
+    char command[100];
+    snprintf(command, sizeof(command), "sudo ip link set %s up", port);
+
+    int ret = system(command);
+    if (ret != 0)
+    {
+        fprintf(stderr, "Failed to activate vcan port: %s\n", port);
+    }
+}
+
 // Down 상태인 CAN 포트 활성화 및 활성화 포트 저장
 void CanManager::listAndActivateAvailableCANPorts()
 {
-    int portCount = 0; // CAN 포트 수를 세기 위한 변수
+    this->ifnames.clear();
+    std::vector<std::string> real_can_names;
+    std::vector<std::string> vcan_names;
 
-    FILE *fp = popen("ip link show | grep can", "r");
+    FILE *fp = popen("ip -o link show", "r");
     if (fp == nullptr)
     {
         perror("No available CAN port");
+        return;
     }
 
     char output[1024];
@@ -117,27 +118,24 @@ void CanManager::listAndActivateAvailableCANPorts()
         std::string skip, port;
         iss >> skip >> port;
 
-        // 콜론 제거
         if (!port.empty() && port.back() == ':')
         {
             port.pop_back();
         }
 
-        // 포트 이름이 유효한지 확인
-        if (!port.empty() && port.find("can") == 0)
+        size_t peer_pos = port.find('@');
+        if (peer_pos != std::string::npos)
         {
-            portCount++;
-            if (!getCanPortStatus(port.c_str()))
-            {
-                printf("%s is DOWN, activating...\n", port.c_str());
-                activateCanPort(port.c_str());
-            }
-            else
-            {
-                printf("%s is already UP\n", port.c_str());
-            }
+            port = port.substr(0, peer_pos);
+        }
 
-            this->ifnames.push_back(port); // 포트 이름을 ifnames 벡터에 추가
+        if (isRealCanName(port))
+        {
+            real_can_names.push_back(port);
+        }
+        else if (isVcanName(port))
+        {
+            vcan_names.push_back(port);
         }
     }
 
@@ -149,10 +147,54 @@ void CanManager::listAndActivateAvailableCANPorts()
 
     pclose(fp);
 
-    if (portCount == 0)
+    std::vector<std::string> selected_names;
+    if (!real_can_names.empty())
     {
-        printf("No CAN port found. Exiting...\n");
+        selected_names = real_can_names;
+        std::cout << "[CAN] real CAN interface found; ignoring vcan interfaces." << std::endl;
     }
+    else
+    {
+        selected_names = vcan_names;
+        std::cout << "[CAN] no real CAN interface found; using vcan interfaces." << std::endl;
+    }
+
+    for (const std::string &port : selected_names)
+    {
+        if (!getCanPortStatus(port.c_str()))
+        {
+            printf("%s is DOWN, activating...\n", port.c_str());
+            if (isVcanName(port))
+            {
+                activateVcanPort(port.c_str());
+            }
+            else
+            {
+                activateCanPort(port.c_str());
+            }
+        }
+        else
+        {
+            printf("%s is already UP\n", port.c_str());
+        }
+
+        this->ifnames.push_back(port);
+    }
+
+    if (this->ifnames.empty())
+    {
+        printf("No CAN or vcan port found. Exiting...\n");
+    }
+}
+
+bool CanManager::isRealCanName(const std::string &ifname) const
+{
+    return ifname.rfind("can", 0) == 0;
+}
+
+bool CanManager::isVcanName(const std::string &ifname) const
+{
+    return ifname.rfind("vcan", 0) == 0;
 }
 
 // CAN 소켓 생성 및 바인딩
@@ -466,15 +508,10 @@ bool CanManager::setMotorsSocket()
                     std::cerr << "--------------> CAN NODE ID " << motor->nodeId << " Connected. " << "Motor [" << name << "]\n";
                     allMotorsUnConected = false;
                 }
-                else if (!silModeEnabled)
+                else
                 {
                     std::cerr << "CAN NODE ID " << motor->nodeId << " Not Connected. " << "Motor [" << name << "]\n";
                     it = motors.erase(it);
-                }
-                else
-                {
-                    std::cerr << "CAN NODE ID " << motor->nodeId << " Not Connected. " << "Motor [" << name
-                              << "] (kept for SIL mode)\n";
                 }
 
                 break;
@@ -483,87 +520,6 @@ bool CanManager::setMotorsSocket()
     }
 
     return allMotorsUnConected;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/*                        SIL vcan feedback socket                            */
-////////////////////////////////////////////////////////////////////////////////
-
-// SIL 모드에서 vcan0 소켓을 열고, 연결 안 된 모터의 socket 필드를 vcan_fd로 교체한다.
-//
-// 동작 원리:
-//   Python SilCommandPipeReader 가 tick 처리 후 PyBullet joint state 를
-//   vcan0 에 struct can_frame 으로 쓴다.
-//   이 함수로 할당된 vcan_fd 를 통해 readFramesFromAllSockets() 가 그 프레임을
-//   읽어 tempFrames[vcan_fd] 에 쌓고, distributeFramesToMotors() 가 각 모터의
-//   motor.jointAngle 을 갱신한다.
-//
-// 전제: sudo bash setup_vcan.sh 로 vcan0 인터페이스가 올라와 있어야 한다.
-void CanManager::openSilVcan(const std::string &ifname)
-{
-    if (!silModeEnabled)
-    {
-        return;
-    }
-
-    // vcan 소켓 생성
-    int sock = socket(PF_CAN, SOCK_RAW, CAN_RAW);
-    if (sock < 0)
-    {
-        std::cerr << "[SIL] vcan socket() failed: " << strerror(errno) << std::endl;
-        return;
-    }
-
-    struct ifreq ifr;
-    std::memset(&ifr, 0, sizeof(ifr));
-    std::strncpy(ifr.ifr_name, ifname.c_str(), IFNAMSIZ - 1);
-
-    if (ioctl(sock, SIOCGIFINDEX, &ifr) < 0)
-    {
-        std::cerr << "[SIL] vcan ioctl(SIOCGIFINDEX) failed for " << ifname
-                  << ": " << strerror(errno)
-                  << " (setup_vcan.sh 를 먼저 실행했는지 확인)" << std::endl;
-        close(sock);
-        return;
-    }
-
-    struct sockaddr_can addr{};
-    addr.can_family  = AF_CAN;
-    addr.can_ifindex = ifr.ifr_ifindex;
-
-    if (bind(sock, reinterpret_cast<struct sockaddr *>(&addr), sizeof(addr)) < 0)
-    {
-        std::cerr << "[SIL] vcan bind() failed: " << strerror(errno) << std::endl;
-        close(sock);
-        return;
-    }
-
-    // non-blocking: readFramesFromAllSockets 의 EWOULDBLOCK 처리와 맞춰야 한다.
-    int flags = fcntl(sock, F_GETFL, 0);
-    if (flags < 0 || fcntl(sock, F_SETFL, flags | O_NONBLOCK) < 0)
-    {
-        std::cerr << "[SIL] vcan fcntl(O_NONBLOCK) failed: " << strerror(errno) << std::endl;
-        close(sock);
-        return;
-    }
-
-    sockets[ifname] = sock;
-
-    // 연결 안 된 모터의 socket 을 vcan_fd 로 교체한다.
-    int assigned = 0;
-    for (auto &motor_pair : motors)
-    {
-        const std::string &name = motor_pair.first;
-        std::shared_ptr<GenericMotor> &motor = motor_pair.second;
-        if (!isConnected.count(name) || !isConnected[name])
-        {
-            motor->socket = sock;
-            assigned++;
-        }
-    }
-
-    std::cout << "[SIL] vcan0 opened (fd=" << sock << "), assigned to "
-              << assigned << " disconnected motor(s)." << std::endl;
 }
 
 //안씀
@@ -777,9 +733,6 @@ bool CanManager::safetyCheckSendT(std::shared_ptr<TMotor> &tMotor, TMotorData &t
 
 bool CanManager::setCANFrame(std::map<std::string, bool>& fixFlags, int cycleCounter)
 {
-    static SilCommandPipeWriter silWriter;
-    silWriter.setEnabled(silModeEnabled);
-
     for (auto &motor_pair : motors)
     {
         std::shared_ptr<GenericMotor> motor = motor_pair.second;
@@ -818,21 +771,12 @@ bool CanManager::setCANFrame(std::map<std::string, bool>& fixFlags, int cycleCou
                     usbio.outputUSBIO4761();                    //실행
                 }
 
-                const bool useSilBypass = silModeEnabled && !tMotor->isConected;
-
-                if(!useSilBypass && !safetyCheckSendT(tMotor, tData))
+                if(!safetyCheckSendT(tMotor, tData))
                 {
                     return false;
                 }
 
-                // 1차 command-level SIL exporter 삽입 지점:
-                // commandBuffer에서 실제로 소비되는 TMotorData를 FIFO/pipe로 내보낸다.
-                silWriter.writeTMotor(motorName, *tMotor, tData);
-
-                if (!useSilBypass)
-                {
-                    setTMotorCANFrame(tMotor, tData);
-                }
+                setTMotorCANFrame(tMotor, tData);
             }
         }
         // MaxonMotor
@@ -859,15 +803,7 @@ bool CanManager::setCANFrame(std::map<std::string, bool>& fixFlags, int cycleCou
 
             fixFlags[motorName] = is_fixed;
 
-            // 1차 command-level SIL exporter 삽입 지점:
-            // commandBuffer에서 실제로 소비되는 MaxonData를 FIFO/pipe로 내보낸다.
-            silWriter.writeMaxon(motorName, *maxonMotor, mData);
-
-            const bool useSilBypass = silModeEnabled && !maxonMotor->isConected;
-            if (!useSilBypass)
-            {
-                setMaxonCANFrame(maxonMotor, mData);
-            }
+            setMaxonCANFrame(maxonMotor, mData);
         }
     }
     return true;
@@ -927,11 +863,6 @@ void CanManager::deactivateAllCanPorts()
 
 bool CanManager::sendMotorFrame(const std::shared_ptr<GenericMotor> &motor)
 {
-    if (silModeEnabled && !motor->isConected)
-    {
-        return true;
-    }
-
     ssize_t written = write(motor->socket, &motor->sendFrame, sizeof(motor->sendFrame));
     if (written != sizeof(motor->sendFrame))
     {

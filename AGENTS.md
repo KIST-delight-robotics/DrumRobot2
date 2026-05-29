@@ -55,26 +55,23 @@
 - 새로 작성하거나 크게 리팩터링하는 코드에서는 람다의 후행 반환형(`-> type`)과 `ptr->field` 같은 축약 표현을 기본 선택으로 쓰지 말고, 일반 함수/분기/명시적 역참조로 풀어쓴다.
 
 ## 현재 통합 컨텍스트
-- 현재 `drum_intheloop`는 `DrumRobot2`의 command-level 출력을 `named pipe`로 받아 `PyBullet`에 적용하는 느슨한 SIL 경로를 사용한다.
-- 현재 공식 표현은 `LLM 플래너 -> 로봇 제어기 -> command-level 시뮬레이터`이다.
-- 현재 SIL 활성화는 자동 검출이 아니라 **명시적 환경변수**로만 켠다.
-  - `DRUM_SIL_MODE=1` 이면 `DrumRobot2` C++ 쪽 pipe writer와 disconnected-motor SIL 우회가 켜진다.
-  - 환경변수가 없으면 SIL은 꺼진 것으로 본다.
-- `/tmp/drum_command.pipe`는 이제 `drum_intheloop/sil/SilCommandPipeReader.py`가 실행 시 삭제 후 재생성하고, 종료 시 정리한다.
-  - stale FIFO 존재만으로 SIL on/off를 판단하지 않는다.
-  - `DrumRobot2` writer는 더 이상 FIFO를 만들지 않는다.
-- 현재 우회 상태:
-  - SIL 모드에서는 disconnected CAN 모터를 `motors` 맵에서 지우지 않는다.
-  - SIL 모드에서는 disconnected TMotor/Maxon의 실제 CAN 송신은 건너뛰고, command-level export만 유지한다.
-  - SIL 모드에서는 `motorSettingCmd`, `maxonMotorEnable`, `setMaxonMotorMode`에서 disconnected Maxon 하드웨어 초기화를 건너뛴다.
+- 현재 `Drum_intheloop`는 `DrumRobot2`가 내보내는 SocketCAN `can_frame`과 Dynamixel Protocol 2.0 serial packet을 그대로 받아 `PyBullet`에 적용하는 frame-level SIL 경로를 사용한다.
+- 현재 공식 표현은 `LLM 플래너 -> 로봇 제어기 -> frame-level SIL`이다.
+- SIL 활성화는 환경변수 게이트가 아니라 인터페이스 존재 여부로 결정된다.
+  - `DrumRobot2`는 real `can*`이 하나라도 있으면 real CAN만 사용하고, 없으면 `vcan*`로 fallback한다.
+  - DXL은 `/dev/ttyUSB0` 한 곳을 연다. SIL에서는 `setup_sil.sh`가 그 경로를 PTY symlink로 만들어 둔다.
+  - 옛 `DRUM_SIL_MODE` 환경변수와 `/tmp/drum_command.pipe` named pipe 경로는 더 이상 존재하지 않는다.
+- SIL 준비 책임은 `Drum_intheloop/setup_sil.sh`에 있다.
+  - `vcan0..3`를 올리고 (`vcan`에는 bitrate를 설정하지 않는다) `socat`으로 DXL PTY pair를 만들어 robot-side endpoint를 `/dev/ttyUSB0`으로 노출한다.
+  - 실제 `/dev/ttyUSB0` 장치나 SIL이 만든 것이 아닌 symlink가 있으면 덮어쓰지 않고 중단한다.
 - 현재 남아 있는 핵심 이슈:
-  - `AgentSocket` 기반 TCP brain 연결은 pipe 경로와 별개다.
-  - `main.cpp`는 `initializeDrumRobot()`가 끝난 뒤에야 state/send/recv thread를 시작하므로, TCP brain 연결이 안 되면 body trajectory/pipe export도 시작되지 않을 수 있다.
+  - `AgentSocket` 기반 TCP brain 연결은 SIL 경로와 별개다.
+  - `main.cpp`는 `initializeDrumRobot()`가 끝난 뒤에야 state/send/recv thread를 시작하므로, TCP brain 연결이 안 되면 body trajectory 생성도 시작되지 않을 수 있다.
   - `AgentSocket` gate는 별도라서 TCP가 붙어도 `k` 이전에는 명령이 폐기될 수 있다.
 - CSV 파일 생성은 trajectory 생성과 별개다.
   - `openCSVFile()`는 startup 초기에 INIT 메타데이터를 기록하므로, CSV가 있다고 body trajectory가 생성된 것은 아니다.
 - 현재 실행 기본 순서:
-  1. `drum_intheloop`에서 `python sil/SilCommandPipeReader.py --mode gui`
-  2. `DrumRobot2/bin`에서 `sudo env DRUM_SIL_MODE=1 ./main.out`
-  3. 이후 `phil_robot`/brain 연결 확인
-- 장기 목표는 `vcan` 또는 `struct can_frame` 기반의 frame-accurate SIL이지만, 현재는 command-level pipe 경계를 안정화하는 단계다.
+  1. `Drum_intheloop`에서 `./setup_sil.sh` (vcan/PTY 준비, 터미널 유지)
+  2. `Drum_intheloop`에서 `python3 simul.py --mode gui`
+  3. `DrumRobot2/bin`에서 `sudo ./main.out`
+  4. 이후 `phil_robot`/brain 연결 확인

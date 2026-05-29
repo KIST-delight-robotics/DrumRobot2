@@ -1,5 +1,148 @@
 # Change Log
 
+## 2026-05-29
+- 15:49 KST (UTC+9) — frame-level SIL 실행/트러블슈팅 문서 한국어 상세화
+  - 수정 파일: `Drum_intheloop/README.md`, `Drum_intheloop/Trouble shooting.md`, `log.md`
+  - 메모: README를 현재 SocketCAN/DXL frame-level SIL 구조와 실행 순서 중심으로 다시 쓰고, vcan queue 최신값 coalescing, idle feedback source 충돌, DXL SyncRead timeout, PyBullet timing 한계를 별도 트러블슈팅 문서에 상세히 정리했다.
+
+- 14:16 KST (UTC+9) — SIL DXL PTY 응답 루프를 PyBullet/CAN 루프에서 분리
+  - 수정 파일: `Drum_intheloop/simul.py`
+  - 메모: DXL SyncRead timeout이 `DrumRobot2` send loop를 막아 TMotor current 동기화까지 흔들 수 있어, DXL packet read/write를 별도 lightweight thread에서 처리하게 했다. SyncWrite goal은 thread-safe pending target으로 넘겨 메인 루프가 PyBullet에만 반영한다.
+
+- 14:14 KST (UTC+9) — SIL TMotor idle feedback을 command 이전 discovery로 제한
+  - 수정 파일: `Drum_intheloop/simul.py`
+  - 메모: command echo 이후에도 200Hz idle feedback이 다시 살아나 오래된 PyBullet state가 TMotor current를 덮을 수 있어, 명령을 한 번 받은 TMotor는 discovery idle feedback에서 제외하고 target echo만 feedback source로 쓰게 했다.
+
+- 11:00 KST (UTC+9) — SIL CAN 최신 TMotor echo 로직 단순화
+  - 수정 파일: `Drum_intheloop/simul.py`
+  - 메모: 별도 flush helper와 pending target 버퍼를 제거하고, CAN queue를 비우는 동안 `latest_tmotor[motor] = urdf_deg`로 모터별 최신 target만 덮어쓴 뒤 마지막에 echo feedback을 보내도록 줄였다.
+
+- 10:55 KST (UTC+9) — SIL DXL SyncRead 응답을 최신 goal echo로 단순화
+  - 수정 파일: `Drum_intheloop/simul.py`
+  - 메모: `gesture:nod`처럼 DXL만 움직이는 동작에서 `SyncRead failed`가 반복되는 문제를 줄이기 위해, SyncRead 응답 시 PyBullet state를 읽지 않고 SyncWrite로 받은 최신 DXL goal을 즉시 status packet으로 echo하게 했다. DXL PTY 입력은 한 번에 여러 packet을 drain하고, CAN bus 처리 뒤에도 DXL을 한 번 더 확인한다.
+
+- 10:28 KST (UTC+9) — SIL TMotor echo feedback을 최신 target 기준으로 coalescing
+  - 수정 파일: `Drum_intheloop/simul.py`
+  - 메모: CAN 처리 루프가 잠깐 밀릴 때 오래된 TMotor target feedback이 순서대로 쌓여 `DrumRobot2` safety의 current를 과거 값에 묶는 문제를 줄이기 위해, bus drain 동안 모터별 최신 target만 echo feedback으로 보내고 PyBullet target 적용도 한 번으로 묶었다.
+
+- 10:17 KST (UTC+9) — SIL feedback timing을 실제 장치 모델 기준으로 정리
+  - 수정 파일: `Drum_intheloop/simul.py`, `Drum_intheloop/sil/encoder.py`
+  - 메모: TMotor는 command target 즉시 echo feedback과 discovery/idle용 200Hz status만 남기고, Maxon은 200Hz 주기 feedback 대신 CANopen SYNC(0x80) 수신 시 Operational TPDO만 보내게 했다. DXL은 SyncRead packet에만 status packet으로 응답한다는 주석을 해당 분기에 추가했다.
+
+- 10:03 KST (UTC+9) — SIL target feedback helper 단순화
+  - 수정 파일: `Drum_intheloop/simul.py`, `Drum_intheloop/sil/encoder.py`
+  - 메모: CAN target echo가 맞는 구조라 별도 target feedback helper를 제거하고, `motor_feedback(motor, urdf_deg)` 하나로 즉시 feedback과 주기 feedback을 모두 처리하게 정리했다.
+
+## 2026-05-28
+- 18:01 KST (UTC+9) — SIL fast-path feedback와 PyBullet step 부하 감소
+  - 수정 파일: `Drum_intheloop/simul.py`, `Drum_intheloop/sil/encoder.py`
+  - 메모: CAN command 직후 feedback을 보낼 때 전체 PyBullet joint state를 읽지 않고 방금 적용한 target으로 직접 encode하게 했다. 빠른 trajectory 중 GUI/PTY/CAN loop가 밀리지 않도록 `stepSimulation()`도 outer loop당 한 번으로 coalescing하고 DXL poll을 CAN 전후에 배치했다.
+
+## 2026-05-28
+- 17:51 KST (UTC+9) — SIL arm production-to-URDF sign 매핑 복원
+  - 수정 파일: `Drum_intheloop/sil/mapping.py`
+  - 메모: `R_arm1`이 반대 방향으로 꺾이는 문제를 바로잡기 위해 예전 `joint_map.py` 기준으로 `R_arm1`을 90도 기준 mirror(`sign=-1`)로 복원했다. 같은 drift가 있던 `L_arm1`, `L_arm2`도 기존 sign으로 되돌렸다.
+
+## 2026-05-28
+- 17:47 KST (UTC+9) — CAN command 직후 즉시 feedback 전송 추가
+  - 수정 파일: `Drum_intheloop/simul.py`
+  - 메모: 빠른 gesture 중 `DrumRobot2` safety가 직전 target feedback을 stale current로 보고 멈추는 현상을 줄이기 위해, simulator가 CAN position target을 적용한 직후 해당 motor feedback frame을 같은 bus로 즉시 돌려주도록 했다.
+
+## 2026-05-28
+- 17:37 KST (UTC+9) — frame-level SIL의 자체 joint limit clamp 제거
+  - 수정 파일: `Drum_intheloop/sil/mapping.py`, `Drum_intheloop/sil/router.py`, `Drum_intheloop/sil/urdf_tools.py`
+  - 메모: `DrumRobot2`가 이미 안전 limit을 관리하므로 SIL이 URDF 좌표계 기준으로 CAN target을 다시 clamp하지 않게 했다. `L_arm3` production 90도가 URDF -90도로 변환된 뒤 0도로 잘리던 문제를 막기 위해 runtime URDF joint limit 패치도 제거했다.
+
+## 2026-05-28
+- 17:19 KST (UTC+9) — 활성 문서에서 옛 command-pipe SIL(`DRUM_SIL_MODE`/`/tmp/drum_command.pipe`/`SilCommandPipe*`) 잔재를 정리
+  - 수정 파일: `README.md`, `AGENTS.md`, `Drum_intheloop/AGENTS.md`, `Drum_intheloop/sil/__init__.py`
+  - 메모: 루트 `README.md`의 소개/구조/실행 모드와 루트 `AGENTS.md`의 "현재 통합 컨텍스트"를 frame-level SIL(`setup_sil.sh` + `vcan*` fallback + DXL PTY) 흐름에 맞춰 다시 썼다. `Drum_intheloop/AGENTS.md`에 남아 있던 "named pipe와 `DRUM_SIL_MODE=1`은 쓰지 않는다" 한 줄과 `sil/__init__.py`의 "command-level" docstring도 함께 정리했다. `log.md`의 과거 항목은 작업 기록 보존을 위해 그대로 둔다.
+
+## 2026-05-28
+- 15:55 KST (UTC+9) — SIL Maxon discovery race를 NMT state로 해결
+  - 수정 파일: `Drum_intheloop/sil/motor_state.py`, `Drum_intheloop/sil/decoder.py`, `Drum_intheloop/simul.py`, `Drum_intheloop/sil/encoder.py`
+  - 메모: simulator가 NMT state machine을 모델링하지 않아 Maxon이 Pre-Operational 단계부터 TPDO를 200Hz로 쏟아냈고, 그 noise가 `setMotorsSocket()`의 10-frame read window 안에서 SDO ack를 덮어 Maxon 발견이 확률적으로 누락됐다. `NmtState` 클래스로 Maxon 노드별 state(Pre-Op/Operational/Stopped)를 추적하고, `decoder.py`가 `0x000` NMT frame을 인식해 simul.py가 transition하도록 했다. `_send_feedback`은 Operational이 아닌 Maxon은 건너뛴다. `encoder.py` 상단에는 이 모듈이 생성하는 CANopen 메시지 타입을 짧게 정리했다.
+
+## 2026-05-28
+- 14:10 KST (UTC+9) — DrumRobot2 DXL 초기화를 고정 `/dev/ttyUSB0` 방식으로 복원
+  - 수정 파일: `DrumRobot2/src/DrumRobot.cpp`, `DrumRobot2/include/tasks/DrumRobot.hpp`, `Drum_intheloop/README.md`
+  - 메모: DXL 후보 포트/fallback helper를 제거하고 SDK `PortHandler`가 예전처럼 `/dev/ttyUSB0` 하나만 열도록 되돌렸다. SIL에서는 `setup_sil.sh`가 같은 경로를 PTY symlink로 제공하고, 실제 장치를 쓸 때는 setup script를 실행하지 않는 흐름으로 문서화했다.
+
+## 2026-05-28
+- 14:07 KST (UTC+9) — SIL DXL endpoint를 `/dev/ttyUSB0` 단일 경로로 정리
+  - 수정 파일: `Drum_intheloop/setup_sil.sh`, `Drum_intheloop/README.md`, `Drum_intheloop/AGENTS.md`, `Drum_intheloop/TODO.md`, `DrumRobot2/src/DrumRobot.cpp`
+  - 메모: `setup_sil.sh`가 PTY를 만든 뒤 robot-side endpoint를 `/dev/ttyUSB0` symlink로 노출하게 하고, C++ DXL probing은 예전처럼 `/dev/ttyUSB0` 하나만 확인하도록 맞췄다. 실제 장치나 비-SIL symlink가 있으면 덮어쓰지 않고 중단한다.
+
+## 2026-05-28
+- 13:59 KST (UTC+9) — DXL PTY 권한과 simulator startup cleanup 수정
+  - 수정 파일: `Drum_intheloop/setup_sil.sh`, `Drum_intheloop/simul.py`
+  - 메모: `socat` PTY를 `mode=666`으로 생성해 별도 사용자 프로세스의 `/tmp/vdxl_sim` 접근 권한 문제를 막았다. simulator startup 중 DXL open 실패가 나도 CAN socket/PyBullet이 정리되도록 lifecycle try/finally 범위를 넓히고 python-can `interface` 인자를 사용했다.
+
+## 2026-05-28
+- 13:56 KST (UTC+9) — frame-level SIL 실행 문서에 voice brain 터미널 추가
+  - 수정 파일: `Drum_intheloop/README.md`
+  - 메모: 실사용은 음성 명령을 받기 위해 `phil_robot/phil_brain.py`까지 실행해야 하므로 README 실행 순서에 네 번째 터미널을 명시했다.
+
+## 2026-05-28
+- 13:54 KST (UTC+9) — `setup_sil.sh`를 vcan/PTY 준비 전용으로 분리
+  - 수정 파일: `Drum_intheloop/setup_sil.sh`, `Drum_intheloop/README.md`, `Drum_intheloop/AGENTS.md`
+  - 메모: `setup_sil.sh`가 simulator를 직접 실행하지 않고 `socat` PTY를 유지하도록 바꿨다. simulator는 별도 터미널에서 `python3 simul.py --mode gui`로 실행하는 흐름으로 문서화했다.
+
+## 2026-05-28
+- 13:47 KST (UTC+9) — `setup_sil.sh` PTY 생성을 `socat` 필수 경로로 단순화
+  - 수정 파일: `Drum_intheloop/setup_sil.sh`, `Drum_intheloop/sil/pty_bridge.py`, `Drum_intheloop/README.md`
+  - 메모: `socat` 설치를 전제로 Python PTY fallback을 제거하고 setup script와 문서의 DXL PTY 경로를 하나로 정리했다.
+
+## 2026-05-28
+- 13:45 KST (UTC+9) — `setup_sil.sh`에 Python PTY bridge fallback 추가
+  - 수정 파일: `Drum_intheloop/setup_sil.sh`, `Drum_intheloop/sil/pty_bridge.py`, `Drum_intheloop/README.md`
+  - 메모: `socat`이 없는 환경에서도 `/tmp/vdxl`과 `/tmp/vdxl_sim`을 만들 수 있도록 Python PTY bridge를 추가했다. README에 시스템/Python dependency 설치 명령을 보강했다.
+
+## 2026-05-28
+- 13:39 KST (UTC+9) — PyBullet backend을 core joint IO와 visual helper로 분리
+  - 수정 파일: `Drum_intheloop/sil/pybullet_backend.py`, `Drum_intheloop/sil/visuals.py`, `Drum_intheloop/README.md`
+  - 메모: `pybullet_backend.py`는 lifecycle, robot loading, joint IO만 담당하게 줄이고 world/camera/theme/pedal/drum pad 생성은 `visuals.py`로 이동했다. 두 파일 모두 역할별 주석 구역으로 묶었다.
+
+## 2026-05-28
+- 13:32 KST (UTC+9) — frame-level SIL CAN routing을 bus 고정에서 CAN ID 중심으로 조정
+  - 수정 파일: `Drum_intheloop/simul.py`, `Drum_intheloop/sil/router.py`
+  - 메모: router의 `vcan*` membership gate를 제거해 어느 adapter에서 들어온 frame이든 CAN ID/protocol 기준으로 처리하게 했다. simulator는 command를 받은 bus를 motor feedback bus로 동적 바인딩한다.
+
+## 2026-05-28
+- 13:28 KST (UTC+9) — frame-level SIL 필수 dependency import와 CAN routing gate 단순화
+  - 수정 파일: `Drum_intheloop/simul.py`, `Drum_intheloop/sil/encoder.py`, `Drum_intheloop/sil/pybullet_backend.py`, `Drum_intheloop/sil/router.py`
+  - 메모: `python-can`/`pybullet` import의 방어적 `try/except`를 제거해 필수 dependency 누락 시 즉시 실패하게 했다. CAN router는 `motor is None` 별도 분기 없이 bus membership gate로만 frame 경계를 유지한다.
+
+## 2026-05-28
+- 13:19 KST (UTC+9) — frame-level SIL 오케스트레이터를 `simul.py`로 승격
+  - 수정 파일: `Drum_intheloop/simul.py`, `Drum_intheloop/setup_sil.sh`, `Drum_intheloop/README.md`, `Drum_intheloop/run_sil.py`
+  - 메모: `sil/frame_simulator.py`를 루트 entrypoint인 `simul.py`로 옮기고 `run_sil.py`를 제거했다. simulator lifecycle, device setup, CAN/DXL loop, motion/feedback, CLI entrypoint를 주석 구역으로 묶었다.
+
+## 2026-05-28
+- 13:13 KST (UTC+9) — frame-level SIL CAN velocity/torque motion 적분 추가
+  - 수정 파일: `Drum_intheloop/sil/decoder.py`, `Drum_intheloop/sil/mapping.py`, `Drum_intheloop/sil/router.py`, `Drum_intheloop/sil/frame_simulator.py`
+  - 메모: TMotor velocity와 Maxon torque/velocity command를 router 상태로 저장하고 loop `dt` 기준으로 joint target을 갱신하도록 했다.
+
+## 2026-05-28
+- 13:05 KST (UTC+9) — frame-level SIL mapping/router 구역 정리
+  - 수정 파일: `Drum_intheloop/sil/mapping.py`, `Drum_intheloop/sil/router.py`
+  - 메모: motor spec, bus layout, joint/visual mapping, startup pose, routing 흐름을 범주별로 묶어 파일 탐색성을 높였다.
+
+## 2026-05-28
+- 13:01 KST (UTC+9) — frame-level SIL encoder/decoder 함수 배치를 모터별로 정렬
+  - 수정 파일: `Drum_intheloop/sil/decoder.py`, `Drum_intheloop/sil/encoder.py`
+  - 메모: Maxon, TMotor, DXL 순서로 protocol 함수 블록을 배치해 파일 탐색성을 높였다.
+
+## 2026-05-28
+- 12:59 KST (UTC+9) — frame-level SIL encoder/decoder에 protocol별 구역 주석 추가
+  - 수정 파일: `Drum_intheloop/sil/decoder.py`, `Drum_intheloop/sil/encoder.py`
+  - 메모: Maxon, TMotor, DXL encode/decode 함수 묶음을 파일 안에서 바로 찾을 수 있도록 섹션 주석을 추가했다.
+
+## 2026-05-28
+- 12:04 KST (UTC+9) — Drum_intheloop SIL 경계를 named pipe에서 SocketCAN/DXL frame-level 경로로 전환
+  - 수정 파일: `Drum_intheloop`, `DrumRobot2`
+  - 메모: `setup_sil.sh`, frame decoder/encoder/router/mapping을 추가하고 `DRUM_SIL_MODE`/pipe writer/bypass 경로를 제거했다. `DrumRobot2`는 real `can*` 우선, real CAN 부재 시 `vcan*` fallback을 사용하며 DXL은 실제 포트 실패 시 `/tmp/vdxl`로 fallback한다.
+
 ## 2026-05-27
 - 17:19 KST (UTC+9) — classifier 출력에서 `risk_level` 필드 제거
   - 수정 파일: `phil_robot/pipeline/intent_classifier.py`, `phil_robot/pipeline/failure.py`, `phil_robot/pipeline/brain_pipeline.py`, `phil_robot/eval/run_eval.py`, `phil_robot/eval/planner_json_benchmark.py`, `phil_robot/tests/test_intent_classifier.py`, `phil_robot/tests/test_planner_benchmark.py`, `phil_robot/tests/test_stt_llm_format_compare.py`, `phil_robot/docs/LLM_PIPELINE_ARCHITECTURE.md`, `phil_robot/docs/LLM_PIPELINE_ARCHITECTURE_KR.md`, `phil_robot/docs/PHIL_SEQUENCE_DIAGRAM_KR.md`, `phil_robot/eval/README.md`

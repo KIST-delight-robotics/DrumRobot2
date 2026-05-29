@@ -97,11 +97,6 @@ public:
 
     bool sendMotorFrame(const std::shared_ptr<GenericMotor> &motor);
     bool setCANFrame(std::map<std::string, bool>& fixFlags, int cycleCounter);
-    bool isSilModeEnabled() const { return silModeEnabled; }
-
-    // SIL 모드에서 vcan0 소켓을 열고 disconnected 모터에 할당한다.
-    // setup_vcan.sh 로 vcan0 인터페이스가 미리 올라와 있어야 한다.
-    void openSilVcan(const std::string &ifname = "vcan0");
 
     //////////////////////////////////////// Receive
     void readFramesFromAllSockets();
@@ -127,7 +122,6 @@ private:
     std::map<std::string, std::shared_ptr<GenericMotor>> &motors;
     Functions &func;
     USBIO &usbio;
-    bool silModeEnabled = false;
     
     TMotorCommandParser tmotorcmd;
     MaxonCommandParser maxoncmd;
@@ -138,8 +132,11 @@ private:
     //////////////////////////////////////// Initialize
     bool getCanPortStatus(const char *port);
     void activateCanPort(const char *port);
+    void activateVcanPort(const char *port);
     void listAndActivateAvailableCANPorts();
     int createSocket(const std::string &ifname);
+    bool isRealCanName(const std::string &ifname) const;
+    bool isVcanName(const std::string &ifname) const;
 
     //////////////////////////////////////// Setting
     void flushCanBuffer(int socket);

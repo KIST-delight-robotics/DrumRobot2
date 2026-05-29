@@ -1,18 +1,18 @@
 # Phil Robot / Drum Robot Project
 
-Jetson AGX Orin 기반의 로컬 AI brain, C++ 로봇 제어기, command-level SIL viewer를 한 저장소에 모아 둔 드럼 로봇 프로젝트입니다.
+Jetson AGX Orin 기반의 로컬 AI brain, C++ 로봇 제어기, frame-level SIL을 한 저장소에 모아 둔 드럼 로봇 프로젝트입니다.
 
 ![Phil Robot](./docs/DrumRobot.jpg)
 
 현재 저장소의 공식 표현은 아래 흐름입니다.
 
 ```text
-LLM 플래너 -> 로봇 제어기 -> command-level 시뮬레이터
+LLM 플래너 -> 로봇 제어기 -> frame-level SIL
 ```
 
 - `phil_robot/`는 Whisper STT, Ollama 기반 Qwen classifier/planner, MeloTTS를 묶은 Python brain입니다.
 - `DrumRobot2/`는 CAN/TMotor/Maxon/DXL 제어와 상태머신을 담당하는 C++ body입니다.
-- `Drum_intheloop/`는 `DrumRobot2`의 command-level 출력을 `/tmp/drum_command.pipe`로 받아 PyBullet에 적용하는 느슨한 SIL 경로입니다.
+- `Drum_intheloop/`는 `DrumRobot2`의 SocketCAN `can_frame`과 Dynamixel serial packet을 그대로 받아 PyBullet에 적용하는 frame-level SIL 경로입니다.
 - `legacy/phil_intheloop/`는 이전 simulator 경로를 보관하는 legacy 영역입니다.
 
 ## 현재 구조
@@ -20,7 +20,7 @@ LLM 플래너 -> 로봇 제어기 -> command-level 시뮬레이터
 ```text
 robot_project/
 ├── DrumRobot2/          # 실시간 C++ 로봇 제어기
-├── Drum_intheloop/      # named pipe 기반 PyBullet SIL
+├── Drum_intheloop/      # vcan/DXL PTY 기반 frame-level SIL
 ├── phil_robot/          # Python LLM brain / STT / TTS / eval
 ├── DrumRobot_data/      # 저장/생성 데이터와 코드 산출물
 ├── docs/                # 루트 문서 자산
@@ -33,8 +33,7 @@ robot_project/
 - `src/main.cpp`: 제어기 엔트리포인트입니다. `initializeDrumRobot()`가 끝난 뒤에야 state/send/recv/music/python/broadcast thread를 시작합니다.
 - `src/DrumRobot.cpp`: 로봇 상태머신, brain 대기, 초기 자세, state JSON broadcast, Magenta 연동 경로를 담당합니다.
 - `src/AgentSocket.cpp`: TCP server를 열고 brain 명령 큐와 state JSON 송신을 처리합니다.
-- `src/CanManager.cpp`: CAN 포트 초기화, 하드웨어 송수신, `DRUM_SIL_MODE` 판별을 담당합니다.
-- `src/SilCommandPipeWriter.cpp`: SIL 모드일 때 command-level NDJSON을 `/tmp/drum_command.pipe`로 내보냅니다.
+- `src/CanManager.cpp`: CAN 포트 초기화, 인터페이스 선택(real `can*` 우선, 없으면 `vcan*` fallback), 하드웨어 송수신을 담당합니다.
 - `include/codes/*.txt`: 현재 드럼 악보 txt 파일 위치입니다. 첫 줄은 `bpm <number>` 형식이며, 이후 줄은 상대 대기시간과 손/발 악기 번호, velocity를 담습니다.
 
 ### `phil_robot/`
@@ -54,12 +53,13 @@ robot_project/
 
 ### `Drum_intheloop/`
 
-- `run_sil.py`: SIL reader 진입점입니다.
-- `sil/SilCommandPipeReader.py`: FIFO 생성/삭제, NDJSON parse, startup pose 적용을 담당합니다.
-- `sil/command_applier.py`: production motor 이름과 각도 의미를 URDF joint target으로 바꿉니다.
-- `sil/joint_map.py`: CAN joint 의미 보정을 정의합니다.
+- `simul.py`: frame-level simulator 진입점입니다.
+- `setup_sil.sh`: `vcan0..3`와 DXL용 PTY pair (`/dev/ttyUSB0`)를 준비합니다.
+- `sil/decoder.py`, `sil/encoder.py`: TMotor/Maxon CAN frame과 Dynamixel Protocol 2.0 packet의 decode/encode를 담당합니다.
+- `sil/router.py`: CAN ID/DXL ID를 motor와 joint로 라우팅합니다.
+- `sil/mapping.py`: production motor 이름과 각도 의미를 URDF joint target으로 변환합니다.
 - `sil/urdf_tools.py`: 체크인된 URDF/STL 원본을 건드리지 않고 runtime URDF patch를 적용합니다.
-- 현재 backend는 `resetJointState()` 기반 즉시 반영 viewer에 가깝고, frame-accurate simulator는 아닙니다.
+- 현재 backend는 `resetJointState()` 기반 즉시 반영 viewer에 가깝고, actuator dynamics는 모델링하지 않습니다.
 
 ## 빠른 시작
 
@@ -110,26 +110,34 @@ python phil_brain.py
 - `DrumRobot2`는 brain TCP 연결이 성공할 때까지 `initializeDrumRobot()` 안에서 대기합니다.
 - brain이 연결되면 C++ 쪽이 내부적으로 `initializePos("o")`를 호출해 초기 자세 절차를 진행합니다.
 - 그 다음에도 안전 키를 제거하고 C++ 터미널에서 `k`를 입력해 gate를 열기 전까지 명령은 폐기될 수 있습니다.
-- state broadcast는 TCP `9999` 경로이며, SIL pipe와는 별개입니다.
+- state broadcast는 TCP `9999` 경로이며, SIL 경로와는 별개입니다.
 
-### command-level SIL
+### frame-level SIL
 
-터미널 1:
+터미널 1 (vcan/DXL PTY 준비, 그대로 열어 둡니다):
 
 ```bash
 cd /home/shy/robot_project/Drum_intheloop
-python -m pip install -r requirements.txt
-python run_sil.py --mode gui
+sudo apt install -y iproute2 kmod can-utils socat
+python3 -m pip install -r requirements.txt
+./setup_sil.sh
 ```
 
-터미널 2:
+터미널 2 (simulator):
+
+```bash
+cd /home/shy/robot_project/Drum_intheloop
+python3 simul.py --mode gui
+```
+
+터미널 3 (`DrumRobot2`, 환경변수 없이 그대로 실행합니다):
 
 ```bash
 cd /home/shy/robot_project/DrumRobot2/bin
-sudo env DRUM_SIL_MODE=1 ./main.out
+sudo ./main.out
 ```
 
-터미널 3:
+터미널 4 (brain):
 
 ```bash
 cd /home/shy/robot_project/phil_robot
@@ -139,10 +147,9 @@ python phil_brain.py
 
 중요:
 
-- `Drum_intheloop` reader가 `/tmp/drum_command.pipe`를 만들고 종료 시 정리합니다.
-- `DrumRobot2` writer는 FIFO를 만들지 않으며, `DRUM_SIL_MODE=1`일 때만 export를 시도합니다.
-- reader를 먼저 띄워야 writer가 pipe를 열 수 있습니다.
-- TCP brain 연결이 별도로 필요하므로, pipe reader만 실행해도 `main.out`의 전체 동작이 자동으로 시작되지는 않습니다.
+- `DrumRobot2`는 real `can*` 인터페이스가 하나라도 있으면 real CAN만 사용하고, 없으면 `vcan*`로 fallback합니다. 별도 SIL 환경변수는 없습니다.
+- `setup_sil.sh`는 `vcan0..3`와 `/dev/ttyUSB0` PTY를 만들어 둡니다. 실제 `/dev/ttyUSB0` 장치나 SIL이 만든 것이 아닌 symlink가 있으면 덮어쓰지 않고 중단합니다.
+- TCP brain 연결은 별도이므로, simulator만 띄운다고 `main.out`의 전체 동작이 자동으로 시작되지는 않습니다.
 
 ## 평가와 보조 문서
 
