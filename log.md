@@ -1,6 +1,10 @@
 # Change Log
 
 ## 2026-05-29
+- 16:05 KST (UTC+9) — CANopen NMT 정리 문서 추가
+  - 수정 파일: `Drum_intheloop/CANopen NMT 정리.md`, `log.md`
+  - 메모: SIL Maxon 발견 race 추적과 NMT state 추가로 해결한 과정을 정리해 학습/참고 문서로 남겼다. PDO/SDO/NMT 차이, 실하드웨어가 같은 race를 안 겪는 이유, simulator에 무엇만 추가하면 되는지를 단계별로 기록.
+
 - 15:49 KST (UTC+9) — frame-level SIL 실행/트러블슈팅 문서 한국어 상세화
   - 수정 파일: `Drum_intheloop/README.md`, `Drum_intheloop/Trouble shooting.md`, `log.md`
   - 메모: README를 현재 SocketCAN/DXL frame-level SIL 구조와 실행 순서 중심으로 다시 쓰고, vcan queue 최신값 coalescing, idle feedback source 충돌, DXL SyncRead timeout, PyBullet timing 한계를 별도 트러블슈팅 문서에 상세히 정리했다.
