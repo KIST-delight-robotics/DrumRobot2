@@ -3,6 +3,8 @@ from typing import Any, Dict, Optional
 
 import ollama
 
+# config 는 패키지 깊이에 따라 경로가 달라 fallback 을 유지한다.
+# (phil_brain 모드: pipeline 이 top-level → 'config' / eval·tests 모드: phil_robot.pipeline → '..config')
 try:
     from ..config import (
         CLASSIFIER_CHAT_OPT,
@@ -14,7 +16,6 @@ try:
         PLANNER_MODEL,
         detect_backend,
     )
-    from .failure import build_llm_call_failure_json
 except (ImportError, ValueError):
     from config import (
         CLASSIFIER_CHAT_OPT,
@@ -26,10 +27,8 @@ except (ImportError, ValueError):
         PLANNER_MODEL,
         detect_backend,
     )
-    try:
-        from pipeline.failure import build_llm_call_failure_json
-    except ImportError:
-        from failure import build_llm_call_failure_json
+
+from .failure import build_llm_call_failure_json
 
 
 def read_meta_value(resp: Any, key_name: str) -> Any:

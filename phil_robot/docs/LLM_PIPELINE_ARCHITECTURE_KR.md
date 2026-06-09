@@ -53,7 +53,7 @@ Whisper STT
   -> command validator
   -> ValidatedPlan
   -> LangGraph state machine (process → execute → return_home)
-    -> InterruptibleExecutor (백그라운드 스레드)
+    -> Executor (백그라운드 스레드)
     -> TTS (메인 스레드, 동시 실행)
     -> 동작 완료 후 홈 복귀 (plan_type == motion 일 때)
   -> robot state feedback
@@ -286,7 +286,7 @@ C++ robot state broadcast -> runtime/phil_client.py -> thread-safe ROBOT_STATE -
 - runtime bootstrap
 - STT 호출
 - LangGraph app(`build_phil_graph`) 빌드 및 매 턴 `app.invoke()` 실행
-- Enter 입력 시 `InterruptibleExecutor.cancel()`로 이전 동작 즉시 중단
+- Enter 입력 시 `Executor.cancel()`로 이전 동작 즉시 중단
 - TTS는 메인 스레드에서 호출 (MeloTTS 스레드 비안전)
 - `SessionContext` 매 턴 갱신
 - 사람이 읽기 좋은 debug 로그 출력
@@ -496,7 +496,7 @@ ValidatedPlan(
 책임:
 
 - `process → execute → return_home` 노드 구성
-- `InterruptibleExecutor`: 로봇 명령을 백그라운드 스레드에서 실행, `cancel()` 시 `s` 전송 + wait 중단 (C++ 측의 점진적 실행 모델 및 버퍼 플러시와 연동되어 즉각 멈춤)
+- `Executor`: 로봇 명령을 백그라운드 스레드에서 실행, `cancel()` 시 stop_event 설정으로 wait 및 미전송 명령 중단 (로봇으로는 아무것도 보내지 않음)
 - `plan_type` 판단 (motion/play/stop/chat)으로 홈 복귀 여부 결정
 - Enter 입력 시 이전 동작 즉시 중단 후 새 명령 처리 (일시정지/재개(Pause/Resume)와 호환됨)
 - TTS와 로봇 명령 동시 실행 (말하면서 제스처)

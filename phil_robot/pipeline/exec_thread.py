@@ -1,10 +1,10 @@
 """
-InterruptibleExecutor — 로봇 명령을 백그라운드 스레드에서 실행한다.
+Executor — 로봇 명령을 백그라운드 스레드에서 실행한다.
 
 주요 동작:
-- run()  : 명령 목록을 별도 스레드에서 순서대로 전송한다.
+- execute() : 명령 목록을 별도 스레드에서 순서대로 전송한다.
            wait: 명령은 짧은 loop(0.05s 단위)로 stop_event를 확인하면서 대기한다.
-- cancel(): stop_event를 설정해 실행 스레드를 중단하고, 로봇에 'stop' 명령을 보낸다.
+- cancel(): stop_event를 설정해 실행 스레드를 중단한다. 로봇에는 아무것도 보내지 않는다.
 - on_done: 완료(cancelled=False) 또는 취소(cancelled=True) 후 호출되는 콜백.
            phil_brain.py 에서 홈 복귀 트리거로 사용한다.
 """
@@ -14,7 +14,7 @@ import time
 from typing import Callable, List, Optional
 
 
-class InterruptibleExecutor:
+class Executor:
 
     def __init__(self, bot):
         self._bot = bot
@@ -26,7 +26,7 @@ class InterruptibleExecutor:
     # Public API
     # ------------------------------------------------------------------
 
-    def run(self, commands: List[str], on_done: Callable[[bool], None]) -> None:
+    def execute(self, commands: List[str], on_done: Callable[[bool], None]) -> None:
         """
         commands 를 백그라운드 스레드에서 순서대로 실행한다.
 
@@ -49,14 +49,12 @@ class InterruptibleExecutor:
     def cancel(self) -> None:
         """
         실행 중인 명령 시퀀스를 중단한다.
-        1. stop_event 를 설정해 실행 스레드가 다음 체크 포인트에서 빠져나오게 한다.
-        2. 로봇에 's' 명령을 전송해 현재 모션을 즉시 정지시킨다.
+
+        stop_event 를 설정하면 백그라운드 스레드가 다음 체크포인트
+        (명령 사이 또는 wait 루프)에서 빠져나온다. 아직 소켓으로 나가지
+        않은 wait/명령만 취소되며, 로봇에는 아무것도 보내지 않는다.
         """
         self._stop.set()
-        try:
-            self._bot.send_command("pause\n")
-        except Exception:
-            pass  # 소켓이 닫혀 있어도 cancel 자체는 계속 진행한다
 
     def is_running(self) -> bool:
         """백그라운드 실행 스레드가 아직 살아있으면 True."""

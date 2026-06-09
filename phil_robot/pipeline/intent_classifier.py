@@ -1,13 +1,11 @@
 import json
 import re
 
-try:
-    from .failure import build_classifier_failure_result
-    from .state_adapter import build_classifier_state_summary, detect_joint_angle_query, detect_repertoire_query
-except (ImportError, ValueError):
-    from pipeline.failure import build_classifier_failure_result
-    from pipeline.state_adapter import build_classifier_state_summary, detect_joint_angle_query, detect_repertoire_query
+from .failure import build_classifier_failure_result
+from .state_adapter import build_classifier_state_summary, detect_joint_angle_query, detect_repertoire_query
 
+# config 는 패키지 깊이에 따라 경로가 달라 fallback 을 유지한다.
+# (phil_brain 모드: pipeline 이 top-level → 'config' / eval·tests 모드: phil_robot.pipeline → '..config')
 try:
     from ..config import CLASSIFIER_MODEL
 except (ImportError, ValueError):

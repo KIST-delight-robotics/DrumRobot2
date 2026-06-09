@@ -2,10 +2,7 @@ import re
 from dataclasses import dataclass, field
 from typing import List, Optional
 
-try:
-    from .command_validator import JOINT_LIMITS
-except ImportError:
-    from command_validator import JOINT_LIMITS
+from .command_validator import JOINT_LIMITS
 
 DEFAULT_RELATIVE_STEP_DEG = 15.0
 JOINT_LIMIT_EPSILON_DEG = 0.1

@@ -5,22 +5,20 @@ import time
 
 import numpy as np
 import psutil
-import sounddevice as sd
 import whisper
 
 from config import PLANNER_MODEL, CLASSIFIER_MODEL
 from pipeline.brain_pipeline import run_brain_turn
-from pipeline.exec_thread import InterruptibleExecutor
+from pipeline.exec_thread import Executor
 from pipeline.robot_graph import build_phil_graph
 from pipeline.session import SessionContext, update_session
 from runtime.melo_engine import TTS_Engine
+from runtime.mic_listener import MicListener
 from runtime.phil_client import RobotClient, get_robot_state_snapshot
 
 # ==========================================
 # Config
 # ==========================================
-SAMPLE_RATE = 16000
-RECORD_SECONDS = 3
 HOST = "127.0.0.1"
 PORT = 9999
 
@@ -29,23 +27,6 @@ def get_mem_usage():
     """현재 프로세스의 메모리 사용량을 MB 단위로 반환"""
     process = psutil.Process(os.getpid())
     return process.memory_info().rss / (1024 * 1024)
-
-
-def record_audio():
-    """마이크로 소리를 듣고 1차원 float 배열로 반환"""   
-    print(f"\n🎤 듣는 중... ({RECORD_SECONDS}초)")
-    try:
-        audio = sd.rec(
-            int(RECORD_SECONDS * SAMPLE_RATE),
-            samplerate=SAMPLE_RATE,
-            channels=1,
-            dtype="float32",
-        )
-        sd.wait()
-        return audio.flatten()
-    except Exception as exc:
-        print(f"❌ 마이크 녹음 실패: {exc}")
-        return None
 
 
 def warm_up_stt_model(stt_model):
@@ -170,13 +151,13 @@ def main():
     if not all([bot, tts, stt_model]):
         return
 
-    tts.speak("대화 준비가 되었습니다. 엔터 키를 누르고 말씀해 주세요.")
+    tts.speak("대화 준비가 되었습니다. 말씀해 주세요.")
 
     # 세션 단기 기억
     session = SessionContext()
 
-    # ── InterruptibleExecutor 초기화 ──────────────────────────────────────
-    executor = InterruptibleExecutor(bot)
+    # ── Executor 초기화 ──────────────────────────────────────────────────
+    executor = Executor(bot)
 
     # ── LangGraph 빌드 ────────────────────────────────────────────────────
     # get_session() 은 클로저로 최신 session 객체를 반환한다.
@@ -196,28 +177,29 @@ def main():
         planner_model=PLANNER_MODEL,
     )
 
+    # ── 마이크 리스너 시작 ────────────────────────────────────────────────
+    # VAD(에너지 임계값) 기반으로 말이 끝날 때까지 알아서 듣고, 확정된 발화만
+    # 큐로 넘긴다. Enter 트리거 대신 이 리스너가 발화 단위를 만든다. 종료는 Ctrl+C.
+    listener = MicListener()
+    listener.start()
+
     try:
         while True:
-            key = input("\n⌨️ [Enter] 듣기 / 'q' 종료 >> ")
-            if key.lower() == "q":
-                print("에이전트 종료")
-                break
-
-            # ── 실행 중이면 인터럽트 ──────────────────────────────────────
-            # Enter 를 누른 시점에 executor 가 살아있으면 즉시 중단한다.
-            # executor.cancel() 은 로봇에 's' 를 전송하고 스레드를 중단한다.
-            if executor.is_running():
-                print("⚡ [인터럽트] 이전 동작을 중단합니다.")
-                executor.cancel()
-
-            audio_data = record_audio()
+            # 확정된 발화가 올 때까지 대기한다(없으면 None 후 재시도).
+            audio_data = listener.read_utterance(timeout=1.0)
             if audio_data is None:
                 continue
-
 
             user_text = transcribe_user_speech(stt_model, audio_data)
             if not user_text:
                 continue
+
+            # ── 발화 확정 후 인터럽트 ─────────────────────────────────────
+            # 유효한 발화가 확정되면, 실행 중인 이전 동작을 즉시 중단한다.
+            # executor.cancel() 은 stop_event 를 설정해 스레드만 중단한다(로봇 전송 없음).
+            if executor.is_running():
+                print("⚡ [인터럽트] 이전 동작을 중단합니다.")
+                executor.cancel()
 
             robot_state = get_robot_state_snapshot()
 
@@ -248,7 +230,10 @@ def main():
             speech = final_state.get("speech", "")
             if speech:
                 print(f"🤖 Phil: {speech}")
+                # TTS 재생 구간 동안 리스너를 막아 self-echo 를 차단한다.
+                listener.set_speaking(True)
                 tts.speak(speech, stream=True)
+                listener.set_speaking(False)
 
             # ── 디버그 출력 ───────────────────────────────────────────────
             brain_result_obj = final_state.get("brain_result", {}).get("_obj")
@@ -263,6 +248,7 @@ def main():
     except KeyboardInterrupt:
         print("\n종료합니다.")
     finally:
+        listener.close()
         if executor.is_running():
             executor.cancel()
         bot.close()

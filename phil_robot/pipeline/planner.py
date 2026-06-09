@@ -8,14 +8,9 @@ speech 와 skill/command plan 만 생성한다.
 import json
 from typing import Dict, List, Set
 
-try:
-    from .failure import FALLBACK_MESSAGE, build_planner_failure_result, sanitize_message
-    from .state_adapter import build_planner_state_summary
-    from .skills import describe_skills_for_prompt, filter_skills_by_allowed_categories
-except ImportError:
-    from failure import FALLBACK_MESSAGE, build_planner_failure_result, sanitize_message
-    from state_adapter import build_planner_state_summary
-    from skills import describe_skills_for_prompt, filter_skills_by_allowed_categories
+from .failure import FALLBACK_MESSAGE, build_planner_failure_result, sanitize_message
+from .state_adapter import build_planner_state_summary
+from .skills import describe_skills_for_prompt, filter_skills_by_allowed_categories
 
 
 PLANNER_RESPONSE_SCHEMA_EXAMPLE = {

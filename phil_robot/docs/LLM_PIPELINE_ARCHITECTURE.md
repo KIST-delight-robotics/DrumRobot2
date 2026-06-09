@@ -566,7 +566,7 @@ Files:
 Responsibilities:
 
 - Compose the `process → execute → return_home` node graph
-- `InterruptibleExecutor`: Executes robot commands in a background thread, sends `s` (stop) and aborts `wait` upon `cancel()` (synchronized with the C++ incremental execution and buffer flushing)
+- `Executor`: Executes robot commands in a background thread, sends `s` (stop) and aborts `wait` upon `cancel()` (synchronized with the C++ incremental execution and buffer flushing)
 - Determines whether to return home based on `plan_type` (motion/play/stop/chat)
 - Handles Enter key input to instantly interrupt previous actions and process new commands (supports Pause/Resume)
 - Synchronizes TTS and robot commands (gesture while speaking)

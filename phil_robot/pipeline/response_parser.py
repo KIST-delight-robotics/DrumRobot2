@@ -1,9 +1,6 @@
 import json
 
-try:
-    from .failure import FALLBACK_MESSAGE, sanitize_message
-except ImportError:
-    from failure import FALLBACK_MESSAGE, sanitize_message
+from .failure import FALLBACK_MESSAGE, sanitize_message
 
 
 def _sanitize_message(message):

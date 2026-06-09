@@ -8,29 +8,16 @@ skill 전개 -> 상대 동작 해석 -> 명령 검증 -> 메시지 보정까지 
 from dataclasses import dataclass, field
 from typing import Dict, List
 
-try:
-    from .command_validator import (
-        ValidationResult,
-        has_actionable_motion_command,
-        user_text_requests_motion,
-        validate_commands,
-    )
-    from .failure import build_motion_block_message
-    from .motion_resolver import resolve_motion_commands
-    from .play_modifier import PlayModifier, parse_play_modifier
-    from .skills import expand_skills
-
-except ImportError:
-    from command_validator import (
-        ValidationResult,
-        has_actionable_motion_command,
-        user_text_requests_motion,
-        validate_commands,
-    )
-    from failure import build_motion_block_message
-    from motion_resolver import resolve_motion_commands
-    from play_modifier import PlayModifier, parse_play_modifier
-    from skills import expand_skills
+from .command_validator import (
+    ValidationResult,
+    has_actionable_motion_command,
+    user_text_requests_motion,
+    validate_commands,
+)
+from .failure import build_motion_block_message
+from .motion_resolver import resolve_motion_commands
+from .play_modifier import PlayModifier, parse_play_modifier
+from .skills import expand_skills
 
 
 @dataclass
@@ -97,7 +84,7 @@ def build_validated_plan(
 
     resolution = resolve_motion_commands(user_text, expanded_op_cmds, robot_state)
     validation = validate_commands(resolution.op_cmds, robot_state)
-    play_modifier = parse_play_modifier(user_text)
+    play_modifier = parse_play_modifier(user_text, robot_state)
     has_play_modifier = not play_modifier.is_identity()
 
     warnings = list(skill_warnings)

@@ -111,7 +111,7 @@ class RobotClient:
                 self.sock.connect((self.host, self.port))
                 self.sock.settimeout(None)
                 print(f"로봇 서버 ({self.host}:{self.port})에 연결되었습니다.")
-                self.start_receiving() # 수신 스레드 시작
+                self.recv() # 수신 스레드 시작
                 return True
 
             except (socket.error, ConnectionRefusedError):
@@ -119,8 +119,8 @@ class RobotClient:
                 print("⏳ 로봇 서버 대기 중... (main.out 실행 후 'o'를 눌러주세요)")
                 time.sleep(3)
 
-    # 수신 데몬 스레드 
-    def start_receiving(self):
+    # 수신 데몬 스레드 (본체: _receive_loop)
+    def recv(self):
         self.keep_receiving = True
         recv_thread = threading.Thread(target=self._receive_loop, daemon=True)
         recv_thread.start()

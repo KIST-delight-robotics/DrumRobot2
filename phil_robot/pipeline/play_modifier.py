@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Optional
+from typing import Dict, Optional
 
 @dataclass
 class PlayModifier:
@@ -9,13 +9,19 @@ class PlayModifier:
     tempo_scale: float = 1.0  # 박자 조정 비율 (예: 1.0은 원래 속도, 0.5는 절반 속도)
     velocity_delta: int = 0  # 강세 조정 값 (예: 0은 원래 강세, 양수는 강세 증가, 음수는 강세 감소)
     source: Optional[str] = None  # 수정의 출처 (예: explicit / context / memory / inferred 등)
-    apply_scope: Optional[str] = None  # 수정이 적용되는 범위 (예: current_play / next_play etc.)
+    apply_scope: Optional[str] = None  # 수정이 적용되는 범위 (current_play / next_play)
 
     # 모든 값이 기본값인 경우
     def is_identity(self) -> bool:
         return self.tempo_scale == 1.0 and self.velocity_delta == 0
 
-def parse_play_modifier(user_text: str) -> PlayModifier:
+def resolve_apply_scope(robot_state: Optional[Dict]) -> str:
+    if isinstance(robot_state, dict) and robot_state.get("state", 0) == 2:
+        return "current_play"
+    return "next_play"
+
+
+def parse_play_modifier(user_text: str, robot_state: Optional[Dict] = None) -> PlayModifier:
     """
     사용자의 명령을 분석하여 PlayModifier 객체를 생성합니다.
     예시 명령: "빠르게 연주해줘", "느리게 연주해줘", "세게 연주해줘", "약하게 연주해줘"
@@ -35,6 +41,6 @@ def parse_play_modifier(user_text: str) -> PlayModifier:
 
     if not mod.is_identity():
         mod.source = "explicit"
-        mod.apply_scope = "next_play"
+        mod.apply_scope = resolve_apply_scope(robot_state)
     
     return mod

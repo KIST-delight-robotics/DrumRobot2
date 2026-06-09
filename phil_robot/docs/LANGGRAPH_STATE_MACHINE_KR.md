@@ -147,7 +147,7 @@ process_node  →  execute_node  →  return_home_node
 | 노드 | 책임 |
 |------|------|
 | `process_node` | `run_brain_turn()` 호출 → State에 plan_type/speech/commands 채우기 |
-| `execute_node` | TTS를 백그라운드 스레드로 시작 + InterruptibleExecutor 시작 |
+| `execute_node` | TTS를 백그라운드 스레드로 시작 + Executor 시작 |
 | `return_home_node` | `plan_type == "motion"`이면 `h` 명령 전송. 그 외에는 pass-through |
 
 ### 전이 조건
@@ -181,7 +181,7 @@ process_node
 
 ---
 
-## 5. InterruptibleExecutor 설계
+## 5. Executor 설계
 
 ### 역할
 
@@ -196,7 +196,7 @@ process_node
 `phil_robot/pipeline/exec_thread.py` (신규)
 
 ```python
-class InterruptibleExecutor:
+class Executor:
     def run(self, commands: List[str], on_done: Callable) -> None
     def cancel(self) -> None
     def is_running(self) -> bool
@@ -242,7 +242,7 @@ class InterruptibleExecutor:
 사용자가 Enter를 누른다
 
 → if executor.is_running():
-       executor.cancel()     # 즉시: 'stop' 로봇 전송 + 스레드 중단
+       executor.cancel()     # 즉시: stop_event 설정으로 스레드 중단 (로봇 전송 없음)
        was_interrupted = True
 
 → record_audio()             # 새 발화 3초 녹음
@@ -293,7 +293,7 @@ def on_done_cb(cancelled: bool):
 
 | 파일 | 변경 종류 | 내용 |
 |------|-----------|------|
-| `phil_robot/pipeline/exec_thread.py` | **신규** | `InterruptibleExecutor` |
+| `phil_robot/pipeline/exec_thread.py` | **신규** | `Executor` |
 | `phil_robot/pipeline/robot_graph.py` | **신규** | LangGraph state machine |
 | `phil_robot/phil_brain.py` | **수정** | 메인 루프 교체, executor 연결 |
 | `phil_robot/environment.yml` | **수정** | `langgraph` 의존성 추가 |

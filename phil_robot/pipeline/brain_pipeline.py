@@ -2,88 +2,46 @@ import time
 from dataclasses import dataclass, field
 from typing import Dict, List
 
+from .intent_classifier import (
+    CLASSIFIER_SYSTEM_PROMPT,           # classifier system prompt
+    build_classifier_input,        # classifier 입력 JSON 생성
+    is_ambiguous_follow_up,             # history 없이 해석 어려운 초단문 follow-up 감지
+    normalize_intent_result,            # classifier 결과 후처리/정규화
+    parse_intent_response,              # classifier JSON 응답 파싱
+)
+
+# JSON 형식 LLM 호출 공통 래퍼
+from .llm_interface import call_json_llm
+from .planner import (
+    build_planner_input,           # planner 입력 JSON 생성
+    enforce_intent_constraints,         # planner 결과를 intent/domain 기준으로 한 번 더 정리
+    get_planner_system_prompt,          # domain별 planner system prompt 생성
+    parse_plan_response,                # planner JSON 응답 파싱
+    select_planner_domain,              # classifier intent -> planner domain 변환
+)
+
+# raw state 정리 + 관절 각도 질문 shortcut 처리
+from .state_adapter import (
+    adapt_robot_state,
+    detect_identity_confirmation_query,
+    build_joint_angle_answer,
+    build_repertoire_answer,
+    detect_joint_angle_query,
+    detect_repertoire_query,
+    detect_wave_play_request,
+)
+
+# planner 결과를 최종 실행 가능 계획으로 검증/정리
+from .validator import ValidatedPlan, build_validated_plan
+
+# 세션 단기 기억
+from .session import SessionContext, build_session_summary, resolve_clarification_text
+
+# config 는 패키지 깊이에 따라 경로가 달라 fallback 을 유지한다.
+# (phil_brain 모드: pipeline 이 top-level → 'config' / eval·tests 모드: phil_robot.pipeline → '..config')
 try:
-    # 패키지 문맥으로 import될 때 사용한다.
-    # 예: from phil_robot.pipeline.brain_pipeline import run_brain_turn
-    from .intent_classifier import (
-        CLASSIFIER_SYSTEM_PROMPT,           # classifier system prompt
-        build_classifier_input,        # classifier 입력 JSON 생성
-        is_ambiguous_follow_up,             # history 없이 해석 어려운 초단문 follow-up 감지
-        normalize_intent_result,            # classifier 결과 후처리/정규화
-        parse_intent_response,              # classifier JSON 응답 파싱
-    )
-    
-    # JSON 형식 LLM 호출 공통 래퍼
-    from .llm_interface import call_json_llm
-    from .planner import (
-        build_planner_input,           # planner 입력 JSON 생성
-        enforce_intent_constraints,         # planner 결과를 intent/domain 기준으로 한 번 더 정리
-        get_planner_system_prompt,          # domain별 planner system prompt 생성
-        parse_plan_response,                # planner JSON 응답 파싱
-        select_planner_domain,              # classifier intent -> planner domain 변환
-    )
-    
-    # raw state 정리 + 관절 각도 질문 shortcut 처리
-    from .state_adapter import (
-        adapt_robot_state,
-        detect_identity_confirmation_query,
-        build_joint_angle_answer,
-        build_repertoire_answer,
-        detect_joint_angle_query,
-        detect_repertoire_query,
-        detect_wave_play_request,
-    )
-
-    # planner 결과를 최종 실행 가능 계획으로 검증/정리
-    from .validator import ValidatedPlan, build_validated_plan
-
-    # 세션 단기 기억
-    from .session import SessionContext, build_session_summary, resolve_clarification_text
-
-except (ImportError, ValueError):
-    # phil_robot 폴더 안에서 직접 실행할 때 사용하는 fallback import다.
-    # 예: cd phil_robot && python phil_brain.py
-    from pipeline.intent_classifier import (
-        CLASSIFIER_SYSTEM_PROMPT,           # classifier system prompt
-        build_classifier_input,        # classifier 입력 JSON 생성
-        is_ambiguous_follow_up,             # history 없이 해석 어려운 초단문 follow-up 감지
-        normalize_intent_result,            # classifier 결과 후처리/정규화
-        parse_intent_response,              # classifier JSON 응답 파싱
-    )
-    
-    # JSON 형식 LLM 호출 공통 래퍼
-    from pipeline.llm_interface import call_json_llm
-    from pipeline.planner import (
-        build_planner_input,           # planner 입력 JSON 생성
-        enforce_intent_constraints,         # planner 결과를 intent/domain 기준으로 한 번 더 정리
-        get_planner_system_prompt,          # domain별 planner system prompt 생성
-        parse_plan_response,                # planner JSON 응답 파싱
-        select_planner_domain,              # classifier intent -> planner domain 변환
-    )
-    
-    # raw state 정리 + 관절 각도 질문 shortcut 처리
-    from pipeline.state_adapter import (
-        adapt_robot_state,
-        detect_identity_confirmation_query,
-        build_joint_angle_answer,
-        build_repertoire_answer,
-        detect_joint_angle_query,
-        detect_repertoire_query,
-        detect_wave_play_request,
-    )
-
-    # planner 결과를 최종 실행 가능 계획으로 검증/정리
-    from pipeline.validator import ValidatedPlan, build_validated_plan
-
-    # 세션 단기 기억
-    from pipeline.session import SessionContext, build_session_summary, resolve_clarification_text
-
-try:
-    # 패키지 문맥 import일 때 공용 모델 설정을 가져온다.
     from ..config import CLASSIFIER_MODEL, PLANNER_MODEL
-
 except (ImportError, ValueError):
-    # 직접 실행 시에는 phil_robot 루트의 config 모듈에서 가져온다.
     from config import CLASSIFIER_MODEL, PLANNER_MODEL
 
 

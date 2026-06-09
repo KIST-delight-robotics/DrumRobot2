@@ -1,5 +1,53 @@
 # Change Log
 
+## 2026-06-09
+- 15:52 KST (UTC+9) — phil_brain 입력을 Enter 고정 3초 녹음에서 VAD 자동 청취로 전환
+  - 수정 파일: `phil_robot/runtime/mic_listener.py`, `phil_robot/phil_brain.py`, `log.md`
+  - 메모: `tests/test_speech.py`의 listener thread(에너지 임계값 VAD, 침묵 1.2초까지 녹음, echo 게이트) 구조를 `runtime/mic_listener.py`의 `MicListener` 클래스로 옮겼다. `phil_brain.py`는 Enter `input()`과 고정 3초 `record_audio()`를 제거하고, 백그라운드 리스너가 만든 발화 큐를 `read_utterance()`로 소비한다. 인터럽트는 발화 확정(STT 유효 텍스트) 후 `executor.cancel()`로 수행하고, TTS 재생 구간은 `set_speaking()` 게이트로 청취를 막아 self-echo를 차단한다. 종료는 'q' 대신 Ctrl+C. VAD는 모델 대신 기존 에너지 임계값 방식을 유지했다.
+
+## 2026-06-08
+- 16:32 KST (UTC+9) — Executor.cancel()에서 로봇 'pause' 전송 제거
+  - 수정 파일: `phil_robot/pipeline/exec_thread.py`, `phil_robot/phil_brain.py`, `phil_robot/TODO.md`, `phil_robot/docs/LLM_PIPELINE_ARCHITECTURE_KR.md`, `phil_robot/docs/LANGGRAPH_STATE_MACHINE_KR.md`, `log.md`
+  - 메모: cancel은 모션 시퀀스가 살아있을 때만 호출되는데, 그 상태(비연주)에서는 C++가 `pause`를 무시한다(`DrumRobot.cpp` idle 분기). 연주 중에는 send-and-die 구조상 executor 스레드가 이미 끝나 cancel 자체가 안 불린다. 따라서 무의미한 `pause` 전송을 없애고 cancel을 `stop_event.set()`만 남겨 미전송 wait/명령만 취소하게 했다. 코드와 어긋나던 `'s'`/`pause` 관련 주석·문서도 함께 정리했다.
+
+- 15:54 KST (UTC+9) — play modifier 적용 범위 표시를 로봇 현재 상태와 맞춤
+  - 수정 파일: `phil_robot/pipeline/play_modifier.py`, `phil_robot/pipeline/validator.py`, `phil_robot/pipeline/robot_graph.py`, `log.md`
+  - 메모: C++ 제어기는 연주 중 modifier를 current play에 즉시 적용하므로, Python의 `apply_scope`도 `state==2`일 때 `current_play`, 그 외에는 `next_play`로 기록하게 했다. 전송 명령은 기존 `tempo_scale:`/`velocity_delta:` 계약을 유지한다.
+
+- 14:56 KST (UTC+9) — phil_robot graph 흐름을 항상 `process -> execute -> END`로 단순화
+  - 수정 파일: `phil_robot/pipeline/robot_graph.py`, `log.md`
+  - 메모: speech/commands 유무로 execute를 건너뛰던 conditional edge를 제거하고, execute_node가 commands 없음 케이스를 통과시키도록 기존 책임에 맞춰 graph edge를 고정했다.
+
+- 10:58 KST (UTC+9) — phil_robot TODO의 graph/pending/executor 메모를 현재 구조 기준으로 보강
+  - 수정 파일: `phil_robot/TODO.md`, `log.md`
+  - 메모: 현재 graph가 `process -> execute -> END`인 per-turn wrapper라는 점, 홈 복귀가 `Executor.on_done -> home()` 경로라는 점, pending task는 별도 `TaskScheduler` 상태가 필요하다는 점을 TODO에 반영했다. `wait`는 단기 유지하되 장기적으로 ExecutionStep/TaskScheduler 책임 분리를 검토하는 메모만 남겼다.
+
+## 2026-06-05
+- 17:15 KST (UTC+9) — phil_robot graph의 홈 복귀 경로를 Executor 완료 콜백 중심으로 정리
+  - 수정 파일: `phil_robot/pipeline/robot_graph.py`, `log.md`
+  - 메모: 실제 홈 복귀를 수행하지 않던 `return_home_node`와 해당 전이를 제거해 graph 흐름을 `process -> execute -> END`로 단순화했다. motion 홈 복귀는 기존처럼 `on_done(cancelled=False)`에서 `plan_type == "motion"`일 때만 `home()`을 호출해 Home Watcher 스레드를 시작한다.
+
+- 10:45 KST (UTC+9) — phil_robot decision graph 리팩터링 TODO 구체화
+  - 수정 파일: `phil_robot/TODO.md`, `log.md`
+  - 메모: planner prompt의 `q` 책임을 LangGraph `clarify` node로 옮기는 방향, planner 전 `state_gate`, validator status contract, `repair` node, `TaskScheduler` 장기 구조를 실행 순서별 TODO로 정리했다. 현재 graph가 per-turn routing graph라는 점과 `Executor.execute()`/`pause` 기반 최신 실행 구조도 반영했다.
+
+- 09:57 KST (UTC+9) — phil_robot pipeline import의 run-location fallback 제거
+  - 수정 파일: `phil_robot/pipeline/motion_resolver.py`, `phil_robot/pipeline/validator.py`, `phil_robot/pipeline/planner.py`, `phil_robot/pipeline/response_parser.py`, `phil_robot/pipeline/intent_classifier.py`, `phil_robot/pipeline/llm_interface.py`, `phil_robot/pipeline/brain_pipeline.py`, `phil_robot/pipeline/robot_graph.py`, `log.md`
+  - 메모: sibling 모듈용 `try: from .X / except: from X|pipeline.X` fallback은 지원되는 두 실행 경로(phil_brain: `pipeline.X` / eval·tests: `phil_robot.pipeline.X`) 모두 relative import로 충분해 죽은 코드였다. 전부 relative-only로 축소. 단 `config` import은 패키지 깊이에 따라 `..config`(eval) / `config`(phil_brain)로 갈려 양쪽 다 살아있으므로 try/except 유지(주석 추가), robot_graph의 langgraph→state_graph fallback도 의존성 존재 여부 문제라 유지. 두 모드 import + py_compile + `python -m pipeline.response_parser` 회귀 통과. response_parser 단독 실행은 이제 `python -m pipeline.response_parser`로 한다.
+
+## 2026-06-04
+- 17:51 KST (UTC+9) — phil_robot 스레드 시작점 함수명을 `recv`/`execute`/`home`으로 통일
+  - 수정 파일: `phil_robot/runtime/phil_client.py`, `phil_robot/pipeline/exec_thread.py`, `phil_robot/pipeline/robot_graph.py`, `log.md`
+  - 메모: 백그라운드 스레드를 띄우는 세 진입점(`start_receiving`/`Executor.run`/`_wait_for_fixed_then_home`)을 짧고 평행한 동사 `recv`/`execute`/`home`으로 맞췄다. 본체는 `_receive_loop`/`_run_commands`/`_home_after_motion`으로 "공개 동사 + 비공개 `_xxx` 본체" 패턴 통일. `_watcher`는 클로저 캡처 목적의 중첩만 하던 함수라 모듈 레벨 `_home_after_motion`으로 끌어내고 `args=`로 인자를 전달하도록 평탄화했다. (`exec`는 파이썬 빌트인이라 메서드명을 `execute`로 둠.)
+- 16:28 KST (UTC+9) — phil_robot 명령 실행기 클래스명을 `Executor`로 단순화
+  - 수정 파일: `phil_robot/pipeline/exec_thread.py`, `phil_robot/pipeline/robot_graph.py`, `phil_robot/phil_brain.py`, `phil_robot/TODO.md`, `phil_robot/docs/LANGGRAPH_STATE_MACHINE_KR.md`, `phil_robot/docs/LLM_PIPELINE_ARCHITECTURE_KR.md`, `phil_robot/docs/LLM_PIPELINE_ARCHITECTURE.md`, `phil_robot/docs/CURRENT_FUNCTION_SPECS_KR.md`, `log.md`
+  - 메모: 기존 `InterruptibleExecutor` 이름은 cancel 가능성을 설명하려는 의도였지만, 현재 구조에서는 실행 계층 일반명인 `Executor`가 충분해 클래스명과 import/type hint, 현재 문서 표기를 맞췄다.
+
+## 2026-06-02
+- 17:07 KST (UTC+9) — phil_robot 미사용 executor 레이어(`executor.py`, `command_executor.py`) 삭제
+  - 수정 파일: `phil_robot/pipeline/executor.py`, `phil_robot/pipeline/command_executor.py`, `log.md`
+  - 메모: 실제 명령 실행은 `exec_thread.py`의 `InterruptibleExecutor`(LangGraph `robot_graph.py`가 구동)가 담당한다. `execute_validated_plan`/`ExecutionResult`은 호출되는 곳이 전혀 없었고, `command_executor.execute_commands`도 `executor.py`만 쓰던 죽은 코드라 함께 제거했다. 인수인계 문서 정리 중 발견.
+
 ## 2026-05-29
 - 16:05 KST (UTC+9) — CANopen NMT 정리 문서 추가
   - 수정 파일: `Drum_intheloop/CANopen NMT 정리.md`, `log.md`

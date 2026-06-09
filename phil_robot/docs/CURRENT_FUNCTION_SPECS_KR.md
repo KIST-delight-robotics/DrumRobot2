@@ -11,7 +11,7 @@
 
 - **`main()`**
   - 프로그램의 시작점입니다.
-  - `InterruptibleExecutor`(백그라운드 실행기)와 `MeloTTS`(음성 합성기)를 초기화합니다.
+  - `Executor`(백그라운드 실행기)와 `MeloTTS`(음성 합성기)를 초기화합니다.
   - `build_phil_graph()`를 호출해 상태 기계(LangGraph)를 만듭니다.
   - 무한 루프를 돌며 사용자의 음성을 듣고(STT), 상태 기계를 실행(`app.invoke(state)`)합니다.
 
@@ -30,7 +30,7 @@
   - `run_brain_turn()`을 호출해 LLM 파이프라인(Classifier ➔ Planner)을 가동하고 그 결과를 바구니(`PhilState`)에 담습니다.
 - **`make_execute_node(...)`**
   - **역할**: "행동하기" 노드를 만듭니다.
-  - 바구니에 담긴 명령어 리스트(`commands`)를 `InterruptibleExecutor.run()`에 넘겨 백그라운드에서 실행시킵니다.
+  - 바구니에 담긴 명령어 리스트(`commands`)를 `Executor.run()`에 넘겨 백그라운드에서 실행시킵니다.
   - 모션인 경우(`plan_type == "motion"`), 멈췄을 때 홈으로 돌아가라는 콜백(`on_done`)을 예약합니다.
 - **`_wait_for_fixed_then_home(bot, get_state_fn)`**
   - **역할**: (백그라운드에서) 로봇이 움직이는지(`is_fixed=False`), 멈췄는지(`is_fixed=True`)를 0.05초 단위로 감시하다가, 멈췄을 때만 `h`(홈 복귀) 명령을 쏩니다.
@@ -38,11 +38,11 @@
 ### `pipeline/exec_thread.py`
 사용자 인터럽트(끼어들기)를 처리하기 위해 로봇의 행동을 백그라운드로 밀어넣는 일꾼입니다.
 
-- **`InterruptibleExecutor.run(commands, on_done)`**
+- **`Executor.run(commands, on_done)`**
   - 명령어들을 받아 별도의 스레드를 띄워 하나씩 전송합니다.
-- **`InterruptibleExecutor.cancel()`**
+- **`Executor.cancel()`**
   - 하던 일을 당장 멈추라는 신호(`_stop.set()`)를 보내고, 로봇에게 긴급 정지(`s`) 명령을 발사합니다.
-- **`InterruptibleExecutor._interruptible_wait(cmd)`**
+- **`Executor._interruptible_wait(cmd)`**
   - `wait:2` 같은 대기 명령을 수행할 때 `time.sleep(2)`로 통째로 멈추지 않고, 0.05초씩 쪼개어 자면서 언제든 `cancel`이 들어오면 깰 수 있도록 합니다.
 
 ---
