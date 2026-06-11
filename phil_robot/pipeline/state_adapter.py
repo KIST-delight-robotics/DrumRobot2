@@ -97,6 +97,7 @@ def build_planner_state_summary(robot_state: Dict) -> Dict:
         "can_move": robot_state.get("is_lock_key_removed", False),
         "is_fixed": is_fixed,
         "busy": state_value != 0 or not is_fixed,
+        "block_reason": block_reason_of(robot_state),
         "current_song": robot_state.get("current_song", "None"),
         "bpm": robot_state.get("bpm", 100),
         "progress": robot_state.get("progress", "unknown"),
@@ -110,6 +111,27 @@ def build_planner_state_summary(robot_state: Dict) -> Dict:
         summary["current_angles"] = robot_state["current_angles"]
 
     return summary
+
+
+def block_reason_of(robot_state: Dict) -> str:
+    """
+    현재 robot_state 가 motion/play 를 막는 단일 사유 코드를 만든다.
+    validator(repair 사유)와 planner state 요약이 같은 판정을 쓰도록 한 곳에 둔다.
+
+    반환값: "safety_key" | "playing" | "error" | "moving" | "none"
+    우선순위는 안전 키 > 연주 > 에러 > 이동 순이다.
+    (에러 state 표기가 코드 경로마다 4/6 으로 섞여 있어 둘 다 error 로 본다.)
+    """
+    if not robot_state.get("is_lock_key_removed", False):
+        return "safety_key"
+    state_value = robot_state.get("state", 0)
+    if state_value == 2:
+        return "playing"
+    if state_value in (4, 6):
+        return "error"
+    if not robot_state.get("is_fixed", True):
+        return "moving"
+    return "none"
 
 
 def detect_joint_angle_query(user_text: str):

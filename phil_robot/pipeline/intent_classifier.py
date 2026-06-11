@@ -2,7 +2,7 @@ import json
 import re
 
 from .failure import build_classifier_failure_result
-from .state_adapter import build_classifier_state_summary, detect_joint_angle_query, detect_repertoire_query
+from .state_adapter import detect_joint_angle_query, detect_repertoire_query
 
 # config 는 패키지 깊이에 따라 경로가 달라 fallback 을 유지한다.
 # (phil_brain 모드: pipeline 이 top-level → 'config' / eval·tests 모드: phil_robot.pipeline → '..config')
@@ -116,17 +116,15 @@ CLASSIFIER_SYSTEM_PROMPT = """당신은 로봇 에이전트의 1차 intent class
 """
 
 
-def build_classifier_input(robot_state, user_text):
+def build_classifier_input(user_text):
     """
     classifier 에 넘길 입력 JSON 문자열을 만든다.
-    planner보다 단순한 상태 요약만 넣어 의도 분류에 집중시킨다.
-    이 단계에서는 전체 관절각보다 상태/바쁨/최근 행동이 더 중요하다.
+    intent 분류에만 집중하므로 robot_state 는 넣지 않는다.
+    (CLASSIFIER_SYSTEM_PROMPT 가 system_info 를 한 번도 참조하지 않던 dead token 이었다.
+     상태 판단은 state_node 와 validator 가 책임진다.)
     """
-    summary = build_classifier_state_summary(robot_state)
-
     return json.dumps(
         {
-            "system_info": summary,
             "user_text": user_text,
         },
         ensure_ascii=False,

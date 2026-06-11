@@ -257,7 +257,7 @@ def parse_json(raw_text: str) -> Dict[str, Any]:
 
 
 def run_classifier(user_text: str, robot_state: Dict[str, Any]) -> Tuple[Dict[str, Any], str]:
-    clf_input = build_classifier_input(robot_state, user_text)
+    clf_input = build_classifier_input(user_text)
     raw_text, _ = call_chat(CLASSIFIER_MODEL, CLASSIFIER_SYSTEM_PROMPT, clf_input, True)
     classifier_output = parse_intent_response(raw_text)
     classifier_output = normalize_intent_result(classifier_output, user_text)

@@ -19,7 +19,7 @@ if ROOT_DIR not in os.sys.path:
     os.sys.path.insert(0, ROOT_DIR)
 
 from phil_robot.config import CLASSIFIER_MODEL, PLANNER_MODEL
-from phil_robot.pipeline.brain_pipeline import run_brain_turn
+from phil_robot.eval.brain_probe import run_brain_turn
 from phil_robot.runtime.melo_engine import TTS_Engine
 
 

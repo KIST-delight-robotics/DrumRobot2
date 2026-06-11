@@ -116,7 +116,7 @@ def prepare_planner_case(
 ) -> PreparedPlannerCase:
     user_text = case["user_text"]
     robot_state = adapt_robot_state(case["robot_state"])
-    classifier_input = build_classifier_input(robot_state, user_text)
+    classifier_input = build_classifier_input(user_text)
 
     if capture_classifier_metrics:
         classifier_raw_response_text, classifier_metrics = call_json_llm(

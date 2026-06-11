@@ -1,11 +1,9 @@
 import time
-from dataclasses import dataclass, field
-from typing import Dict, List
+from typing import Dict, Optional, Tuple
 
 from .intent_classifier import (
     CLASSIFIER_SYSTEM_PROMPT,           # classifier system prompt
     build_classifier_input,        # classifier 입력 JSON 생성
-    is_ambiguous_follow_up,             # history 없이 해석 어려운 초단문 follow-up 감지
     normalize_intent_result,            # classifier 결과 후처리/정규화
     parse_intent_response,              # classifier JSON 응답 파싱
 )
@@ -17,12 +15,10 @@ from .planner import (
     enforce_intent_constraints,         # planner 결과를 intent/domain 기준으로 한 번 더 정리
     get_planner_system_prompt,          # domain별 planner system prompt 생성
     parse_plan_response,                # planner JSON 응답 파싱
-    select_planner_domain,              # classifier intent -> planner domain 변환
 )
 
-# raw state 정리 + 관절 각도 질문 shortcut 처리
+# 관절 각도/정체/레퍼토리 등 direct-answer shortcut 감지
 from .state_adapter import (
-    adapt_robot_state,
     detect_identity_confirmation_query,
     build_joint_angle_answer,
     build_repertoire_answer,
@@ -31,11 +27,8 @@ from .state_adapter import (
     detect_wave_play_request,
 )
 
-# planner 결과를 최종 실행 가능 계획으로 검증/정리
-from .validator import ValidatedPlan, build_validated_plan
-
-# 세션 단기 기억
-from .session import SessionContext, build_session_summary, resolve_clarification_text
+# planner input 에 넣을 session 요약
+from .session import build_session_summary
 
 # config 는 패키지 깊이에 따라 경로가 달라 fallback 을 유지한다.
 # (phil_brain 모드: pipeline 이 top-level → 'config' / eval·tests 모드: phil_robot.pipeline → '..config')
@@ -45,23 +38,9 @@ except (ImportError, ValueError):
     from config import CLASSIFIER_MODEL, PLANNER_MODEL
 
 
-@dataclass
-class BrainTurnResult:
-    classifier_input: str
-    classifier_output: Dict
-    planner_domain: str
-    planner_input: str
-    classifier_raw_response_text: str
-    planner_raw_response_text: str
-    planner_output: Dict
-    robot_state: Dict
-    validated_plan: ValidatedPlan = field(default_factory=ValidatedPlan)
-    classifier_duration_sec: float = 0.0
-    planner_duration_sec: float = 0.0
-    llm_duration_sec: float = 0.0
-    classifier_metrics: Dict = field(default_factory=dict)
-    planner_metrics: Dict = field(default_factory=dict)
-
+# ======================================================================
+# 결정적 shortcut 감지 (LLM 없이 user_text/상태로 직접 처리)
+# ======================================================================
 
 def _is_greeting_wave(user_text: str) -> bool:
     """'안녕'과 '반가워'가 동시에 포함된 인사 발화를 감지한다."""
@@ -72,7 +51,7 @@ _PAUSE_KEYWORDS = {"멈춰", "멈춰봐", "잠깐", "스톱", "정지", "그만"
 _RESUME_KEYWORDS = {"다시", "계속", "이어서", "재개", "resume"}
 
 
-def _detect_play_interrupt(user_text: str):
+def _detect_play_interrupt(user_text: str) -> Optional[str]:
     """
     pause/resume 발화를 감지한다.
     LLM 없이 키워드 매칭으로 직접 처리해 지연을 줄인다.
@@ -87,365 +66,210 @@ def _detect_play_interrupt(user_text: str):
     return None
 
 
-def run_brain_turn(
-    user_text,
-    robot_state,
-    classifier_model_name=CLASSIFIER_MODEL,
-    planner_model_name=PLANNER_MODEL,
-    capture_metrics: bool = False,
-    session=None,
-):
+def build_prefilter_plan(user_text: str) -> Optional[Tuple[Dict, Dict, str]]:
     """
-    한 턴의 LLM 처리 파이프라인.
-    1차 classifier 와 2차 planner 를 분리해, 각 역할을 독립적으로 다룰 수 있게 한다.
+    classifier 호출 없이 user_text 만으로 처리 가능한 결정적 shortcut.
 
-    robot_state: dict
-        get_robot_state_snapshot() 으로 만든 스냅샷 복사본이다.
-        함수 초반에 adapt_robot_state() 를 거쳐 dict 여부만 확인한 뒤 같은 이름으로 계속 사용한다.
-    session: SessionContext | None
-        세션 단기 기억. None 이면 기존 stateless 동작과 동일하다.
-        - clarification 대기 상태라면, user_text 와 이전 발화를 합쳐서 처리한다.
-        - planner input 에 최근 대화 히스토리와 마지막 동작 상태를 포함한다.
+    반환값:
+        (classifier_output, planner_output, planner_domain) 또는 None
+    여기서 만든 planner_output 은 이후 build_validated_plan() 이
+    최신 robot_state 로 한 번 검증한다.
     """
-    robot_state = adapt_robot_state(robot_state)
-
-    # ===========================================================
-    # [이동 필요] 이 shortcut은 phil_brain.py 의 orchestration 진입점으로 옮겨야 한다.
-    #
-    # brain_pipeline.py 의 책임은 LLM 두 단계(classifier → planner) 조율이다.
-    # 아래 블록은 classifier 호출 자체를 건너뛰는 순수 문자열 매칭 prefilter로,
-    # LLM 파이프라인과 성격이 다르다.
-    #
-    # 올바른 위치: phil_brain.py 에서 run_brain_turn() 호출 전에 체크.
-    # 장기적으로는 TODO.md 의 'classifier prefilter' 항목에 따라
-    # pipeline/prefilter.py 로 분리하는 것이 맞다.
-    # ===========================================================
-    # Shortcut path:
     # pause/resume 발화는 LLM latency 없이 즉시 처리한다.
-    # C++ gate 는 이미 pause/resume 을 interrupt 명령으로 허용하므로
-    # 여기서 빠르게 내보내는 것이 사용자 체감에 직접적 영향을 준다.
+    # C++ gate 는 이미 pause/resume 을 interrupt 명령으로 허용한다.
     play_interrupt = _detect_play_interrupt(user_text)
     if play_interrupt is not None:
         speech_map = {"pause": "잠깐 멈출게요.", "resume": "다시 연주할게요."}
-        classifier_output = {
-            "intent": "stop_request",
-            "needs_motion": False,
-        }
+        classifier_output = {"intent": "stop_request", "needs_motion": False}
         planner_output = {
             "skills": [],
             "op_cmd": [play_interrupt],
             "speech": speech_map[play_interrupt],
             "reason": f"{play_interrupt} 키워드 감지 → 직접 처리",
         }
-        validated_plan = build_validated_plan(
-            user_text=user_text,
-            robot_state=robot_state,
-            classifier_output=classifier_output,
-            planner_output=planner_output,
-        )
-        return BrainTurnResult(
-            classifier_input="",
-            classifier_output=classifier_output,
-            planner_domain="stop",
-            planner_input="",
-            classifier_raw_response_text="",
-            planner_raw_response_text="",
-            planner_output=planner_output,
-            robot_state=robot_state,
-            validated_plan=validated_plan,
-        )
-    # ===========================================================
+        return classifier_output, planner_output, "stop"
 
+    # '안녕'과 '반가워'가 동시에 포함된 인사는 손 흔들기로 직접 처리한다.
     if _is_greeting_wave(user_text):
-        classifier_output = {
-            "intent": "motion_request",
-            "needs_motion": True,
-        }
+        classifier_output = {"intent": "motion_request", "needs_motion": True}
         planner_output = {
             "skills": ["wave_hi"],
             "op_cmd": [],
             "speech": "안녕하세요! 반가워요.",
             "reason": "'안녕'과 '반가워'가 동시에 포함된 인사는 손 흔들기로 직접 처리",
         }
-        validated_plan = build_validated_plan(
-            user_text=user_text,
-            robot_state=robot_state,
-            classifier_output=classifier_output,
-            planner_output=planner_output,
-        )
-        return BrainTurnResult(
-            classifier_input="",
-            classifier_output=classifier_output,
-            planner_domain="motion",
-            planner_input="",
-            classifier_raw_response_text="",
-            planner_raw_response_text="",
-            planner_output=planner_output,
-            robot_state=robot_state,
-            validated_plan=validated_plan,
-        )
-    # ===========================================================
+        return classifier_output, planner_output, "motion"
 
-    # ── clarification 처리 ────────────────────────────────────────────────
-    # 이전 턴에서 필이 되물었다면, 원래 발화 + 이번 답변을 합쳐 classifier/planner 에 넘긴다.
-    # 예) "허리 돌려" + "30도" → "허리 돌려 30도"
-    if session is not None:
-        user_text = resolve_clarification_text(session, user_text)
+    return None
 
-    classifier_input = build_classifier_input(robot_state, user_text)
-    classifier_start_time = time.time()
+
+def classify_step(
+    user_text: str,
+    classifier_model_name: str = CLASSIFIER_MODEL,
+    capture_metrics: bool = False,
+) -> Tuple[Dict, Dict]:
+    """
+    1차 classifier 단계. classifier LLM 을 호출해 intent 를 정한 뒤,
+    repertoire/wave-play 같은 결정적 intent override 를 적용한다.
+
+    반환값:
+        (classifier_output, diag)
+        diag = {classifier_input, raw_response_text, duration_sec, metrics}
+    """
+    classifier_input = build_classifier_input(user_text)
+    start_time = time.time()
     if capture_metrics:
-        classifier_raw_response_text, classifier_metrics = call_json_llm(
+        raw_response_text, metrics = call_json_llm(
             model_name=classifier_model_name,
             system_prompt=CLASSIFIER_SYSTEM_PROMPT,
             user_input_json=classifier_input,
             capture_metrics=True,
         )
     else:
-        classifier_raw_response_text = call_json_llm(
+        raw_response_text = call_json_llm(
             model_name=classifier_model_name,
             system_prompt=CLASSIFIER_SYSTEM_PROMPT,
             user_input_json=classifier_input,
         )
-        classifier_metrics = {}
-    classifier_duration_sec = time.time() - classifier_start_time
-    classifier_output = parse_intent_response(classifier_raw_response_text)
+        metrics = {}
+    duration_sec = time.time() - start_time
+
+    classifier_output = parse_intent_response(raw_response_text)
     classifier_output = normalize_intent_result(classifier_output, user_text)
+
+    # 곡 목록/레퍼토리 질문은 chat 으로 고정한다.
     if detect_repertoire_query(user_text):
         classifier_output["intent"] = "chat"
         classifier_output["needs_motion"] = False
-    wave_play_request = detect_wave_play_request(user_text)
-    if wave_play_request is not None:
+    # 손 인사 후 곡 재생 복합 요청은 play_request 로 고정한다.
+    if detect_wave_play_request(user_text) is not None:
         classifier_output["intent"] = "play_request"
         classifier_output["needs_motion"] = True
 
-    planner_domain = select_planner_domain(classifier_output)
-    joint_angle_query = detect_joint_angle_query(user_text)
-    identity_query = detect_identity_confirmation_query(user_text)
+    diag = {
+        "classifier_input": classifier_input,
+        "raw_response_text": raw_response_text,
+        "duration_sec": duration_sec,
+        "metrics": metrics,
+    }
+    return classifier_output, diag
 
-    # Shortcut path:
-    # history 가 없는 상태에서 "왜?" 같은 초단문을 planner 로 넘기면
-    # 실제 근거 없는 이유를 만들어낼 수 있어 clarification 으로 바로 응답한다.
-    if classifier_output.get("intent") == "unknown" and is_ambiguous_follow_up(user_text):
-        planner_output = {
-            "skills": [],
-            "op_cmd": [],
-            "speech": "무엇이 왜 그런지 조금만 더 구체적으로 말씀해 주세요.",
-            "reason": "맥락 없는 초단문 후속 질문은 clarification 으로 직접 응답",
-        }
-        validated_plan = build_validated_plan(
-            user_text=user_text,
-            robot_state=robot_state,
-            classifier_output=classifier_output,
-            planner_output=planner_output,
-        )
-        return BrainTurnResult(
-            classifier_input=classifier_input,
-            classifier_output=classifier_output,
-            planner_domain=planner_domain,
-            planner_input="",
-            classifier_raw_response_text=classifier_raw_response_text,
-            planner_raw_response_text="",
-            planner_output=planner_output,
-            robot_state=robot_state,
-            validated_plan=validated_plan,
-            classifier_duration_sec=classifier_duration_sec,
-            planner_duration_sec=0.0,
-            llm_duration_sec=classifier_duration_sec,
-            classifier_metrics=classifier_metrics,
-            planner_metrics={},
-        )
 
-    # Shortcut path:
-    # 지원 곡 목록 질문은 실행 가능 명령이 필요 없고,
-    # 안전 키 상태와 무관하게 고정된 repertoire 답변을 주는 편이 더 안정적이다.
+def build_direct_answer_plan(
+    user_text: str,
+    classifier_output: Dict,
+    robot_state: Dict,
+) -> Optional[Dict]:
+    """
+    classifier 결과 + 현재 상태로 planner 없이 직접 답할 수 있는 shortcut.
+    planner LLM 호출을 건너뛰고 고정/상태기반 응답을 낸다.
+
+    반환값: planner_output 또는 None
+    순서(우선순위)는 기존 동작과 동일하게 유지한다.
+    """
+    intent = classifier_output.get("intent")
+
+    # ("왜?"/"뭐?" 같은 맥락 없는 초단문 follow-up 은 generic planner 가 직접 되묻으므로
+    #  여기서 별도 shortcut 으로 잡지 않는다.)
+
+    # 1. 지원 곡 목록 질문은 안전 키 상태와 무관하게 고정 repertoire 로 답한다.
     if detect_repertoire_query(user_text):
-        planner_output = {
+        return {
             "skills": [],
             "op_cmd": [],
             "speech": build_repertoire_answer(),
             "reason": "지원 곡 목록 질문은 고정 repertoire 응답으로 직접 처리",
         }
-        validated_plan = build_validated_plan(
-            user_text=user_text,
-            robot_state=robot_state,
-            classifier_output=classifier_output,
-            planner_output=planner_output,
-        )
-        return BrainTurnResult(
-            classifier_input=classifier_input,
-            classifier_output=classifier_output,
-            planner_domain=planner_domain,
-            planner_input="",
-            classifier_raw_response_text=classifier_raw_response_text,
-            planner_raw_response_text="",
-            planner_output=planner_output,
-            robot_state=robot_state,
-            validated_plan=validated_plan,
-            classifier_duration_sec=classifier_duration_sec,
-            planner_duration_sec=0.0,
-            llm_duration_sec=classifier_duration_sec,
-            classifier_metrics=classifier_metrics,
-            planner_metrics={},
-        )
 
-    # Shortcut path:
-    # 이름 확인형 질문은 필의 정체성이 고정돼 있으므로,
-    # yes/no 몸짓과 발화를 deterministic 하게 고정하는 편이 더 안정적이다.
-    if identity_query is not None and classifier_output.get("intent") == "motion_request":
+    # 3. 이름 확인형 질문은 필의 정체성이 고정돼 있으므로 yes/no 몸짓을 고정한다.
+    identity_query = detect_identity_confirmation_query(user_text)
+    if identity_query is not None and intent == "motion_request":
         if identity_query["is_robot_name"]:
-            planner_output = {
+            return {
                 "skills": ["nod_yes"],
                 "op_cmd": [],
                 "speech": "네, 제 이름은 필이에요.",
                 "reason": "이름 확인 질문은 필의 정체성을 기준으로 직접 응답",
             }
-        else:
-            planner_output = {
-                "skills": ["shake_no"],
-                "op_cmd": [],
-                "speech": "아니요, 제 이름은 필이에요.",
-                "reason": "이름 확인 질문은 필의 정체성을 기준으로 직접 응답",
-            }
-        validated_plan = build_validated_plan(
-            user_text=user_text,
-            robot_state=robot_state,
-            classifier_output=classifier_output,
-            planner_output=planner_output,
-        )
-        return BrainTurnResult(
-            classifier_input=classifier_input,
-            classifier_output=classifier_output,
-            planner_domain=planner_domain,
-            planner_input="",
-            classifier_raw_response_text=classifier_raw_response_text,
-            planner_raw_response_text="",
-            planner_output=planner_output,
-            robot_state=robot_state,
-            validated_plan=validated_plan,
-            classifier_duration_sec=classifier_duration_sec,
-            planner_duration_sec=0.0,
-            llm_duration_sec=classifier_duration_sec,
-            classifier_metrics=classifier_metrics,
-            planner_metrics={},
-        )
+        return {
+            "skills": ["shake_no"],
+            "op_cmd": [],
+            "speech": "아니요, 제 이름은 필이에요.",
+            "reason": "이름 확인 질문은 필의 정체성을 기준으로 직접 응답",
+        }
 
-    # Shortcut path:
-    # 손 인사 후 특정 곡 재생 요청은 현재 skill 조합이 정해져 있으므로,
-    # planner 자유생성 대신 고정 시퀀스로 처리해 wave/play 동시 성공률을 높인다.
+    # 4. 손 인사 후 특정 곡 재생 복합 요청은 고정 skill 시퀀스로 처리한다.
+    wave_play_request = detect_wave_play_request(user_text)
     if wave_play_request is not None:
-        planner_output = {
+        return {
             "skills": ["wave_hi", wave_play_request["play_skill"]],
             "op_cmd": [],
             "speech": f"손을 흔들며 인사하고, {wave_play_request['song_label']}를 연주할게요.",
             "reason": "손 인사 후 곡 재생 복합 요청은 고정 skill 시퀀스로 직접 처리",
         }
-        validated_plan = build_validated_plan(
-            user_text=user_text,
-            robot_state=robot_state,
-            classifier_output=classifier_output,
-            planner_output=planner_output,
-        )
-        return BrainTurnResult(
-            classifier_input=classifier_input,
-            classifier_output=classifier_output,
-            planner_domain=planner_domain,
-            planner_input="",
-            classifier_raw_response_text=classifier_raw_response_text,
-            planner_raw_response_text="",
-            planner_output=planner_output,
-            robot_state=robot_state,
-            validated_plan=validated_plan,
-            classifier_duration_sec=classifier_duration_sec,
-            planner_duration_sec=0.0,
-            llm_duration_sec=classifier_duration_sec,
-            classifier_metrics=classifier_metrics,
-            planner_metrics={},
-        )
 
-    # Shortcut path:
-    # 특정 관절의 현재 각도를 묻는 상태 질의는 planner 를 거치지 않고
-    # 현재 상태 스냅샷에서 직접 답해 더 빠르고 안정적으로 처리한다.
-    if classifier_output.get("intent") == "status_question" and joint_angle_query:
-        deterministic_speech = build_joint_angle_answer(robot_state, joint_angle_query)
-        planner_output = {
-            "skills": [],
-            "op_cmd": [],
-            "speech": deterministic_speech,
-            "reason": "현재 관절 각도 조회는 상태 스냅샷에서 직접 응답",
-        }
-        validated_plan = build_validated_plan(
-            user_text=user_text,
-            robot_state=robot_state,
-            classifier_output=classifier_output,
-            planner_output=planner_output,
-        )
-        return BrainTurnResult(
-            classifier_input=classifier_input,
-            classifier_output=classifier_output,
-            planner_domain=planner_domain,
-            planner_input="",
-            classifier_raw_response_text=classifier_raw_response_text,
-            planner_raw_response_text="",
-            planner_output=planner_output,
-            robot_state=robot_state,
-            validated_plan=validated_plan,
-            classifier_duration_sec=classifier_duration_sec,
-            planner_duration_sec=0.0,
-            llm_duration_sec=classifier_duration_sec,
-            classifier_metrics=classifier_metrics,
-            planner_metrics={},
-        )
+    # 5. 특정 관절 각도 질문은 현재 상태 스냅샷에서 직접 답한다.
+    if intent == "status_question":
+        joint_angle_query = detect_joint_angle_query(user_text)
+        if joint_angle_query:
+            return {
+                "skills": [],
+                "op_cmd": [],
+                "speech": build_joint_angle_answer(robot_state, joint_angle_query),
+                "reason": "현재 관절 각도 조회는 상태 스냅샷에서 직접 응답",
+            }
 
-    # Planner path:
-    # 일반 대화/행동/연주 요청은 planner LLM 에게 위임해
-    # skill/command/speech plan 을 만들고 validator 로 넘긴다.
+    return None
+
+
+def planner_step(
+    robot_state: Dict,
+    user_text: str,
+    classifier_output: Dict,
+    planner_domain: str,
+    session=None,
+    planner_model_name: str = PLANNER_MODEL,
+    capture_metrics: bool = False,
+    repair_hint: Dict = None,
+) -> Tuple[Dict, Dict]:
+    """
+    2차 planner 단계. domain-specific planner LLM 을 호출해 plan 후보를 만든다.
+    repair_hint 가 있으면(repair 도메인 호출) 직전 거부 사유를 입력에 함께 싣는다.
+
+    반환값:
+        (planner_output, diag)
+        diag = {planner_input, raw_response_text, duration_sec, metrics}
+    """
     planner_system_prompt = get_planner_system_prompt(planner_domain)
-
-    # session 이 있으면 최근 대화 히스토리와 마지막 동작 상태를 planner input 에 포함한다.
     session_summary = build_session_summary(session) if session is not None else None
     planner_input = build_planner_input(
-        robot_state, user_text, classifier_output, planner_domain, session_summary
+        robot_state, user_text, classifier_output, planner_domain, session_summary, repair_hint
     )
-    planner_start_time = time.time()
+
+    start_time = time.time()
     if capture_metrics:
-        planner_raw_response_text, planner_metrics = call_json_llm(
+        raw_response_text, metrics = call_json_llm(
             model_name=planner_model_name,
             system_prompt=planner_system_prompt,
             user_input_json=planner_input,
             capture_metrics=True,
         )
     else:
-        planner_raw_response_text = call_json_llm(
+        raw_response_text = call_json_llm(
             model_name=planner_model_name,
             system_prompt=planner_system_prompt,
             user_input_json=planner_input,
         )
-        planner_metrics = {}
-    planner_duration_sec = time.time() - planner_start_time
+        metrics = {}
+    duration_sec = time.time() - start_time
 
-    planner_output = parse_plan_response(planner_raw_response_text)
+    planner_output = parse_plan_response(raw_response_text)
     planner_output = enforce_intent_constraints(planner_output, classifier_output)
-    validated_plan = build_validated_plan(
-        user_text=user_text,
-        robot_state=robot_state,
-        classifier_output=classifier_output,
-        planner_output=planner_output,
-    )
 
-    return BrainTurnResult(
-        classifier_input=classifier_input,
-        classifier_output=classifier_output,
-        planner_domain=planner_domain,
-        planner_input=planner_input,
-        classifier_raw_response_text=classifier_raw_response_text,
-        planner_raw_response_text=planner_raw_response_text,
-        planner_output=planner_output,
-        robot_state=robot_state,
-        validated_plan=validated_plan,
-        classifier_duration_sec=classifier_duration_sec,
-        planner_duration_sec=planner_duration_sec,
-        llm_duration_sec=classifier_duration_sec + planner_duration_sec,
-        classifier_metrics=classifier_metrics,
-        planner_metrics=planner_metrics,
-    )
+    diag = {
+        "planner_input": planner_input,
+        "raw_response_text": raw_response_text,
+        "duration_sec": duration_sec,
+        "metrics": metrics,
+    }
+    return planner_output, diag

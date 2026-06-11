@@ -12,6 +12,95 @@
 - `smoke`: 기본 인사/동작/연주/차단 확인
 - `scenario` / `scenario_eval`: TODO 예시 + 실제 운영 복합 시나리오 묶음
 
+## 현재 상태 (decision graph refactor 진행 중, 2026-06-10)
+
+런타임 파이프라인을 노드 기반 상태 기계로 분해하는 작업이 진행 중이라, eval 경로는
+지금 "그대로 돌아갈 정도"로만 맞춰 둔 전환 상태다. 본격적인 재설계(특히 multi-turn
+대화 평가)는 아직 남아 있다. 자세한 단계는 `phil_robot/TODO.md`의 Now 1~3단계 참고.
+
+### 무엇이 바뀌었나
+- 런타임 graph(`pipeline/robot_graph.py`)가 한 덩어리 `process_node`에서
+  `ingest → classify → state → direct_answer → planner → validator → execute`
+  노드 분해 구조로 바뀌었다. 노드 사이에는 `PhilState` 딕셔너리 하나만 굴러다니고,
+  예전 `BrainTurnResult` 진단 래퍼는 런타임에서 더 이상 쓰지 않는다.
+- 그래서 `run_brain_turn` / `BrainTurnResult`는 런타임 모듈(`pipeline/brain_pipeline.py`)에서
+  빠지고 **`phil_robot/eval/brain_probe.py`로 옮겨졌다.** 이 둘은 이제 eval/benchmark 전용
+  진단 어댑터다.
+- `brain_probe`의 `run_brain_turn`은 런타임 graph와 **같은 step 함수**
+  (`build_prefilter_plan` / `classify_step` / `build_direct_answer_plan` / `planner_step`,
+  모두 `pipeline/brain_pipeline.py`에 있음)를 호출한다. 즉 "엔진(step 함수)은 하나,
+  입구만 둘(런타임 graph / eval probe)"이라 결과가 서로 일치한다.
+- `build_classifier_input`이 더 이상 `robot_state`를 받지 않는다(인자 1개: `user_text`).
+  classifier system prompt가 상태 요약을 한 번도 참조하지 않던 dead token이라 뺐다.
+  상태 판단은 `state_node`와 validator가 책임진다.
+
+### 지금 돌릴 수 있는 것 (single-turn)
+- `run_eval.py`의 single-turn suite(`smoke` 등): `brain_probe.run_brain_turn`을 경유해
+  한 발화당 한 번 채점. 한 턴 단위 동작이 예전과 같게 나오는지 확인하는 용도.
+- planner benchmark / latency isolation: `planner_json_benchmark.py`가 고정 `planner_input`을
+  만들어 planner만 반복 측정. 이쪽은 single-call이라 그대로 유효하다.
+
+### 아직 못 하는 것 / 다시 만들어야 하는 것 (multi-turn)
+- 새 설계의 되묻기·복구(recovery)는 본질적으로 **여러 턴**에 걸쳐 일어난다.
+  예: `팔 돌려줘 → "키 뽑아주세요" → 키 뽑았어 → "몇 도로?" → 200도 → "범위 안내" → 30도 → 실행`.
+- `recovery_count`(5회 캡), `pending_intent` 이어주기, 5회째 deterministic 리셋은
+  **한 발화만 보는 지금의 케이스 포맷으로는 검증할 수 없다.**
+- 그래서 graph를 턴마다 `app.invoke()`로 굴리며 세션 하나를 공유하고 턴별 robot_state를
+  주입하는 **multi-turn scenario 러너 + 케이스 포맷**을 따로 만들어야 한다(예정).
+- 결론: 지금 eval은 "한 턴짜리 동작이 깨지지 않았는지" 확인까지만 신뢰하고,
+  대화·복구 검증은 multi-turn 포맷이 생긴 뒤에 한다.
+
+### 주의
+- 이 README 아래의 일부 설명(특히 `설계 메모`의 "production과 동일한 경로" 표현)은
+  refactor 이전 기준이라 위 현재 상태 메모가 우선한다.
+
+## scenario eval 설계안 (예정 — graph 구동 multi-turn)
+
+> 아직 구현 안 함. "이렇게 만들겠다"는 설계 기록이다. 3단계(cross-turn recovery) 검증과 함께 만든다.
+
+### 왜 필요한가
+- 지금 `run_eval`(smoke)은 `brain_probe.run_brain_turn`(단일 패스)를 쓴다. 이 경로는
+  graph 의 **repair 루프(planner↔validator 재호출)도, cross-turn recovery 도 타지 않는다.**
+- 그래서 blocked/range/되묻기 케이스는 smoke 에서 첫 시도 결과만 보여 "실패"로 뜨지만,
+  런타임(graph)은 정상이다(repair 도메인이 설명/되묻기 생성 — graph 구동으로 확인됨).
+- 이 둘을 제대로 검증하려면 **graph 를 턴마다 굴리는** 러너가 필요하다.
+
+### 구동 방식
+- `build_phil_graph(...)` 로 만든 app 을 케이스의 turn 마다 `app.invoke({"user_text": ...})` 한다.
+- 세션 하나(`SessionContext`)를 케이스 전체에서 공유한다(cross-turn recovery / pending 검증).
+- robot_state 는 turn 별로 주입한다: `get_state_fn` 이 그 turn 의 state 를 반환하게 해서
+  "키 뽑았어" 같은 세상 변화를 다음 turn 에 반영한다.
+- 실제 로봇 소켓은 안 쓴다: bot/executor 는 fake(전송 기록만).
+- LLM 은 두 모드:
+  - integration: 실제 모델(ollama) — 자연어 품질까지 본다(느림).
+  - unit: `call_json_llm` stub — 루프 분기/카운터를 deterministic 하게 본다(빠름).
+
+### 케이스 포맷(초안)
+```json
+{
+  "id": "arm_rotate_recovery",
+  "turns": [
+    {"user": "팔 돌려줘",   "state": {"is_lock_key_removed": false}, "expect": {"commands_empty": true, "speech_has": "안전 키"}},
+    {"user": "키 뽑았어",   "state": {"is_lock_key_removed": true},  "expect": {"commands_empty": true, "speech_has": "몇 도"}},
+    {"user": "30도 돌려줘",                                          "expect": {"commands_has": "move:", "speech_has": "30"}}
+  ]
+}
+```
+- `turn.state` 는 직전 state 에 덮어쓰는 patch (지정 안 하면 직전 state 유지).
+- `expect` 후보: `commands_has` / `commands_empty` / `speech_has` / `repair_attempt` / `recovery_count` / `planner_domain`.
+
+### 커버할 시나리오
+- blocked → repair 메시지(명령 0), 다음 턴 해제 → 실행 (cross-turn).
+- missing(각도 없음) → 되묻기 → 다음 턴 각도 → 실행.
+- range(200도) → 범위 안내 되묻기 → 다음 턴 정상값 → 실행.
+- giveup: 5턴 연속 미해결 → deterministic 리셋.
+- happy-path: 정상 motion/play/chat/status (repair 0).
+
+### 새 파일(예정)
+- `eval/run_scenario.py` (graph 구동 러너)
+- `eval/cases_scenario.json` (multi-turn 케이스)
+- 기존 `run_eval.py`(single-turn)는 benchmark/단일턴 회귀용으로 유지.
+
 ## 목적
 이 디렉토리는 `phil_robot`의 Python LLM 제어 스택을 위한 오프라인 평가 파이프라인을 담고 있습니다.
 
@@ -264,5 +353,10 @@ smoke_report_q3-4b-q4km_q3-30b-a3b-q4km_20260317_1530_2.json
 ## 설계 메모
 - 이 평가 경로는 실제 classifier / planner 모델을 그대로 호출합니다.
 - 실제 로봇 소켓 명령은 전송하지 않습니다.
-- production과 동일한 `run_brain_turn(...)` 경로를 재사용해서 현실적인 채점을 합니다.
-- 이후 회귀 테스트와 replay 평가의 기반이 되도록 설계했습니다.
+- 런타임 graph와 동일한 step 함수를 호출하는 `brain_probe.run_brain_turn(...)` 경로를
+  재사용해서 현실적인 채점을 합니다. (refactor 이전에는 이 함수가 런타임 모듈에 있었고
+  런타임도 직접 호출했지만, 지금은 런타임이 graph 노드 경로를 쓰고 이 함수는 eval 전용입니다.
+  위 `현재 상태` 섹션 참고.)
+- 예전에 통과하던 한 턴짜리 동작이 이번에도 그대로 통과하는지 확인하는 용도와,
+  이후 replay 평가의 기반이 되도록 설계했습니다.
+- 대화·복구처럼 여러 턴에 걸친 동작 검증은 multi-turn scenario 포맷이 생긴 뒤에 합니다.

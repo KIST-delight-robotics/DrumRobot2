@@ -6,18 +6,31 @@ skill 전개 -> 상대 동작 해석 -> 명령 검증 -> 메시지 보정까지 
 """
 
 from dataclasses import dataclass, field
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 from .command_validator import (
-    ValidationResult,
     has_actionable_motion_command,
-    user_text_requests_motion,
     validate_commands,
 )
-from .failure import build_motion_block_message
 from .motion_resolver import resolve_motion_commands
 from .play_modifier import PlayModifier, parse_play_modifier
 from .skills import expand_skills
+from .state_adapter import block_reason_of
+
+
+@dataclass
+class RepairHint:
+    """
+    validator 가 planner 명령을 거부했을 때, repair 도메인 planner 에게 돌려줄 사유.
+
+    repair 루프가 이 hint 를 planner 입력에 실어, planner 가 명령을 다시 만들지 말고
+    사용자에게 이유를 설명/되묻게 한다. failure_code 는 흐름 제어용 거친 분류이고,
+    reason 은 사람이 읽을 수 있는 거부 이유(planner 가 풀어 설명할 재료)다.
+    """
+
+    failure_code: str = ""
+    reason: str = ""
+    rejected: List[str] = field(default_factory=list)
 
 
 @dataclass
@@ -38,22 +51,23 @@ class ValidatedPlan:
     speech: str = ""
     reason: str = ""
     play_modifier: PlayModifier = field(default_factory=PlayModifier)
-    # planner가 되묻기를 요청했을 때 채워진다.
-    # 비어있으면 clarification 없음, 채워져 있으면 session에 pending 상태로 저장된다.
-    clarification_question: str = ""
+    # planner 명령이 거부돼 repair 가 필요할 때 채워진다.
+    # None 이면 통과(또는 빈 명령). 채워져 있으면 graph 가 repair 루프로 보낸다.
+    repair_hint: Optional[RepairHint] = None
 
 
-def build_partial_execution_message(valid_op_cmds: List[str], rejected_op_cmds: List[str]) -> str:
-    """
-    일부 명령만 실행 가능한 경우 사용자에게 그 사실을 명확히 알린다.
-
-    너무 세부적인 reject 이유를 장황하게 나열하기보다,
-    "가능한 동작은 수행하고 일부는 제한으로 제외했다"는 사실을 우선 전달한다.
-    """
-    if not valid_op_cmds or not rejected_op_cmds:
-        return ""
-
-    return "가능한 동작만 먼저 수행할게요. 일부 동작은 범위나 현재 상태 제한 때문에 제외했습니다."
+def _content_failure_code(warnings: List[str]) -> str:
+    """상태 차단이 아닌 명령 내용 거부 사유를 거친 코드로 정규화한다."""
+    text = " ".join(warnings)
+    if "지정되지 않음" in text:
+        return "missing_info"
+    if "한계" in text or "범위 초과" in text:
+        return "joint_limit"
+    if "곡 코드" in text:
+        return "unknown_song"
+    if "연주 명령 차단" in text:
+        return "play_state"
+    return "bad_command"
 
 
 def build_play_modifier_message(play_modifier: PlayModifier) -> str:
@@ -93,23 +107,27 @@ def build_validated_plan(
 
     speech = planner_output.get("speech", "")
 
-    # planner 가 거절 대사를 만들지 못해도 validator 가 최종 사용자 메시지를 보수적으로 보정한다.
+    # validator 는 speech 작가가 아니라 안전망이다.
+    # play_modifier / 상대 동작 해석 같은 결정적 계산 결과만 speech 에 반영한다.
+    # 막힘/범위/거부 안내는 planner 가 repair 도메인에서 직접 만든다(아래 repair_hint).
     if has_play_modifier:
         speech = build_play_modifier_message(play_modifier) or speech
     elif resolution.message_override:
         speech = resolution.message_override
     elif resolution.speech_override and has_actionable_motion_command(validation.valid_commands):
         speech = resolution.speech_override
-    elif has_actionable_motion_command(validation.valid_commands) and validation.rejected_commands:
-        speech = build_partial_execution_message(validation.valid_commands, validation.rejected_commands)
-    elif classifier_output.get("needs_motion", False) and not has_actionable_motion_command(validation.valid_commands):
-        speech = build_motion_block_message(robot_state)
-    elif (
-        classifier_output.get("intent") == "motion_request"
-        and user_text_requests_motion(user_text)
-        and not has_actionable_motion_command(validation.valid_commands)
-    ):
-        speech = build_motion_block_message(robot_state)
+
+    # planner 명령이 (전부) 거부돼 실행할 동작이 없으면 repair 사유를 만든다.
+    # graph 가 이 hint 를 repair 도메인 planner 로 돌려보내 설명/되묻기를 생성하게 한다.
+    repair_hint = None
+    if validation.rejected_commands and not has_actionable_motion_command(validation.valid_commands):
+        block = block_reason_of(robot_state)
+        failure_code = block if block != "none" else _content_failure_code(validation.warnings)
+        repair_hint = RepairHint(
+            failure_code=failure_code,
+            reason="; ".join(w for w in validation.warnings if w),
+            rejected=list(validation.rejected_commands),
+        )
 
     return ValidatedPlan(
         skills=list(planner_output.get("skills", [])),
@@ -122,5 +140,5 @@ def build_validated_plan(
         speech=speech,
         reason=planner_output.get("reason", ""),
         play_modifier=play_modifier,
-        clarification_question=planner_output.get("clarification_question", ""),
+        repair_hint=repair_hint,
     )

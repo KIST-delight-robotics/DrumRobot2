@@ -108,8 +108,6 @@ def validate_command(command, robot_state):
         return validate_led_command(command)
     if command.startswith("move:"):
         return validate_move_command(command, robot_state)
-    if command.startswith("wait:"):
-        return validate_wait_command(command)
     return False, f"알 수 없는 명령 형식 차단: {command}"
 
 
@@ -177,29 +175,24 @@ def validate_move_command(command, robot_state):
     try:
         _, move_args = command.split(":", 1)
         motor_name, angle_raw = move_args.split(",", 1)
-        angle = float(angle_raw)
     except ValueError:
         return False, f"move 명령 파싱 실패: {command}"
 
     if motor_name not in JOINT_LIMITS:
         return False, f"알 수 없는 모터 차단: {command}"
 
+    # 각도 미지정(null) 은 지어낸 값이 아니라 "사용자가 안 알려줌" 신호 → 되묻기 대상.
+    if angle_raw.strip().lower() in ("null", "none", ""):
+        return False, f"목표 각도가 지정되지 않음: {command}"
+
+    try:
+        angle = float(angle_raw)
+    except ValueError:
+        return False, f"move 명령 파싱 실패: {command}"
+
     min_angle, max_angle = JOINT_LIMITS[motor_name]
     if not (min_angle <= angle <= max_angle):
         return False, f"관절 한계 초과 차단: {command}"
-
-    return True, ""
-
-
-def validate_wait_command(command):
-    try:
-        _, _, seconds_raw = command.partition(":")
-        seconds = float(seconds_raw)
-    except ValueError:
-        return False, f"wait 명령 파싱 실패: {command}"
-
-    if seconds < 0.0 or seconds > 10.0:
-        return False, f"wait 범위 초과 차단: {command}"
 
     return True, ""
 
@@ -235,13 +228,11 @@ def validate_sequence_rules(commands):
     for command in commands:
         if command.startswith("move:"):
             consecutive_moves += 1
-        elif command.startswith("wait:"):
-            consecutive_moves = 0
         else:
             consecutive_moves = 0
 
         if consecutive_moves >= 3:
-            warnings.append("move 명령이 연속으로 길게 이어집니다. 후속 planner 단계에서 wait 삽입을 고려하세요.")
+            warnings.append("move 명령이 연속으로 길게 이어집니다.")
             break
 
     return warnings
@@ -256,7 +247,6 @@ def user_text_requests_motion(user_text):
 def has_actionable_motion_command(commands):
     """
     실제로 로봇 자세/행동을 바꾸는 명령이 하나라도 남아있는지 본다.
-    wait 는 보조 명령이므로 단독으로는 동작 성공으로 보지 않는다.
     """
     for command in commands:
         if command.startswith(("move:", "gesture:", "look:", "p:")):

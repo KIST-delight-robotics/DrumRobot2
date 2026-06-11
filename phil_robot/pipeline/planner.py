@@ -29,6 +29,9 @@ PLANNER_DOMAIN_MOTION = "motion"
 PLANNER_DOMAIN_PLAY = "play"
 PLANNER_DOMAIN_STATUS = "status"
 PLANNER_DOMAIN_STOP = "stop"
+# repair 는 intent 로부터 선택되지 않는다. validator 가 명령을 거부했을 때
+# repair 루프가 도메인을 이 값으로 강제하고 repair_hint 를 함께 넘긴다.
+PLANNER_DOMAIN_REPAIR = "repair"
 
 INTENT_TO_DOMAIN = {
     "chat": PLANNER_DOMAIN_CHAT,
@@ -45,6 +48,7 @@ DOMAIN_ALLOWED_SKILL_CATEGORIES: Dict[str, Set[str]] = {
     PLANNER_DOMAIN_PLAY: {"play", "posture"},
     PLANNER_DOMAIN_STATUS: set(),
     PLANNER_DOMAIN_STOP: {"posture", "system"},
+    PLANNER_DOMAIN_REPAIR: set(),
     PLANNER_DOMAIN_DEFAULT: {"social", "visual", "posture", "play", "system"},
 }
 
@@ -89,6 +93,11 @@ DOMAIN_INSTRUCTIONS = {
 - "왜?", "뭐?", "응?"처럼 짧고 맥락 없는 후속 발화는 이유를 추측하지 말고 무엇을 뜻하는지 짧게 되묻는다.
 - 과도한 동작 계획보다 speech 중심으로 응답한다.
 - 꼭 필요한 경우에만 op_cmd 또는 skills 를 생성한다.""",
+    PLANNER_DOMAIN_REPAIR: """당신은 repair planner 다.
+- 직전 시도가 validator 에서 거부됐고, 그 이유가 입력의 repair_hint 로 주어진다.
+- 동작을 다시 계획하지 말고, repair_hint 의 이유를 사용자에게 짧고 자연스럽게 설명하거나 되묻는다.
+- skills 와 op_cmd 는 반드시 [] 로 둔다. t(speech) 만 채운다.
+- t 는 사용자에게 그대로 들려줄 완성된 한국어 문장이다. repair_hint 문구를 옮겨 적지 말고 사람이 말하듯 바꾼다.""",
 }
 
 PLANNER_SHARED_RULES = f"""반드시 JSON 객체 하나만 출력한다. 설명문, 코드블록, 마크다운은 절대 출력하지 않는다.
@@ -98,14 +107,16 @@ planner 입력에는 다음 정보가 함께 들어온다.
 - robot_state: 현재 로봇 상태 요약
 - needs_motion: 실제 동작이 필요한 요청인지 여부
 - user_text: 사용자 발화
+- repair_hint: (repair 도메인에서만) 직전 시도가 validator 에서 거부된 이유
 
 공통 규칙:
 - 당신의 이름은 필(Phil)이며, KIST에서 개발된 지능형 휴머노이드 드럼 로봇이다.
 - planner_domain 을 반드시 따른다.
 - needs_motion 이 false 면 skills 와 op_cmd 를 모두 빈 배열로 둔다.
-- motion_request 에서 robot_state.can_move=false 이거나 robot_state.state 가 2 또는 4 이거나 robot_state.is_fixed=false 이면 skills 와 op_cmd 를 반드시 [] 로 두고 speech 로만 설명한다.
+- 필수 정보(예: 목표 각도)가 없으면 임의로 지어내지 말고 skills 와 op_cmd 를 비운다. 첫 시도에서 스스로 되묻지 않는다. 거부 사유는 validator 가 repair 도메인으로 돌려준다.
 - speech 는 TTS 용 한국어 문장만 쓴다. 괄호 설명문은 금지한다.
 - move 명령은 move:L_wrist,90 처럼 실제 모터 이름을 바로 쓴다.
+- 사용자가 각도/방향/속도 같은 파라미터를 말하지 않았으면 임의로 지어내거나 추측하지 말고 그 자리에 null 을 쓴다. 예: 각도 미지정 → move:waist,null
 - look 명령 형식은 look:pan,tilt 이다. pan 은 좌우 회전이고 오른쪽은 양수, 왼쪽은 음수다. tilt 는 상하 각도이며 정면은 90, 위는 70 근처, 아래는 110 근처다.
 - 사용자가 고개/시선/얼굴/정면/앞쪽을 직접 요청한 경우가 아니면 look_forward skill 이나 look:0,90 명령을 추가하지 않는다.
 - 단순 인사, 손 흔들기, 팔 동작, 허리 동작, 연주 요청에 기본 시선 정렬을 습관적으로 덧붙이지 않는다.
@@ -126,7 +137,6 @@ planner 입력에는 다음 정보가 함께 들어온다.
 - gesture:wave
 - move:L_wrist,90
 - move:R_wrist,90
-- wait:2
 - p:TIM
 
 출력 스키마:
@@ -134,18 +144,15 @@ planner 입력에는 다음 정보가 함께 들어온다.
   "s": ["미리 정의된 skill"],
   "c": ["low-level 명령"],
   "t": "출력될 문장",
-  "r": "planner 판단 이유",
-  "q": "clarification 질문 (필요할 때만, 평소엔 생략 또는 null)"
+  "r": "planner 판단 이유"
 }}
 
 출력 규칙:
 - 가능한 한 공백 없는 한 줄 JSON 으로 출력한다.
-- s 는 skill 는 문자열 배열이다. 없으면 [] 를 사용한다.
+- s 는 skill 문자열 배열이다. 없으면 [] 를 사용한다.
 - c 는 low-level command 문자열 배열이다. 없으면 [] 를 사용한다.
-- t 는 TTS 로 읽을 한국어 문장이다.
+- t 는 TTS 로 읽을 한국어 문장이다. 되묻기나 거절 설명도 t 에 담는다.
 - r 는 짧은 판단 이유다.
-- q 는 clarification 이 필요할 때만 채운다. 예: 각도 없는 관절 이동 요청 → "허리를 몇 도로 돌릴까요?".
-  q 가 채워지면 s 와 c 는 반드시 [] 로 두고, t 는 q 와 같은 내용으로 둔다.
 """
 
 
@@ -169,10 +176,12 @@ def build_planner_input(
     classifier_output: Dict,
     planner_domain: str,
     session_summary: Dict = None,
+    repair_hint: Dict = None,
 ) -> str:
     """
     planner 에 넘길 입력 JSON 문자열을 만든다.
     session_summary 가 있으면 최근 대화 히스토리와 마지막 동작 상태를 포함한다.
+    repair_hint 가 있으면(repair 도메인 호출) 직전 거부 사유를 포함한다.
     """
     state_summary = build_planner_state_summary(robot_state)
     needs_motion = bool(classifier_output.get("needs_motion", False))
@@ -188,6 +197,10 @@ def build_planner_input(
     # planner 는 recent_turns 로 이전 맥락을, last_joint/look/play 로 상태를 참조한다.
     if session_summary:
         payload["session"] = session_summary
+
+    # repair 도메인 호출이면 직전 거부 사유를 실어 planner 가 설명/되묻게 한다.
+    if repair_hint:
+        payload["repair_hint"] = repair_hint
 
     return json.dumps(payload, ensure_ascii=False, indent=2)
 
@@ -269,17 +282,17 @@ def enforce_intent_constraints(planner_output: Dict, classifier_output: Dict) ->
         )
 
     if intent == "play_request":
-        allowed_prefixes = ("r", "p:", "wait:")
+        allowed_prefixes = ("r", "p:")
         normalized["op_cmd"] = [
             command for command in normalized["op_cmd"] if command.startswith(allowed_prefixes)
         ]
     elif intent == "stop_request":
-        allowed_prefixes = ("h", "pause", "resume", "wait:")
+        allowed_prefixes = ("h", "pause", "resume")
         normalized["op_cmd"] = [
             command for command in normalized["op_cmd"] if command.startswith(allowed_prefixes)
         ]
     elif intent == "motion_request":
-        allowed_prefixes = ("move:", "look:", "gesture:", "wait:", "r", "h")
+        allowed_prefixes = ("move:", "look:", "gesture:", "r", "h")
         normalized["op_cmd"] = [
             command for command in normalized["op_cmd"] if command.startswith(allowed_prefixes)
         ]

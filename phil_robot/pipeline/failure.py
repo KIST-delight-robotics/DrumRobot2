@@ -55,19 +55,6 @@ def build_llm_call_failure_json(reason: str) -> str:
         ensure_ascii=False,
     )
 
-
-def build_motion_block_message(robot_state) -> str:
-    if not robot_state.get("is_lock_key_removed", False):
-        return "아직 안전 키가 해제되지 않아 움직일 수 없습니다. 안전 키를 먼저 확인해 주세요."
-
-    current_state = robot_state.get("state", 0)
-    if current_state == 2:
-        return "지금은 연주 중이라 다른 동작을 할 수 없습니다."
-    if current_state == 4:
-        error_message = robot_state.get("error_message", "원인을 아직 확인 중입니다.")
-        return f"지금은 에러 상태라 동작할 수 없습니다. 원인은 {error_message} 입니다."
-
-    if not robot_state.get("is_fixed", True):
-        return "지금은 자세를 이동 중이라 다른 동작을 할 수 없습니다."
-
-    return "지금은 해당 동작을 수행할 수 없습니다."
+# NOTE: build_motion_block_message 는 제거됐다. 막힘 상태(safety_key/playing/error/moving)
+# 설명·되묻기는 이제 planner 가 robot_state.block_reason 을 보고 speech 로 직접 생성하고,
+# planner 명령이 전부 거부되는 희귀 케이스는 validator 의 SAFETY_NET_FALLBACK 이 덮는다.

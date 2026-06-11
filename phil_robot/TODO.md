@@ -12,106 +12,76 @@
 
 ## Now
 
-- [ ] `decision graph refactor 1단계: state gate + validator status contract`
-  - 목표: planner가 헛도는 상황을 planner 호출 전에 막고, validator가 사용자 문장을 override 하는 대신 구조화된 실패 상태를 반환하게 한다.
+> 아래 3개는 한 묶음의 `decision graph refactor` 단계다. 확정된 설계 전제:
+> - planner는 명령을 "잘못" 만들지 않는다. 못 하는 요청(범위초과/정보없음/상태막힘)은 명령 대신 자연어 되묻기를 낸다.
+> - 따라서 **턴 내부 planner↔validator 순환은 없다 (턴당 planner 1회).** 되돌아감은 전부 사람이 다음 턴에 다시 시도하는 cross-turn 스레드 한 종류로 통일한다.
+> - validator는 speech 작가 역할을 버리고 **안전망(safety net)** 으로만 남는다.
+> - 각 단계 sub-checkbox를 구현 진행하며 직접 체크한다. 의미 있는 변경마다 루트 `log.md`도 갱신한다.
+
+- [x] `decision graph refactor 1단계: 그래프 노드 분해 + BrainTurnResult 제거`
+  - 목표: `run_brain_turn`이 classifier+planner+validator를 한 함수로 묶고 `BrainTurnResult`로 반환하던 이중 래퍼를 없애고, `PhilState` 하나가 노드 사이를 굴러다니게 한다.
   - 배경:
-    - 현재 `planner.py`의 `q` 규칙은 각도 없는 관절 이동처럼 일부 빈 슬롯만 planner prompt 안에서 처리한다.
-    - `연주해줘`처럼 곡 슬롯이 비었거나, 안전키 미해제처럼 상태가 막는 경우까지 prompt 규칙으로 계속 늘리면 planner가 계획/질문/실패 설명을 모두 떠안게 된다.
-    - 장기 목표는 `classifier -> state_gate -> planner -> validator -> graph routing` 으로 책임을 나누는 것이다.
-  - 상태 모델 초안:
-    - `ok`: 실행 가능. `valid_op_cmds`가 있거나 정상 chat/status speech가 있다.
-    - `missing_info`: 사용자의 추가 입력이 필요하다. 예: `song_code`, `waist_angle`, `target_side`.
-    - `blocked_state`: 현재 robot state 때문에 어떤 motion/play 후보도 실행하면 안 된다. 예: safety key, error state, busy/play state.
-    - `recoverable_rejected`: planner 후보가 잘못됐지만 재계획하면 고칠 수 있다. 예: joint limit 초과, unknown song code, unknown skill/command.
-    - `partial`: 일부 명령만 통과했다. 실행할지, 줄일지, 되물을지 graph 정책이 필요하다.
-    - `empty`: speech도 command도 없는 진짜 빈 결과.
-  - 구현 방향:
-    - `ValidatedPlan`에 `plan_status`, `failure_code`, `missing_slots`, `repairable` 필드를 추가한다.
-    - `validator.py`는 `speech`를 덮어쓰기보다 `rejected_op_cmds`, `warnings`, `failure_code`를 채운다.
-    - `command_validator.py`의 문자열 warning만으로 판단하지 않도록 실패 reason을 code로 정규화한다.
-    - `state_gate.py`를 새로 두거나 `robot_graph.py`의 process 단계 직후 helper로 시작한다.
-    - `state_gate`는 classifier 결과와 최신 `robot_state`를 보고 hard block을 planner 호출 전에 반환한다.
-  - hard block 예:
-    - `motion_request`인데 `is_lock_key_removed=false` -> `blocked_state / safety_key`
-    - `motion_request`인데 `state=2` -> `blocked_state / playing`
-    - `motion_request`인데 `is_fixed=false` -> `blocked_state / moving`
-    - `play_request`인데 error state -> `blocked_state / error_state`
+    - 지금 `robot_graph.py`의 `process_node`는 state machine가 아니라 `run_brain_turn()`을 한 번 부르고 결과를 PhilState로 옮겨담는 얇은 래퍼다.
+    - classifier/planner/validator가 `run_brain_turn` 안에 융합돼 있어 노드 단위 분기를 표현할 수 없다.
+  - 체크리스트:
+    - [x] `run_brain_turn` 분해 → step 함수(`build_prefilter_plan`/`classify_step`/`build_direct_answer_plan`/`planner_step`) + graph 노드(`ingest`/`classify`/`state`/`direct_answer`/`planner`/`validator`/`execute`)
+    - [x] `BrainTurnResult` 런타임에서 제거 — 각 노드가 `PhilState` 필드(classifier_output / robot_state / planner_output / validated / speech / commands)를 직접 채운다. (BrainTurnResult/run_brain_turn은 삭제가 아니라 `eval/brain_probe.py`로 이주 — eval/benchmark 진단 어댑터로만 유지)
+    - [x] `phil_brain.py`는 최종 `PhilState["speech"]` 와 `PhilState["commands"]` 만 읽도록 정리 (어느 노드가 채웠는지 무관). 인터럽트는 ingest_node, 상태 fetch는 state_node로 이동
+    - [x] classifier 입력에서 `robot_state` 제거 — `CLASSIFIER_SYSTEM_PROMPT`가 `system_info`를 한 번도 참조하지 않는 죽은 토큰이었다 (`build_classifier_input(user_text)` 1-arg)
+    - [x] `state_node`를 classifier 뒤·planner 앞에 배치 — planner 직전 fresh fetch가 cross-turn 복구의 핵심 메커니즘이다
+    - [x] `direct_answer_node`로 status/identity/repertoire/ambiguous-followup/wave-play 직답을 한 곳(`build_direct_answer_plan`)에 모아 planner 우회
   - 완료 기준:
-    - hard block 상황에서 planner 호출 횟수가 0회임을 debug log 또는 eval fixture로 확인한다.
-    - 기존 안전 차단 동작은 유지하되 사용자 문장 생성은 graph 후속 node가 맡을 수 있게 데이터가 구조화된다.
+    - [x] `run_brain_turn` / `BrainTurnResult`가 런타임(`pipeline/`)에서 빠지고 `eval/brain_probe.py`로 이주됐다. eval·test import re-point 완료, `tests/test_planner_benchmark.py` 27건 통과.
+    - [x] classifier 입력 JSON에 robot_state가 더 이상 없다.
+    - [x] stub LLM/state로 graph e2e 흐름(prefilter/planner/direct_answer 3경로) 검증. 단, 실제 모델 위 eval smoke는 ollama 필요 → Jetson에서 최종 확인 필요.
+  - 메모(eval 처리 방침): eval은 "돌아갈 정도"로만 맞추고 multi-turn 재설계는 3단계 이후로 미룸. 현 상태는 `eval/README.md`의 `현재 상태` 섹션에 상세 기록.
 
-- [ ] `decision graph refactor 2단계: clarify / repair node 도입`
-  - 목표: `speech/commands`가 비었거나 rejected 된 결과를 LangGraph 안에서 라우팅하고, normal planner prompt의 `q` 책임을 graph node로 이동한다.
-  - 현재 인식:
-    - 현재 `robot_graph.py`는 `process -> execute -> END`만 수행하는 얇은 per-turn wrapper에 가깝다.
-    - 진짜 decision graph가 되려면 한 턴 안에서 `missing_info`, `blocked_state`, `confirmation_required`, `recoverable_rejected` 같은 상태를 명시적으로 분기해야 한다.
-    - 동작 완료 후 홈 복귀는 graph node가 아니라 `Executor`의 `on_done(cancelled=False)`에서 `plan_type == "motion"`일 때 `home()`을 호출하는 경로가 담당한다.
-  - graph 초안:
-    - `process`: classifier, state gate, planner, validator를 실행해 `ValidatedPlan`을 만든다.
-    - `route_after_process`: `plan_status`를 보고 다음 node를 고른다.
-    - `clarify`: `missing_slots`를 보고 질문 문장과 `clarification_question`을 만든다.
-    - `confirm`: 위험하거나 중요한 실행 후보에 대해 사용자 승인을 묻는다.
-    - `repair`: recoverable failure에 한해 planner를 제한 횟수로 다시 호출한다.
-    - `execute_now`: `valid_op_cmds`를 `Executor`에 넘긴다.
-  - routing 규칙:
-    - `ok` -> `execute_now` 또는 `end`
-    - `missing_info` -> `clarify`
-    - `blocked_state` -> deterministic fallback speech 후 `end`
-    - `confirmation_required` -> `confirm`
-    - `recoverable_rejected` -> `repair`
-    - `partial` -> 우선은 deterministic partial fallback, 이후 정책 확장
-    - `empty` -> `repair` 1회, 실패 시 fallback speech
-    - `pending_candidate` -> 현재는 명확히 미지원 응답. `TaskScheduler / pending task runtime` 설계 이후에만 `enqueue_pending`으로 확장한다.
-  - clarify node 원칙:
-    - full planner를 그대로 다시 부르지 말고 `question generation mode`로 제한한다.
-    - 입력은 `user_text`, `planner_domain`, `missing_slots`, `robot_state`, `session_summary`로 제한한다.
-    - 출력은 `speech`와 `clarification_question`만 허용하고 `skills/op_cmd`는 항상 비운다.
-    - 기존 `SessionContext.pending_user_text/pending_clarification_q` 경로를 그대로 재사용한다.
-  - confirm node 원칙:
-    - 승인 대기 상태는 session에 저장하되, 실행 전에는 반드시 최신 `robot_state`로 validator를 다시 통과시킨다.
-    - `멈춰`, `취소`, `아니` 같은 응답은 pending approval을 폐기한다.
-  - repair node 원칙:
-    - `max_repair_attempts=1`부터 시작한다.
-    - repair가 만든 후보도 반드시 다시 `build_validated_plan()` 또는 동등한 validator 경로를 통과한다.
-    - 같은 `failure_code`가 반복되면 즉시 fallback으로 종료한다.
-    - `blocked_state`와 `missing_info`는 repair 대상이 아니다.
-  - 완료 기준:
-    - `허리 돌려` -> clarify node가 질문 생성, command 미전송.
-    - `연주해줘` -> clarify node가 곡 선택 질문 생성, 임의 곡 선택 금지.
-    - 안전키 미해제 motion -> planner 호출 없이 fallback speech, command 미전송.
-    - joint limit 초과 -> repair 1회 또는 fallback으로 종료, 무한 루프 없음.
+- [x] `decision graph refactor 2단계: planner↔validator repair 루프 (self-refuse에서 선회)`
+  - 선회 경위: 처음엔 "planner가 범위/막힘을 prompt로 보고 스스로 거절(self-refuse)" 방향으로 갔으나, Jetson smoke 실측에서 (1) planner가 좋은 거절 speech를 내면서도 명령을 같이 내 validator가 그 speech를 generic으로 덮는 버그, (2) 무거운 범위표 prompt가 단순 wave/play를 흔드는 문제가 드러남. 그래서 사용자 원안인 **planner↔validator 내부 repair 루프**로 선회했다.
+  - 확정 구조:
+    - [x] planner prompt **슬림화** — 관절범위표/self-refuse/q 규칙 제거. planner는 검증 안 하고 계획만. (`JOINT_LIMITS` import 제거)
+    - [x] `repair` planner 도메인 신설 (`PLANNER_DOMAIN_REPAIR`, skill 카테고리 set()). validator 거부 사유를 받아 설명/되묻기 speech만 생성. zero-shot(예시 문장 없음).
+    - [x] validator = 안전망. 거부 시 speech를 덮지 않고 `RepairHint`(failure_code+reason+rejected) 반환. `block_reason_of`(state_adapter 공용)로 상태차단 코드, `_content_failure_code`로 내용오류 코드.
+    - [x] graph 내부 루프: `planner → validator →(거부 & repair_attempt<MAX_REPAIR=2)→ planner(repair 도메인+hint)`. 통과하면 execute, 소진되면 `fallback` 노드(명령 버리고 `FALLBACK_MESSAGE`). 조건부 엣지 `route_after_validator`.
+    - [x] repair_attempt(per-turn 로컬)와 recovery_count(per-thread, 3단계)는 독립 — repair는 명령 거부 시 같은 턴 핑퐁.
+    - [x] `build_motion_block_message`/`build_partial_execution_message`/clobber 제거. q 기반 session pending 비활성화.
+  - 검증:
+    - [x] stub e2e 3경로: blocked→repair 1회 수렴, repair도 명령 고집→소진→fallback, 정상→repair 0회 실행.
+    - [x] **실제 graph + 30b 구동**: 안전키→"안전 키를 뽑아 달라고 안내."(동작 정상, 문장은 약간 echo), 연주중→"현재 연주 중이라 손을 흔드는 동작은 할 수 없습니다."(완벽), 정상→gesture:wave 실행. repair 루프 런타임 동작 확인.
+    - [x] R1 smoke: 흔들리던 wave_allowed/play_tim 안정화(prompt 슬림 효과).
+  - 한계/메모:
+    - smoke(`run_eval`)는 graph가 아니라 `brain_probe`(단일 패스)를 써서 **repair 루프를 못 탄다.** 따라서 blocked 케이스는 smoke에서 첫 시도 speech만 보여 "실패"로 뜨지만 런타임(graph)은 정상. 제대로 된 검증은 graph 구동 multi-turn scenario eval 필요(후속).
+    - repair speech echo("~안내.")는 zero-shot 유지하며 남겨둠(경미).
 
-- [ ] `planner prompt slim-down: q 제거와 plan 후보 생성 전용화`
-  - 목표: planner가 되묻기 문장 생성까지 담당하지 않도록 하고, plan 후보 생성에 집중하게 한다.
-  - 변경 방향:
-    - `PLANNER_SHARED_RULES`의 `q` 필드 요구를 제거하거나 deprecated로 낮춘다.
-    - normal planner 출력은 `skills`, `op_cmd`, `speech`, `reason` 중심으로 유지한다.
-    - speech는 정상 chat/status/play 안내에는 허용하되, 실패/차단/되묻기 override는 graph node로 옮긴다.
-    - planner가 필수 슬롯을 모르면 임의로 채우지 말고 빈 plan 또는 structured hint를 남기게 한다.
-  - 스키마 후보:
-    - 1단계 호환: 기존 `q/clarification_question` parser는 유지하되 prompt에서 적극 요구하지 않는다.
-    - 2단계 정리: `clarification_question`은 `ValidatedPlan`/session에는 남기고 planner raw output에서는 제거한다.
-  - 유의점:
-    - 기존 eval이 `clarification_question`을 기대하는 경우 fixture를 같이 갱신한다.
-    - `planner`가 빈 plan을 냈을 때 실패인지 정상 chat인지 validator/graph가 구분할 수 있어야 한다.
-    - 안전 판단은 planner가 아니라 `state_gate`와 validator가 최종 책임진다.
+- [x] `decision graph refactor 3단계: cross-turn recovery 스레드 + pending 의도 context`
+  - 목표: 막힘/되묻기/범위안내를 다음 턴으로 잇는 cross-turn 복구를 한 종류로 통일하고, 무한 반복은 회차 캡으로 끊는다.
+  - 체크리스트:
+    - [x] `SessionContext.recovery_count`/`pending_intent`/`pending_classifier` 추가 (기존 `pending_user_text`/`pending_clarification_q` 교체). update_session: actionable인데 실행 명령 없음→미해결(count+1, pending 고정), 그 외→리셋.
+    - [x] 회차 1~MAX_RECOVERY(=4)는 planner가 돈다. `run_turn` 진입에서 `recovery_count >= MAX_RECOVERY`면 planner 없이 deterministic giveup("죄송해요, 잘 이해하지 못했어요...") + 리셋(이 턴은 chat 으로 분류돼 update_session 이 리셋).
+    - [x] `resolve_clarification_text` 문자열 결합 폐기 완료(Step3).
+    - [x] continuation: pending 활성이면 classify 건너뛰고 `pending_classifier` 재사용 + `pending_domain` 고정, `pending_intent`를 session_summary로 planner에 전달해 이번 발화와 합쳐 해석.
+    - [x] 취소어(취소/아니/됐어 등)는 pending 폐기 + 안내.
+    - [x] missing-info: 첫 시도가 actionable인데 빈 계획이면 repair 도메인으로 "무엇을/몇 도?" 되묻기(repair 도메인 출력은 제외해 무한루프 방지).
+  - 검증:
+    - [x] stub 시퀀스: `허리 돌려`→"몇 도로?"(count1) → `30도`→`move:waist,30` 실행(리셋). giveup: 5턴째 deterministic 리셋. 취소: 폐기+ack. + 23 단위테스트 통과.
+    - [x] **실제 30b 거부경로 full**: `허리 200도 돌려`→validator 거부→repair "다른 각도를?"(count1, pending 저장) → `30도`→continuation→`move:waist,30` "허리를 30도 돌릴게요"(리셋). cross-turn 복구 런타임 동작 확인.
+  - 한계/메모 (추후 수정):
+    - **bare 미정보 요청("허리 돌려", 각도 없음) — null 규칙으로 해소(확률적, 실측 3/3)**: planner prompt(PLANNER_SHARED_RULES)에 "미명시 파라미터는 지어내지 말고 null" 규칙을 넣자, 이전엔 기본각(예: waist 90)을 지어내던 30b가 빈 계획/`move:waist,null`을 낸다. 빈 계획은 missing-info 트리거가, null은 `validate_move_command`의 "목표 각도가 지정되지 않음" 거부(→`_content_failure_code`가 `missing_info`로 정규화)가 잡아 repair "몇 도로?"로 되묻는다. "허리 돌려" 3/3 모두 되묻기 확인(이전엔 지어내 실행). LLM이라 100% 보장은 아니며(가끔 지어낼 수 있음), 완전한 구조적 해결은 resolver 분리에서 null 슬롯을 1급으로 다루는 것.
+    - **복구 중 화제 전환 미지원**: pending=motion 복구 중 "연주해줘" 같은 다른 명령이 와도 v1은 pending_domain 고정. validator가 의도-명령 일치를 검사하지 않아 깔끔히 못 거르고, 최악의 경우 몇 턴 돌다 giveup으로 리셋된다. 취소어로 즉시 폐기 가능. 정교한 화제전환 감지는 추후. (`robot_fsm.run_turn` continuation 분기에 동일 취지 주석)
 
 ## Next
 
-- [ ] `scenario eval` 확장
-  - 목표: smoke(기본 확인)에서 벗어나 decision graph refactor를 검증할 복합 시나리오를 추가한다.
-  - 범위:
-    - 정상 명령
-    - missing slot clarification
-    - blocked state
-    - recoverable rejected plan
-    - 연속 대화 명령
-  - 우선 케이스:
-    - `허리 돌려` -> 질문만 생성, 명령 없음
-    - `30도` -> pending clarification과 합쳐져 `허리 돌려 30도`로 재계획
-    - `연주해줘` -> 곡 선택 질문
-    - 안전키 미해제 상태에서 `손 들어줘` -> planner 호출 없이 차단 응답
-    - `허리 200도 돌려` -> limit failure code 확인
+- [ ] `scenario eval` 확장 (graph 구동 multi-turn) — 설계 확정, 구현 대기
+  - 왜: 현재 `run_eval`(smoke)은 `brain_probe`(단일 패스)라 graph 의 repair 루프·cross-turn recovery 를 못 탄다. blocked/range/되묻기는 smoke 에서 "실패"로 떠도 런타임(graph)은 정상. 제대로 검증하려면 graph 를 턴마다 굴려야 한다.
+  - 구동 방식(확정): `build_phil_graph(...)` app 을 turn 마다 `app.invoke({"user_text":...})`, 세션 하나 공유, robot_state 는 turn 별 주입(`get_state_fn`), bot/executor 는 fake, LLM 은 integration(실모델)/unit(stub) 두 모드. 상세는 `eval/README.md`의 `scenario eval 설계안` 섹션.
+  - 케이스 포맷: `{id, turns:[{user, state(patch), expect}]}`. expect 후보 `commands_has/commands_empty/speech_has/repair_attempt/recovery_count/planner_domain`.
+  - 새 파일(예정): `eval/run_scenario.py`, `eval/cases_scenario.json`. 기존 `run_eval.py`는 단일턴/benchmark 용 유지.
+  - 커버 시나리오:
+    - blocked → repair 메시지(명령 0) → 다음 턴 해제 → 실행 (cross-turn)
+    - missing(각도 없음) → 되묻기 → 다음 턴 각도 → 실행
+    - range(200도) → 범위 안내 되묻기 → 다음 턴 정상값 → 실행
+    - giveup: 5턴 연속 미해결 → deterministic 리셋
+    - happy-path: 정상 motion/play/chat/status (repair 0)
     - `안녕 하고 고개 끄덕여`
     - `그대에게 연주하고 끝나면 인사해` -> 현재는 pending task 미지원으로 명확히 미지원 또는 Later 항목 참조
 
@@ -392,6 +362,9 @@
 - [ ] `DrumRobot2 박자 단위 pause/resume` (파일 단위 재개의 다음 단계)
   - 현재: 파일 처음부터 재연주. 더 정밀한 재개를 원하면 버퍼에 파일 경계 마커를 심어야 함
   - 방향: `TMotorData`에 마커 필드 추가 → send 스레드가 마커 소비 시 임시 파일에 위치 기록 → pause 시 읽기
+- [~] `wait 명령 제거` 완료 / `시간·조건 지연은 TaskScheduler로 이관`은 추후
+  - 완료: executor에서 wait 완전 제거(`wait:<seconds>` → validator가 unknown 거부). cancel/stop_event/cancelled/`_interruptible_wait`도 함께 제거(끊을 wait가 없으므로). planner/skills/motion_resolver(`wait_then_more` 파서)에서 wait 생성 끊음. "N도씩 두번"(repeat)은 생존, "N초 뒤에"만 사라짐.
+  - 추후: "몇 초 뒤에 ~해" 같은 시간/조건 지연 실행의 정식 자리는 `TaskScheduler / pending task runtime`의 `after_delay` trigger — "연주 끝나고 인사해"(`after_play`)와 같은 부류. 즉시 실행=executor, 지연 실행=scheduler. (Later `TaskScheduler` 항목과 연계)
 - [ ] `failure taxonomy` 정의
   - 메모:
     - 지금은 `raw_op_cmds / resolved_op_cmds / valid_op_cmds`만으로도 1차 원인 분리가 가능하다.
@@ -462,11 +435,19 @@
   - `eval/cases_smoke.json`
 - 최신 규칙 기반 자동 리포트 파일명:
   - `<suite>_report_<classifier약어>_<planner약어>_<YYYYMMDD_HHMM>.json`
-- 현재 LangGraph 역할:
-  - `robot_graph.py`는 장기 상태 관리자라기보다 per-turn routing graph다.
-  - 현재 노드는 `process -> execute -> END`이며, 진짜 decision graph 분기는 아직 TODO다.
-  - motion 홈 복귀는 `return_home` node가 아니라 `Executor.on_done -> home()` 경로에서 처리한다.
-  - 장기 조건부 작업은 향후 `TaskScheduler` 계층에서 다룬다.
-- 현재 clarification:
-  - session은 `pending_user_text + next user_text`를 deterministic하게 합친다.
-  - 향후 질문 문장 생성 책임은 planner prompt의 `q`에서 `clarify_node`로 옮긴다.
+- 현재 런타임 구조 (Now 1~3단계 + simplify pass 완료 후):
+  - langgraph/StateGraph는 폐기. `pipeline/robot_fsm.py`의 `run_turn`(imperative)이 한 턴을 처리:
+    `preprocess → classify → state → direct_answer → (planner⇄validator repair 루프) → execute`.
+  - `brain_pipeline.py` = 각 step의 실제 로직(엔진), `robot_fsm.py` = 그 step들을 한 턴 FSM으로 엮음.
+    eval(`brain_probe.run_brain_turn`)도 같은 step을 호출(엔진 하나, 입구 둘).
+  - 턴 **내부** repair 루프: planner가 명령을 내면 validator가 검증, 거부 시 사유(RepairHint)를
+    repair 도메인 planner로 돌려 재생성. `MAX_REPAIR=2`, 소진 시 fallback. (validator=안전망, speech override 없음)
+  - 턴 **사이** recovery: session의 `recovery_count`/`pending_intent`. `MAX_RECOVERY=4` 넘으면 giveup.
+    continuation은 classify 건너뛰고 pending 도메인 이어감. 취소어 폐기.
+  - motion 홈 복귀는 `robot_fsm.home()`(execute의 on_done에서 데몬 스레드).
+  - `exec_thread`는 wait/cancel 없이 "보내고 on_done()"만. wait 명령 자체가 제거됨.
+  - 장기 조건부 작업(연주 끝나고 등)은 향후 `TaskScheduler` 계층.
+- 미해결 한계(코드 주석/3단계 메모 참조):
+  - planner가 "막힘/정보없음에 빈 계획" 지시를 항상 지키진 않음. 거부 가능한 위반(범위초과/상태차단)은 repair로 잡고,
+    bare "허리 돌려"(각도 미지정)는 null 규칙(미명시→null/빈 계획)으로 대부분 되묻기로 유도(실측 3/3). LLM이라 가끔 지어낼 수 있어 완전 보장은 resolver 분리(null 슬롯 1급)에서.
+  - eval `run_eval`은 graph가 아니라 `brain_probe`(단일 패스)라 repair/recovery 루프 미검증. graph(run_turn) 구동 scenario eval 필요(Next).

@@ -232,7 +232,7 @@ def _is_direct_op_cmd(skill_name: str) -> bool:
     if skill_name in {"r", "h", "s", "t", "u"}:
         return True
 
-    direct_prefixes = ("move:", "look:", "gesture:", "wait:", "p:")
+    direct_prefixes = ("move:", "look:", "gesture:", "p:")
     return skill_name.startswith(direct_prefixes)
 
 

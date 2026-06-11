@@ -15,7 +15,7 @@ from phil_robot.pipeline.planner import (
 )
 from phil_robot.eval.run_planner_benchmark import judge_gate, prep_model, summarize_smoke_latency_rows
 from phil_robot.eval.run_planner_latency_isolation import build_case_summary
-from phil_robot.pipeline.brain_pipeline import BrainTurnResult, run_brain_turn
+from phil_robot.eval.brain_probe import BrainTurnResult, run_brain_turn
 from phil_robot.pipeline.skills import expand_skills
 from phil_robot.pipeline.validator import ValidatedPlan, build_validated_plan
 
@@ -65,37 +65,6 @@ class PlannerBenchmarkTest(unittest.TestCase):
         self.assertEqual(op_cmds, ["gesture:wave"])
         self.assertEqual(warnings, [])
 
-    def test_expand_skills_keeps_direct_wait_command_in_order(self) -> None:
-        op_cmds, warnings = expand_skills(["arm_up", "wait:3", "arm_down"])
-
-        self.assertEqual(
-            op_cmds,
-            [
-                "move:R_arm2,58",
-                "move:L_arm2,58",
-                "move:R_arm3,95",
-                "move:L_arm3,95",
-                "move:R_wrist,0",
-                "move:L_wrist,0",
-                "wait:3",
-                "move:R_arm2,0",
-                "move:L_arm2,0",
-                "move:R_arm3,20",
-                "move:L_arm3,20",
-            ],
-        )
-        self.assertEqual(warnings, [])
-
-    def test_filter_skills_keeps_direct_wait_command(self) -> None:
-        from phil_robot.pipeline.skills import filter_skills_by_allowed_categories
-
-        filtered = filter_skills_by_allowed_categories(
-            ["arm_up", "wait:3", "arm_down"],
-            {"posture"},
-        )
-
-        self.assertEqual(filtered, ["arm_up", "wait:3", "arm_down"])
-
     def test_build_validated_plan_overrides_relative_motion_speech(self) -> None:
         plan_obj = build_validated_plan(
             user_text="오른 쪽 손목 들어봐",
@@ -121,71 +90,6 @@ class PlannerBenchmarkTest(unittest.TestCase):
         self.assertEqual(plan_obj.valid_op_cmds, ["move:R_wrist,35"])
         self.assertIn("오른쪽 손목", plan_obj.speech)
         self.assertIn("15도", plan_obj.speech)
-
-    def test_build_validated_plan_preserves_arm_wait_sequence(self) -> None:
-        plan_obj = build_validated_plan(
-            user_text="양팔 올렸다가 3초 뒤에 양팔 내려",
-            robot_state={
-                "state": 0,
-                "is_lock_key_removed": True,
-                "is_fixed": True,
-                "current_angles": {},
-            },
-            classifier_output={
-                "intent": "motion_request",
-                "needs_motion": True,
-            },
-            planner_output={
-                "skills": ["arm_up", "wait:3", "arm_down"],
-                "op_cmd": [],
-                "speech": "양팔을 올렸다가 3초 뒤에 내립니다.",
-                "reason": "arm sequence",
-            },
-        )
-
-        self.assertEqual(
-            plan_obj.valid_op_cmds,
-            [
-                "move:R_arm2,58",
-                "move:L_arm2,58",
-                "move:R_arm3,95",
-                "move:L_arm3,95",
-                "move:R_wrist,0",
-                "move:L_wrist,0",
-                "wait:3",
-                "move:R_arm2,0",
-                "move:L_arm2,0",
-                "move:R_arm3,20",
-                "move:L_arm3,20",
-            ],
-        )
-
-    def test_build_validated_plan_resolves_relative_wait_sequence(self) -> None:
-        plan_obj = build_validated_plan(
-            user_text="손목 30도 내리고 1초 뒤에 10도 더 내려",
-            robot_state={
-                "state": 0,
-                "is_lock_key_removed": True,
-                "is_fixed": True,
-                "current_angles": {"R_wrist": 50.0},
-                "last_action": "move:R_wrist,50",
-            },
-            classifier_output={
-                "intent": "motion_request",
-                "needs_motion": True,
-            },
-            planner_output={
-                "skills": [],
-                "op_cmd": ["move:L_wrist,30", "wait:1", "move:L_wrist,40"],
-                "speech": "손목을 30도 내리고 1초 후에 10도 더 내립니다.",
-                "reason": "relative wait sequence",
-            },
-        )
-
-        self.assertEqual(plan_obj.valid_op_cmds, ["move:R_wrist,20", "wait:1", "move:R_wrist,10"])
-        self.assertIn("30도", plan_obj.speech)
-        self.assertIn("1초", plan_obj.speech)
-        self.assertIn("10도", plan_obj.speech)
 
     def test_build_validated_plan_resolves_relative_repeat_sequence(self) -> None:
         plan_obj = build_validated_plan(

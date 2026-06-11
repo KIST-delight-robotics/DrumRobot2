@@ -14,7 +14,7 @@ PROJECT_ROOT = os.path.dirname(PHIL_ROBOT_DIR)
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
-from phil_robot.pipeline.brain_pipeline import run_brain_turn  # noqa: E402
+from phil_robot.eval.brain_probe import run_brain_turn  # noqa: E402
 from phil_robot.pipeline.failure import FALLBACK_MESSAGE  # noqa: E402
 from phil_robot.config import CLASSIFIER_MODEL, PLANNER_MODEL  # noqa: E402
 
