@@ -1,6 +1,12 @@
 # Change Log
 
-## 2026-05-27
+## 2026-06-12
+- 10:58 KST (UTC+9) — 연주가 끝나면 누적 배속/세기를 원래대로 리셋
+  - 수정 파일: `phil_robot/pipeline/session.py`, `phil_robot/pipeline/brain_pipeline.py`
+  - 메모: 누적 배속이 연주 종료 후에도 계속 남는 문제를 고쳤다. `SessionContext.was_playing`을 추가하고 `sync_play_lifecycle()`로 연주중(state Play=2/Pause=4)→정지 전이를 감지해 그 시점에 `tempo_scale=1.0`, `velocity_delta=0`으로 되돌린다. `run_brain_turn` 시작부에서 base 계산 직전에 호출한다. 연주 시작 전 idle 구간에서는 리셋하지 않아 "빨리 쳐" 후 곡을 트는 pre-play 배속 설정은 보존되고, Pause는 같은 연주 세션으로 보아 재개 시 배속이 유지된다.
+- 10:48 KST (UTC+9) — 연주 속도 modifier를 절대값 고정에서 세션 누적 방식으로 변경
+  - 수정 파일: `phil_robot/pipeline/play_modifier.py`, `phil_robot/pipeline/validator.py`, `phil_robot/pipeline/session.py`, `phil_robot/pipeline/brain_pipeline.py`
+  - 메모: 기존에는 "빠르게"가 항상 `tempo_scale=1.1` 절대값이라 반복해도 C++ `initialBpm*1.1`에서 멈췄다. `SessionContext`에 `tempo_scale`/`velocity_delta`를 누적 기억하고, `parse_play_modifier(base_*)`가 직전 값에 곱/합(빠르게 ×1.1, 느리게 ÷1.1, 세게/약하게 ±1)으로 누적하도록 바꿔 "더 빠르게"를 반복하면 계속 빨라진다(배속 0.5~2.0, 세기 ±3 clamp). "원래 속도로/원래대로" 리셋과 변화 방향 기반 안내 문구도 추가. 속도어가 없는 턴은 누적값을 유지하되 발화는 그대로 둔다.
 - 17:19 KST (UTC+9) — classifier 출력에서 `risk_level` 필드 제거
   - 수정 파일: `phil_robot/pipeline/intent_classifier.py`, `phil_robot/pipeline/failure.py`, `phil_robot/pipeline/brain_pipeline.py`, `phil_robot/eval/run_eval.py`, `phil_robot/eval/planner_json_benchmark.py`, `phil_robot/tests/test_intent_classifier.py`, `phil_robot/tests/test_planner_benchmark.py`, `phil_robot/tests/test_stt_llm_format_compare.py`, `phil_robot/docs/LLM_PIPELINE_ARCHITECTURE.md`, `phil_robot/docs/LLM_PIPELINE_ARCHITECTURE_KR.md`, `phil_robot/docs/PHIL_SEQUENCE_DIAGRAM_KR.md`, `phil_robot/eval/README.md`
   - 메모: 실행 제어와 초기 graph state 구성에 쓰지 않던 `risk_level`을 classifier prompt/schema/default/parser/평가 출력에서 제거해 classifier output을 `intent`, `needs_motion` 2필드로 단순화했다.

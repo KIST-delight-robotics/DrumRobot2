@@ -69,16 +69,28 @@ def build_partial_execution_message(valid_op_cmds: List[str], rejected_op_cmds: 
     return "가능한 동작만 먼저 수행할게요. 일부 동작은 범위나 현재 상태 제한 때문에 제외했습니다."
 
 
-def build_play_modifier_message(play_modifier: PlayModifier) -> str:
-    if play_modifier.tempo_scale < 1.0:
-        return "연주 속도를 느리게 하겠습니다."
-    if play_modifier.tempo_scale > 1.0:
-        return "연주 속도를 빠르게 하겠습니다."
-    if play_modifier.velocity_delta < 0:
-        return "연주 세기를 약하게 하겠습니다."
-    if play_modifier.velocity_delta > 0:
-        return "연주 세기를 강하게 하겠습니다."
-    return ""
+def build_play_modifier_message(
+    play_modifier: PlayModifier,
+    prev_tempo_scale: float = 1.0,
+    prev_velocity_delta: int = 0,
+) -> str:
+    # 절대값이 아니라 직전 상태 대비 변화 방향으로 안내 문구를 만든다.
+    is_reset = play_modifier.tempo_scale == 1.0 and play_modifier.velocity_delta == 0
+    if is_reset and (prev_tempo_scale != 1.0 or prev_velocity_delta != 0):
+        return "연주 속도와 세기를 원래대로 돌릴게요."
+
+    messages = []
+    if play_modifier.tempo_scale > prev_tempo_scale + 1e-9:
+        messages.append("더 빠르게 연주할게요.")
+    elif play_modifier.tempo_scale < prev_tempo_scale - 1e-9:
+        messages.append("더 느리게 연주할게요.")
+
+    if play_modifier.velocity_delta > prev_velocity_delta:
+        messages.append("더 세게 칠게요.")
+    elif play_modifier.velocity_delta < prev_velocity_delta:
+        messages.append("더 살살 칠게요.")
+
+    return " ".join(messages)
 
 
 def build_validated_plan(
@@ -86,6 +98,8 @@ def build_validated_plan(
     robot_state: Dict,
     classifier_output: Dict,
     planner_output: Dict,
+    prev_tempo_scale: float = 1.0,
+    prev_velocity_delta: int = 0,
 ) -> ValidatedPlan:
     """
     classifier + planner 결과를 실제 실행 가능한 plan 으로 정리한다.
@@ -97,8 +111,8 @@ def build_validated_plan(
 
     resolution = resolve_motion_commands(user_text, expanded_op_cmds, robot_state)
     validation = validate_commands(resolution.op_cmds, robot_state)
-    play_modifier = parse_play_modifier(user_text)
-    has_play_modifier = not play_modifier.is_identity()
+    play_modifier = parse_play_modifier(user_text, prev_tempo_scale, prev_velocity_delta)
+    has_play_modifier = play_modifier.requested
 
     warnings = list(skill_warnings)
     warnings.extend(resolution.warnings)
@@ -108,7 +122,7 @@ def build_validated_plan(
 
     # planner 가 거절 대사를 만들지 못해도 validator 가 최종 사용자 메시지를 보수적으로 보정한다.
     if has_play_modifier:
-        speech = build_play_modifier_message(play_modifier) or speech
+        speech = build_play_modifier_message(play_modifier, prev_tempo_scale, prev_velocity_delta) or speech
     elif resolution.message_override:
         speech = resolution.message_override
     elif resolution.speech_override and has_actionable_motion_command(validation.valid_commands):

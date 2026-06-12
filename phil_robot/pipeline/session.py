@@ -45,6 +45,13 @@ class SessionContext:
     last_play: Optional[str] = None     # 마지막 play 곡 코드 (예: "TIM")
     last_speech: str = ""               # 필의 마지막 발화
 
+    # ── 누적 연주 보정 상태 ───────────────────────────────────────────────
+    # "더 빠르게"를 반복하면 직전 배속에 곱해 누적한다(절대값 고정이 아님).
+    # 단, 연주가 끝나면(연주중→정지 전이) 원래대로 되돌린다.
+    tempo_scale: float = 1.0            # 현재 누적 배속 (1.0 = 원래 속도)
+    velocity_delta: int = 0             # 현재 누적 강세 보정 (0 = 원래 세기)
+    was_playing: bool = False           # 직전 관측에서 연주중(또는 일시정지)이었는지
+
     # ── clarification 대기 상태 ───────────────────────────────────────────
     # pending_clarification_q가 채워져 있으면,
     # 다음 user_text는 이 질문에 대한 답변으로 처리한다.
@@ -58,6 +65,33 @@ class SessionContext:
     #   → 사용자 이름 기억 ("제 이름은 민수예요" → 이후 "안녕하세요 민수님")
     # user_preferences: Dict = field(default_factory=dict)
     #   → 세션 내 선호도 ("빠른 연주 좋아함", "조용히 말해줘" 등)
+
+
+# C++ Main enum 기준 연주 진행 상태: Play=2, Pause=4 (Pause는 같은 연주 세션으로 본다).
+PLAY_STATES = {2, 4}
+
+
+def is_robot_playing(robot_state) -> bool:
+    """robot_state 스냅샷이 연주중(또는 일시정지) 상태인지 판단한다."""
+    if not isinstance(robot_state, dict):
+        return False
+    return robot_state.get("state", 0) in PLAY_STATES
+
+
+def sync_play_lifecycle(ctx: SessionContext, robot_state) -> SessionContext:
+    """
+    연주 라이프사이클을 추적해, 연주가 끝나면 누적 연주 보정을 원래대로 되돌린다.
+
+    호출 시점: run_brain_turn() 시작부, base 계산 직전.
+    리셋 조건: 직전 관측은 연주중이었는데 이번 관측은 정지 상태(연주중→정지 전이).
+    연주 시작 전 idle 구간에서는 리셋하지 않으므로, 미리 설정한 pre-play 배속은 보존된다.
+    """
+    now_playing = is_robot_playing(robot_state)
+    if ctx.was_playing and not now_playing:
+        ctx.tempo_scale = 1.0
+        ctx.velocity_delta = 0
+    ctx.was_playing = now_playing
+    return ctx
 
 
 def resolve_clarification_text(ctx: SessionContext, user_text: str) -> str:
@@ -94,6 +128,12 @@ def update_session(
     # ── 마지막 상태 갱신 ──────────────────────────────────────────────────
     ctx.last_intent = brain_result.classifier_output.get("intent", "")
     ctx.last_speech = validated.speech
+
+    # 이번 턴에 적용된(또는 그대로 이어진) 연주 보정을 다음 턴 base로 기억한다.
+    play_modifier = getattr(validated, "play_modifier", None)
+    if play_modifier is not None:
+        ctx.tempo_scale = getattr(play_modifier, "tempo_scale", 1.0)
+        ctx.velocity_delta = getattr(play_modifier, "velocity_delta", 0)
 
     # 실행된 명령에서 관절/시선/연주 상태를 추출한다.
     for cmd in validated.valid_op_cmds:

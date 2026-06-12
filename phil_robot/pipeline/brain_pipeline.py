@@ -38,7 +38,7 @@ try:
     from .validator import ValidatedPlan, build_validated_plan
 
     # 세션 단기 기억
-    from .session import SessionContext, build_session_summary, resolve_clarification_text
+    from .session import SessionContext, build_session_summary, resolve_clarification_text, sync_play_lifecycle
 
 except (ImportError, ValueError):
     # phil_robot 폴더 안에서 직접 실행할 때 사용하는 fallback import다.
@@ -76,7 +76,7 @@ except (ImportError, ValueError):
     from pipeline.validator import ValidatedPlan, build_validated_plan
 
     # 세션 단기 기억
-    from pipeline.session import SessionContext, build_session_summary, resolve_clarification_text
+    from pipeline.session import SessionContext, build_session_summary, resolve_clarification_text, sync_play_lifecycle
 
 try:
     # 패키지 문맥 import일 때 공용 모델 설정을 가져온다.
@@ -151,6 +151,17 @@ def run_brain_turn(
     """
     robot_state = adapt_robot_state(robot_state)
 
+    # 세션이 기억하는 누적 연주 배속/세기를 이번 턴 보정의 base로 쓴다.
+    # 이렇게 해야 "더 빠르게"를 반복할 때 직전 배속 위에 누적된다.
+    # 단, 연주가 끝났으면(연주중→정지 전이) 먼저 원래대로 되돌린 뒤 base를 읽는다.
+    if session is not None:
+        sync_play_lifecycle(session, robot_state)
+        prev_tempo_scale = getattr(session, "tempo_scale", 1.0)
+        prev_velocity_delta = getattr(session, "velocity_delta", 0)
+    else:
+        prev_tempo_scale = 1.0
+        prev_velocity_delta = 0
+
     # ===========================================================
     # [이동 필요] 이 shortcut은 phil_brain.py 의 orchestration 진입점으로 옮겨야 한다.
     #
@@ -184,6 +195,8 @@ def run_brain_turn(
             robot_state=robot_state,
             classifier_output=classifier_output,
             planner_output=planner_output,
+            prev_tempo_scale=prev_tempo_scale,
+            prev_velocity_delta=prev_velocity_delta,
         )
         return BrainTurnResult(
             classifier_input="",
@@ -214,6 +227,8 @@ def run_brain_turn(
             robot_state=robot_state,
             classifier_output=classifier_output,
             planner_output=planner_output,
+            prev_tempo_scale=prev_tempo_scale,
+            prev_velocity_delta=prev_velocity_delta,
         )
         return BrainTurnResult(
             classifier_input="",
@@ -280,6 +295,8 @@ def run_brain_turn(
             robot_state=robot_state,
             classifier_output=classifier_output,
             planner_output=planner_output,
+            prev_tempo_scale=prev_tempo_scale,
+            prev_velocity_delta=prev_velocity_delta,
         )
         return BrainTurnResult(
             classifier_input=classifier_input,
@@ -313,6 +330,8 @@ def run_brain_turn(
             robot_state=robot_state,
             classifier_output=classifier_output,
             planner_output=planner_output,
+            prev_tempo_scale=prev_tempo_scale,
+            prev_velocity_delta=prev_velocity_delta,
         )
         return BrainTurnResult(
             classifier_input=classifier_input,
@@ -354,6 +373,8 @@ def run_brain_turn(
             robot_state=robot_state,
             classifier_output=classifier_output,
             planner_output=planner_output,
+            prev_tempo_scale=prev_tempo_scale,
+            prev_velocity_delta=prev_velocity_delta,
         )
         return BrainTurnResult(
             classifier_input=classifier_input,
@@ -387,6 +408,8 @@ def run_brain_turn(
             robot_state=robot_state,
             classifier_output=classifier_output,
             planner_output=planner_output,
+            prev_tempo_scale=prev_tempo_scale,
+            prev_velocity_delta=prev_velocity_delta,
         )
         return BrainTurnResult(
             classifier_input=classifier_input,
@@ -421,6 +444,8 @@ def run_brain_turn(
             robot_state=robot_state,
             classifier_output=classifier_output,
             planner_output=planner_output,
+            prev_tempo_scale=prev_tempo_scale,
+            prev_velocity_delta=prev_velocity_delta,
         )
         return BrainTurnResult(
             classifier_input=classifier_input,
@@ -473,6 +498,8 @@ def run_brain_turn(
         robot_state=robot_state,
         classifier_output=classifier_output,
         planner_output=planner_output,
+        prev_tempo_scale=prev_tempo_scale,
+        prev_velocity_delta=prev_velocity_delta,
     )
 
     return BrainTurnResult(
