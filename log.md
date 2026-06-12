@@ -1,6 +1,9 @@
 # Change Log
 
 ## 2026-06-11
+- 17:55 KST (UTC+9) — phil_robot 시퀀스 다이어그램을 현재 imperative FSM 구조로 갱신했습니다.
+  - 수정 파일: `phil_robot/docs/PHIL_SEQUENCE_DIAGRAM_KR.md`, `log.md`
+  - 메모: 기존 단일 `LLM Pipeline` 표현을 `preprocess -> classify -> state -> direct_answer -> planner -> validator -> execute` 단계로 풀고, classifier가 `user_text`만 받으며 state는 planner 직전에 fresh fetch되는 현재 흐름을 반영했습니다.
 - 16:16 KST (UTC+9) — bare 미정보 요청("허리 돌려") null 규칙으로 해소
   - 수정 파일: `phil_robot/pipeline/planner.py`, `phil_robot/pipeline/command_validator.py`, `phil_robot/pipeline/validator.py`, `phil_robot/TODO.md`, `log.md`
   - 메모: 3단계 한계였던 bare 미정보 요청 처리. planner `PLANNER_SHARED_RULES`에 "각도/방향/속도 같은 파라미터를 사용자가 안 말했으면 지어내지 말고 null"(예: `move:waist,null`) 규칙 추가. `validate_move_command`가 null/none/공백 각도를 "목표 각도가 지정되지 않음"으로 거부하고, `_content_failure_code`가 "지정되지 않음"→`missing_info`로 정규화. 효과: 이전엔 30b가 "허리 돌려"에 기본각(예: 90)을 지어내 범위 내라 그냥 실행됐는데, null 규칙 후엔 빈 계획/null을 내 → 빈 계획은 missing-info 트리거가, null은 validator가 잡아 repair "각도를 알려주세요" 되묻기로 감. 실측 "허리 돌려" 3/3 모두 되묻기(이전 지어내 실행에서 개선), "30도" continuation→`move:waist,30`. 23 단위테스트 유지. LLM이라 100% 보장은 아님(가끔 지어낼 수 있음) — 완전 구조적 해결은 resolver 분리에서 null 슬롯 1급.
