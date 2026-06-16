@@ -54,19 +54,26 @@ LLM 제어 파이프라인의 핵심 로직을 모은 계층이다.
 
 현재 주요 파일:
 
-- `brain_pipeline.py`
+- `robot_fsm.py` — per-turn imperative FSM (`run_turn`) + Home Watcher
+- `brain_pipeline.py` — step logic (prefilter/classify/direct_answer/planner)
 - `intent_classifier.py`
 - `planner.py`
 - `validator.py`
-- `executor.py`
 - `skills.py`
 - `state_adapter.py`
 - `motion_resolver.py`
 - `command_validator.py`
-- `command_executor.py`
+- `play_modifier.py`
+- `exec_thread.py` — `Executor` (background command sender)
 - `llm_interface.py`
 - `failure.py`
 - `response_parser.py`
+- `session.py`
+
+> Note: the old `robot_graph.py` / `state_graph.py` (langgraph shim) and
+> `executor.py` / `command_executor.py` were removed. The per-turn flow is now
+> `robot_fsm.py`'s imperative `run_turn` (fixed step chain + repair loop),
+> not a declarative langgraph-style graph.
 
 ### `runtime/`
 
@@ -78,8 +85,9 @@ LLM 제어 파이프라인의 핵심 로직을 모은 계층이다.
 
 현재 파일:
 
-- `phil_client.py`
-- `melo_engine.py`
+- `phil_client.py` — robot TCP client + state recv thread (updates `ROBOT_STATE`)
+- `mic_listener.py` — VAD utterance capture thread (`MicListener`)
+- `melo_engine.py` — MeloTTS wrapper
 
 구분 기준:
 
@@ -130,12 +138,14 @@ LLM 제어 파이프라인의 핵심 로직을 모은 계층이다.
 
 현재 파일:
 
-- `LLM_PIPELINE_ARCHITECTURE.md`
-- `LLM_PIPELINE_ARCHITECTURE_KR.md`
-- `CLASSIFIER_BENCHMARK_REPORT.md`
-- `CLASSIFIER_BENCHMARK_REPORT_KR.md`
-- `PROJECT_STRUCTURE.md`
-- `PROJECT_STRUCTURE_KR.md`
+- `LLM_PIPELINE_ARCHITECTURE.md` / `LLM_PIPELINE_ARCHITECTURE_KR.md`
+- `PROJECT_STRUCTURE.md` / `PROJECT_STRUCTURE_KR.md`
+- `CURRENT_FUNCTION_SPECS_KR.md`
+- `LANGGRAPH_STATE_MACHINE_KR.md` (imperative FSM 전환 기록)
+- `PHIL_SEQUENCE_DIAGRAM_KR.md`
+- `THREAD_LIFECYCLE_KR.md`
+- `DECISION_LAYER_ROADMAP_KR.md`
+- `CLASSIFIER_BENCHMARK_REPORT.md` / `_KR.md`, `FORMAT_COMPARE_BENCHMARK_KR.md`
 
 구분 기준:
 

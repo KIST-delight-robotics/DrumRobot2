@@ -1,6 +1,7 @@
 # Phil Robot Sequence Diagram
 
 현재 구현 기준의 1턴 실행 흐름입니다.
+스레드가 언제 태어나고 죽는지(수명선) 관점은 [THREAD_LIFECYCLE_KR.md](./THREAD_LIFECYCLE_KR.md)를 참고하세요.
 
 ```mermaid
 sequenceDiagram
@@ -18,6 +19,7 @@ sequenceDiagram
     participant Planner as "planner LLM<br/>domain / repair"
     participant Validator as "validator<br/>expand / resolve / validate"
     participant Executor as "Executor<br/>background sender"
+    participant Home as "Home Watcher<br/>is_fixed poll daemon"
     participant Client as "RobotClient<br/>TCP client"
     participant Robot as "DrumRobot2<br/>C++ controller"
     participant TTS as "MeloTTS<br/>main-thread speech"
@@ -82,9 +84,11 @@ sequenceDiagram
         Executor->>Client: send_command(cmd + newline)
         Client->>Robot: TCP command
         opt plan_type == motion
-            Executor->>State: poll is_fixed
-            State-->>Executor: movement done
-            Executor->>Client: send_command(h)
+            Executor->>Home: on_done(): home() spawns Home Watcher daemon
+            Note over Executor,Home: Executor dies right after spawning Watcher
+            Home->>State: poll is_fixed (False then True)
+            State-->>Home: movement started → done
+            Home->>Client: send_command(h)
             Client->>Robot: TCP home command
         end
         Robot-->>User: 동작 또는 연주 수행

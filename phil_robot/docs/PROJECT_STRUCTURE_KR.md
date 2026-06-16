@@ -54,12 +54,11 @@ LLM 제어 파이프라인의 핵심 로직을 모은 계층이다.
 
 현재 주요 파일:
 
-- `brain_pipeline.py`
+- `robot_fsm.py` — 한 턴을 처리하는 imperative FSM (`run_turn`), Home Watcher 포함
+- `brain_pipeline.py` — 각 step의 실제 로직(prefilter/classify/direct_answer/planner)
 - `intent_classifier.py`
 - `planner.py`
 - `validator.py`
-- `executor.py`
-- `command_executor.py`
 - `skills.py`
 - `state_adapter.py`
 - `motion_resolver.py`
@@ -68,10 +67,13 @@ LLM 제어 파이프라인의 핵심 로직을 모은 계층이다.
 - `llm_interface.py`
 - `failure.py`
 - `response_parser.py`
-- `robot_graph.py`
-- `state_graph.py`
-- `exec_thread.py`
+- `exec_thread.py` — `Executor` (백그라운드 명령 전송)
 - `session.py`
+
+> 참고: 예전 `robot_graph.py` / `state_graph.py`(langgraph shim)와
+> `executor.py` / `command_executor.py`는 제거됐다. 한 턴 흐름은
+> langgraph 스타일 선언적 그래프가 아니라 `robot_fsm.py`의 imperative
+> `run_turn`(고정 step 체인 + repair 루프)으로 대체됐다.
 
 ### `runtime/`
 
@@ -83,8 +85,9 @@ LLM 제어 파이프라인의 핵심 로직을 모은 계층이다.
 
 현재 파일:
 
-- `phil_client.py`
-- `melo_engine.py`
+- `phil_client.py` — 로봇 TCP client + 상태 수신 스레드(`ROBOT_STATE` 갱신)
+- `mic_listener.py` — VAD 기반 발화 수집 스레드(`MicListener`)
+- `melo_engine.py` — MeloTTS 래퍼
 
 구분 기준:
 
@@ -146,8 +149,10 @@ LLM 제어 파이프라인의 핵심 로직을 모은 계층이다.
 - `CLASSIFIER_BENCHMARK_REPORT_KR.md`
 - `PROJECT_STRUCTURE.md`
 - `PROJECT_STRUCTURE_KR.md`
-- `LANGGRAPH_STATE_MACHINE_KR.md`
+- `LANGGRAPH_STATE_MACHINE_KR.md` (현재는 imperative FSM 전환 기록)
 - `PHIL_SEQUENCE_DIAGRAM_KR.md`
+- `THREAD_LIFECYCLE_KR.md` (스레드 생명주기 다이어그램)
+- `CURRENT_FUNCTION_SPECS_KR.md`
 - `DECISION_LAYER_ROADMAP_KR.md`
 - `FORMAT_COMPARE_BENCHMARK_KR.md`
 

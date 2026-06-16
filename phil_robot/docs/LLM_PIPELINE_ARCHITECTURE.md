@@ -53,8 +53,10 @@ Whisper STT
   -> relative motion resolver
   -> command validator
   -> ValidatedPlan
-  -> executor
-  -> TTS
+  -> robot_fsm.run_turn (imperative FSM + planner⇄validator repair)
+    -> Executor (background daemon thread)
+    -> TTS (main thread, concurrent)
+    -> Home Watcher (motion only: poll is_fixed -> send h)
   -> robot state feedback
 ```
 
@@ -103,7 +105,7 @@ Whisper STT
   - `look:pan,tilt`
   - `gesture:<name>`
   - `move:<motor>,<angle>`
-  - `wait:<seconds>`
+  - `pause` (play pause/resume)
 - relative motion interpretation:
   - `올려봐`
   - `내려봐`
@@ -251,9 +253,11 @@ This makes planner output more reproducible and easier to validate.
                                    └────────────┬───────────┘
                                                 │
                                                 v
-                                   ┌────────────────────────┐
-                                   │      executor.py       │
-                                   └────────────┬───────────┘
+                                   ┌────────────────────────────┐
+                                   │ robot_fsm.run_turn(execute) │
+                                   │ → exec_thread.Executor      │
+                                   │   (bg thread) + Home Watcher │
+                                   └────────────┬───────────────┘
                                                 │
                                                 v
                                    ┌────────────────────────┐
@@ -300,8 +304,9 @@ flowchart TD
     S --> P
 
     P --> T[ValidatedPlan]
-    T --> U[executor.execute_validated_plan]
+    T --> U[robot_fsm.execute -> exec_thread.Executor.exec_cmd]
     U --> V[RobotClient.send_command]
+    U --> H[Home Watcher: poll is_fixed -> send h]
     T --> W[MeloTTS.speak]
 
     X[C++ robot state broadcast] --> Y[runtime/phil_client.py receive thread]
@@ -546,30 +551,40 @@ ValidatedPlan(
 
 Files:
 
-- [executor.py](/home/shy/robot_project/phil_robot/pipeline/executor.py)
-- [command_executor.py](/home/shy/robot_project/phil_robot/pipeline/command_executor.py)
-
-Responsibilities:
-
-- consume only validated plans
-- transmit robot commands over the socket client
-- handle `wait:<seconds>` in Python as a temporary delay primitive
-
-### 11. LangGraph State Machine Layer
-
-Files:
-
-- [robot_graph.py](/home/shy/robot_project/phil_robot/pipeline/robot_graph.py)
-- [state_graph.py](/home/shy/robot_project/phil_robot/pipeline/state_graph.py)
 - [exec_thread.py](/home/shy/robot_project/phil_robot/pipeline/exec_thread.py)
 
 Responsibilities:
 
-- Compose the `process → execute → return_home` node graph
-- `Executor`: Executes robot commands in a background thread, sends `s` (stop) and aborts `wait` upon `cancel()` (synchronized with the C++ incremental execution and buffer flushing)
-- Determines whether to return home based on `plan_type` (motion/play/stop/chat)
-- Handles Enter key input to instantly interrupt previous actions and process new commands (supports Pause/Resume)
-- Synchronizes TTS and robot commands (gesture while speaking)
+- consume only the `commands` extracted from a validated plan
+- transmit robot commands over the socket client from a background daemon thread
+- call `on_done()` after sending (triggers the Home Watcher for motion plans)
+
+> `executor.py` / `command_executor.py` were removed, and the `wait:<seconds>`
+> delay primitive was dropped (the validator now rejects it as unknown).
+> Time/condition-based delays belong to a future `TaskScheduler` layer.
+
+### 11. Per-turn FSM Layer (formerly LangGraph State Machine)
+
+Files:
+
+- [robot_fsm.py](/home/shy/robot_project/phil_robot/pipeline/robot_fsm.py)
+- [exec_thread.py](/home/shy/robot_project/phil_robot/pipeline/exec_thread.py)
+
+Responsibilities:
+
+- Run one turn as the step chain `preprocess → classify → state → direct_answer → (planner ⇄ validator repair) → execute` (a single `PhilState` dict rolls between steps)
+- In-turn repair loop: on validator rejection, re-call the planner in the `repair` domain with the reason (`repair_hint`); after `MAX_REPAIR=2`, fall back
+- Determine whether to return home based on `plan_type` (motion/play/stop/chat)
+- `Executor` (`exec_cmd`): send robot commands in order from a background daemon thread, then call `on_done()`
+- For motion turns, `home()` spawns a **Home Watcher** daemon that polls `is_fixed` and then sends `h`
+- Synchronize TTS and robot commands (gesture while speaking)
+
+> **History**: this used to be a langgraph-style declarative graph
+> (`robot_graph.py` + `state_graph.py` shim, `process → execute → return_home`).
+> It was replaced by the imperative `run_turn` because the flow is just a fixed
+> chain with one or two branches. `langgraph`/`state_graph.py` were removed, and
+> `Executor.cancel()`/wait interrupts disappeared together with the `wait`
+> command. See LANGGRAPH_STATE_MACHINE_KR.md and THREAD_LIFECYCLE_KR.md.
 
 ### 12. Session Layer
 
@@ -580,9 +595,13 @@ Files:
 Responsibilities:
 
 - `SessionContext`: Short-term memory of conversation history, last joint/look/play state
-- Manages pending clarification state (`pending_clarification_q`)
-- `resolve_clarification_text()`: Merges previous utterance with the current answer
-- `build_session_summary()`: Generates a session summary to include in the planner input
+- Manages cross-turn recovery state (`recovery_count` / `pending_intent` / `pending_classifier`)
+- `update_session()`: if an actionable turn produced no executable command (re-ask/block/fallback), treat it as unresolved and advance recovery; otherwise reset
+- `build_session_summary()`: Generates a session summary to include in the planner input (carries `pending_intent` during recovery so the planner merges it with the new utterance)
+
+> The old `pending_clarification_q` + `resolve_clarification_text()` (string
+> concatenation) were dropped. Continuation now skips classify and reuses the
+> original classifier/domain, passing only `pending_intent` to the planner.
 
 ### 13. Runtime Transport and Feedback Layer
 
@@ -621,6 +640,6 @@ On the C++ side:
 11. [validator.py](/home/shy/robot_project/phil_robot/pipeline/validator.py) expands skills and resolves relative motions.
 12. [command_validator.py](/home/shy/robot_project/phil_robot/pipeline/command_validator.py) validates resulting low-level commands.
 13. A `ValidatedPlan` is produced.
-14. [executor.py](/home/shy/robot_project/phil_robot/pipeline/executor.py) transmits only validated commands.
+14. The `Executor` in [exec_thread.py](/home/shy/robot_project/phil_robot/pipeline/exec_thread.py) transmits only validated commands from a background thread (for motion, the Home Watcher in [robot_fsm.py](/home/shy/robot_project/phil_robot/pipeline/robot_fsm.py) sends `h` after completion).
 15. [phil_brain.py](/home/shy/robot_project/phil_robot/phil_brain.py) forwards the final speech to [melo_engine.py](/home/shy/robot_project/phil_robot/runtime/melo_engine.py).
 16. [phil_client.py](/home/shy/robot_project/phil_robot/runtime/phil_client.py) receives updated state from C++ and feeds it into the next turn.

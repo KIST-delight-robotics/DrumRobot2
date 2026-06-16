@@ -1,14 +1,33 @@
-# Phil Robot — LangGraph 상태 기계 전환 계획
+# Phil Robot — 상태 기계 전환 기록 (LangGraph → imperative FSM)
 
-> **구현 상태**: **완료** (2026-04-16). 이 문서는 설계 계획서로 작성됐으며,
-> 섹션 9의 모든 파일이 실제로 구현되었다.  
-> 구현 세부 사항은 `phil_robot/pipeline/robot_graph.py`,
-> `exec_thread.py`, `state_graph.py`를 참고한다.
+> ## ⚠️ 현재 상태 (이 박스가 최신, 아래 본문은 전환 당시 설계 기록)
+>
+> **langgraph(및 `state_graph.py` shim)는 폐기됐다.** 한 턴 흐름은 선언적
+> 그래프가 아니라 [`pipeline/robot_fsm.py`](../pipeline/robot_fsm.py)의 **imperative
+> `run_turn`**(고정 step 체인 + repair 루프)으로 구현돼 있다.
+>
+> | 이 문서(2026-04 계획) | 현재(2026-06) |
+> |---|---|
+> | `robot_graph.py` + `state_graph.py` (langgraph shim) | **삭제** → `robot_fsm.py` (imperative) |
+> | `process → execute → return_home` 노드 | `preprocess → classify → state → direct_answer → (planner⇄validator) → execute` step 체인 |
+> | `build_phil_graph()` / `app.invoke(state)` | `build_run_turn()` / `run_turn(user_text)` |
+> | `run_brain_turn()` | step 함수로 분해(`brain_pipeline.py`), 원본은 `eval/brain_probe.py`로 이주 |
+> | `Executor.run()` + `cancel()` + `_interruptible_wait` | `Executor.exec_cmd()` (wait/cancel 제거) |
+> | Enter 키 인터럽트 (3초 고정 녹음) | `MicListener` VAD 발화 단위 (Enter 없음) |
+> | `s`(stop) 전송으로 인터럽트 | 인터럽트 자체 폐기 — wait가 없어 끊을 게 없음 |
+> | 홈 복귀: `on_done`에서 즉시 `h` | **Home Watcher**: `is_fixed` 폴링 후 `h` ([robot_fsm.home()](../pipeline/robot_fsm.py#L390)) |
+>
+> 왜 바꿨나: 흐름이 "고정 체인 + 분기 1~2개" 수준이라 graph 추상화의 이득(선언적
+> edge, 실제 langgraph 이관)이 없었다. cross-turn 복구는 graph 노드가 아니라
+> session(`recovery_count`/`pending_intent`) + phil_brain while 루프 + run_turn 진입
+> 분기로 처리한다. 최신 흐름/스레드는
+> [PHIL_SEQUENCE_DIAGRAM_KR.md](./PHIL_SEQUENCE_DIAGRAM_KR.md),
+> [THREAD_LIFECYCLE_KR.md](./THREAD_LIFECYCLE_KR.md) 참고.
 
-> **작성 목적**: 이 문서는 `phil_robot`의 동기적(blocking) 실행 루프를
-> 비동기 + 상태 기계 구조로 전환하는 작업의 전체 맥락, 설계 결정, 구현 범위를
-> 기록한다. 작성자가 아닌 다른 개발자가 이 문서 하나를 읽고 이어서 개발할 수
-> 있는 수준으로 작성한다.
+---
+
+> **아래는 전환 당시(2026-04) 설계 계획서다.** 동기/문제 분석(섹션 1~2)은 지금도
+> 유효한 배경이지만, 구체적 도구·파일·API는 위 표 기준으로 읽어야 한다.
 
 ---
 

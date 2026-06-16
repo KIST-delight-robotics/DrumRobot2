@@ -21,7 +21,7 @@ class Executor:
         self._thread: Optional[threading.Thread] = None
         self._lock: threading.Lock = threading.Lock()
 
-    def execute(self, commands: List[str], on_done: Callable[[], None]) -> None:
+    def exec_cmd(self, commands: List[str], on_done: Callable[[], None]) -> None:
         """commands 를 백그라운드 스레드에서 순서대로 전송하고, 끝나면 on_done() 을 부른다."""
         with self._lock:
             self._thread = threading.Thread(

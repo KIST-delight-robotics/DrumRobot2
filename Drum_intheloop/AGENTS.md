@@ -1,6 +1,23 @@
-이 디렉터리는 `DrumRobot2`의 SocketCAN/DXL frame-level 출력을 `PyBullet`에 적용하는 SIL 디렉터리다.
+# `phil-sil` (Drum_intheloop) 작업 지침
 
-이 범위에서 작업할 때는 아래 원칙을 기본으로 따른다.
+이 레포는 `phil-controller`(C++ 제어기, 옛 `DrumRobot2`)의 SocketCAN/DXL frame-level 출력을
+`PyBullet`에 적용하는 **frame-level SIL** 이다. (아래 본문의 `DrumRobot2`는 모두 `phil-controller`를 가리킨다.)
+
+## 시스템 안에서의 위치
+
+```text
+phil-brain (LLM)  ──TCP 9999──▶  phil-controller  ──CAN/DXL──▶  [phil-sil] 또는 실제 하드웨어
+```
+
+이 레포는 **Contract B**(controller ↔ SIL/하드웨어, SocketCAN + DXL serial)의 SIL 측 구현이다.
+계약 전문은 [CONTRACTS.md](./CONTRACTS.md)에 있다.
+
+> **계약을 바꾸지 마라 — 합의 없이는.** decode/encode가 따르는 CAN frame·DXL packet byte 레이아웃,
+> CAN ID, 각도 변환은 `phil-controller`가 실제 하드웨어에 내보내는 것과 동일해야 한다. wire format을
+> 바꿔야 하면 먼저 `CONTRACTS.md`를 고치고 세 레포 복사본을 동기화한 뒤 `phil-controller`도 함께 수정한다.
+> 단, **production 각도 → URDF 각도 변환(`sil/mapping.py`)은 이 레포 고유 책임**이며 계약 밖이다.
+
+이 레포에서 작업할 때는 아래 원칙을 기본으로 따른다.
 
 ## 이 디렉터리의 현재 역할
 
@@ -57,8 +74,8 @@
 
 ## 작업 로그
 
-- 이 디렉터리에서 의미 있는 변경을 하면 루트 `log.md`에 반드시 기록한다.
-- 기록 시 한국시간(KST, UTC+9)과 수정 파일, 변경 이유를 함께 남긴다.
+- 이 레포에서 의미 있는 변경을 하면 레포 루트의 `log.md`에 반드시 기록한다.
+- 기록 시 한국시간(KST, UTC+9)과 수정 파일, 변경 이유를 함께 남긴다. 최신 항목을 위에 추가한다.
 
 ## 추천 작업 순서
 

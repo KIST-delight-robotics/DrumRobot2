@@ -440,7 +440,7 @@ def make_execute_step(executor: Executor, bot, get_state_fn: Callable):
             if plan_type == "motion":
                 home(bot, get_state_fn)
 
-        executor.execute(commands=commands, on_done=on_done)
+        executor.exec_cmd(commands=commands, on_done=on_done)
         return state
 
     return execute

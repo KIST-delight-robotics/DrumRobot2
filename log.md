@@ -1,5 +1,24 @@
 # Change Log
 
+## 2026-06-16
+- 15:00 KST (UTC+9) — 레포 3분할(phil-brain / phil-controller / phil-sil) 준비: 인터페이스 계약 단일 소스 `CONTRACTS.md`를 코드에서 추출해 세 레포에 복사하고, 분리-레포용 `AGENTS.md` 초안 작성
+  - 수정 파일: 신규 `DrumRobot2/CONTRACTS.md`, `Drum_intheloop/CONTRACTS.md`, `phil_robot/CONTRACTS.md`, `DrumRobot2/AGENTS.md` / 수정 `Drum_intheloop/AGENTS.md`, `phil_robot/AGENTS.md`, `log.md`
+  - 메모:
+    - `CONTRACTS.md`: Contract A(brain↔controller TCP 9999, NDJSON 명령 문법·상태 JSON 스키마·게이트 의미)와 Contract B(controller↔SIL/하드웨어 CAN frame·DXL packet byte 레이아웃·motor/node_id/bus 매핑·각도 변환·feedback 모델)를 코드(`AgentSocket.cpp`/`phil_client.py`/`command_validator.py`/`CommandParser.cpp`/`CanManager.cpp`/`sil/*.py`)에서 추출. 세 레포 동일 복사본, 변경 시 단일 소스 동기화 절차 명시.
+    - `AGENTS.md`: 각 레포가 단독으로 설 수 있게 시스템 위치·계약 포인터·전역 규칙(네이밍/log.md)을 담음. `DrumRobot2`는 신규(C++ 규칙), `Drum_intheloop`/`phil_robot`은 기존 본문(SIL 컨벤션/페르소나 규칙) 보존 + 분리 헤더 prepend.
+    - 아직 실제 git 분할은 하지 않음(초안 단계). 레포명 후보: `phil-brain` / `phil-controller` / `phil-sil`(+ 선택적 umbrella `phil-robot`).
+  - 수정 파일: `phil_robot/docs/PROJECT_STRUCTURE_KR.md`, `phil_robot/docs/PROJECT_STRUCTURE.md`, `phil_robot/docs/CURRENT_FUNCTION_SPECS_KR.md`, `phil_robot/docs/LANGGRAPH_STATE_MACHINE_KR.md`, `phil_robot/docs/LLM_PIPELINE_ARCHITECTURE_KR.md`, `phil_robot/docs/LLM_PIPELINE_ARCHITECTURE.md`, `phil_robot/docs/PHIL_SEQUENCE_DIAGRAM_KR.md`, `log.md` / 신규: `phil_robot/docs/THREAD_LIFECYCLE_KR.md`
+  - 메모:
+    - **신규 `THREAD_LIFECYCLE_KR.md`**: Main/Recv/Mic/Executor/Home Watcher 5개 스레드의 출생·수명·사망·겹침을 ASCII 수명선 타임라인 + Mermaid activation 시퀀스로 그림. Executor↔Home Watcher 겹침≈μs, Executor/Watcher↔Main(TTS) 동시 실행, Home Watcher의 암묵적 Recv(`ROBOT_STATE`) 의존, 빠른 동작 race 한계까지 명시.
+    - **stale 일괄 정정**: 제거된 `robot_graph.py`/`state_graph.py`(langgraph shim)/`executor.py`/`command_executor.py`/`run_brain_turn`/`BrainTurnResult`/`Executor.cancel()`/`_interruptible_wait`/`wait:<seconds>`/`pending_clarification_q`/3초 고정 녹음 참조를 현재 `robot_fsm.py`(`run_turn`)·`exec_thread.py`(`exec_cmd`)·`MicListener`·cross-turn recovery(`recovery_count`/`pending_intent`)로 교체.
+    - `LANGGRAPH_STATE_MACHINE_KR.md`는 본문(전환 당시 설계 기록)은 보존하되 상단에 현재상태 banner+대조표를 추가해 supersede. `CURRENT_FUNCTION_SPECS_KR.md`는 orchestration/FSM/Executor/brain_pipeline 섹션을 현행 함수로 재작성. `PHIL_SEQUENCE_DIAGRAM_KR.md`는 Home Watcher를 별도 participant로 분리(기존엔 Executor가 `h` 보내는 것으로 잘못 표기).
+    - 비변경: 벤치마크 결과 문서(`CLASSIFIER_BENCHMARK_REPORT*`, `FORMAT_COMPARE_BENCHMARK_KR`)와 개념 로드맵(`DECISION_LAYER_ROADMAP_KR`)은 역사적 스냅샷/유효 개념이라 유지.
+
+## 2026-06-15
+- 14:00 KST (UTC+9) — `Executor.execute` 메서드를 `Executor.exec_cmd`로 이름 변경
+  - 수정 파일: `phil_robot/pipeline/exec_thread.py`, `phil_robot/pipeline/robot_fsm.py`, `log.md`
+  - 메모: FSM step 내부 함수도 `execute`라 호출 관계가 헷갈린다는 피드백으로, 송신 엔진 메서드를 `exec_cmd`로 분리. 호출처는 `robot_fsm.py`의 `make_execute_step` 한 곳뿐. (`exec`는 파이썬 내장명과 겹쳐 `exec_cmd`로 확정.)
+
 ## 2026-06-11
 - 17:55 KST (UTC+9) — phil_robot 시퀀스 다이어그램을 현재 imperative FSM 구조로 갱신했습니다.
   - 수정 파일: `phil_robot/docs/PHIL_SEQUENCE_DIAGRAM_KR.md`, `log.md`
