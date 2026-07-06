@@ -95,7 +95,7 @@ void PathManager::processLine(MatrixXd &measureMatrix)
     if (measureMatrix.rows() > 1)
     {
         int n = getNumCommands(measureMatrix);
-        avoidCollision(measureMatrix, n);  // 충돌 회피 // 260518 temp
+        // avoidCollision(measureMatrix, n);  // 충돌 회피 // 260518 temp
         genTrajectory(measureMatrix);   // 궤적 생성
     }
 
@@ -766,9 +766,12 @@ void PathManager::solveIKandPushCommand()
 
         // MATLAB Simulink 사전 테스트
         std::vector<double> test_q;
-        for (int i = 0; i < 12; i++)
+        for (int j = 0; j < 13; j++)
         {
-            test_q.push_back(q(i));
+            if(j >= 9 && j < 11) test_q.push_back(q(j+1));
+            else if(j == 11) test_q.push_back(0.0);
+            else if(j == 12) test_q.push_back(20 * M_PI / 180.0);
+            else    test_q.push_back(q(j));
             // test_q.push_back(q(i) * M_PI / 180.0);
         }
         func.appendToCSV("simulation", false, test_q);
@@ -4034,7 +4037,7 @@ double PathManager::getTheta(double l1, double theta)
 // load candidates and set hit candidates
 void PathManager::setHitCandidates()
 {
-    std::string filePath = "../../DepthCamera/pcd/drum_candidates.txt";
+    std::string filePath = "../../DepthCamera/pcd/drum_candidates_1.txt";
     std::ifstream file(filePath);
     if (!file.is_open())
     {
@@ -4098,6 +4101,9 @@ std::pair<VectorXd, VectorXd> PathManager::selectHitTarget(TrajectoryData &data,
     // int instR = (finalInstR == 9) ? 4 : finalInstR - 1;
     // int instL = (finalInstL == 9) ? 4 : finalInstL - 1;
 
+    VectorXd selectedPositionR(3);
+    VectorXd selectedPositionL(3);
+
     int instR = finalInstR - 1;
     int instL = finalInstL - 1;
 
@@ -4134,13 +4140,28 @@ std::pair<VectorXd, VectorXd> PathManager::selectHitTarget(TrajectoryData &data,
         std::cout << "[selectHitTarget] 후보점 없음 (instL=" << finalInstL << ")" << std::endl;
     }
 
-    int best_indexR = -1, best_indexL = -1;
+    // finalInstR == 5(hihat) 또는 9(open hihat) : 오른손은 궤적 진행 여부와 관계없이 무조건 지정 후보(index 2)만 사용
+    // 루프 전에 후보를 1개로 제한해서 왼손 최적화도 강제된 오른손 기준으로 이뤄지게 함
+    bool forcedR = false;
+    if ((finalInstR == 5 || finalInstR == 9) && hasCandidatesR && hit_Candidates[instR].size() >= 3)
+    {
+        candR.clear();
+        candR.push_back(hit_Candidates[instR][2]);
+        forcedR = true;
+    }
+
+    // finalInstL == 1 : 왼손은 후보 index 0, 1 만 사용
+    if (finalInstL == 1 && isMakingTrajectoryL == 0 && candL.size() > 2)
+    {
+        candL.resize(2);
+    }
+
     double best_waist_angle_range = -std::numeric_limits<double>::infinity();
 
     double sR, sL;
     double dt = canManager.DTSECOND;
 
-    double ex_waist_angle_range = 0.0;
+    // double ex_waist_angle_range = 0.0;
 
     int i = n - 1;
     // 시간 변환
@@ -4156,21 +4177,32 @@ std::pair<VectorXd, VectorXd> PathManager::selectHitTarget(TrajectoryData &data,
     double wristAngleL = sL * (data.finalWristAngleL - data.initialWristAngleL) + data.initialWristAngleL;
 
     // 양손이 같은 악기를 칠 때 충돌/자세 회피를 위해 특정 후보 인덱스 제외
-    bool sameInst = (finalInstR == finalInstL);
-    bool sameInst1to4 = sameInst && (finalInstR >= 1 && finalInstR <= 4);
-    bool sameInst5to8 = sameInst && (finalInstR >= 5 && finalInstR <= 8);
+    // bool sameInst = (finalInstR == finalInstL);
+    // bool sameInst1to4 = sameInst && (finalInstR >= 1 && finalInstR <= 4);
+    // bool sameInst5to8 = sameInst && (finalInstR >= 5 && finalInstR <= 8);
 
-    for (size_t j = 0; j < candR.size(); j++)
+    int best_indexR = -1, best_indexL = -1;
+    for (size_t j = 0; j < candR.size(); j++)   // 오른손 후보 순회
     {
-        if (sameInst1to4 && (j == 4 || j == 8)) continue;
-        if (sameInst5to8 && j == 2) continue;
-
+        // 후보군은 x좌표 오름차순, 동일 x좌표에 대해 y좌표 내림차순으로 정렬되어 있음
+        if(isMakingTrajectoryR == 0 && !forcedR)    // 강제 후보는 제외 규칙을 적용하지 않음
+        {
+            // if (sameInst1to4 && (j == 0 || j == 1)) continue;
+            // if (sameInst5to8 && j == 0) continue;
+            if (finalInstR < 5 && (j == 0 || j == 1)) continue;
+            if (finalInstR >= 5 && j == 0) continue;
+        }
         VectorXd targetR = candR[j];
         targetR(0) = targetR(0) + 0.02;
-        for (size_t k = 0; k < candL.size(); k++)
+        for (size_t k = 0; k < candL.size(); k++)   // 왼손 후보 순회
         {
-            if (sameInst1to4 && (k == 2 || k == 6)) continue;
-            if (sameInst5to8 && k == 0) continue;
+            if(isMakingTrajectoryL == 0)
+            {
+                // if (sameInst1to4 && (k == 7 || k == 8)) continue;
+                // if (sameInst5to8 && k == 2) continue;
+                if (finalInstL < 5 && (k == 7 || k == 8)) continue;
+                if (finalInstL >= 5 && k == 2) continue;
+            }
 
             VectorXd targetL = candL[k];
             targetL(0) = targetL(0) - 0.02;
@@ -4199,15 +4231,12 @@ std::pair<VectorXd, VectorXd> PathManager::selectHitTarget(TrajectoryData &data,
     // ex_waist_angle_range = waistParams(1) - waistParams(0);
     // std::cout << "\n /// ex_waist_range is " << ex_waist_angle_range;
 
-    // (3)과 .resize(3) 차이 알기
-    VectorXd selectedPositionR(3);
-    VectorXd selectedPositionL(3);
     if (best_indexR >= 0 && best_indexL >= 0)
     {
         selectedPositionR = candR[best_indexR];
         selectedPositionR(0) = selectedPositionR(0) + 0.02;
         selectedPositionL = candL[best_indexL];
-        selectedPositionL(0) = candL[best_indexL](0) - 0.02;
+        selectedPositionL(0) = selectedPositionL(0) - 0.02;
         // if (ex_waist_angle_range > best_waist_angle_range)
         // {
         //     selectedPositionR = data.finalPositionR;
@@ -4215,15 +4244,23 @@ std::pair<VectorXd, VectorXd> PathManager::selectHitTarget(TrajectoryData &data,
         //     best_indexR = 99;
         //     best_indexL = 99;
         // }
-        func.appendToCSV("CandidateSelection", false,
-            static_cast<float>(finalInstR), static_cast<float>(finalInstL), best_indexR, best_indexL);
     }
     else
     {
         std::cout << "[selectHitTarget] 평가 가능한 후보 없음 - fallback 사용 (instR=" << finalInstR << ", instL=" << finalInstL << ")" << std::endl;
         selectedPositionR = fallbackPositionR;
         selectedPositionL = fallbackPositionL;
+
+        if (forcedR)    // 왼손 후보가 없어 fallback 이어도 오른손은 지정 후보 유지
+        {
+            selectedPositionR = candR[0];
+            selectedPositionR(0) = selectedPositionR(0) + 0.02;
+        }
     }
+
+    // 성공/실패 모두 기록 — 후보 없으면 best_indexR/L 이 -1 로 저장됨
+    func.appendToCSV("CandidateSelection", false,
+        static_cast<float>(finalInstR), static_cast<float>(finalInstL), best_indexR, best_indexL);
 
     return std::make_pair(selectedPositionR, selectedPositionL);
 }

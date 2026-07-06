@@ -301,9 +301,12 @@ void DrumDetector::detectCircles(pcl::PointCloud<pcl::PointXYZ>::Ptr& pointcloud
 
     for (int pass = 0; pass < 2; ++pass)
     {
-        std::cout << "  [pass= " << pass << "]" << std::endl;
+        // std::cout << "  [pass= " << pass << "]" << std::endl;
         if (!pointcloud || pointcloud->empty())
+        {
+            std::cout << "[detectCircles] 경고: 점군이 비어있습니다." << std::endl;
             return;
+        }
 
         pcl::ModelCoefficients::Ptr coeffs(new pcl::ModelCoefficients);
         pcl::PointIndices::Ptr inliers(new pcl::PointIndices);
@@ -316,15 +319,14 @@ void DrumDetector::detectCircles(pcl::PointCloud<pcl::PointXYZ>::Ptr& pointcloud
             continue;
             // return;
 
-        std::cout << " i found!! \n";
-        std::cout << "   inliers=" << inliers->indices.size() << " coeffs=" << coeffs->values.size() << std::endl;
+        // std::cout << "   inliers=" << inliers->indices.size() << " coeffs=" << coeffs->values.size() << std::endl;
 
         Eigen::Vector4f center(coeffs->values[0], coeffs->values[1], coeffs->values[2], 0.0f);
-        std::cout << "   center ok" << std::endl;
-        std::cout << "   x = " << coeffs->values[0] << " / y = " << coeffs->values[1] << " / z = " << coeffs->values[2] << "\n"
-                    << " / r = " << coeffs->values[3] << "\n"
-                    << " / nx = " << coeffs->values[4] << " / ny = " << coeffs->values[5] << " / nz = " << coeffs->values[6] << std::endl;
-
+        // std::cout << "   center ok" << std::endl;
+        // std::cout << "   x = " << coeffs->values[0] << " / y = " << coeffs->values[1] << " / z = " << coeffs->values[2] << "\n"
+        //             << " / r = " << coeffs->values[3] << "\n"
+        //             << " / nx = " << coeffs->values[4] << " / ny = " << coeffs->values[5] << " / nz = " << coeffs->values[6] << std::endl;
+        std::cout << "[detectCircles] r = " << coeffs->values[3] << std::endl;
         bool far_enough = true;
 
         for (const auto& prev : found_centers)
@@ -338,9 +340,11 @@ void DrumDetector::detectCircles(pcl::PointCloud<pcl::PointXYZ>::Ptr& pointcloud
         }
 
         if (!far_enough)
+        {
             // continue;
+            std::cout << "[detectCircles] 클러스터에서 하나의 원을 검출했습니다." << std::endl;
             return;
-
+        }
         found_centers.push_back(center);
         drum_coeffs.push_back(coeffs);
 
@@ -358,7 +362,8 @@ void DrumDetector::detectCircles(pcl::PointCloud<pcl::PointXYZ>::Ptr& pointcloud
         extract.filter(*remaining);
         pointcloud.swap(remaining);
     }
-    std::cout << "   detectCircles exiting" << std::endl;
+    std::cout << "[detectCircles] 클러스터에서 두 개의 원을 찾았습니다." << std::endl;
+    return;
 }
 
 std::vector<int> DrumDetector::indexCircles(std::vector<pcl::ModelCoefficients::Ptr>& drum_coeffs, std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr>& drum_clouds)
@@ -473,6 +478,27 @@ std::vector<Eigen::VectorXd> DrumDetector::selectCandidateForOneCircle(const pcl
         }
     }
 
+    // 좌->우(x 오름차순) 정렬. 단, x가 거의 같은(= 같은 좌우 라인) 점들은 한 묶음으로 보고,
+    // 그 안에서는 y가 클수록(앞/드럼쪽일수록) 앞 번호를 부여한다.
+    // x를 xLineEps 격자로 양자화해 '같은 라인' 판정을 안정적으로 처리한다
+    // (부동소수점 == 비교를 피하고, std::sort의 strict weak ordering도 보장).
+    const double xLineEps = 0.03; // [m] 좌우 라인 동일 판정 허용오차 (필요시 조정)
+    std::sort(candidate.begin(), candidate.end(),
+        [xLineEps](const Eigen::VectorXd& a, const Eigen::VectorXd& b) {
+            double ax = std::round(a(0) / xLineEps);
+            double bx = std::round(b(0) / xLineEps);
+            if (ax != bx) return ax < bx;          // 왼쪽(-x) -> 오른쪽(+x)
+            if (a(1) != b(1)) return a(1) > b(1);  // 같은 라인: y 큰 값이 앞 번호
+            return a(2) > b(2);                    // 최종 동률 안정화(결정적)
+        });
+
+    std::cout << "[selectCandidateForOneCircle] : " << DB << candidate.size() << " candidates generated " << std::endl;
+    for (size_t i = 0; i < candidate.size(); ++i)
+    {
+        std::cout << "  cand " << i << ": x=" << candidate[i](0)
+                  << " y=" << candidate[i](1) << " z=" << candidate[i](2) << std::endl;
+    }
+
     return candidate;
 }
 
@@ -483,10 +509,10 @@ std::vector<std::vector<Eigen::VectorXd>> DrumDetector::selectCandidates(const s
 
     for (size_t i = 0; i < drum_coeffs.size(); ++i)
     {
-        // char DB = (i < 4) ? 'D' : 'B'; // D: 드럼, B: 벨류
-        char DB = 'B'; // 테스트용: 모두 벨류 후보로 생성
+        char DB = (i < 4) ? 'D' : 'B'; // D: 드럼, B: 벨류
+        // char DB = 'D'; // 테스트용: 모두 벨류 후보로 생성
         std::vector<Eigen::VectorXd> candidates = selectCandidateForOneCircle(drum_coeffs[i], DB);
-        std::cout << "[HitCandidates] drum " << i << ": " << candidates.size() << " candidates generated" << std::endl;
+        // std::cout << "[HitCandidates] drum " << i << ": " << candidates.size() << " candidates generated" << std::endl;
         all_candidates.push_back(candidates);
     }
 
@@ -545,36 +571,31 @@ void DrumDetector::visualizeDrums(const std::vector<pcl::PointCloud<pcl::PointXY
         }
     }
 
-    // ===== 종료 처리 =====
+    // ===== 이벤트 루프: 사용자가 창을 닫을 때까지 대기 =====
+    // q 키 입력 시 명시적으로 창 종료 (X 버튼은 wasStopped()로 처리됨)
+    viewer->registerKeyboardCallback([&](const pcl::visualization::KeyboardEvent& event) {
+        if (event.getKeySym() == "q" && event.keyDown())
+            viewer->close();
+    });
 
-    viewer->removeAllPointClouds();
-    viewer->removeAllShapes();
-    viewer->removeAllCoordinateSystems();
+    while (!viewer->wasStopped())
+    {
+        viewer->spinOnce(100);
+    }
 
+    // ===== 루프 종료 후: 창과 VTK 리소스를 확실히 파괴 =====
+    // PCL 1.10의 close()는 stopped 플래그와 인터랙터(TerminateApp)만 정리할 뿐
+    // OS 레벨 RenderWindow(X11 창)는 파괴하지 않는다. Finalize()를 명시적으로
+    // 호출해야 태스크바에 'vtk' 좀비 창이 남지 않는다.
     viewer->close();
-
-    // VTK RenderWindow 강제 finalize
     if (viewer->getRenderWindow())
     {
         viewer->getRenderWindow()->Finalize();
     }
-
     viewer.reset();
-
-//     while (!viewer->wasStopped())
-//     {
-//         viewer->spinOnce(100);
-//         std::this_thread::sleep_for(std::chrono::milliseconds(100));
-//     }
-
-//     // 완전 종료 — VTK 리소스까지 정리
-//     // viewer->removeAllPointClouds();
-//     // viewer->removeAllShapes();
-//     // viewer->getRenderWindow()->Finalize();
-//     viewer->close();
-//     viewer.reset();
 }
 
+// 0617 point cloud 없을때 ransac 안돌리게 하기
 void DrumDetector::detectDrums()
 {
     std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> accumulated_clouds;
@@ -606,8 +627,11 @@ void DrumDetector::detectDrums()
         rs2::points points = pc.calculate(final_frame);
         auto depth_stream = pipe.get_active_profile().get_stream(RS2_STREAM_DEPTH).as<rs2::video_stream_profile>();
         temp_cloud = convertRs2PointsToPcl(points, depth_stream);
+        // std::cout << "[detectDrums] angle=" << angle
+                //   << " | 캡처 원점군(temp_cloud)=" << (temp_cloud ? temp_cloud->size() : 0) << " pts" << std::endl;
 
         filtered_cloud = removeOutliers(temp_cloud);
+        // std::cout << "[detectDrums]   removeOutliers 후=" << filtered_cloud->size() << " pts" << std::endl;
         // filtered_cloud = downSampling(filtered_cloud);
         filtered_cloud = transform2RobotFrame(filtered_cloud, c_MotorAngle[0]);
 
@@ -627,9 +651,10 @@ void DrumDetector::detectDrums()
             *full_clouds += *c;
     }
 
-    // 5, 7 악기 너무 pointcloud가 적어서 원 검출이 힘듦.
+    // std::cout << "[detectDrums] 병합 직후 full_clouds=" << full_clouds->size() << " pts" << std::endl;
     full_clouds = removeOutliers(full_clouds);
     full_clouds = downSampling(full_clouds);
+    // std::cout << "[detectDrums] removeOutliers+downSampling 후 full_clouds=" << full_clouds->size() << " pts" << std::endl;
     savePointsToCSV("test", full_clouds);
     visualizeDrums({full_clouds});
 
@@ -645,6 +670,7 @@ void DrumDetector::detectDrums()
         pcl::copyPointCloud(*full_clouds, indices, *temp_cluster);
         iter++;
         std::cout << iter << "번째 클러스터" << std::endl;
+        // visualizeDrums({temp_cluster});
         detectCircles(temp_cluster, drum_coeffs, drum_clouds);
     }
     
